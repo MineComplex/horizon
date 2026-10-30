@@ -12,8 +12,8 @@ pub trait Art: OldEnum<JRef<dyn Art>> + Keyed {
     fn get_block_width(&self) -> i32; // paper-api/src/main/java/org/bukkit/Art.java:137
     fn get_block_height(&self) -> i32; // paper-api/src/main/java/org/bukkit/Art.java:144
     fn get_id(&self) -> i32; // paper-api/src/main/java/org/bukkit/Art.java:152
-    fn title(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Art.java:181
-    fn author(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Art.java:188
+    fn title(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/Art.java:181
+    fn author(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/Art.java:188
     fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/org/bukkit/Art.java:195
 }
 pub static ALBAN: LazyLock<JRef<dyn Art>> = LazyLock::new(|| get_art("alban")); // paper-api/src/main/java/org/bukkit/Art.java:24

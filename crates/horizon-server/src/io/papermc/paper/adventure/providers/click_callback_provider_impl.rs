@@ -17,7 +17,7 @@ pub static DIALOG_CLICK_MANAGER: LazyLock<JRef<ClickCallbackProviderImplDialogCl
 impl ClickCallbackProviderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ClickCallbackProviderImpl.java:25
-    pub fn create(&self, callback: (), options: ()) -> crate::text::ClickEvent { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ClickCallbackProviderImpl.java:34
+    pub fn create(&self, callback: (), options: ()) -> crate::azalea::chat::click_event::ClickEvent { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ClickCallbackProviderImpl.java:34
 }
 crate::jobject!(ClickCallbackProviderImpl);
 // ---- class io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.AdventureClick (paper-server/src/main/java/io/papermc/paper/adventure/providers/ClickCallbackProviderImpl.java:41)

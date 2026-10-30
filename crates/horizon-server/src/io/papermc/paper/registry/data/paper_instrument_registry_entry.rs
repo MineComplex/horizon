@@ -42,7 +42,7 @@ impl PaperInstrumentRegistryEntry {
     pub fn duration(&self) -> f32 { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:55
     pub fn range(&self) -> f32 { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:60
     pub fn durability_damage(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:65
-    pub fn description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:70
+    pub fn description(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:70
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -54,7 +54,7 @@ impl InstrumentRegistryEntry for PaperInstrumentRegistryEntry {
     fn duration(&self) -> f32 { PaperInstrumentRegistryEntry::duration(self) }
     fn range(&self) -> f32 { PaperInstrumentRegistryEntry::range(self) }
     fn durability_damage(&self) -> i32 { PaperInstrumentRegistryEntry::durability_damage(self) }
-    fn description(&self) -> crate::text::Text { PaperInstrumentRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperInstrumentRegistryEntry::description(self) }
 }
 crate::jobject!(PaperInstrumentRegistryEntry: dyn PaperInstrumentRegistryEntryTrait, dyn InstrumentRegistryEntry);
 // ---- class io.papermc.paper.registry.data.PaperInstrumentRegistryEntry.PaperBuilder (paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:75)
@@ -75,7 +75,7 @@ impl PaperInstrumentRegistryEntryPaperBuilder {
     pub fn duration_1(&self, duration: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:99
     pub fn range_1(&self, range: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:105
     pub fn durability_damage_1(&self, durability_damage: i32) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:111
-    pub fn description_1(&self, description: crate::text::Text) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:117
+    pub fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:117
     pub fn build(&self) -> Instrument { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:123
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -90,14 +90,14 @@ impl InstrumentRegistryEntryBuilder for PaperInstrumentRegistryEntryPaperBuilder
     fn duration_1(&self, duration: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::duration_1(self, duration) }
     fn range_1(&self, range: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::range_1(self, range) }
     fn durability_damage_1(&self, durability_damage: i32) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::durability_damage_1(self, durability_damage) }
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::description_1(self, description) }
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::description_1(self, description) }
 }
 impl InstrumentRegistryEntry for PaperInstrumentRegistryEntryPaperBuilder {
     fn sound_event(&self) -> JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>> { PaperInstrumentRegistryEntry::sound_event(self) }
     fn duration(&self) -> f32 { PaperInstrumentRegistryEntry::duration(self) }
     fn range(&self) -> f32 { PaperInstrumentRegistryEntry::range(self) }
     fn durability_damage(&self) -> i32 { PaperInstrumentRegistryEntry::durability_damage(self) }
-    fn description(&self) -> crate::text::Text { PaperInstrumentRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperInstrumentRegistryEntry::description(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperInstrumentRegistryEntryPaperBuilder {
 }

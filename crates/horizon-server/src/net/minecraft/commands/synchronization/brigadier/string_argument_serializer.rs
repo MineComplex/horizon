@@ -16,11 +16,11 @@ impl StringArgumentSerializer {
     pub fn serialize_to_network(&self, template: JRef<StringArgumentSerializerTemplate>, out: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:11
     pub fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> JRef<StringArgumentSerializerTemplate> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:16
     pub fn serialize_to_json(&self, template: JRef<StringArgumentSerializerTemplate>, out: serde_json::Map<String, serde_json::Value>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:22
-    pub fn unpack(&self, argument: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>) -> JRef<StringArgumentSerializerTemplate> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:31
+    pub fn unpack(&self, argument: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>) -> JRef<StringArgumentSerializerTemplate> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, JRef<StringArgumentSerializerTemplate>> for StringArgumentSerializer {
+impl ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, JRef<StringArgumentSerializerTemplate>> for StringArgumentSerializer {
     fn serialize_to_network(&self, template: T, out: JRef<dyn FriendlyByteBufTrait>) { StringArgumentSerializer::serialize_to_network(self, template, out) }
     fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> T { StringArgumentSerializer::deserialize_from_network(self, in_) }
     fn serialize_to_json(&self, template: T, out: serde_json::Map<String, serde_json::Value>) { StringArgumentSerializer::serialize_to_json(self, template, out) }
@@ -32,17 +32,17 @@ pub struct StringArgumentSerializerTemplate {
     pub this: Weak<Self>,
     /// The enclosing instance (Java inner class).
     pub outer: Weak<StringArgumentSerializer>,
-    pub type_: azalea_brigadier::arguments::string_argument_type::StringArgument, // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:37
+    pub type_: crate::azalea::brigadier::arguments::string_argument_type::StringArgument, // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:37
 }
 impl StringArgumentSerializerTemplate {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: azalea_brigadier::arguments::string_argument_type::StringArgument) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:39
-    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:43
-    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:52
+    pub fn new(type_: crate::azalea::brigadier::arguments::string_argument_type::StringArgument) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:39
+    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:43
+    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/StringArgumentSerializer.java:52
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfoTemplate<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>> for StringArgumentSerializerTemplate {
+impl ArgumentTypeInfoTemplate<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>> for StringArgumentSerializerTemplate {
     fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> A { StringArgumentSerializerTemplate::instantiate(self, context) }
     fn type_(&self) -> JRef<dyn ArgumentTypeInfo<A, JObjectRef>> { StringArgumentSerializerTemplate::type_(self) }
 }

@@ -7,8 +7,8 @@ use crate::api_prelude::*;
 pub trait CommandBlockHolder: JObject {
     fn get_command(&self) -> String; // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:17
     fn set_command(&self, command: Option<String>); // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:26
-    fn last_output(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:33
-    fn last_output_1(&self, last_output: Option<crate::text::Text>); // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:40
+    fn last_output(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:33
+    fn last_output_1(&self, last_output: Option<crate::azalea::chat::FormattedText>); // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:40
     fn get_success_count(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:48
     fn set_success_count(&self, success_count: i32); // paper-api/src/main/java/io/papermc/paper/command/CommandBlockHolder.java:56
 }

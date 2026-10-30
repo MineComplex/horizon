@@ -6,18 +6,18 @@ use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.ItemLore (paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:15)
 pub trait ItemLore: JObject {
-    fn lines(&self) -> Vec<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:33
-    fn styled_lines(&self) -> Vec<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:41
+    fn lines(&self) -> Vec<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:33
+    fn styled_lines(&self) -> Vec<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:41
 }
 pub fn lore() -> JRef<dyn ItemLoreBuilder> {
     crate::io::papermc::paper::datacomponent::item::item_component_types_bridge::bridge().lore()
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:23
-pub fn lore_1(lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLore> {
+pub fn lore_1(lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLore> {
     lore().lines(lines).build()
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:18
 // ---- interface io.papermc.paper.datacomponent.item.ItemLore.Builder (paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:47)
 pub trait ItemLoreBuilder: DataComponentBuilder<JRef<dyn ItemLore>> {
-    fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:57
-    fn add_line(&self, line: crate::text::Text) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:67
-    fn add_lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:77
+    fn lines(&self, lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:57
+    fn add_line(&self, line: crate::azalea::chat::FormattedText) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:67
+    fn add_lines(&self, lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemLore.java:77
 }

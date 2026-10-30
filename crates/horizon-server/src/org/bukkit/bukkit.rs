@@ -212,10 +212,10 @@ impl Bukkit {
     pub fn broadcast_1(components: &Vec<()>) {
         Self::server().broadcast_1(components);
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:485
-    pub fn broadcast_1_2(message: crate::text::Text) -> i32 {
+    pub fn broadcast_1_2(message: crate::azalea::chat::FormattedText) -> i32 {
         Self::server().broadcast_1_2(message)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1510
-    pub fn broadcast_2(message: crate::text::Text, permission: &str) -> i32 {
+    pub fn broadcast_2(message: crate::azalea::chat::FormattedText, permission: &str) -> i32 {
         Self::server().broadcast_2_2(message, permission)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1522
     pub fn broadcast_2_2(message: &str, permission: &str) -> i32 {
@@ -593,7 +593,7 @@ impl Bukkit {
     pub fn create_inventory_3(
         owner: Option<JRef<dyn InventoryHolder>>,
         type_: InventoryType,
-        title: crate::text::Text,
+        title: crate::azalea::chat::FormattedText,
     ) -> JRef<dyn Inventory> {
         Self::server().create_inventory_3(owner, type_, title)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1891
@@ -607,7 +607,7 @@ impl Bukkit {
     pub fn create_inventory_3_3(
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
-        title: crate::text::Text,
+        title: crate::azalea::chat::FormattedText,
     ) -> Result<JRef<dyn Inventory>, anyhow::Error> {
         Self::server().create_inventory_3_3(owner, size, title)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1954
@@ -621,7 +621,7 @@ impl Bukkit {
     pub fn create_merchant() -> JRef<dyn Merchant> {
         Self::server().create_merchant()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2013
-    pub fn create_merchant_1(title: crate::text::Text) -> JRef<dyn Merchant> {
+    pub fn create_merchant_1(title: crate::azalea::chat::FormattedText) -> JRef<dyn Merchant> {
         Self::server().create_merchant_1(title)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1988
     pub fn create_merchant_1_2(title: Option<String>) -> JRef<dyn Merchant> {
@@ -654,7 +654,7 @@ impl Bukkit {
     pub fn is_primary_thread() -> bool {
         Self::server().is_primary_thread()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2126
-    pub fn shutdown_message() -> crate::text::Text {
+    pub fn shutdown_message() -> crate::azalea::chat::FormattedText {
         Self::server().shutdown_message()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2154
     pub fn get_server_links() -> JRef<dyn ServerLinks> {
@@ -821,7 +821,7 @@ impl Bukkit {
     pub fn get_permission_message() -> String {
         Self::server().get_permission_message()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2791
-    pub fn permission_message() -> crate::text::Text {
+    pub fn permission_message() -> crate::azalea::chat::FormattedText {
         Self::server().permission_message()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2802
     pub fn create_profile(

@@ -217,12 +217,12 @@ pub trait Entity:
     fn create_snapshot(&self) -> Option<JRef<dyn EntitySnapshot>>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1133
     fn copy(&self) -> JRef<dyn Entity>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1144
     fn copy_1(&self, to: JRef<Location>) -> JRef<dyn Entity>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1154
-    fn team_display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1172
+    fn team_display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1172
     fn as_hover_event(
         &self,
         op: Arc<dyn Fn(()) -> () + Send + Sync>,
     ) -> () {
-        // PORT: Adventure's ().showEntity(ShowEntity) / ShowEntity.showEntity(Key, UUID, crate::text::Text); NamespacedKey as Key
+        // PORT: Adventure's ().showEntity(ShowEntity) / ShowEntity.showEntity(Key, UUID, crate::azalea::chat::FormattedText); NamespacedKey as Key
         HoverEvent::show_entity(op.apply(HoverEventShowEntity::show_entity_3(
             self.get_type().get_key(),
             self.get_unique_id(),

@@ -12,7 +12,7 @@ pub struct ListPlayersCommand {
 impl ListPlayersCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:14
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:15
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:15
     pub fn list_players(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:23
     pub fn list_players_with_uuids(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:27
     pub fn format(source: JRef<CommandSourceStack>, formatter: Arc<dyn Fn(JRef<ServerPlayer>) -> JRef<dyn Component> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ListPlayersCommand.java:33

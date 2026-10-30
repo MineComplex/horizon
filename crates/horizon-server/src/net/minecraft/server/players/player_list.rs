@@ -60,8 +60,8 @@ pub trait PlayerListTrait: JObject {
     fn add_worldborder_listener(&self, level: JRef<ServerLevel>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:371
     fn load_player_data(&self, name_and_id: NameAndId) -> Option<JRef<CompoundTag>>; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:408
     fn save(&self, player: JRef<ServerPlayer>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:418
-    fn remove(&self, player: JRef<ServerPlayer>) -> crate::text::Text; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:433
-    fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::text::Text) -> crate::text::Text; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:437
+    fn remove(&self, player: JRef<ServerPlayer>) -> crate::azalea::chat::FormattedText; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:433
+    fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::azalea::chat::FormattedText) -> crate::azalea::chat::FormattedText; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:437
     fn can_player_login(&self, address: std::net::SocketAddr, name_and_id: NameAndId) -> PlayerListLoginResult; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:536
     fn disconnect_all_players_with_profile(&self, profile: crate::rt::GameProfile) -> bool; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:545
     fn respawn(&self, server_player: JRef<ServerPlayer>, keep_all_player_data: bool, removal_reason: EntityRemovalReason, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<ServerPlayer>; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:568
@@ -77,7 +77,7 @@ pub trait PlayerListTrait: JObject {
     fn broadcast_all_2_2(&self, packet: JRef<dyn Packet<JObjectRef>>, world: JRef<dyn LevelTrait>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:791
     fn broadcast_all_2_3(&self, packet: JRef<dyn Packet<JObjectRef>>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:819
     fn broadcast_mini_message(&self, message: Option<String>, overlay: bool); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:806
-    fn broadcast_message(&self, message: crate::text::Text, overlay: bool); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:812
+    fn broadcast_message(&self, message: crate::azalea::chat::FormattedText, overlay: bool); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:812
     fn broadcast_system_to_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:827
     fn broadcast_system_to_all_except_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>); // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:839
     fn get_player_names_array(&self) -> Vec<String>; // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:853
@@ -146,8 +146,8 @@ impl PlayerList {
     pub fn add_worldborder_listener(&self, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:371
     pub fn load_player_data(&self, name_and_id: NameAndId) -> Option<JRef<CompoundTag>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:408
     pub fn save(&self, player: JRef<ServerPlayer>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:418
-    pub fn remove(&self, player: JRef<ServerPlayer>) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:433
-    pub fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::text::Text) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:437
+    pub fn remove(&self, player: JRef<ServerPlayer>) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:433
+    pub fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::azalea::chat::FormattedText) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:437
     pub fn can_player_login(&self, address: std::net::SocketAddr, name_and_id: NameAndId) -> PlayerListLoginResult { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:536
     pub fn disconnect_all_players_with_profile(&self, profile: crate::rt::GameProfile) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:545
     pub fn respawn(&self, server_player: JRef<ServerPlayer>, keep_all_player_data: bool, removal_reason: EntityRemovalReason, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<ServerPlayer> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:568
@@ -167,7 +167,7 @@ impl PlayerList {
     pub fn broadcast_all_2_2(&self, packet: JRef<dyn Packet<JObjectRef>>, world: JRef<dyn LevelTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:791
     pub fn broadcast_all_2_3(&self, packet: JRef<dyn Packet<JObjectRef>>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:819
     pub fn broadcast_mini_message(&self, message: Option<String>, overlay: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:806
-    pub fn broadcast_message(&self, message: crate::text::Text, overlay: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:812
+    pub fn broadcast_message(&self, message: crate::azalea::chat::FormattedText, overlay: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:812
     pub fn broadcast_system_to_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:827
     pub fn broadcast_system_to_all_except_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:839
     pub fn get_player_names_array(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:853
@@ -219,8 +219,8 @@ impl PlayerList {
     pub fn reload_advancement_data(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1301
     pub fn reload_tag_data(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1315
     pub fn reload_recipes(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1322
-    pub fn get_join_msg(&self, default_join_msg: JRef<MutableComponent>, player: JRef<dyn Player>) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1336
-    pub fn get_quit_msg(&self, default_join_msg: crate::text::Text, player: JRef<dyn Player>) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1353
+    pub fn get_join_msg(&self, default_join_msg: JRef<MutableComponent>, player: JRef<dyn Player>) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1336
+    pub fn get_quit_msg(&self, default_join_msg: crate::azalea::chat::FormattedText, player: JRef<dyn Player>) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:1353
 }
 // ---- record net.minecraft.server.players.PlayerList.LoginResult (leaf-server/src/minecraft/java/net/minecraft/server/players/PlayerList.java:528)
 #[derive(Clone)]

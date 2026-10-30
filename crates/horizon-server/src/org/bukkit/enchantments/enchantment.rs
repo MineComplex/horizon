@@ -29,7 +29,7 @@ pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatab
     fn is_cursed(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:340
     fn conflicts_with(&self, other: JRef<dyn EnchantmentTrait>) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:348
     fn can_enchant_item(&self, item: JRef<ItemStack>) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:360
-    fn display_name(&self, level: i32) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:372
+    fn display_name(&self, level: i32) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:372
     fn is_tradeable(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:381
     fn is_discoverable(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:389
     fn get_min_modified_cost(&self, level: i32) -> i32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:401
@@ -40,7 +40,7 @@ pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatab
     fn get_damage_increase_2(&self, level: i32, entity_type: EntityType) -> f32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:456
     fn get_active_slots(&self) -> HashSet<EquipmentSlot>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:466
     fn get_active_slot_groups(&self) -> HashSet<JRef<EquipmentSlotGroup>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:483
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:494
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:494
     fn get_supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:501
     fn get_primary_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:514
     fn get_weight(&self) -> i32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:523

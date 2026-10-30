@@ -15,22 +15,22 @@ use crate::net::minecraft::world::timeline::timeline::Timeline;
 pub struct TimeCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NO_DEFAULT_CLOCK: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:36
-pub static ERROR_NO_TIME_MARKER_FOUND: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:39
-pub static ERROR_WRONG_TIMELINE_FOR_CLOCK: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:42
-pub static ERROR_ALREADY_AT_TIME_MARKER: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:45
-pub static ERROR_ALREADY_AT_TIME: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:48
-pub static ERROR_ALREADY_PAUSED: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:51
-pub static ERROR_ALREADY_RUNNING: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:54
-pub static ERROR_ALREADY_SAME_RATE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:57
+pub static ERROR_NO_DEFAULT_CLOCK: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:36
+pub static ERROR_NO_TIME_MARKER_FOUND: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:39
+pub static ERROR_WRONG_TIMELINE_FOR_CLOCK: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:42
+pub static ERROR_ALREADY_AT_TIME_MARKER: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:45
+pub static ERROR_ALREADY_AT_TIME: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:48
+pub static ERROR_ALREADY_PAUSED: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:51
+pub static ERROR_ALREADY_RUNNING: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:54
+pub static ERROR_ALREADY_SAME_RATE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:57
 pub const MAX_CLOCK_RATE: i32 = 1000; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:60
 impl TimeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:35
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:62
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:62
     pub fn add_clock_nodes<A: JGeneric>(context: JRef<dyn CommandBuildContext>, node: A, clock_getter: JRef<dyn TimeCommandClockGetter>) -> A { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:80
-    pub fn suggest_time_markers(source: JRef<CommandSourceStack>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:134
-    pub fn suggest_timelines(source: JRef<CommandSourceStack>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:142
+    pub fn suggest_time_markers(source: JRef<CommandSourceStack>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:134
+    pub fn suggest_timelines(source: JRef<CommandSourceStack>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:142
     pub fn query_game_time(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:153
     pub fn query_time(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:159
     pub fn query_timeline_ticks(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, timeline: JRef<dyn Holder<JRef<Timeline>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:166
@@ -47,8 +47,8 @@ impl TimeCommand {
 crate::jobject!(TimeCommand);
 // ---- interface net.minecraft.server.commands.TimeCommand.ClockGetter (leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:290)
 pub trait TimeCommandClockGetter: Send + Sync + 'static {
-    fn get_clock(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:291
+    fn get_clock(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:291
 }
-impl<F: Fn(azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> + Send + Sync + 'static> TimeCommandClockGetter for F {
-    fn get_clock(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> { self(context) }
+impl<F: Fn(crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> + Send + Sync + 'static> TimeCommandClockGetter for F {
+    fn get_clock(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> { self(context) }
 }

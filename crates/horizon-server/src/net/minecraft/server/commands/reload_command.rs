@@ -16,6 +16,6 @@ impl ReloadCommand {
     pub fn reload_packs(selected_packs: &Vec<String>, source: JRef<CommandSourceStack>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReloadCommand.java:18
     pub fn discover_new_packs(pack_repository: JRef<PackRepository>, world_data: JRef<dyn WorldData>, current_packs: &Vec<String>) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReloadCommand.java:26
     pub fn reload(server: JRef<dyn MinecraftServerTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReloadCommand.java:41
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReloadCommand.java:50
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReloadCommand.java:50
 }
 crate::jobject!(ReloadCommand);

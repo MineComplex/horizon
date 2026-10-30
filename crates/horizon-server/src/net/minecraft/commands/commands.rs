@@ -14,7 +14,7 @@ use crate::net::minecraft::server::permissions::permission_set::PermissionSet;
 // ---- class net.minecraft.commands.Commands (leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:131)
 pub struct Commands {
     pub this: Weak<Self>,
-    pub dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:162
+    pub dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:162
 }
 pub const COMMAND_PREFIX: &str = "/"; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:133
 pub static CURRENT_EXECUTION_CONTEXT: LazyLock<thread_local::ThreadLocal<JRef<ExecutionContext<JRef<CommandSourceStack>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:134
@@ -29,26 +29,26 @@ impl Commands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command_selection: CommandsCommandSelection, context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:164
     pub fn new_3(command_selection: CommandsCommandSelection, context: JRef<dyn CommandBuildContext>, modern: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:168
-    pub fn map_source<S: JGeneric>(parse: azalea_brigadier::parse_results::ParseResults<'static, S>, source_operator: Arc<dyn Fn(S) -> S + Send + Sync>) -> azalea_brigadier::parse_results::ParseResults<'static, S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:297
+    pub fn map_source<S: JGeneric>(parse: crate::azalea::brigadier::parse_results::ParseResults<'static, S>, source_operator: Arc<dyn Fn(S) -> S + Send + Sync>) -> crate::azalea::brigadier::parse_results::ParseResults<'static, S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:297
     pub fn perform_prefixed_command(&self, sender: JRef<CommandSourceStack>, command: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:303
     pub fn trim_optional_prefix(command: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:308
-    pub fn perform_command(&self, command: azalea_brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:312
-    pub fn perform_command_3(&self, command: azalea_brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str, throw_command_error: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:317
-    pub fn finish_parsing(command: azalea_brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str, sender: JRef<CommandSourceStack>) -> Option<azalea_brigadier::context::ContextChain<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:359
+    pub fn perform_command(&self, command: crate::azalea::brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:312
+    pub fn perform_command_3(&self, command: crate::azalea::brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str, throw_command_error: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:317
+    pub fn finish_parsing(command: crate::azalea::brigadier::parse_results::ParseResults<'static, JRef<CommandSourceStack>>, command_string: &str, sender: JRef<CommandSourceStack>) -> Option<crate::azalea::brigadier::context::ContextChain<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:359
     pub fn execute_command_in_context(context: JRef<CommandSourceStack>, config: Arc<dyn Fn(JRef<ExecutionContext<JRef<CommandSourceStack>>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:382
     pub fn send_commands(&self, player: JRef<ServerPlayer>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:402
-    pub fn send_async(&self, player: JRef<ServerPlayer>, dispatcher_root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:429
-    pub fn run_sync(&self, player: JRef<ServerPlayer>, bukkit: &Vec<String>, root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:449
-    pub fn fill_usable_commands<S: JGeneric>(source: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, target: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, command_filter: S, converted: &mut HashMap<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:476
-    pub fn literal(literal: &str) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:537
-    pub fn argument<T: JGeneric>(name: &str, type_: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:541
+    pub fn send_async(&self, player: JRef<ServerPlayer>, dispatcher_root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:429
+    pub fn run_sync(&self, player: JRef<ServerPlayer>, bukkit: &Vec<String>, root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:449
+    pub fn fill_usable_commands<S: JGeneric>(source: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, target: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, command_filter: S, converted: &mut HashMap<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:476
+    pub fn literal(literal: &str) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:537
+    pub fn argument<T: JGeneric>(name: &str, type_: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:541
     pub fn create_validator(parser: JRef<dyn CommandsParseFunction>) -> Arc<dyn Fn(String) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:545
-    pub fn get_dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:556
-    pub fn validate_parse_results<S: JGeneric>(command: azalea_brigadier::parse_results::ParseResults<'static, S>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:560
-    pub fn get_parse_exception<S: JGeneric>(parse: azalea_brigadier::parse_results::ParseResults<'static, S>) -> azalea_brigadier::errors::CommandSyntaxError { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:567
+    pub fn get_dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:556
+    pub fn validate_parse_results<S: JGeneric>(command: crate::azalea::brigadier::parse_results::ParseResults<'static, S>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:560
+    pub fn get_parse_exception<S: JGeneric>(parse: crate::azalea::brigadier::parse_results::ParseResults<'static, S>) -> crate::azalea::brigadier::errors::CommandSyntaxError { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:567
     pub fn create_validation_context(registries: JRef<dyn HolderLookupProvider>) -> JRef<dyn CommandBuildContext> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:579
-    pub fn get_unknown_command_message(builder: crate::text::Text, e: azalea_brigadier::errors::CommandSyntaxError, command_string: &str) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:619
-    pub fn get_vanilla_unknown_command_message(builder: crate::text::Text, e: azalea_brigadier::errors::CommandSyntaxError, command_string: &str) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:672
+    pub fn get_unknown_command_message(builder: crate::azalea::chat::FormattedText, e: crate::azalea::brigadier::errors::CommandSyntaxError, command_string: &str) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:619
+    pub fn get_vanilla_unknown_command_message(builder: crate::azalea::chat::FormattedText, e: crate::azalea::brigadier::errors::CommandSyntaxError, command_string: &str) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:672
     pub fn validate() { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:704
     pub fn has_permission<T: JGeneric>(permission: JRef<dyn PermissionCheck>) -> PermissionProviderCheck<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:725
     pub fn create_compilation_context(compilation_permissions: JRef<dyn PermissionSet>) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:729
@@ -86,8 +86,8 @@ impl CommandsCommandSelection {
 crate::jobject!(CommandsCommandSelection);
 // ---- interface net.minecraft.commands.Commands.ParseFunction (leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:747)
 pub trait CommandsParseFunction: Send + Sync + 'static {
-    fn parse(&self, value: azalea_brigadier::string_reader::StringReader) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:749
+    fn parse(&self, value: crate::azalea::brigadier::string_reader::StringReader) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:749
 }
-impl<F: Fn(azalea_brigadier::string_reader::StringReader) -> Result<(), anyhow::Error> + Send + Sync + 'static> CommandsParseFunction for F {
-    fn parse(&self, value: azalea_brigadier::string_reader::StringReader) -> Result<(), anyhow::Error> { self(value) }
+impl<F: Fn(crate::azalea::brigadier::string_reader::StringReader) -> Result<(), anyhow::Error> + Send + Sync + 'static> CommandsParseFunction for F {
+    fn parse(&self, value: crate::azalea::brigadier::string_reader::StringReader) -> Result<(), anyhow::Error> { self(value) }
 }

@@ -15,11 +15,11 @@ impl BrigadierCommandCompleter {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(server: JRef<DedicatedServer>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:32
     pub fn complete(&self, reader: rustyline::DefaultEditor, line: (), candidates: &Vec<String>, existing: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:37
-    pub fn add_candidates(&self, candidates: &mut Vec<String>, brig_suggestions: &Vec<azalea_brigadier::suggestion::Suggestion>, existing: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>, context: BrigadierCommandCompleterParseContext) { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:58
+    pub fn add_candidates(&self, candidates: &mut Vec<String>, brig_suggestions: &Vec<crate::azalea::brigadier::suggestion::Suggestion>, existing: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>, context: BrigadierCommandCompleterParseContext) { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:58
     pub fn to_candidate(completion: JRef<dyn AsyncTabCompleteEventCompletion>) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:84
-    pub fn to_candidate_2(suggestion: azalea_brigadier::suggestion::Suggestion, context: BrigadierCommandCompleterParseContext) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:76
-    pub fn to_candidate_2_2(suggestion_text: &str, tooltip: Option<crate::text::Text>) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:88
-    pub fn to_completion(suggestion: azalea_brigadier::suggestion::Suggestion) -> JRef<dyn AsyncTabCompleteEventCompletion> { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:108
+    pub fn to_candidate_2(suggestion: crate::azalea::brigadier::suggestion::Suggestion, context: BrigadierCommandCompleterParseContext) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:76
+    pub fn to_candidate_2_2(suggestion_text: &str, tooltip: Option<crate::azalea::chat::FormattedText>) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:88
+    pub fn to_completion(suggestion: crate::azalea::brigadier::suggestion::Suggestion) -> JRef<dyn AsyncTabCompleteEventCompletion> { todo!() } // paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:108
 }
 crate::jobject!(BrigadierCommandCompleter);
 // ---- record io.papermc.paper.console.BrigadierCommandCompleter.ParseContext (paper-server/src/main/java/io/papermc/paper/console/BrigadierCommandCompleter.java:115)

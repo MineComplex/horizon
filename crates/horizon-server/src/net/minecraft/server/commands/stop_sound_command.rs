@@ -13,7 +13,7 @@ pub struct StopSoundCommand {
 impl StopSoundCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/StopSoundCommand.java:19
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/StopSoundCommand.java:20
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/StopSoundCommand.java:20
     pub fn stop_sound(source: JRef<CommandSourceStack>, targets: &Vec<JRef<ServerPlayer>>, sound_source: Option<SoundSource>, sound: Option<JRef<Identifier>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/StopSoundCommand.java:47
 }
 crate::jobject!(StopSoundCommand);

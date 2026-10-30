@@ -8,13 +8,13 @@ use crate::net::minecraft::core::block_pos::BlockPos;
 pub struct DebugPathCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_MOB: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:18
-pub static ERROR_NO_PATH: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:19
-pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:20
+pub static ERROR_NOT_MOB: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:18
+pub static ERROR_NO_PATH: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:19
+pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:20
 impl DebugPathCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:17
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:22
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:22
     pub fn fill_blocks(source: JRef<CommandSourceStack>, target: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugPathCommand.java:32
 }
 crate::jobject!(DebugPathCommand);

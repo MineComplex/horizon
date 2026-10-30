@@ -10,12 +10,12 @@ use crate::net::minecraft::util::parsing::packrat::suggestion_supplier::Suggesti
 pub struct SnbtOperations {
     pub this: Weak<Self>,
 }
-pub static ERROR_EXPECTED_STRING_UUID: LazyLock<JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:23
-pub static ERROR_EXPECTED_NUMBER_OR_BOOLEAN: LazyLock<JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:26
+pub static ERROR_EXPECTED_STRING_UUID: LazyLock<JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:23
+pub static ERROR_EXPECTED_NUMBER_OR_BOOLEAN: LazyLock<JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:26
 pub const BUILTIN_TRUE: &str = "true"; // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:29
 pub const BUILTIN_FALSE: &str = "false"; // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:30
 pub static BUILTIN_OPERATIONS: LazyLock<HashMap<SnbtOperationsBuiltinKey, JRef<dyn SnbtOperationsBuiltinOperation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:31
-pub static BUILTIN_IDS: LazyLock<JRef<dyn SuggestionSupplier<azalea_brigadier::string_reader::StringReader>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:74
+pub static BUILTIN_IDS: LazyLock<JRef<dyn SuggestionSupplier<crate::azalea::brigadier::string_reader::StringReader>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:74
 impl SnbtOperations {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:22
@@ -35,5 +35,5 @@ impl SnbtOperationsBuiltinKey {
 crate::jobject!(SnbtOperationsBuiltinKey);
 // ---- interface net.minecraft.nbt.SnbtOperations.BuiltinOperation (leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:93)
 pub trait SnbtOperationsBuiltinOperation: JObject {
-    fn run<T: JGeneric>(&self, ops: JRef<dyn DynamicOps<T>>, arguments: &Vec<T>, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> T where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:94
+    fn run<T: JGeneric>(&self, ops: JRef<dyn DynamicOps<T>>, arguments: &Vec<T>, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> T where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtOperations.java:94
 }

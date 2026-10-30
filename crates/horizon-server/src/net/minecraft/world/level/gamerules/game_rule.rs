@@ -16,7 +16,7 @@ pub struct GameRule<T: JGeneric> {
     pub this: Weak<Self>,
     pub category: GameRuleCategory, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:17
     pub game_rule_type: GameRuleType, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:18
-    pub argument: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:19
+    pub argument: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:19
     pub visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:20
     pub value_codec: JRef<dyn Codec<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:21
     pub command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:22
@@ -28,7 +28,7 @@ pub struct GameRule<T: JGeneric> {
 pub static LAST_GAMERULE_INDEX: Mut<i32> = Mut::new(0); // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:49
 impl<T: JGeneric> GameRule<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(category: GameRuleCategory, game_rule_type: GameRuleType, argument: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, value_codec: JRef<dyn Codec<T>>, command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>, default_value: T, required_features: FeatureFlagSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:26
+    pub fn new(category: GameRuleCategory, game_rule_type: GameRuleType, argument: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, value_codec: JRef<dyn Codec<T>>, command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>, default_value: T, required_features: FeatureFlagSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:26
     pub fn required_features(&self) -> FeatureFlagSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:119
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:52
     pub fn id(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:57
@@ -42,7 +42,7 @@ impl<T: JGeneric> GameRule<T> {
     pub fn get_command_result(&self, value: T) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:95
     pub fn category(&self) -> GameRuleCategory { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:99
     pub fn game_rule_type(&self) -> GameRuleType { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:103
-    pub fn argument(&self) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:107
+    pub fn argument(&self) -> Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:107
     pub fn value_codec(&self) -> JRef<dyn Codec<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:111
     pub fn default_value(&self) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:115
 }

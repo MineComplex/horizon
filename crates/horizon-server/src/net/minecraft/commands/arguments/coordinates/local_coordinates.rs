@@ -23,8 +23,8 @@ impl LocalCoordinates {
     pub fn is_y_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:46
     pub fn is_z_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:51
     pub fn apply(&self, source: Vec3, rotation: Vec2) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:19
-    pub fn parse(reader: azalea_brigadier::string_reader::StringReader) -> Result<LocalCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:56
-    pub fn read_double(reader: azalea_brigadier::string_reader::StringReader, start: i32) -> Result<f64, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:76
+    pub fn parse(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<LocalCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:56
+    pub fn read_double(reader: crate::azalea::brigadier::string_reader::StringReader, start: i32) -> Result<f64, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/LocalCoordinates.java:76
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

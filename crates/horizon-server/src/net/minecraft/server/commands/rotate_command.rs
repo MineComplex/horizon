@@ -13,7 +13,7 @@ pub struct RotateCommand {
 impl RotateCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RotateCommand.java:16
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RotateCommand.java:17
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RotateCommand.java:17
     pub fn rotate(source: JRef<CommandSourceStack>, entity: JRef<dyn EntityTrait>, rotation: JRef<dyn Coordinates>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RotateCommand.java:70
     pub fn rotate_3(source: JRef<CommandSourceStack>, entity: JRef<dyn EntityTrait>, facing: JRef<dyn LookAt>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RotateCommand.java:79
 }

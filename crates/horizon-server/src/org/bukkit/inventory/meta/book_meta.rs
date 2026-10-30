@@ -15,16 +15,16 @@ pub trait BookMeta: WritableBookMeta {
     fn has_generation(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:102
     fn get_generation(&self) -> Option<BookMetaGeneration>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:112
     fn set_generation(&self, generation: Option<BookMetaGeneration>); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:120
-    fn title(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:179
-    fn title_1(&self, title: crate::text::Text) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:189
-    fn author(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:200
-    fn author_1(&self, author: crate::text::Text) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:208
-    fn page(&self, page: i32) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:220
-    fn page_2(&self, page: i32, data: crate::text::Text); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:234
-    fn add_pages(&self, pages: &Vec<crate::text::Text>); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:242
-    fn pages(&self) -> Vec<crate::text::Text>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:251
-    fn pages_0(&self, pages: &Vec<crate::text::Text>) -> JRef<dyn BookMeta> { self.pages_1(&pages.clone()) } // default, paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:268
-    fn pages_1(&self, pages: &Vec<crate::text::Text>) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:259
+    fn title(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:179
+    fn title_1(&self, title: crate::azalea::chat::FormattedText) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:189
+    fn author(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:200
+    fn author_1(&self, author: crate::azalea::chat::FormattedText) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:208
+    fn page(&self, page: i32) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:220
+    fn page_2(&self, page: i32, data: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:234
+    fn add_pages(&self, pages: &Vec<crate::azalea::chat::FormattedText>); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:242
+    fn pages(&self) -> Vec<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:251
+    fn pages_0(&self, pages: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn BookMeta> { self.pages_1(&pages.clone()) } // default, paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:268
+    fn pages_1(&self, pages: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:259
     fn spigot(&self) -> JRef<BookMetaSpigot>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:355
 }
 // ---- enum org.bukkit.inventory.meta.BookMeta.Generation (paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:25)

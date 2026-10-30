@@ -12,13 +12,13 @@ use crate::net::minecraft::world::phys::vec3::Vec3;
 pub struct PlaySoundCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_TOO_FAR: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:30
+pub static ERROR_TOO_FAR: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:30
 pub static RESPONSE_PLAY: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, JRef<Identifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:31
 impl PlaySoundCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:29
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:37
-    pub fn source(source: SoundSource) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:60
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:37
+    pub fn source(source: SoundSource) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:60
     pub fn get_calling_player_as_collection(player: Option<JRef<ServerPlayer>>) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:151
     pub fn play_sound(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, sound: JRef<Identifier>, sound_source: SoundSource, position: Vec3, volume: f32, pitch: f32, min_volume: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:155
 }

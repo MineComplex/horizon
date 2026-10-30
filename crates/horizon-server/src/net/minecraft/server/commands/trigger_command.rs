@@ -12,13 +12,13 @@ use crate::net::minecraft::world::scores::scoreboard::ScoreboardTrait;
 pub struct TriggerCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_PRIMED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:26
-pub static ERROR_INVALID_OBJECTIVE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:29
+pub static ERROR_NOT_PRIMED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:26
+pub static ERROR_INVALID_OBJECTIVE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:29
 impl TriggerCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:25
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:33
-    pub fn suggest_objectives(source: JRef<CommandSourceStack>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:72
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:33
+    pub fn suggest_objectives(source: JRef<CommandSourceStack>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:72
     pub fn add_value(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>, objective: JRef<Objective>, amount: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:91
     pub fn set_value(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>, objective: JRef<Objective>, amount: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:98
     pub fn simple_trigger(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>, objective: JRef<Objective>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TriggerCommand.java:105

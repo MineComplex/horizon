@@ -9,8 +9,8 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.datapack.DiscoveredDatapack (paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:18)
 pub trait DiscoveredDatapack: JObject {
     fn get_name(&self) -> String; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:27
-    fn get_title(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:35
-    fn get_description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:42
+    fn get_title(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:35
+    fn get_description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:42
     fn is_required(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:51
     fn get_compatibility(&self) -> DatapackCompatibility; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:58
     fn get_required_features(&self) -> HashSet<JRef<dyn FeatureFlag>>; // paper-api/src/main/java/io/papermc/paper/datapack/DiscoveredDatapack.java:65

@@ -22,7 +22,7 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.MenuType (paper-api/src/main/java/org/bukkit/inventory/MenuType.java:29)
 pub trait MenuType: Keyed + FeatureDependant {
-    fn create(&self, player: JRef<dyn HumanEntity>, title: Option<crate::text::Text>) -> JRef<dyn InventoryView>; // paper-api/src/main/java/org/bukkit/inventory/MenuType.java:202
+    fn create(&self, player: JRef<dyn HumanEntity>, title: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn InventoryView>; // paper-api/src/main/java/org/bukkit/inventory/MenuType.java:202
     fn typed(&self) -> JRef<dyn MenuTypeTyped<JRef<dyn InventoryView>, JRef<dyn InventoryViewBuilder<JRef<dyn InventoryView>>>>>; // paper-api/src/main/java/org/bukkit/inventory/MenuType.java:211
     fn typed_1<V: JGeneric, B: JGeneric>(&self, view_class: crate::rt::Class) -> Result<JRef<dyn MenuTypeTyped<V, B>>, anyhow::Error> where Self: Sized; // paper-api/src/main/java/org/bukkit/inventory/MenuType.java:227
     fn get_inventory_view_class(&self) -> crate::rt::Class; // paper-api/src/main/java/org/bukkit/inventory/MenuType.java:234

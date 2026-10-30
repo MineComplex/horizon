@@ -54,8 +54,8 @@ pub struct CommandSourceStack {
     pub chat_message_chainer: JRef<dyn TaskChainer>, // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:66
     pub bypass_selector_permissions: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:67
 }
-pub static ERROR_NOT_PLAYER: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:52
-pub static ERROR_NOT_ENTITY: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:53
+pub static ERROR_NOT_PLAYER: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:52
+pub static ERROR_NOT_ENTITY: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:53
 impl CommandSourceStack {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(source: JRef<dyn CommandSource>, position: Vec3, rotation: Vec2, level: JRef<ServerLevel>, permissions: JRef<dyn PermissionSet>, server: JRef<dyn MinecraftServerTrait>, entity: JRef<dyn EntityTrait>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:69
@@ -70,12 +70,12 @@ impl CommandSourceStack {
     pub fn get_all_teams(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:608
     pub fn get_available_sounds(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:613
     pub fn get_available_post_effects(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:618
-    pub fn custom_suggestion(&self, context: azalea_brigadier::context::CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:623
-    pub fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, context: azalea_brigadier::context::CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:628
+    pub fn custom_suggestion(&self, context: crate::azalea::brigadier::context::CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:623
+    pub fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, context: crate::azalea::brigadier::context::CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:628
     pub fn levels(&self) -> HashSet<JRef<ResourceKey<JRef<dyn LevelTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:647
     pub fn registry_access(&self) -> JRef<dyn RegistryAccess> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:652
     pub fn enabled_features(&self) -> FeatureFlagSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:657
-    pub fn dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:662
+    pub fn dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:662
     pub fn handle_error_4(&self, type_: (), message: String, forked: bool, tracer: Option<JRef<dyn TraceCallbacks>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:667
     pub fn is_silent(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:678
     pub fn get_handle(&self) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:716
@@ -113,9 +113,9 @@ impl CommandSourceStack {
     pub fn send_chat_message(&self, message: JRef<dyn OutgoingChatMessage>, chat_type: ChatTypeBound) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:510
     pub fn send_system_message(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:521
     pub fn send_success(&self, message: Option<String>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:533
-    pub fn send_success_1(&self, message: crate::text::Text) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:544
+    pub fn send_success_1(&self, message: crate::azalea::chat::FormattedText) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:544
     pub fn send_success_2(&self, message: Option<String>, broadcast_to_ops: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:537
-    pub fn send_success_2_2(&self, message: crate::text::Text, broadcast_to_ops: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:548
+    pub fn send_success_2_2(&self, message: crate::azalea::chat::FormattedText, broadcast_to_ops: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:548
     pub fn send_success_2_3(&self, message_supplier: Arc<dyn Fn() -> JRef<dyn crate::net::minecraft::network::chat::component::Component> + Send + Sync>, broadcast: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:556
     pub fn broadcast_to_admins(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:571
     pub fn send_failure(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:587
@@ -129,11 +129,11 @@ impl SharedSuggestionProvider for CommandSourceStack {
     fn get_all_teams(&self) -> Vec<String> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_all_teams(self) }
     fn get_available_sounds(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_sounds(self) }
     fn get_available_post_effects(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_post_effects(self) }
-    fn custom_suggestion(&self, context: azalea_brigadier::context::CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::custom_suggestion(self, context) }
+    fn custom_suggestion(&self, context: crate::azalea::brigadier::context::CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::custom_suggestion(self, context) }
     fn levels(&self) -> HashSet<JRef<ResourceKey<JRef<dyn LevelTrait>>>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::levels(self) }
     fn registry_access(&self) -> JRef<dyn RegistryAccess> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::registry_access(self) }
     fn enabled_features(&self) -> FeatureFlagSet { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::enabled_features(self) }
-    fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, context: azalea_brigadier::context::CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> where Self: Sized { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::suggest_registry_elements_5::<E>(self, key, elements, builder, context, filter) }
+    fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, context: crate::azalea::brigadier::context::CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> where Self: Sized { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::suggest_registry_elements_5::<E>(self, key, elements, builder, context, filter) }
 }
 impl PermissionSetSupplier for CommandSourceStack {
     fn permissions(&self) -> JRef<dyn PermissionSet> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::permissions(self) }
@@ -141,7 +141,7 @@ impl PermissionSetSupplier for CommandSourceStack {
 impl ExecutionCommandSource<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>> for CommandSourceStack {
     fn with_callback(&self, result_callback: JRef<dyn CommandResultCallback>) -> T { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::with_callback(self, result_callback) }
     fn callback(&self) -> JRef<dyn CommandResultCallback> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::callback(self) }
-    fn dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<T>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::dispatcher(self) }
+    fn dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<T>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::dispatcher(self) }
     fn handle_error_4(&self, type_: (), message: String, forked: bool, tracer: Option<JRef<dyn TraceCallbacks>>) { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::handle_error_4(self, type_, message, forked, tracer) }
     fn is_silent(&self) -> bool { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::is_silent(self) }
 }

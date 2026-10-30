@@ -24,7 +24,7 @@ pub struct CraftInventoryCustomMinecraftInventory {
     pub max_stack: Mut<i32>, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:69
     pub viewers: Mut<Vec<JRef<dyn HumanEntity>>>, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:70
     pub title: String, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:71
-    pub adventure_title: crate::text::Text, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:72
+    pub adventure_title: crate::azalea::chat::FormattedText, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:72
     pub type_: Mut<InventoryType>, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:73
     pub owner: JRef<dyn InventoryHolder>, // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:74
 }
@@ -32,10 +32,10 @@ impl CraftInventoryCustomMinecraftInventory {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(owner: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:81
     pub fn new_2(owner: JRef<dyn InventoryHolder>, size: i32) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:91
-    pub fn new_3(owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:76
+    pub fn new_3(owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:76
     pub fn new_3_(owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:86
     pub fn new_3__(owner: JRef<dyn InventoryHolder>, size: i32, title: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:95
-    pub fn new_3___(owner: JRef<dyn InventoryHolder>, size: i32, title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:105
+    pub fn new_3___(owner: JRef<dyn InventoryHolder>, size: i32, title: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:105
     pub fn get_container_size(&self) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:115
     pub fn get_item(&self, slot: i32) -> JRef<ItemStack> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:120
     pub fn remove_item(&self, slot: i32, amount: i32) -> JRef<ItemStack> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:125
@@ -54,7 +54,7 @@ impl CraftInventoryCustomMinecraftInventory {
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:216
     pub fn is_empty(&self) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:229
     pub fn get_type(&self) -> InventoryType { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:202
-    pub fn title(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:221
+    pub fn title(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:221
     pub fn get_title(&self) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryCustom.java:225
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

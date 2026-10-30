@@ -14,7 +14,7 @@ pub struct EntityDataAccessor {
     pub this: Weak<Self>,
     pub entity: JRef<dyn EntityTrait>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/EntityDataAccessor.java:29
 }
-pub static ERROR_NO_PLAYERS: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/EntityDataAccessor.java:25
+pub static ERROR_NO_PLAYERS: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/EntityDataAccessor.java:25
 pub static PROVIDER: LazyLock<JRef<dyn ArgProviderFactory<JRef<dyn DataAccessor>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/EntityDataAccessor.java:26
 impl EntityDataAccessor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }

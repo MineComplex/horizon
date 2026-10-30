@@ -28,26 +28,26 @@ use crate::api_prelude::*;
 // ---- interface org.bukkit.inventory.meta.ItemMeta (paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:44)
 pub trait ItemMeta: ConfigurationSerializable + PersistentDataHolder {
     fn has_custom_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:52
-    fn custom_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:61
-    fn custom_name_1(&self, custom_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:68
+    fn custom_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:61
+    fn custom_name_1(&self, custom_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:68
     fn has_display_name(&self) -> bool { self.has_custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:76
-    fn display_name(&self) -> crate::text::Text { self.custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:89
-    fn display_name_1(&self, display_name: crate::text::Text) { self.custom_name_1(display_name); } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:100
+    fn display_name(&self) -> crate::azalea::chat::FormattedText { self.custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:89
+    fn display_name_1(&self, display_name: crate::azalea::chat::FormattedText) { self.custom_name_1(display_name); } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:100
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:115
     fn get_display_name_component(&self) -> Vec<()>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:129
     fn set_display_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:139
     fn set_display_name_component(&self, component: Option<Vec<()>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:149
     fn has_item_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:160
-    fn item_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:175
-    fn item_name_1(&self, name: Option<crate::text::Text>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:186
+    fn item_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:175
+    fn item_name_1(&self, name: Option<crate::azalea::chat::FormattedText>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:186
     fn get_item_name(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:200
     fn set_item_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:213
     fn has_localized_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:222
     fn get_localized_name(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:234
     fn set_localized_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:244
     fn has_lore(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:252
-    fn lore(&self) -> Option<Vec<crate::text::Text>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:262
-    fn lore_1(&self, lore: Option<Vec<crate::text::Text>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:269
+    fn lore(&self) -> Option<Vec<crate::azalea::chat::FormattedText>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:262
+    fn lore_1(&self, lore: Option<Vec<crate::azalea::chat::FormattedText>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:269
     fn get_lore(&self) -> Option<Vec<String>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:281
     fn get_lore_components(&self) -> Option<Vec<Vec<()>>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:294
     fn set_lore(&self, lore: Option<Vec<String>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:305

@@ -15,7 +15,7 @@ pub struct BroadcastMessageEvent {
     pub base: ServerEvent,
     pub this: Weak<Self>,
     pub recipients: Mut<HashSet<JRef<dyn CommandSender>>>, // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:24
-    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:25
+    pub message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:25
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:27
 }
 impl std::ops::Deref for BroadcastMessageEvent {
@@ -26,14 +26,14 @@ pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList
 impl BroadcastMessageEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(message: &str, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:29
-    pub fn new_2(message: crate::text::Text, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:43
+    pub fn new_2(message: crate::azalea::chat::FormattedText, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:43
     pub fn new_3(is_async: bool, message: &str, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:35
-    pub fn new_3_(is_async: bool, message: crate::text::Text, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ServerEvent::new_base_1(this, is_async), this: this.clone(), recipients: Mut::new(recipients.clone()), message: Mut::new(message), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:49
+    pub fn new_3_(is_async: bool, message: crate::azalea::chat::FormattedText, recipients: &HashSet<JRef<dyn CommandSender>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ServerEvent::new_base_1(this, is_async), this: this.clone(), recipients: Mut::new(recipients.clone()), message: Mut::new(message), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:49
     pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:115
     pub fn set_cancelled(&self, cancelled: bool) { self.cancelled.set(cancelled) } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:120
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:125
-    pub fn message(&self) -> crate::text::Text { self.message.get() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:61
-    pub fn message_1(&self, message: crate::text::Text) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:70
+    pub fn message(&self) -> crate::azalea::chat::FormattedText { self.message.get() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:61
+    pub fn message_1(&self, message: crate::azalea::chat::FormattedText) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:70
     pub fn get_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:80
     pub fn set_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:92
     pub fn get_recipients(&self) -> HashSet<JRef<dyn CommandSender>> { self.recipients.get() } // paper-api/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java:110

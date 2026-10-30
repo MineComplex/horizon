@@ -11,12 +11,12 @@ use crate::api_prelude::*;
 // ---- interface org.bukkit.scoreboard.Team (paper-api/src/main/java/org/bukkit/scoreboard/Team.java:15)
 pub trait Team: JObject {
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:23
-    fn display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:33
-    fn display_name_1(&self, display_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:41
-    fn prefix(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:49
-    fn prefix_1(&self, prefix: crate::text::Text); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:57
-    fn suffix(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:65
-    fn suffix_1(&self, suffix: crate::text::Text); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:73
+    fn display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:33
+    fn display_name_1(&self, display_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:41
+    fn prefix(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:49
+    fn prefix_1(&self, prefix: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:57
+    fn suffix(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:65
+    fn suffix_1(&self, suffix: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:73
     fn has_color(&self) -> bool; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:81
     fn color(&self) -> u32; // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:94
     fn color_1(&self, color: u32); // paper-api/src/main/java/org/bukkit/scoreboard/Team.java:104

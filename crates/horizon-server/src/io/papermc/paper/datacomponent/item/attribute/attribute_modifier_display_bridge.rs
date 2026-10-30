@@ -12,7 +12,7 @@ pub trait AttributeModifierDisplayBridge: JObject {
     fn hidden(&self) -> JRef<dyn AttributeModifierDisplayHidden>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridge.java:17
     fn override_(
         &self,
-        text: crate::text::Text,
+        text: crate::azalea::chat::FormattedText,
     ) -> JRef<dyn AttributeModifierDisplayOverrideText>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridge.java:19
 }
 pub static BRIDGE: LazyLock<Option<JRef<dyn AttributeModifierDisplayBridge>>> = LazyLock::new(

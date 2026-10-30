@@ -12,18 +12,18 @@ pub struct SingleOptionDialogInputImpl {
     pub key: String,
     pub width: i32,
     pub entries: Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>,
-    pub label: crate::text::Text,
+    pub label: crate::azalea::chat::FormattedText,
     pub label_visible: bool,
 }
 impl SingleOptionDialogInputImpl {
-    pub fn new(key: &str, width: i32, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: crate::text::Text, label_visible: bool) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:12
+    pub fn new(key: &str, width: i32, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: crate::azalea::chat::FormattedText, label_visible: bool) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SingleOptionDialogInput for SingleOptionDialogInputImpl {
     fn width(&self) -> i32 { todo!("abstract SingleOptionDialogInput.width") }
     fn entries(&self) -> Vec<JRef<dyn SingleOptionDialogInputOptionEntry>> { todo!("abstract SingleOptionDialogInput.entries") }
-    fn label(&self) -> crate::text::Text { todo!("abstract SingleOptionDialogInput.label") }
+    fn label(&self) -> crate::azalea::chat::FormattedText { todo!("abstract SingleOptionDialogInput.label") }
     fn label_visible(&self) -> bool { todo!("abstract SingleOptionDialogInput.labelVisible") }
 }
 impl DialogInput for SingleOptionDialogInputImpl {
@@ -34,18 +34,18 @@ crate::jobject!(SingleOptionDialogInputImpl: dyn SingleOptionDialogInput, dyn Di
 #[derive(Clone)]
 pub struct SingleOptionDialogInputImplSingleOptionEntryImpl {
     pub id: String,
-    pub display: Option<crate::text::Text>,
+    pub display: Option<crate::azalea::chat::FormattedText>,
     pub initial: bool,
 }
 impl SingleOptionDialogInputImplSingleOptionEntryImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:24
-    pub fn new_3(id: &str, display: Option<crate::text::Text>, initial: bool) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:24
+    pub fn new_3(id: &str, display: Option<crate::azalea::chat::FormattedText>, initial: bool) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:24
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SingleOptionDialogInputOptionEntry for SingleOptionDialogInputImplSingleOptionEntryImpl {
     fn id(&self) -> String { todo!("abstract OptionEntry.id") }
-    fn display(&self) -> Option<crate::text::Text> { todo!("abstract OptionEntry.display") }
+    fn display(&self) -> Option<crate::azalea::chat::FormattedText> { todo!("abstract OptionEntry.display") }
     fn initial(&self) -> bool { todo!("abstract OptionEntry.initial") }
 }
 crate::jobject!(SingleOptionDialogInputImplSingleOptionEntryImpl: dyn SingleOptionDialogInputOptionEntry);
@@ -55,12 +55,12 @@ pub struct SingleOptionDialogInputImplBuilderImpl {
     pub key: String, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:29
     pub width: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:30
     pub entries: Mut<Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:31
-    pub label: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:32
+    pub label: crate::azalea::chat::FormattedText, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:32
     pub label_visible: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:33
 }
 impl SingleOptionDialogInputImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: &str, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:35
+    pub fn new(key: &str, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:35
     pub fn width(&self, width: i32) -> JRef<SingleOptionDialogInputImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:45
     pub fn label_visible(&self, label_visible: bool) -> JRef<SingleOptionDialogInputImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:51
     pub fn build(&self) -> JRef<dyn SingleOptionDialogInput> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInputImpl.java:57

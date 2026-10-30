@@ -27,7 +27,7 @@ impl PaperTrimMaterialRegistryEntry {
     pub fn new_base<S: PaperTrimMaterialRegistryEntryTrait + 'static>(this: &Weak<S>, conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_material::TrimMaterial>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:21
     pub fn new(conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_material::TrimMaterial>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, conversions, internal)) }
     pub fn palette_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:31
-    pub fn description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:36
+    pub fn description(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:36
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -36,7 +36,7 @@ impl PaperTrimMaterialRegistryEntryTrait for PaperTrimMaterialRegistryEntry {
 }
 impl TrimMaterialRegistryEntry for PaperTrimMaterialRegistryEntry {
     fn palette_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperTrimMaterialRegistryEntry::palette_id(self) }
-    fn description(&self) -> crate::text::Text { PaperTrimMaterialRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperTrimMaterialRegistryEntry::description(self) }
 }
 crate::jobject!(PaperTrimMaterialRegistryEntry: dyn PaperTrimMaterialRegistryEntryTrait, dyn TrimMaterialRegistryEntry);
 // ---- class io.papermc.paper.registry.data.PaperTrimMaterialRegistryEntry.PaperBuilder (paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:41)
@@ -52,7 +52,7 @@ impl PaperTrimMaterialRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_material::TrimMaterial>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:43
     pub fn palette_id_1(&self, palette_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:47
-    pub fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:53
+    pub fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:53
     pub fn build(&self) -> crate::net::minecraft::world::item::equipment::trim::trim_material::TrimMaterial { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimMaterialRegistryEntry.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -62,11 +62,11 @@ impl PaperTrimMaterialRegistryEntryTrait for PaperTrimMaterialRegistryEntryPaper
 }
 impl TrimMaterialRegistryEntryBuilder for PaperTrimMaterialRegistryEntryPaperBuilder {
     fn palette_id_1(&self, palette_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { PaperTrimMaterialRegistryEntryPaperBuilder::palette_id_1(self, palette_id) }
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { PaperTrimMaterialRegistryEntryPaperBuilder::description_1(self, description) }
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimMaterialRegistryEntryBuilder> { PaperTrimMaterialRegistryEntryPaperBuilder::description_1(self, description) }
 }
 impl TrimMaterialRegistryEntry for PaperTrimMaterialRegistryEntryPaperBuilder {
     fn palette_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperTrimMaterialRegistryEntry::palette_id(self) }
-    fn description(&self) -> crate::text::Text { PaperTrimMaterialRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperTrimMaterialRegistryEntry::description(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperTrimMaterialRegistryEntryPaperBuilder {
 }

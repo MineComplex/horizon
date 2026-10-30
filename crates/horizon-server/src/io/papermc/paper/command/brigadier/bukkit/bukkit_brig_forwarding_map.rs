@@ -15,7 +15,7 @@ pub static INSTANCE: LazyLock<Mut<JRef<BukkitBrigForwardingMap>>> = LazyLock::ne
 impl BukkitBrigForwardingMap {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:30
-    pub fn get_dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<dyn CommandSourceStack>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:40
+    pub fn get_dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<dyn CommandSourceStack>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:40
     pub fn size(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:44
     pub fn is_empty(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:49
     pub fn contains_key(&self, key: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:54
@@ -29,7 +29,7 @@ impl BukkitBrigForwardingMap {
     pub fn key_set(&self) -> HashSet<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:146
     pub fn values(&self) -> Vec<JRef<dyn CommandTrait>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:152
     pub fn entry_set(&self) -> HashSet<JObjectRef /* Entry */> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:158
-    pub fn node_to_entry(&self, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JObjectRef>>>) -> (String, JRef<dyn CommandTrait>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:311
+    pub fn node_to_entry(&self, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JObjectRef>>>) -> (String, JRef<dyn CommandTrait>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:311
     pub fn mutable_entry(&self, key: &str, command: JRef<dyn CommandTrait>) -> (String, JRef<dyn CommandTrait>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:320
 }
 crate::jobject!(BukkitBrigForwardingMap);

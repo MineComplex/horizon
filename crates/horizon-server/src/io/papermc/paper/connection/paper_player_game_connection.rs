@@ -65,7 +65,7 @@ impl WritablePlayerCookieConnection for PaperPlayerGameConnection {
     fn store_cookie(&self, key: JRef<NamespacedKey>, value: &Vec<i8>) { PaperCommonConnection::store_cookie(self, key, value) }
 }
 impl PlayerConnection for PaperPlayerGameConnection {
-    fn disconnect(&self, component: crate::text::Text) { PaperCommonConnection::disconnect(self, component) }
+    fn disconnect(&self, component: crate::azalea::chat::FormattedText) { PaperCommonConnection::disconnect(self, component) }
     fn is_connected(&self) -> bool { PaperPlayerGameConnection::is_connected(self) }
     fn is_transferred(&self) -> bool { PaperCommonConnection::is_transferred(self) }
     fn get_address(&self) -> std::net::SocketAddr { PaperCommonConnection::get_address(self) }

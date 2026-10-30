@@ -11,16 +11,16 @@ use crate::net::minecraft::server::level::server_player::ServerPlayer;
 pub struct PostEffectCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_ADD_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:19
-pub static ERROR_CLEAR_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:20
-pub static ERROR_REMOVE_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:23
+pub static ERROR_ADD_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:19
+pub static ERROR_CLEAR_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:20
+pub static ERROR_REMOVE_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:23
 pub static RESPONSE_ADD: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, JRef<Identifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:26
 pub static RESPONSE_CLEAR: LazyLock<CommandResponseTrackerMessages<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:33
 pub static RESPONSE_REMOVE: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, JRef<Identifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:38
 impl PostEffectCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:18
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:48
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:48
     pub fn add_post_effect(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, posteffect: JRef<Identifier>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:99
     pub fn clear_post_effect(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:109
     pub fn list_post_effects(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PostEffectCommand.java:119

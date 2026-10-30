@@ -4,14 +4,14 @@ use crate::prelude::*;
 
 // ---- class io.papermc.paper.brigadier.TagParseCommandSyntaxException (paper-server/src/main/java/io/papermc/paper/brigadier/TagParseCommandSyntaxException.java:8)
 pub struct TagParseCommandSyntaxException {
-    pub base: azalea_brigadier::errors::CommandSyntaxError,
+    pub base: crate::azalea::brigadier::errors::CommandSyntaxError,
     pub this: Weak<Self>,
 }
 impl std::ops::Deref for TagParseCommandSyntaxException {
-    type Target = azalea_brigadier::errors::CommandSyntaxError;
+    type Target = crate::azalea::brigadier::errors::CommandSyntaxError;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static EXCEPTION_TYPE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/brigadier/TagParseCommandSyntaxException.java:10
+pub static EXCEPTION_TYPE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/brigadier/TagParseCommandSyntaxException.java:10
 impl TagParseCommandSyntaxException {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(message: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/TagParseCommandSyntaxException.java:12

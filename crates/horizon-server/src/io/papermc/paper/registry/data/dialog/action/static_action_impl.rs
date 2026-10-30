@@ -7,15 +7,15 @@ use crate::io::papermc::paper::registry::data::dialog::action::dialog_action::Di
 // ---- record io.papermc.paper.registry.data.dialog.action.StaticActionImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/StaticActionImpl.java:6)
 #[derive(Clone)]
 pub struct StaticActionImpl {
-    pub value: crate::text::ClickEvent,
+    pub value: crate::azalea::chat::click_event::ClickEvent,
 }
 impl StaticActionImpl {
-    pub fn new(value: crate::text::ClickEvent) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/StaticActionImpl.java:6
+    pub fn new(value: crate::azalea::chat::click_event::ClickEvent) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/StaticActionImpl.java:6
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DialogActionStaticAction for StaticActionImpl {
-    fn value(&self) -> crate::text::ClickEvent { todo!("abstract StaticAction.value") }
+    fn value(&self) -> crate::azalea::chat::click_event::ClickEvent { todo!("abstract StaticAction.value") }
 }
 impl DialogAction for StaticActionImpl {
 }

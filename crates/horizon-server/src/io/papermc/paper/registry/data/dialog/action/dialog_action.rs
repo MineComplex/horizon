@@ -8,7 +8,7 @@ use crate::api_prelude::*;
 pub trait DialogAction: JObject {
 }
 pub fn command_template(template: &str) -> JRef<dyn DialogActionCommandTemplateAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:25
-pub fn static_action(value: crate::text::ClickEvent) -> JRef<dyn DialogActionStaticAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:36
+pub fn static_action(value: crate::azalea::chat::click_event::ClickEvent) -> JRef<dyn DialogActionStaticAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:36
 pub fn custom_click(id: crate::net::minecraft::resources::identifier::Identifier, additions: Option<String>) -> JRef<dyn DialogActionCustomClickAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:50
 pub fn custom_click_2(callback: JRef<dyn DialogActionCallback>, options: ()) -> JRef<dyn DialogActionCustomClickAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:62
 // ---- interface io.papermc.paper.registry.data.dialog.action.DialogAction.CommandTemplateAction (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:70)
@@ -17,7 +17,7 @@ pub trait DialogActionCommandTemplateAction: DialogAction {
 }
 // ---- interface io.papermc.paper.registry.data.dialog.action.DialogAction.StaticAction (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:85)
 pub trait DialogActionStaticAction: DialogAction {
-    fn value(&self) -> crate::text::ClickEvent; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:93
+    fn value(&self) -> crate::azalea::chat::click_event::ClickEvent; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:93
 }
 // ---- interface io.papermc.paper.registry.data.dialog.action.DialogAction.CustomClickAction (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/action/DialogAction.java:100)
 pub trait DialogActionCustomClickAction: DialogAction {

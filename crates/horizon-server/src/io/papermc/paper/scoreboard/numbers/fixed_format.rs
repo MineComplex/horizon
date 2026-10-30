@@ -6,5 +6,5 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.scoreboard.numbers.FixedFormat (paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormat.java:10)
 pub trait FixedFormat: NumberFormat {
-    fn component(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormat.java:18
+    fn component(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormat.java:18
 }

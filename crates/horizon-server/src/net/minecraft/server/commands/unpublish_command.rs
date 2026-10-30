@@ -7,11 +7,11 @@ use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 pub struct UnpublishCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_PUBLISHED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:12
+pub static ERROR_NOT_PUBLISHED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:12
 impl UnpublishCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:11
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:16
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:16
     pub fn unpublish(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/UnpublishCommand.java:20
 }
 crate::jobject!(UnpublishCommand);

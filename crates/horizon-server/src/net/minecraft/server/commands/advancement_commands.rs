@@ -14,15 +14,15 @@ use crate::net::minecraft::server::level::server_player::ServerPlayer;
 pub struct AdvancementCommands {
     pub this: Weak<Self>,
 }
-pub static ERROR_CRITERION_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:28
+pub static ERROR_CRITERION_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:28
 impl AdvancementCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:27
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:32
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:32
     pub fn perform(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:224
     pub fn perform_5(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>, show_advancements: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:233
     pub fn perform_criterion(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, holder: AdvancementHolder, criterion: &str) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:261
-    pub fn get_advancements(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, target: AdvancementHolder, mode: AdvancementCommandsMode) -> Vec<AdvancementHolder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:286
+    pub fn get_advancements(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, target: AdvancementHolder, mode: AdvancementCommandsMode) -> Vec<AdvancementHolder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:286
     pub fn add_children(parent: JRef<AdvancementNode>, output: &mut Vec<AdvancementHolder>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:310
 }
 crate::jobject!(AdvancementCommands);
@@ -35,11 +35,11 @@ pub enum AdvancementCommandsAction {
 /// The fields each AdvancementCommandsAction constant is built with (Java: the enum constructor).
 pub struct AdvancementCommandsActionData {
     pub single_advancement_success_response: CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, AdvancementHolder>,
-    pub single_advancements_error: CommandResponseTrackerDispatchWithArg<azalea_brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, AdvancementHolder>,
+    pub single_advancements_error: CommandResponseTrackerDispatchWithArg<crate::azalea::brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, AdvancementHolder>,
     pub multiple_advancements_success_response: CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, i32>,
-    pub multiple_advancements_error: CommandResponseTrackerDispatchWithArg<azalea_brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, i32>,
+    pub multiple_advancements_error: CommandResponseTrackerDispatchWithArg<crate::azalea::brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, i32>,
     pub criterion_success_response: CommandResponseTrackerMessagesWithArgs<JRef<ServerPlayer>, AdvancementHolder, String>,
-    pub criterion_error: CommandResponseTrackerDispatchWithArgs<azalea_brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, AdvancementHolder, String>,
+    pub criterion_error: CommandResponseTrackerDispatchWithArgs<crate::azalea::brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>, AdvancementHolder, String>,
 }
 impl AdvancementCommandsAction {
     pub const VALUES: [AdvancementCommandsAction; 2] = [AdvancementCommandsAction::GRANT, AdvancementCommandsAction::REVOKE];

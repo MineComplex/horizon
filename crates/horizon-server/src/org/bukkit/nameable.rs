@@ -5,8 +5,8 @@ use crate::prelude::*;
 
 // ---- interface org.bukkit.Nameable (paper-api/src/main/java/org/bukkit/Nameable.java:8)
 pub trait Nameable: JObject {
-    fn custom_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Nameable.java:17
-    fn custom_name_1(&self, custom_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/Nameable.java:30
+    fn custom_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/Nameable.java:17
+    fn custom_name_1(&self, custom_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/Nameable.java:30
     fn get_custom_name(&self) -> Option<String>; // paper-api/src/main/java/org/bukkit/Nameable.java:42
     fn set_custom_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/Nameable.java:58
 }

@@ -19,15 +19,15 @@ impl CraftInventoryCreator {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:16
     pub fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:44
     pub fn create_inventory_2(&self, holder: JRef<dyn InventoryHolder>, size: i32) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:56
-    pub fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:48
+    pub fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:48
     pub fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:52
-    pub fn create_inventory_3_3(&self, holder: JRef<dyn InventoryHolder>, size: i32, title: crate::text::Text) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:60
+    pub fn create_inventory_3_3(&self, holder: JRef<dyn InventoryHolder>, size: i32, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:60
     pub fn create_inventory_3_4(&self, holder: JRef<dyn InventoryHolder>, size: i32, title: &str) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:64
 }
 crate::jobject!(CraftInventoryCreator);
 // ---- interface org.bukkit.craftbukkit.inventory.util.CraftInventoryCreator.InventoryConverter (paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:68)
 pub trait CraftInventoryCreatorInventoryConverter: JObject {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory>; // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:70
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory>; // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:72
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory>; // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:72
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory>; // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftInventoryCreator.java:74
 }

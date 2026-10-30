@@ -15,13 +15,13 @@ impl AttributeModifierDisplayBridgeImpl {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridgeImpl.java:8
     pub fn reset(&self) -> JRef<dyn AttributeModifierDisplayDefault> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridgeImpl.java:11
     pub fn hidden(&self) -> JRef<dyn AttributeModifierDisplayHidden> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridgeImpl.java:16
-    pub fn override_(&self, text: crate::text::Text) -> JRef<dyn AttributeModifierDisplayOverrideText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridgeImpl.java:21
+    pub fn override_(&self, text: crate::azalea::chat::FormattedText) -> JRef<dyn AttributeModifierDisplayOverrideText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridgeImpl.java:21
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl AttributeModifierDisplayBridge for AttributeModifierDisplayBridgeImpl {
     fn reset(&self) -> JRef<dyn AttributeModifierDisplayDefault> { AttributeModifierDisplayBridgeImpl::reset(self) }
     fn hidden(&self) -> JRef<dyn AttributeModifierDisplayHidden> { AttributeModifierDisplayBridgeImpl::hidden(self) }
-    fn override_(&self, text: crate::text::Text) -> JRef<dyn AttributeModifierDisplayOverrideText> { AttributeModifierDisplayBridgeImpl::override_(self, text) }
+    fn override_(&self, text: crate::azalea::chat::FormattedText) -> JRef<dyn AttributeModifierDisplayOverrideText> { AttributeModifierDisplayBridgeImpl::override_(self, text) }
 }
 crate::jobject!(AttributeModifierDisplayBridgeImpl: dyn AttributeModifierDisplayBridge);

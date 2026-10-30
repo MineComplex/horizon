@@ -14,8 +14,8 @@ use crate::api_prelude::*;
 // ---- interface org.bukkit.scoreboard.Objective (paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:12)
 pub trait Objective: JObject {
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:20
-    fn display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:30
-    fn display_name_1(&self, display_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:40
+    fn display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:30
+    fn display_name_1(&self, display_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:40
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:50
     fn set_display_name(&self, display_name: &str); // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:61
     fn get_criteria(&self) -> String; // paper-api/src/main/java/org/bukkit/scoreboard/Objective.java:71

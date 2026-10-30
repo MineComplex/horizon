@@ -17,7 +17,7 @@ pub trait InstrumentRegistryEntry: JObject {
     fn duration(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:37
     fn range(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:46
     fn durability_damage(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:54
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:63
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:63
 }
 // ---- interface io.papermc.paper.registry.data.InstrumentRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:79)
 pub trait InstrumentRegistryEntryBuilder: InstrumentRegistryEntry + RegistryBuilder<JRef<dyn MusicInstrumentTrait>> {
@@ -27,5 +27,5 @@ pub trait InstrumentRegistryEntryBuilder: InstrumentRegistryEntry + RegistryBuil
     fn duration_1(&self, duration: f32) -> JRef<dyn InstrumentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:131
     fn range_1(&self, range: f32) -> JRef<dyn InstrumentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:142
     fn durability_damage_1(&self, durability_damage: i32) -> JRef<dyn InstrumentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:152
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn InstrumentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:163
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn InstrumentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/InstrumentRegistryEntry.java:163
 }

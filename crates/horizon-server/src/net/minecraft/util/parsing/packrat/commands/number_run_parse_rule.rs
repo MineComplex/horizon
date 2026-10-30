@@ -8,10 +8,10 @@ use crate::net::minecraft::util::parsing::packrat::rule::Rule;
 // ---- class net.minecraft.util.parsing.packrat.commands.NumberRunParseRule (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:10)
 pub struct NumberRunParseRule {
     pub this: Weak<dyn NumberRunParseRuleTrait>,
-    pub no_value_error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:11
-    pub underscore_not_allowed_error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:12
+    pub no_value_error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:11
+    pub underscore_not_allowed_error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:12
 }
-pub trait NumberRunParseRuleTrait: Rule<azalea_brigadier::string_reader::StringReader, String> {
+pub trait NumberRunParseRuleTrait: Rule<crate::azalea::brigadier::string_reader::StringReader, String> {
     fn as_number_run_parse_rule(&self) -> &NumberRunParseRule;
     fn is_accepted(&self, c: char) -> bool; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:46
 }
@@ -21,6 +21,6 @@ impl std::ops::Deref for dyn NumberRunParseRuleTrait {
 }
 impl NumberRunParseRule {
     pub fn this(&self) -> JRef<dyn NumberRunParseRuleTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: NumberRunParseRuleTrait + 'static>(this: &Weak<S>, no_value_error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, underscore_not_allowed_error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:14
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:21
+    pub fn new_base<S: NumberRunParseRuleTrait + 'static>(this: &Weak<S>, no_value_error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, underscore_not_allowed_error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:14
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/NumberRunParseRule.java:21
 }

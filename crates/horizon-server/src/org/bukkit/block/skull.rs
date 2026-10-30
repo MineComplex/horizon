@@ -28,6 +28,6 @@ pub trait Skull: TileState {
     fn set_rotation(&self, rotation: BlockFace); // paper-api/src/main/java/org/bukkit/block/Skull.java:177
     fn get_skull_type(&self) -> SkullType; // paper-api/src/main/java/org/bukkit/block/Skull.java:186
     fn set_skull_type(&self, skull_type: SkullType); // paper-api/src/main/java/org/bukkit/block/Skull.java:196
-    fn custom_name(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/org/bukkit/block/Skull.java:208
-    fn custom_name_1(&self, custom_name: Option<crate::text::Text>); // paper-api/src/main/java/org/bukkit/block/Skull.java:218
+    fn custom_name(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/org/bukkit/block/Skull.java:208
+    fn custom_name_1(&self, custom_name: Option<crate::azalea::chat::FormattedText>); // paper-api/src/main/java/org/bukkit/block/Skull.java:218
 }

@@ -11,6 +11,6 @@ impl TerminalConsoleCommandSender {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/console/TerminalConsoleCommandSender.java:10
     pub fn send_raw_message(&self, message: &str) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/console/TerminalConsoleCommandSender.java:14
-    pub fn send_message_1_2(&self, message: crate::text::Text) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/console/TerminalConsoleCommandSender.java:20
+    pub fn send_message_1_2(&self, message: crate::azalea::chat::FormattedText) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/console/TerminalConsoleCommandSender.java:20
 }
 crate::jobject!(TerminalConsoleCommandSender);

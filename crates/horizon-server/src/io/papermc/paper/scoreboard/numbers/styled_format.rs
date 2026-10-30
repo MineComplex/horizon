@@ -6,5 +6,5 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.scoreboard.numbers.StyledFormat (paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormat.java:10)
 pub trait StyledFormat: NumberFormat {
-    fn style(&self) -> crate::text::Style; // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormat.java:18
+    fn style(&self) -> crate::azalea::chat::style::Style; // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormat.java:18
 }

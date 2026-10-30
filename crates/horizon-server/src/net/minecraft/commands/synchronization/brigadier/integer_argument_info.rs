@@ -16,11 +16,11 @@ impl IntegerArgumentInfo {
     pub fn serialize_to_network(&self, template: IntegerArgumentInfoTemplate, out: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:11
     pub fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> IntegerArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:25
     pub fn serialize_to_json(&self, template: IntegerArgumentInfoTemplate, out: serde_json::Map<String, serde_json::Value>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:33
-    pub fn unpack(&self, argument: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>) -> IntegerArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:44
+    pub fn unpack(&self, argument: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>) -> IntegerArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, IntegerArgumentInfoTemplate> for IntegerArgumentInfo {
+impl ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, IntegerArgumentInfoTemplate> for IntegerArgumentInfo {
     fn serialize_to_network(&self, template: T, out: JRef<dyn FriendlyByteBufTrait>) { IntegerArgumentInfo::serialize_to_network(self, template, out) }
     fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> T { IntegerArgumentInfo::deserialize_from_network(self, in_) }
     fn serialize_to_json(&self, template: T, out: serde_json::Map<String, serde_json::Value>) { IntegerArgumentInfo::serialize_to_json(self, template, out) }
@@ -35,12 +35,12 @@ pub struct IntegerArgumentInfoTemplate {
 }
 impl IntegerArgumentInfoTemplate {
     pub fn new(min: i32, max: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:53
-    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:58
-    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:63
+    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:58
+    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/IntegerArgumentInfo.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfoTemplate<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>> for IntegerArgumentInfoTemplate {
+impl ArgumentTypeInfoTemplate<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>> for IntegerArgumentInfoTemplate {
     fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> A { IntegerArgumentInfoTemplate::instantiate(self, context) }
     fn type_(&self) -> JRef<dyn ArgumentTypeInfo<A, JObjectRef>> { IntegerArgumentInfoTemplate::type_(self) }
 }

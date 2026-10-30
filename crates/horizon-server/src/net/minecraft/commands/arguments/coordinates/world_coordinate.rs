@@ -9,15 +9,15 @@ pub struct WorldCoordinate {
     pub value: f64,
 }
 pub const PREFIX_RELATIVE: char = '~'; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:9
-pub static ERROR_EXPECTED_DOUBLE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:10
-pub static ERROR_EXPECTED_INT: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:11
+pub static ERROR_EXPECTED_DOUBLE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:10
+pub static ERROR_EXPECTED_INT: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:11
 impl WorldCoordinate {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:8
     pub fn new_2(relative: bool, value: f64) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:8
     pub fn get(&self, original: f64) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:13
-    pub fn parse_double(reader: azalea_brigadier::string_reader::StringReader, center: bool) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:17
-    pub fn parse_int(reader: azalea_brigadier::string_reader::StringReader) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:41
+    pub fn parse_double(reader: crate::azalea::brigadier::string_reader::StringReader, center: bool) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:17
+    pub fn parse_int(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:41
     pub fn is_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:73
-    pub fn is_relative_1(reader: azalea_brigadier::string_reader::StringReader) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:61
+    pub fn is_relative_1(reader: crate::azalea::brigadier::string_reader::StringReader) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:61
 }
 crate::jobject!(WorldCoordinate);

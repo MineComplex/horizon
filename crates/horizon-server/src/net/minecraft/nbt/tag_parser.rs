@@ -14,8 +14,8 @@ pub struct TagParser<T: JGeneric> {
     pub grammar: Grammar<T>, // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:37
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
-pub static ERROR_TRAILING_DATA: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:14
-pub static ERROR_EXPECTED_COMPOUND: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:15
+pub static ERROR_TRAILING_DATA: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:14
+pub static ERROR_EXPECTED_COMPOUND: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:15
 pub const ELEMENT_SEPARATOR: char = ','; // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:18
 pub const NAME_VALUE_SEPARATOR: char = ':'; // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:19
 pub static NBT_OPS_PARSER: LazyLock<JRef<TagParser<JRef<dyn Tag>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:20
@@ -26,10 +26,10 @@ impl<T: JGeneric> TagParser<T> {
     pub fn new(ops: JRef<dyn DynamicOps<T>>, grammar: Grammar<T>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:39
     pub fn get_ops(&self) -> JRef<dyn DynamicOps<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:44
     pub fn create<T: JGeneric>(ops: JRef<dyn DynamicOps<T>>) -> JRef<TagParser<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:48
-    pub fn cast_to_compound_or_throw(reader: azalea_brigadier::string_reader::StringReader, result: JRef<dyn Tag>) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:52
+    pub fn cast_to_compound_or_throw(reader: crate::azalea::brigadier::string_reader::StringReader, result: JRef<dyn Tag>) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:52
     pub fn parse_compound_fully(input: &str) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:60
     pub fn parse_fully(&self, input: &str) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:65
-    pub fn parse_fully_1(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:69
-    pub fn parse_as_argument(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:79
-    pub fn parse_compound_as_argument(reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:83
+    pub fn parse_fully_1(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:69
+    pub fn parse_as_argument(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:79
+    pub fn parse_compound_as_argument(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:83
 }

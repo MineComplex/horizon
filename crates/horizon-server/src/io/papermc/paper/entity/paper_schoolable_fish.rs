@@ -380,7 +380,7 @@ impl Entity for PaperSchoolableFish {
     fn create_snapshot(&self) -> Option<JRef<dyn EntitySnapshot>> { todo!("abstract Entity.createSnapshot") }
     fn copy(&self) -> JRef<dyn Entity> { todo!("abstract Entity.copy") }
     fn copy_1(&self, to: JRef<Location>) -> JRef<dyn Entity> { todo!("abstract Entity.copy") }
-    fn team_display_name(&self) -> crate::text::Text { todo!("abstract Entity.teamDisplayName") }
+    fn team_display_name(&self) -> crate::azalea::chat::FormattedText { todo!("abstract Entity.teamDisplayName") }
     fn get_origin(&self) -> Option<JRef<Location>> { todo!("abstract Entity.getOrigin") }
     fn from_mob_spawner(&self) -> bool { todo!("abstract Entity.fromMobSpawner") }
     fn get_entity_spawn_reason(&self) -> CreatureSpawnEventSpawnReason { todo!("abstract Entity.getEntitySpawnReason") }
@@ -423,7 +423,7 @@ impl CommandSender for PaperSchoolableFish {
     fn get_server(&self) -> JRef<dyn Server> { todo!("abstract CommandSender.getServer") }
     fn get_name(&self) -> String { todo!("abstract CommandSender.getName") }
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait> { todo!("abstract CommandSender.spigot") }
-    fn name(&self) -> crate::text::Text { todo!("abstract CommandSender.name") }
+    fn name(&self) -> crate::azalea::chat::FormattedText { todo!("abstract CommandSender.name") }
 }
 impl Permissible for PaperSchoolableFish {
     fn is_permission_set(&self, name: &str) -> bool { todo!("abstract Permissible.isPermissionSet") }
@@ -443,8 +443,8 @@ impl ServerOperator for PaperSchoolableFish {
     fn set_op(&self, value: bool) { todo!("abstract ServerOperator.setOp") }
 }
 impl Nameable for PaperSchoolableFish {
-    fn custom_name(&self) -> crate::text::Text { todo!("abstract Nameable.customName") }
-    fn custom_name_1(&self, custom_name: crate::text::Text) { todo!("abstract Nameable.customName") }
+    fn custom_name(&self) -> crate::azalea::chat::FormattedText { todo!("abstract Nameable.customName") }
+    fn custom_name_1(&self, custom_name: crate::azalea::chat::FormattedText) { todo!("abstract Nameable.customName") }
     fn get_custom_name(&self) -> Option<String> { todo!("abstract Nameable.getCustomName") }
     fn set_custom_name(&self, name: Option<String>) { todo!("abstract Nameable.setCustomName") }
 }

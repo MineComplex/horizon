@@ -6,6 +6,6 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.body.PlainMessageDialogBody (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageDialogBody.java:11)
 pub trait PlainMessageDialogBody: DialogBody {
-    fn contents(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageDialogBody.java:18
+    fn contents(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageDialogBody.java:18
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageDialogBody.java:26
 }

@@ -15,7 +15,7 @@ pub struct ReturnCommand {
 impl ReturnCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:19
-    pub fn register<T: JGeneric>(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:20
+    pub fn register<T: JGeneric>(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:20
 }
 crate::jobject!(ReturnCommand);
 // ---- class net.minecraft.server.commands.ReturnCommand.ReturnFailCustomExecutor (leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:33)
@@ -26,14 +26,14 @@ pub struct ReturnCommandReturnFailCustomExecutor<T: JGeneric> {
 impl<T: JGeneric> ReturnCommandReturnFailCustomExecutor<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:33
-    pub fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:34
+    pub fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:34
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> CustomCommandExecutorCommandAdapter<T> for ReturnCommandReturnFailCustomExecutor<T> {
 }
 impl<T: JGeneric> CustomCommandExecutor<JObjectRef> for ReturnCommandReturnFailCustomExecutor<T> {
-    fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnFailCustomExecutor::run(self, sender, current_step, modifiers, output) }
+    fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnFailCustomExecutor::run(self, sender, current_step, modifiers, output) }
 }
 // ---- class net.minecraft.server.commands.ReturnCommand.ReturnFromCommandCustomModifier (leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:43)
 pub struct ReturnCommandReturnFromCommandCustomModifier<T: JGeneric> {
@@ -43,14 +43,14 @@ pub struct ReturnCommandReturnFromCommandCustomModifier<T: JGeneric> {
 impl<T: JGeneric> ReturnCommandReturnFromCommandCustomModifier<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:43
-    pub fn apply(&self, original_source: T, current_sources: &Vec<T>, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:44
+    pub fn apply(&self, original_source: T, current_sources: &Vec<T>, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> CustomModifierExecutorModifierAdapter<T> for ReturnCommandReturnFromCommandCustomModifier<T> {
 }
 impl<T: JGeneric> CustomModifierExecutor<JObjectRef> for ReturnCommandReturnFromCommandCustomModifier<T> {
-    fn apply(&self, original_source: T, current_sources: &Vec<T>, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnFromCommandCustomModifier::apply(self, original_source, current_sources, current_step, modifiers, output) }
+    fn apply(&self, original_source: T, current_sources: &Vec<T>, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnFromCommandCustomModifier::apply(self, original_source, current_sources, current_step, modifiers, output) }
 }
 // ---- class net.minecraft.server.commands.ReturnCommand.ReturnValueCustomExecutor (leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:65)
 pub struct ReturnCommandReturnValueCustomExecutor<T: JGeneric> {
@@ -60,12 +60,12 @@ pub struct ReturnCommandReturnValueCustomExecutor<T: JGeneric> {
 impl<T: JGeneric> ReturnCommandReturnValueCustomExecutor<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:65
-    pub fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:66
+    pub fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ReturnCommand.java:66
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> CustomCommandExecutorCommandAdapter<T> for ReturnCommandReturnValueCustomExecutor<T> {
 }
 impl<T: JGeneric> CustomCommandExecutor<JObjectRef> for ReturnCommandReturnValueCustomExecutor<T> {
-    fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnValueCustomExecutor::run(self, sender, current_step, modifiers, output) }
+    fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { ReturnCommandReturnValueCustomExecutor::run(self, sender, current_step, modifiers, output) }
 }

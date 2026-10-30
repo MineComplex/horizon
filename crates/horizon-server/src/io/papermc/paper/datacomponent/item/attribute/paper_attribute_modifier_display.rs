@@ -65,12 +65,12 @@ pub struct PaperAttributeModifierDisplayOverrideText {
 impl PaperAttributeModifierDisplayOverrideText {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:42
     pub fn new_1(internal: ItemAttributeModifiersDisplayOverrideText) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:42
-    pub fn text(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:46
+    pub fn text(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:46
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl AttributeModifierDisplayOverrideText for PaperAttributeModifierDisplayOverrideText {
-    fn text(&self) -> crate::text::Text { PaperAttributeModifierDisplayOverrideText::text(self) }
+    fn text(&self) -> crate::azalea::chat::FormattedText { PaperAttributeModifierDisplayOverrideText::text(self) }
 }
 impl AttributeModifierDisplay for PaperAttributeModifierDisplayOverrideText {
 }

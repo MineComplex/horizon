@@ -14,7 +14,7 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.registry.data.JukeboxSongRegistryEntry (paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:19)
 pub trait JukeboxSongRegistryEntry: JObject {
     fn sound_event(&self) -> JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:27
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:35
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:35
     fn length_in_seconds(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:43
     fn comparator_output(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:51
 }
@@ -23,7 +23,7 @@ pub trait JukeboxSongRegistryEntryBuilder: JukeboxSongRegistryEntry + RegistryBu
     fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:79
     fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:90
     fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:102
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:111
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:111
     fn length_in_seconds_1(&self, length_in_seconds: f32) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:120
     fn comparator_output_1(&self, comparator_output: i32) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:129
 }

@@ -12,8 +12,8 @@ pub struct ItemInput {
     pub item: JRef<dyn Holder<JRef<dyn ItemTrait>>>,
     pub components: JRef<DataComponentPatch>,
 }
-pub static ERROR_STACK_TOO_BIG: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:14
-pub static ERROR_MALFORMED_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:17
+pub static ERROR_STACK_TOO_BIG: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:14
+pub static ERROR_MALFORMED_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:17
 impl ItemInput {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:13
     pub fn new_2(item: JRef<dyn Holder<JRef<dyn ItemTrait>>>, components: JRef<DataComponentPatch>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:13

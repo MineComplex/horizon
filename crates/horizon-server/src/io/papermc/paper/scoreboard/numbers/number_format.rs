@@ -10,6 +10,6 @@ pub trait NumberFormat: JObject {
 }
 pub fn blank() -> JRef<dyn NumberFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:19
 pub fn no_style() -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:28
-pub fn styled(style: crate::text::Style) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:38
+pub fn styled(style: crate::azalea::chat::style::Style) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:38
 pub fn styled_1(style_builder_applicables: &Vec<()>) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:48
-pub fn fixed(component: crate::text::Text) -> JRef<dyn FixedFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:58
+pub fn fixed(component: crate::azalea::chat::FormattedText) -> JRef<dyn FixedFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:58

@@ -16,7 +16,7 @@ pub struct WaypointCommand {
 impl WaypointCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:32
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:33
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:33
     pub fn set_waypoint_style(source: JRef<CommandSourceStack>, waypoint: JRef<dyn WaypointTransmitter>, style: JRef<ResourceKey<JRef<WaypointStyleAsset>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:99
     pub fn set_waypoint_color(source: JRef<CommandSourceStack>, waypoint: JRef<dyn WaypointTransmitter>, color: TeamColor) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:105
     pub fn set_waypoint_color_3(source: JRef<CommandSourceStack>, waypoint: JRef<dyn WaypointTransmitter>, color: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WaypointCommand.java:113

@@ -12,7 +12,7 @@ pub struct StringRepresentableArgument<T: JGeneric> {
 }
 pub trait StringRepresentableArgumentTrait<T: JGeneric>: JObject {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<T>;
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
     fn get_examples(&self) -> Vec<String>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:51
     fn convert_id(&self, id: &str) -> String; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:60
 }
@@ -20,13 +20,13 @@ impl<T: JGeneric> std::ops::Deref for dyn StringRepresentableArgumentTrait<T> {
     type Target = StringRepresentableArgument<T>;
     fn deref(&self) -> &StringRepresentableArgument<T> { self.as_string_representable_argument() }
 }
-pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:23
+pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:23
 impl<T: JGeneric> StringRepresentableArgument<T> {
     pub fn this(&self) -> JRef<dyn StringRepresentableArgumentTrait<T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: StringRepresentableArgumentTrait<T> + 'static>(this: &Weak<S>, codec: JRef<dyn Codec<T>>, values: Arc<dyn Fn() -> Vec<T> + Send + Sync>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:29
     pub fn new(codec: JRef<dyn Codec<T>>, values: Arc<dyn Fn() -> Vec<T> + Send + Sync>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, codec, values)) }
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:40
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:51
     pub fn convert_id(&self, id: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:60
 }
@@ -34,7 +34,7 @@ impl<T: JGeneric> StringRepresentableArgument<T> {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> StringRepresentableArgumentTrait<JObjectRef> for StringRepresentableArgument<T> {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<JObjectRef> { self }
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { StringRepresentableArgument::get_examples(self) }
     fn convert_id(&self, id: &str) -> String { StringRepresentableArgument::convert_id(self, id) }
 }

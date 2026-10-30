@@ -8,11 +8,11 @@ use crate::net::minecraft::world::difficulty::Difficulty;
 pub struct DifficultyCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_ALREADY_SAME_DIFFICULTY: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:14
+pub static ERROR_ALREADY_SAME_DIFFICULTY: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:14
 impl DifficultyCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:13
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:18
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:18
     pub fn set_difficulty(source: JRef<CommandSourceStack>, difficulty: Difficulty) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DifficultyCommand.java:32
 }
 crate::jobject!(DifficultyCommand);

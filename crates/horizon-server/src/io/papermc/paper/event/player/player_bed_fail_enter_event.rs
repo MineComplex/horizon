@@ -20,7 +20,7 @@ pub struct PlayerBedFailEnterEvent {
     pub bed: JRef<dyn Block>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:20
     pub enter_action: JRef<dyn BedEnterAction>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:21
     pub will_explode: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:22
-    pub message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:23
+    pub message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:23
     pub cancelled: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:25
 }
 impl std::ops::Deref for PlayerBedFailEnterEvent {
@@ -30,7 +30,7 @@ impl std::ops::Deref for PlayerBedFailEnterEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:17
 impl PlayerBedFailEnterEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerBedFailEnterEventFailReason, bed: JRef<dyn Block>, will_explode: bool, message: Option<crate::text::Text>, enter_action: JRef<dyn BedEnterAction>) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerBedFailEnterEventFailReason, bed: JRef<dyn Block>, will_explode: bool, message: Option<crate::azalea::chat::FormattedText>, enter_action: JRef<dyn BedEnterAction>) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| PlayerBedFailEnterEvent {
             base: PlayerEvent::new_base(this, player),
             this: this.clone(),
@@ -50,8 +50,8 @@ impl PlayerBedFailEnterEvent {
     pub fn get_bed(&self) -> JRef<dyn Block> { self.bed.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:55
     pub fn get_will_explode(&self) -> bool { self.will_explode.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:59
     pub fn set_will_explode(&self, will_explode: bool) { self.will_explode.set(will_explode) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:63
-    pub fn get_message(&self) -> Option<crate::text::Text> { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:67
-    pub fn set_message(&self, message: Option<crate::text::Text>) { self.message.set(message) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:71
+    pub fn get_message(&self) -> Option<crate::azalea::chat::FormattedText> { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:67
+    pub fn set_message(&self, message: Option<crate::azalea::chat::FormattedText>) { self.message.set(message) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:71
     pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

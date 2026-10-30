@@ -13,9 +13,9 @@ impl SlotsArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:17
     pub fn slots() -> JRef<SlotsArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:20
-    pub fn get_slots(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn SlotRange> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:24
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn SlotRange>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:28
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:33
+    pub fn get_slots(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn SlotRange> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:24
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn SlotRange>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:28
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:33
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotsArgument.java:38
 }
 crate::jobject!(SlotsArgument);

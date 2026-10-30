@@ -28,14 +28,14 @@ pub struct CompilableStringCommandParserHelper<T: JGeneric> {
 }
 pub trait CompilableStringCommandParserHelperTrait<T: JGeneric>: JObject {
     fn as_compilable_string_command_parser_helper(&self) -> &CompilableStringCommandParserHelper<T>;
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:71
-    fn error_message(&self, original: &str, exception: azalea_brigadier::errors::CommandSyntaxError) -> String; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:73
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:71
+    fn error_message(&self, original: &str, exception: crate::azalea::brigadier::errors::CommandSyntaxError) -> String; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:73
 }
 impl<T: JGeneric> std::ops::Deref for dyn CompilableStringCommandParserHelperTrait<T> {
     type Target = CompilableStringCommandParserHelper<T>;
     fn deref(&self) -> &CompilableStringCommandParserHelper<T> { self.as_compilable_string_command_parser_helper() }
 }
-pub static COMMAND_PARSER_HELPER_TRAILING_DATA: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:49
+pub static COMMAND_PARSER_HELPER_TRAILING_DATA: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:49
 impl<T: JGeneric> CompilableStringCommandParserHelper<T> {
     pub fn this(&self) -> JRef<dyn CompilableStringCommandParserHelperTrait<T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: CompilableStringCommandParserHelperTrait<T> + 'static>(this: &Weak<S>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:48

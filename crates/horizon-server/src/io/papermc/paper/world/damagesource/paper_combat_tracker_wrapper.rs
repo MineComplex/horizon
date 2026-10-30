@@ -23,7 +23,7 @@ impl PaperCombatTrackerWrapper {
     pub fn is_taking_damage(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:50
     pub fn get_combat_duration(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:55
     pub fn add_combat_entry(&self, combat_entry: JRef<dyn CombatEntry>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:60
-    pub fn get_death_message(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:66
+    pub fn get_death_message(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:66
     pub fn reset_combat_state(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:71
     pub fn calculate_fall_location_type(&self) -> JRef<dyn FallLocationType> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:76
     pub fn get_last_damage_time(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java:82
@@ -41,7 +41,7 @@ impl crate::io::papermc::paper::world::damagesource::combat_tracker::CombatTrack
     fn is_taking_damage(&self) -> bool { PaperCombatTrackerWrapper::is_taking_damage(self) }
     fn get_combat_duration(&self) -> i32 { PaperCombatTrackerWrapper::get_combat_duration(self) }
     fn add_combat_entry(&self, combat_entry: JRef<dyn CombatEntry>) { PaperCombatTrackerWrapper::add_combat_entry(self, combat_entry) }
-    fn get_death_message(&self) -> crate::text::Text { PaperCombatTrackerWrapper::get_death_message(self) }
+    fn get_death_message(&self) -> crate::azalea::chat::FormattedText { PaperCombatTrackerWrapper::get_death_message(self) }
     fn reset_combat_state(&self) { PaperCombatTrackerWrapper::reset_combat_state(self) }
     fn calculate_fall_location_type(&self) -> Option<JRef<dyn FallLocationType>> { PaperCombatTrackerWrapper::calculate_fall_location_type(self) }
     fn get_last_damage_time(&self) -> i32 { PaperCombatTrackerWrapper::get_last_damage_time(self) }

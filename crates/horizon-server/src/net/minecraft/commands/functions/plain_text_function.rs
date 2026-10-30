@@ -17,13 +17,13 @@ pub struct PlainTextFunction<T: JGeneric> {
 impl<T: JGeneric> PlainTextFunction<T> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/PlainTextFunction.java:11
     pub fn new_2(id: JRef<Identifier>, entries: &Vec<JRef<dyn UnboundEntryAction<T>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/PlainTextFunction.java:11
-    pub fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/PlainTextFunction.java:14
+    pub fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/PlainTextFunction.java:14
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> CommandFunction<T> for PlainTextFunction<T> {
     fn id(&self) -> JRef<Identifier> { todo!("abstract CommandFunction.id") }
-    fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, anyhow::Error> { PlainTextFunction::instantiate(self, arguments, dispatcher) }
+    fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, anyhow::Error> { PlainTextFunction::instantiate(self, arguments, dispatcher) }
 }
 impl<T: JGeneric> InstantiatedFunction<T> for PlainTextFunction<T> {
     fn id(&self) -> JRef<Identifier> { todo!("abstract InstantiatedFunction.id") }

@@ -45,7 +45,7 @@ impl ServerPlayerGameMode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<ServerPlayer>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:58
     pub fn change_game_mode_for_player(&self, game_mode_for_player: GameType) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:64
-    pub fn change_game_mode_for_player_3(&self, game_mode_for_player: GameType, player_game_mode_change_cause: PlayerGameModeChangeEventCause, cancel_message: crate::text::Text) -> JRef<PlayerGameModeChangeEvent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:71
+    pub fn change_game_mode_for_player_3(&self, game_mode_for_player: GameType, player_game_mode_change_cause: PlayerGameModeChangeEventCause, cancel_message: crate::azalea::chat::FormattedText) -> JRef<PlayerGameModeChangeEvent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:71
     pub fn set_game_mode_for_player(&self, game_mode_for_player: GameType, previous_game_mode_for_player: Option<GameType>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:106
     pub fn is_in_range_of_ground(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:113
     pub fn get_game_mode_for_player(&self) -> GameType { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayerGameMode.java:118

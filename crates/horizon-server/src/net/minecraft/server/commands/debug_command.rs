@@ -20,14 +20,14 @@ use crate::org::bukkit::command::command_sender::CommandSender;
 pub struct DebugCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_RUNNING: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:43
-pub static ERROR_ALREADY_RUNNING: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:44
-pub static NO_RECURSIVE_TRACES: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:47
-pub static NO_RETURN_RUN: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:50
+pub static ERROR_NOT_RUNNING: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:43
+pub static ERROR_ALREADY_RUNNING: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:44
+pub static NO_RECURSIVE_TRACES: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:47
+pub static NO_RETURN_RUN: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:50
 impl DebugCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:41
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:54
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:54
 }
 crate::jobject!(DebugCommand);
 // ---- class net.minecraft.server.commands.DebugCommand.TraceCustomExecutor (leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:71)
@@ -43,19 +43,19 @@ pub static TRACE_CUSTOM_EXECUTOR_RESPONSE_TRACE: LazyLock<CommandResponseTracker
 impl DebugCommandTraceCustomExecutor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:71
-    pub fn run_guarded(&self, source: JRef<CommandSourceStack>, current_step: azalea_brigadier::context::ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, context: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:81
+    pub fn run_guarded(&self, source: JRef<CommandSourceStack>, current_step: crate::azalea::brigadier::context::ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, context: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:81
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CustomCommandExecutorWithErrorHandlingTrait<JObjectRef> for DebugCommandTraceCustomExecutor {
     fn as_custom_command_executor_with_error_handling(&self) -> &CustomCommandExecutorWithErrorHandling<JObjectRef> { self }
-    fn on_error(&self, e: azalea_brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>) { CustomCommandExecutorWithErrorHandling::on_error(self, e, sender, modifiers, tracer) }
-    fn run_guarded(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error> { DebugCommandTraceCustomExecutor::run_guarded(self, sender, current_step, modifiers, output) }
+    fn on_error(&self, e: crate::azalea::brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>) { CustomCommandExecutorWithErrorHandling::on_error(self, e, sender, modifiers, tracer) }
+    fn run_guarded(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error> { DebugCommandTraceCustomExecutor::run_guarded(self, sender, current_step, modifiers, output) }
 }
 impl CustomCommandExecutorCommandAdapter<JRef<CommandSourceStack>> for DebugCommandTraceCustomExecutor {
 }
 impl CustomCommandExecutor<T> for DebugCommandTraceCustomExecutor {
-    fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { CustomCommandExecutorWithErrorHandling::run(self, sender, current_step, modifiers, output) }
+    fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { CustomCommandExecutorWithErrorHandling::run(self, sender, current_step, modifiers, output) }
 }
 crate::jobject!(DebugCommandTraceCustomExecutor);
 // ---- class net.minecraft.server.commands.DebugCommand.Tracer (leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:137)

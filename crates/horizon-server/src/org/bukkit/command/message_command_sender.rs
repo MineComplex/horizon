@@ -41,7 +41,7 @@ pub fn get_server<S: MessageCommandSender + ?Sized>(_this: &S) -> JRef<dyn Serve
     Bukkit::get_server()
 }
 // MessageCommandSender.java:50
-pub fn name<S: MessageCommandSender + ?Sized>(_this: &S) -> crate::text::Text {
+pub fn name<S: MessageCommandSender + ?Sized>(_this: &S) -> crate::azalea::chat::FormattedText {
     panic!("java.lang.UnsupportedOperationException");
 }
 // MessageCommandSender.java:57

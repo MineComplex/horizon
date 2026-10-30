@@ -9,16 +9,16 @@ use crate::net::minecraft::util::parsing::packrat::rule::Rule;
 pub struct UnquotedStringParseRule {
     pub this: Weak<Self>,
     pub min_size: i32, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:11
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:12
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:12
 }
 impl UnquotedStringParseRule {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(min_size: i32, error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:14
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:19
+    pub fn new(min_size: i32, error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:14
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/UnquotedStringParseRule.java:19
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl Rule<azalea_brigadier::string_reader::StringReader, String> for UnquotedStringParseRule {
+impl Rule<crate::azalea::brigadier::string_reader::StringReader, String> for UnquotedStringParseRule {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { UnquotedStringParseRule::parse(self, state) }
 }
 crate::jobject!(UnquotedStringParseRule);

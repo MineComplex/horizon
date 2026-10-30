@@ -7,14 +7,14 @@ use crate::net::minecraft::commands::execution::trace_callbacks::TraceCallbacks;
 
 // ---- interface net.minecraft.commands.execution.CustomCommandExecutor (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:10)
 pub trait CustomCommandExecutor<T: JGeneric>: Send + Sync + 'static {
-    fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>); // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:11
+    fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>); // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:11
 }
-impl<T: JGeneric, F: Fn(T, azalea_brigadier::context::ContextChain<T>, ChainModifiers, JRef<dyn ExecutionControl<T>>) + Send + Sync + 'static> CustomCommandExecutor<T> for F {
-    fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { self(sender, current_step, modifiers, output) }
+impl<T: JGeneric, F: Fn(T, crate::azalea::brigadier::context::ContextChain<T>, ChainModifiers, JRef<dyn ExecutionControl<T>>) + Send + Sync + 'static> CustomCommandExecutor<T> for F {
+    fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { self(sender, current_step, modifiers, output) }
 }
 // ---- interface net.minecraft.commands.execution.CustomCommandExecutor.CommandAdapter (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:13)
 pub trait CustomCommandExecutorCommandAdapter<T: JGeneric>: CustomCommandExecutor<T> {
-    fn run_1(&self, context: azalea_brigadier::context::CommandContext<T>) -> Result<i32, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:14
+    fn run_1(&self, context: crate::azalea::brigadier::context::CommandContext<T>) -> Result<i32, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:14
 }
 // ---- class net.minecraft.commands.execution.CustomCommandExecutor.WithErrorHandling (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:20)
 pub struct CustomCommandExecutorWithErrorHandling<T: JGeneric> {
@@ -23,8 +23,8 @@ pub struct CustomCommandExecutorWithErrorHandling<T: JGeneric> {
 }
 pub trait CustomCommandExecutorWithErrorHandlingTrait<T: JGeneric>: CustomCommandExecutor<T> {
     fn as_custom_command_executor_with_error_handling(&self) -> &CustomCommandExecutorWithErrorHandling<T>;
-    fn on_error(&self, e: azalea_brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>); // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:31
-    fn run_guarded(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:35
+    fn on_error(&self, e: crate::azalea::brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>); // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:31
+    fn run_guarded(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:35
 }
 impl<T: JGeneric> std::ops::Deref for dyn CustomCommandExecutorWithErrorHandlingTrait<T> {
     type Target = CustomCommandExecutorWithErrorHandling<T>;
@@ -33,6 +33,6 @@ impl<T: JGeneric> std::ops::Deref for dyn CustomCommandExecutorWithErrorHandling
 impl<T: JGeneric> CustomCommandExecutorWithErrorHandling<T> {
     pub fn this(&self) -> JRef<dyn CustomCommandExecutorWithErrorHandlingTrait<T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: CustomCommandExecutorWithErrorHandlingTrait<T> + 'static>(this: &Weak<S>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:20
-    pub fn run(&self, sender: T, current_step: azalea_brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:21
-    pub fn on_error(&self, e: azalea_brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:31
+    pub fn run(&self, sender: T, current_step: crate::azalea::brigadier::context::ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:21
+    pub fn on_error(&self, e: crate::azalea::brigadier::errors::CommandSyntaxError, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:31
 }

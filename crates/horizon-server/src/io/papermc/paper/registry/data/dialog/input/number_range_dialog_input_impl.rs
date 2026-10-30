@@ -10,7 +10,7 @@ use crate::io::papermc::paper::registry::data::dialog::input::number_range_dialo
 pub struct NumberRangeDialogInputImpl {
     pub key: String,
     pub width: i32,
-    pub label: crate::text::Text,
+    pub label: crate::azalea::chat::FormattedText,
     pub label_format: String,
     pub start: f32,
     pub end: f32,
@@ -19,13 +19,13 @@ pub struct NumberRangeDialogInputImpl {
 }
 impl NumberRangeDialogInputImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:13
-    pub fn new_8(key: &str, width: i32, label: crate::text::Text, label_format: &str, start: f32, end: f32, initial: Option<f32>, step: Option<f32>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:13
+    pub fn new_8(key: &str, width: i32, label: crate::azalea::chat::FormattedText, label_format: &str, start: f32, end: f32, initial: Option<f32>, step: Option<f32>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:13
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NumberRangeDialogInput for NumberRangeDialogInputImpl {
     fn width(&self) -> i32 { todo!("abstract NumberRangeDialogInput.width") }
-    fn label(&self) -> crate::text::Text { todo!("abstract NumberRangeDialogInput.label") }
+    fn label(&self) -> crate::azalea::chat::FormattedText { todo!("abstract NumberRangeDialogInput.label") }
     fn label_format(&self) -> String { todo!("abstract NumberRangeDialogInput.labelFormat") }
     fn start(&self) -> f32 { todo!("abstract NumberRangeDialogInput.start") }
     fn end(&self) -> f32 { todo!("abstract NumberRangeDialogInput.end") }
@@ -40,7 +40,7 @@ crate::jobject!(NumberRangeDialogInputImpl: dyn NumberRangeDialogInput, dyn Dial
 pub struct NumberRangeDialogInputImplBuilderImpl {
     pub this: Weak<Self>,
     pub key: String, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:26
-    pub label: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:27
+    pub label: crate::azalea::chat::FormattedText, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:27
     pub start: f32, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:28
     pub end: f32, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:29
     pub width: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:30
@@ -50,7 +50,7 @@ pub struct NumberRangeDialogInputImplBuilderImpl {
 }
 impl NumberRangeDialogInputImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: &str, label: crate::text::Text, start: f32, end: f32) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:35
+    pub fn new(key: &str, label: crate::azalea::chat::FormattedText, start: f32, end: f32) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:35
     pub fn width(&self, width: i32) -> JRef<NumberRangeDialogInputImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:43
     pub fn label_format(&self, label_format: &str) -> JRef<NumberRangeDialogInputImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:49
     pub fn initial(&self, initial: Option<f32>) -> JRef<NumberRangeDialogInputImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInputImpl.java:55

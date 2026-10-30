@@ -14,12 +14,12 @@ use crate::api_prelude::*;
 // ---- interface org.bukkit.scoreboard.Scoreboard (paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:11)
 pub trait Scoreboard: JObject {
     fn register_new_objective(&self, name: &str, criteria: &str) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:25
-    fn register_new_objective_3(&self, name: &str, criteria: &str, display_name: crate::text::Text) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:44
-    fn register_new_objective_3_2(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: crate::text::Text) -> Result<JRef<dyn Objective>, anyhow::Error> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:80
+    fn register_new_objective_3(&self, name: &str, criteria: &str, display_name: crate::azalea::chat::FormattedText) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:44
+    fn register_new_objective_3_2(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: crate::azalea::chat::FormattedText) -> Result<JRef<dyn Objective>, anyhow::Error> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:80
     fn register_new_objective_3_3(&self, name: &str, criteria: &str, display_name: &str) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:114
     fn register_new_objective_3_4(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: &str) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:151
-    fn register_new_objective_4(&self, name: &str, criteria: &str, display_name: crate::text::Text, render_type: RenderType) -> Result<JRef<dyn Objective>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:64
-    fn register_new_objective_4_2(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: crate::text::Text, render_type: RenderType) -> Result<JRef<dyn Objective>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:98
+    fn register_new_objective_4(&self, name: &str, criteria: &str, display_name: crate::azalea::chat::FormattedText, render_type: RenderType) -> Result<JRef<dyn Objective>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:64
+    fn register_new_objective_4_2(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: crate::azalea::chat::FormattedText, render_type: RenderType) -> Result<JRef<dyn Objective>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:98
     fn register_new_objective_4_3(&self, name: &str, criteria: &str, display_name: &str, render_type: RenderType) -> JRef<dyn Objective>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:134
     fn register_new_objective_4_4(&self, name: &str, criteria: JRef<dyn Criteria>, display_name: &str, render_type: RenderType) -> JRef<dyn Objective> { todo!() } // default, paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:171
     fn get_objective(&self, name: &str) -> Option<JRef<dyn Objective>>; // paper-api/src/main/java/org/bukkit/scoreboard/Scoreboard.java:183

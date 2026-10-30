@@ -13,23 +13,23 @@ pub struct LootContextSources {
 impl LootContextSources {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:22
-    pub fn decorate(node: azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>, node_visitor: JRef<dyn LootContextSourcesNodeVisitor>, decorator: JRef<dyn LootContextSourcesContextDecorator>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:23
+    pub fn decorate(node: crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>, node_visitor: JRef<dyn LootContextSourcesNodeVisitor>, decorator: JRef<dyn LootContextSourcesContextDecorator>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:23
     pub fn add_context_sources<T: JGeneric>(node: T, factory: JRef<dyn LootContextSourcesNodeVisitor>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:32
 }
 crate::jobject!(LootContextSources);
 // ---- interface net.minecraft.server.commands.LootContextSources.ContextDecorator (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:59)
 pub trait LootContextSourcesContextDecorator: Send + Sync + 'static {
-    fn customize(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:61
-    fn create_params(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootParams>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:63
-    fn create_context(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootContext>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:72
+    fn customize(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:61
+    fn create_params(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootParams>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:63
+    fn create_context(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootContext>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:72
 }
-impl<F: Fn(azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> + Send + Sync + 'static> LootContextSourcesContextDecorator for F {
-    fn customize(&self, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> { self(context, params) }
+impl<F: Fn(crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> + Send + Sync + 'static> LootContextSourcesContextDecorator for F {
+    fn customize(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> { self(context, params) }
 }
 // ---- interface net.minecraft.server.commands.LootContextSources.NodeVisitor (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:78)
 pub trait LootContextSourcesNodeVisitor: Send + Sync + 'static {
-    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:80
+    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:80
 }
-impl<F: Fn(JRef<dyn LootContextSourcesContextDecorator>, Arc<dyn Fn(azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>) + Send + Sync + 'static> LootContextSourcesNodeVisitor for F {
-    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>) { self(context_decorator, output) }
+impl<F: Fn(JRef<dyn LootContextSourcesContextDecorator>, Arc<dyn Fn(crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>) + Send + Sync + 'static> LootContextSourcesNodeVisitor for F {
+    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) + Send + Sync>) { self(context_decorator, output) }
 }

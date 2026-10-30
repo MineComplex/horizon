@@ -9,7 +9,7 @@ use crate::prelude::*;
 // ---- interface org.bukkit.JukeboxSong (paper-api/src/main/java/org/bukkit/JukeboxSong.java:13)
 pub trait JukeboxSong: Keyed + Translatable {
     fn get_sound(&self) -> JRef<dyn Sound>; // paper-api/src/main/java/org/bukkit/JukeboxSong.java:79
-    fn get_description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/JukeboxSong.java:86
+    fn get_description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/JukeboxSong.java:86
     fn get_length_in_seconds(&self) -> f32; // paper-api/src/main/java/org/bukkit/JukeboxSong.java:93
     fn get_comparator_output(&self) -> i32; // paper-api/src/main/java/org/bukkit/JukeboxSong.java:100
 }

@@ -15,9 +15,9 @@ pub static PERMISSION_CHECK: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new
 impl GameModeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:18
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:21
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:21
     pub fn log_gamemode_change(source: JRef<CommandSourceStack>, target: JRef<ServerPlayer>, new_type: GameType) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:36
-    pub fn set_mode(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, players: &Vec<JRef<ServerPlayer>>, type_: GameType) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:49
+    pub fn set_mode(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, players: &Vec<JRef<ServerPlayer>>, type_: GameType) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:49
     pub fn set_game_mode(player: JRef<ServerPlayer>, type_: GameType) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:73
     pub fn set_game_mode_3(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>, type_: GameType) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:77
     pub fn set_game_mode_4(source: JRef<CommandSourceStack>, player: JRef<ServerPlayer>, type_: GameType, cause: PlayerGameModeChangeEventCause) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameModeCommand.java:82

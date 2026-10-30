@@ -8,10 +8,10 @@ use crate::net::minecraft::world::waypoints::waypoint_transmitter::WaypointTrans
 pub struct WaypointArgument {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_A_WAYPOINT: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:12
+pub static ERROR_NOT_A_WAYPOINT: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:12
 impl WaypointArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:11
-    pub fn get_waypoint(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn WaypointTransmitter>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:14
+    pub fn get_waypoint(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn WaypointTransmitter>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:14
 }
 crate::jobject!(WaypointArgument);

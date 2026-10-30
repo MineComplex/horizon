@@ -36,7 +36,7 @@ impl<T: JGeneric> PaperCommonConnection<T> {
     pub fn transfer(&self, host: &str, port: i32) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:42
     pub fn get_client_option<T: JGeneric>(&self, type_: JRef<ClientOption<T>>) -> T { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:47
     pub fn get_client_brand_name(&self) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:73
-    pub fn disconnect(&self, component: crate::text::Text) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:78
+    pub fn disconnect(&self, component: crate::azalea::chat::FormattedText) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:78
     pub fn is_transferred(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:83
     pub fn get_address(&self) -> std::net::SocketAddr { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:88
     pub fn get_client_address(&self) -> std::net::SocketAddr { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperCommonConnection.java:93

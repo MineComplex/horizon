@@ -10,14 +10,14 @@ pub struct ObjectiveCriteriaArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:24
-pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:25
+pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:25
 impl ObjectiveCriteriaArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:29
     pub fn criteria() -> JRef<ObjectiveCriteriaArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:32
-    pub fn get_criteria(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn ObjectiveCriteriaTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:36
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn ObjectiveCriteriaTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:40
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:55
+    pub fn get_criteria(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn ObjectiveCriteriaTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:36
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn ObjectiveCriteriaTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:40
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:55
     pub fn get_name<T: JGeneric>(&self, type_: JRef<StatType<T>>, value: JObjectRef) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:69
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:73
 }

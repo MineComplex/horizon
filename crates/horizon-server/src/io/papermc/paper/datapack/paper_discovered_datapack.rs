@@ -26,8 +26,8 @@ impl PaperDiscoveredDatapack {
     pub fn new_base<S: PaperDiscoveredDatapackTrait + 'static>(this: &Weak<S>, pack: JRef<Pack>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:31
     pub fn new(pack: JRef<Pack>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, pack)) }
     pub fn get_name(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:35
-    pub fn get_title(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:40
-    pub fn get_description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:45
+    pub fn get_title(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:40
+    pub fn get_description(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:45
     pub fn is_required(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:50
     pub fn get_compatibility(&self) -> DatapackCompatibility { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:55
     pub fn get_required_features(&self) -> HashSet<JRef<dyn FeatureFlag>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDiscoveredDatapack.java:60
@@ -40,8 +40,8 @@ impl PaperDiscoveredDatapackTrait for PaperDiscoveredDatapack {
 }
 impl DiscoveredDatapack for PaperDiscoveredDatapack {
     fn get_name(&self) -> String { PaperDiscoveredDatapack::get_name(self) }
-    fn get_title(&self) -> crate::text::Text { PaperDiscoveredDatapack::get_title(self) }
-    fn get_description(&self) -> crate::text::Text { PaperDiscoveredDatapack::get_description(self) }
+    fn get_title(&self) -> crate::azalea::chat::FormattedText { PaperDiscoveredDatapack::get_title(self) }
+    fn get_description(&self) -> crate::azalea::chat::FormattedText { PaperDiscoveredDatapack::get_description(self) }
     fn is_required(&self) -> bool { PaperDiscoveredDatapack::is_required(self) }
     fn get_compatibility(&self) -> DatapackCompatibility { PaperDiscoveredDatapack::get_compatibility(self) }
     fn get_required_features(&self) -> HashSet<JRef<dyn FeatureFlag>> { PaperDiscoveredDatapack::get_required_features(self) }

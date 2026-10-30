@@ -12,19 +12,19 @@ pub struct MessageArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:28
-pub static TOO_LONG: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:29
+pub static TOO_LONG: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:29
 impl MessageArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:27
     pub fn message() -> JRef<MessageArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:33
-    pub fn get_message(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:37
-    pub fn resolve_chat_message(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:42
-    pub fn resolve_chat_message_4(message: MessageArgumentMessage, context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:48
+    pub fn get_message(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:37
+    pub fn resolve_chat_message(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:42
+    pub fn resolve_chat_message_4(message: MessageArgumentMessage, context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:48
     pub fn resolve_signed_message(task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>, sender: JRef<CommandSourceStack>, signed_argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:61
     pub fn resolve_disguised_message(task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>, sender: JRef<CommandSourceStack>, argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:73
     pub fn filter_plain_text(sender: JRef<CommandSourceStack>, message: PlayerChatMessage) -> crate::rt::CompletableFuture<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:81
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:85
-    pub fn parse_2<S: JGeneric>(&self, reader: azalea_brigadier::string_reader::StringReader, source: Option<S>) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:90
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:85
+    pub fn parse_2<S: JGeneric>(&self, reader: crate::azalea::brigadier::string_reader::StringReader, source: Option<S>) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:90
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:95
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -43,7 +43,7 @@ impl MessageArgumentMessage {
     pub fn new_2(text: &str, parts: &Vec<MessageArgumentPart>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:100
     pub fn resolve_component(&self, sender: JRef<CommandSourceStack>) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:101
     pub fn to_component(&self, sender: JRef<CommandSourceStack>, allow_selectors: bool) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:105
-    pub fn parse_text(reader: azalea_brigadier::string_reader::StringReader, allow_selectors: bool) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:130
+    pub fn parse_text(reader: crate::azalea::brigadier::string_reader::StringReader, allow_selectors: bool) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:130
 }
 crate::jobject!(MessageArgumentMessage);
 // ---- record net.minecraft.commands.arguments.MessageArgument.Part (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:177)

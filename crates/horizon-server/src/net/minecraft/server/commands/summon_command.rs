@@ -13,14 +13,14 @@ use crate::net::minecraft::world::phys::vec3::Vec3;
 pub struct SummonCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:30
-pub static ERROR_FAILED_PEACEFUL: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:31
-pub static ERROR_DUPLICATE_UUID: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:34
-pub static INVALID_POSITION: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:35
+pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:30
+pub static ERROR_FAILED_PEACEFUL: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:31
+pub static ERROR_DUPLICATE_UUID: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:34
+pub static INVALID_POSITION: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:35
 impl SummonCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:29
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:37
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:37
     pub fn create_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<JRef<dyn EntityTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:77
     pub fn spawn_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:112
 }

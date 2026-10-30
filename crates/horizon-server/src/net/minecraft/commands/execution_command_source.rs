@@ -10,9 +10,9 @@ pub trait ExecutionCommandSource<T: JGeneric>: PermissionSetSupplier {
     fn with_callback(&self, result_callback: JRef<dyn CommandResultCallback>) -> T; // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:13
     fn callback(&self) -> JRef<dyn CommandResultCallback>; // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:15
     fn clear_callbacks(&self) -> T { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:17
-    fn dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<T>>; // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:21
-    fn handle_error(&self, e: azalea_brigadier::errors::CommandSyntaxError, forked: bool, tracer: Option<JRef<dyn TraceCallbacks>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:27
+    fn dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<T>>; // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:21
+    fn handle_error(&self, e: crate::azalea::brigadier::errors::CommandSyntaxError, forked: bool, tracer: Option<JRef<dyn TraceCallbacks>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:27
     fn handle_error_4(&self, type_: (), message: String, forked: bool, tracer: Option<JRef<dyn TraceCallbacks>>); // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:23
     fn is_silent(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:25
 }
-pub fn result_consumer<T: JGeneric>() -> Arc<dyn azalea_brigadier::result_consumer::ResultConsumer<T> + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:31
+pub fn result_consumer<T: JGeneric>() -> Arc<dyn crate::azalea::brigadier::result_consumer::ResultConsumer<T> + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ExecutionCommandSource.java:31

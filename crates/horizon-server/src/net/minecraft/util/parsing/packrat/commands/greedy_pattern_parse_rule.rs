@@ -9,16 +9,16 @@ use crate::net::minecraft::util::parsing::packrat::rule::Rule;
 pub struct GreedyPatternParseRule {
     pub this: Weak<Self>,
     pub pattern: regex::Regex, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:12
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:13
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:13
 }
 impl GreedyPatternParseRule {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(pattern: regex::Regex, error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:15
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:20
+    pub fn new(pattern: regex::Regex, error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:15
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPatternParseRule.java:20
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl Rule<azalea_brigadier::string_reader::StringReader, String> for GreedyPatternParseRule {
+impl Rule<crate::azalea::brigadier::string_reader::StringReader, String> for GreedyPatternParseRule {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { GreedyPatternParseRule::parse(self, state) }
 }
 crate::jobject!(GreedyPatternParseRule);

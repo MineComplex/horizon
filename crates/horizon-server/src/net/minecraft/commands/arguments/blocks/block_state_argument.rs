@@ -17,9 +17,9 @@ impl BlockStateArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:22
     pub fn block(context: JRef<dyn CommandBuildContext>) -> JRef<BlockStateArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:26
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<BlockInput>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:30
-    pub fn get_block(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<BlockInput> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:36
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:40
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<BlockInput>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:30
+    pub fn get_block(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<BlockInput> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:36
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:45
 }
 crate::jobject!(BlockStateArgument);

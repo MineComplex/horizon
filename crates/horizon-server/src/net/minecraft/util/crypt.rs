@@ -42,8 +42,8 @@ impl Crypt {
     pub fn encrypt_using_key(key: (), input: &Vec<i8>) -> Result<Vec<i8>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:167
     pub fn decrypt_using_key(key: (), input: &Vec<i8>) -> Result<Vec<i8>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:171
     pub fn cipher_data(cipher_op_mode: i32, key: (), input: &Vec<i8>) -> Result<Vec<i8>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:175
-    pub fn setup_cipher(cipher_op_mode: i32, algorithm: &str, key: ()) -> Result<crate::rt::Cfb8Cipher, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:183
-    pub fn get_cipher(op_mode: i32, key: ()) -> Result<crate::rt::Cfb8Cipher, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:189
+    pub fn setup_cipher(cipher_op_mode: i32, algorithm: &str, key: ()) -> Result<crate::azalea::crypto::Aes128CfbEnc, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:183
+    pub fn get_cipher(op_mode: i32, key: ()) -> Result<crate::azalea::crypto::Aes128CfbEnc, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:189
 }
 crate::jobject!(Crypt);
 // ---- interface net.minecraft.util.Crypt.ByteArrayToKeyFunction (leaf-server/src/minecraft/java/net/minecraft/util/Crypt.java:199)

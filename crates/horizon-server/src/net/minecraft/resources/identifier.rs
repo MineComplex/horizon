@@ -16,7 +16,7 @@ pub struct Identifier {
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<Identifier>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:19
 pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, JRef<Identifier>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:20
-pub static ERROR_INVALID: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:21
+pub static ERROR_INVALID: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:21
 pub const NAMESPACE_SEPARATOR: char = ':'; // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:22
 pub const DEFAULT_NAMESPACE: &str = "minecraft"; // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:23
 pub const REALMS_NAMESPACE: &str = "realms"; // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:24
@@ -37,7 +37,7 @@ impl Identifier {
     pub fn by_separator(identifier: &str, separator: char) -> JRef<Identifier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:85
     pub fn try_by_separator(identifier: &str, separator: char) -> Option<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:100
     pub fn read(input: &str) -> DataResult<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:117
-    pub fn read_1(reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:235
+    pub fn read_1(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:235
     pub fn get_path(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:125
     pub fn get_namespace(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:129
     pub fn with_path(&self, new_path: &str) -> JRef<Identifier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:133
@@ -55,8 +55,8 @@ impl Identifier {
     pub fn to_language_key_2(&self, prefix: &str, suffix: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:221
     pub fn to_short_language_key(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:209
     pub fn to_short_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:213
-    pub fn read_greedy(reader: azalea_brigadier::string_reader::StringReader) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:225
-    pub fn read_non_empty(reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:247
+    pub fn read_greedy(reader: crate::azalea::brigadier::string_reader::StringReader) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:225
+    pub fn read_non_empty(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:247
     pub fn is_allowed_in_identifier(c: char) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:262
     pub fn is_valid_path(path: &str) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:266
     pub fn is_valid_namespace(namespace: &str) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/Identifier.java:276

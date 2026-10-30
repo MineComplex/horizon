@@ -113,30 +113,30 @@ pub trait Server: PluginMessageRecipient {
     fn broadcast_1(&self, components: &Vec<()>) {
         self.spigot().broadcast_1(components);
     } // default, paper-api/src/main/java/org/bukkit/Server.java:419
-    fn broadcast_1_2(&self, message: crate::text::Text) -> i32 {
+    fn broadcast_1_2(&self, message: crate::azalea::chat::FormattedText) -> i32 {
         self.broadcast_2_2(message, BROADCAST_CHANNEL_USERS)
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1400
     fn broadcast_2(&self, message: &str, permission: &str) -> i32 {
         // PORT: Adventure's LegacyComponentSerializer.legacySection() (Rust name per the Adventure port)
         self.broadcast_2_2(crate::net::kyori::adventure::text::serializer::legacy::legacy_component_serializer::legacy_section().deserialize(message), permission)
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1385
-    fn broadcast_2_2(&self, message: crate::text::Text, permission: &str) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1413
+    fn broadcast_2_2(&self, message: crate::azalea::chat::FormattedText, permission: &str) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1413
     fn send_rich_message(&self, message: &str) {
-        // PORT: Adventure's MiniMessage.miniMessage().deserialize(String, Pointered) and Audience.sendMessage(crate::text::Text)
+        // PORT: Adventure's MiniMessage.miniMessage().deserialize(String, Pointered) and Audience.sendMessage(crate::azalea::chat::FormattedText)
         self.send_message(
             crate::net::kyori::adventure::text::minimessage::mini_message::mini_message()
                 .deserialize_2(message, self),
         );
     } // default, paper-api/src/main/java/org/bukkit/Server.java:433
     fn send_rich_message_2(&self, message: &str, resolvers: &Vec<()>) {
-        // PORT: Adventure's MiniMessage.deserialize(String, Pointered, ()...) and Audience.sendMessage(crate::text::Text)
+        // PORT: Adventure's MiniMessage.deserialize(String, Pointered, ()...) and Audience.sendMessage(crate::azalea::chat::FormattedText)
         self.send_message(
             crate::net::kyori::adventure::text::minimessage::mini_message::mini_message()
                 .deserialize_3(message, self, resolvers),
         );
     } // default, paper-api/src/main/java/org/bukkit/Server.java:446
     fn send_plain_message(&self, message: &str) {
-        // PORT: Adventure's Audience.sendMessage(crate::text::Text)
+        // PORT: Adventure's Audience.sendMessage(crate::azalea::chat::FormattedText)
         self.send_message(Component::text(message));
     } // default, paper-api/src/main/java/org/bukkit/Server.java:455
     fn get_update_folder(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:467
@@ -354,7 +354,7 @@ pub trait Server: PluginMessageRecipient {
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         type_: InventoryType,
-        title: crate::text::Text,
+        title: crate::azalea::chat::FormattedText,
     ) -> JRef<dyn Inventory>; // paper-api/src/main/java/org/bukkit/Server.java:1726
     fn create_inventory_3_2(
         &self,
@@ -366,7 +366,7 @@ pub trait Server: PluginMessageRecipient {
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
-        title: crate::text::Text,
+        title: crate::azalea::chat::FormattedText,
     ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1783
     fn create_inventory_3_4(
         &self,
@@ -375,7 +375,7 @@ pub trait Server: PluginMessageRecipient {
         title: &str,
     ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1799
     fn create_merchant(&self) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1843
-    fn create_merchant_1(&self, title: crate::text::Text) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1813
+    fn create_merchant_1(&self, title: crate::azalea::chat::FormattedText) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1813
     fn create_merchant_1_2(&self, title: Option<String>) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1825
     fn get_max_chained_neighbor_updates(&self) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1836
     fn get_monster_spawn_limit(&self) -> i32 {
@@ -398,7 +398,7 @@ pub trait Server: PluginMessageRecipient {
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1912
     fn get_spawn_limit(&self, spawn_category: SpawnCategory) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1926
     fn is_primary_thread(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:1940
-    fn shutdown_message(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Server.java:1962
+    fn shutdown_message(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/Server.java:1962
     fn get_server_links(&self) -> JRef<dyn ServerLinks>; // paper-api/src/main/java/org/bukkit/Server.java:1989
     fn get_shutdown_message(&self) -> Option<String>; // paper-api/src/main/java/org/bukkit/Server.java:1998
     fn get_warning_state(&self) -> WarningWarningState; // paper-api/src/main/java/org/bukkit/Server.java:2007
@@ -481,7 +481,7 @@ pub trait Server: PluginMessageRecipient {
     fn reload_command_aliases(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:2609
     fn suggest_player_names_when_null_tab_completions(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:2618
     fn get_permission_message(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:2626
-    fn permission_message(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Server.java:2635
+    fn permission_message(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/Server.java:2635
     fn create_profile(
         &self,
         uuid: Uuid,

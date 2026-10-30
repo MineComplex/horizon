@@ -10,5 +10,5 @@ pub trait BedEnterAction: JObject {
     fn can_sleep(&self) -> JRef<dyn BedRuleResult>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:24
     fn can_set_spawn(&self) -> JRef<dyn BedRuleResult>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:35
     fn problem(&self) -> Option<JRef<dyn BedEnterProblem>>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:44
-    fn error_message(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:52
+    fn error_message(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:52
 }

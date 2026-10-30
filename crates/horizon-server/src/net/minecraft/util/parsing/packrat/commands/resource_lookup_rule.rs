@@ -11,14 +11,14 @@ use crate::net::minecraft::util::parsing::packrat::rule::Rule;
 // ---- class net.minecraft.util.parsing.packrat.commands.ResourceLookupRule (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:13)
 pub struct ResourceLookupRule<C: JGeneric, V: JGeneric> {
     pub this: Weak<dyn ResourceLookupRuleTrait<C, V>>,
-    pub id_parser: JRef<dyn NamedRule<azalea_brigadier::string_reader::StringReader, JRef<Identifier>>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:14
+    pub id_parser: JRef<dyn NamedRule<crate::azalea::brigadier::string_reader::StringReader, JRef<Identifier>>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:14
     pub context: C, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:15
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:16
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:16
     pub _phantom: std::marker::PhantomData<(C, V,)>,
 }
-pub trait ResourceLookupRuleTrait<C: JGeneric, V: JGeneric>: Rule<azalea_brigadier::string_reader::StringReader, V> + ResourceSuggestion {
+pub trait ResourceLookupRuleTrait<C: JGeneric, V: JGeneric>: Rule<crate::azalea::brigadier::string_reader::StringReader, V> + ResourceSuggestion {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<C, V>;
-    fn validate_element(&self, reader: azalea_brigadier::string_reader::StringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:42
+    fn validate_element(&self, reader: crate::azalea::brigadier::string_reader::StringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:42
 }
 impl<C: JGeneric, V: JGeneric> std::ops::Deref for dyn ResourceLookupRuleTrait<C, V> {
     type Target = ResourceLookupRule<C, V>;
@@ -26,6 +26,6 @@ impl<C: JGeneric, V: JGeneric> std::ops::Deref for dyn ResourceLookupRuleTrait<C
 }
 impl<C: JGeneric, V: JGeneric> ResourceLookupRule<C, V> {
     pub fn this(&self) -> JRef<dyn ResourceLookupRuleTrait<C, V>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ResourceLookupRuleTrait<C, V> + 'static>(this: &Weak<S>, id_parser: JRef<dyn NamedRule<azalea_brigadier::string_reader::StringReader, JRef<Identifier>>>, context: C) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:18
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<V> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:24
+    pub fn new_base<S: ResourceLookupRuleTrait<C, V> + 'static>(this: &Weak<S>, id_parser: JRef<dyn NamedRule<crate::azalea::brigadier::string_reader::StringReader, JRef<Identifier>>>, context: C) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:18
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<V> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:24
 }

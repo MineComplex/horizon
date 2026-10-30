@@ -13,10 +13,10 @@ pub struct AbstractChatEvent {
     pub base: PlayerEvent,
     pub this: Weak<dyn AbstractChatEventTrait>,
     pub viewers: Mut<HashSet<()>>, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:23
-    pub original_message: crate::text::Text, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:24
+    pub original_message: crate::azalea::chat::FormattedText, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:24
     pub signed_message: (), // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:25
     pub renderer: Mut<JRef<dyn ChatRenderer>>, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:26
-    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:27
+    pub message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:27
     pub cancelled: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:29
 }
 impl std::ops::Deref for AbstractChatEvent {
@@ -32,7 +32,7 @@ impl std::ops::Deref for dyn AbstractChatEventTrait {
 }
 impl AbstractChatEvent {
     pub fn this(&self) -> JRef<dyn AbstractChatEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: AbstractChatEventTrait + 'static>(this: &Weak<S>, async_: bool, player: JRef<dyn Player>, viewers: &HashSet<()>, renderer: JRef<dyn ChatRenderer>, message: crate::text::Text, original_message: crate::text::Text, signed_message: ()) -> Self {
+    pub fn new_base<S: AbstractChatEventTrait + 'static>(this: &Weak<S>, async_: bool, player: JRef<dyn Player>, viewers: &HashSet<()>, renderer: JRef<dyn ChatRenderer>, message: crate::azalea::chat::FormattedText, original_message: crate::azalea::chat::FormattedText, signed_message: ()) -> Self {
         AbstractChatEvent {
             base: PlayerEvent::new_base_2(this, player, async_),
             this: this.clone(),
@@ -53,11 +53,11 @@ impl AbstractChatEvent {
         // requireNonNull(renderer, "renderer"): a JRef is never null
         self.renderer.set(renderer);
     } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:58
-    pub fn message(&self) -> crate::text::Text { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:77
-    pub fn message_1(&self, message: crate::text::Text) {
-        // requireNonNull(message, "message"): a crate::text::Text is never null
+    pub fn message(&self) -> crate::azalea::chat::FormattedText { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:77
+    pub fn message_1(&self, message: crate::azalea::chat::FormattedText) {
+        // requireNonNull(message, "message"): a crate::azalea::chat::FormattedText is never null
         self.message.set(message);
     } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:87
-    pub fn original_message(&self) -> crate::text::Text { self.original_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:98
+    pub fn original_message(&self) -> crate::azalea::chat::FormattedText { self.original_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:98
     pub fn signed_message(&self) -> () { self.signed_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:109
 }

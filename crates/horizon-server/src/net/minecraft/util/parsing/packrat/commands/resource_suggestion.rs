@@ -5,6 +5,6 @@ use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::util::parsing::packrat::suggestion_supplier::SuggestionSupplier;
 
 // ---- interface net.minecraft.util.parsing.packrat.commands.ResourceSuggestion (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceSuggestion.java:9)
-pub trait ResourceSuggestion: SuggestionSupplier<azalea_brigadier::string_reader::StringReader> {
+pub trait ResourceSuggestion: SuggestionSupplier<crate::azalea::brigadier::string_reader::StringReader> {
     fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceSuggestion.java:10
 }

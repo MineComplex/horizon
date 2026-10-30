@@ -8,17 +8,17 @@ use crate::api_prelude::*;
 // ---- record io.papermc.paper.scoreboard.numbers.StyledFormatImpl (paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:6)
 #[derive(Clone)]
 pub struct StyledFormatImpl {
-    pub style: crate::text::Style,
+    pub style: crate::azalea::chat::style::Style,
 }
 pub static NO_STYLE: LazyLock<JRef<dyn StyledFormat>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:8
 impl StyledFormatImpl {
-    pub fn new_1(style: crate::text::Style) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:6
-    pub fn style_apply(&self, style: crate::text::Style) { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:10
+    pub fn new_1(style: crate::azalea::chat::style::Style) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:6
+    pub fn style_apply(&self, style: crate::azalea::chat::style::Style) { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:10
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl StyledFormat for StyledFormatImpl {
-    fn style(&self) -> crate::text::Style { self.style.clone() }
+    fn style(&self) -> crate::azalea::chat::style::Style { self.style.clone() }
 }
 impl NumberFormat for StyledFormatImpl {
 }

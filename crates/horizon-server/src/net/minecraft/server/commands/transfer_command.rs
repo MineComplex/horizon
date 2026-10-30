@@ -9,12 +9,12 @@ use crate::net::minecraft::server::level::server_player::ServerPlayer;
 pub struct TransferCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NO_PLAYERS: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:18
+pub static ERROR_NO_PLAYERS: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:18
 pub static RESPONSE_TRANSFER: LazyLock<CommandResponseTrackerMessagesWithArgs<JRef<ServerPlayer>, String, i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:21
 impl TransferCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:17
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:27
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:27
     pub fn transfer(source: JRef<CommandSourceStack>, hostname: &str, port: i32, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:62
 }
 crate::jobject!(TransferCommand);

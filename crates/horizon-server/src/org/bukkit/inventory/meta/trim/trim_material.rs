@@ -9,7 +9,7 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.meta.trim.TrimMaterial (paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:21)
 pub trait TrimMaterial: Keyed + Translatable {
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:67
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:67
 }
 pub static AMETHYST: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("amethyst")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:35
 pub static COPPER: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("copper")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:37

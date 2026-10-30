@@ -12,7 +12,7 @@ pub struct MapCursor {
     pub y: Mut<i8>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:19
     pub direction: Mut<i8>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:20
     pub visible: Mut<bool>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:21
-    pub caption: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:22
+    pub caption: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:22
     pub type_: Mut<JRef<dyn MapCursorType>>, // paper-api/src/main/java/org/bukkit/map/MapCursor.java:23
 }
 impl MapCursor {
@@ -20,8 +20,8 @@ impl MapCursor {
     pub fn new(x: i8, y: i8, direction: i8, type_: i8, visible: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:35
     pub fn new_5(x: i8, y: i8, direction: i8, type_: JRef<dyn MapCursorType>, visible: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:49
     pub fn new_6(x: i8, y: i8, direction: i8, type_: i8, visible: bool, caption: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:64
-    pub fn new_6_(x: i8, y: i8, direction: i8, type_: i8, visible: bool, caption: crate::text::Text) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:85
-    pub fn new_6__(x: i8, y: i8, direction: i8, type_: JRef<dyn MapCursorType>, visible: bool, caption: crate::text::Text) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:101
+    pub fn new_6_(x: i8, y: i8, direction: i8, type_: i8, visible: bool, caption: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:85
+    pub fn new_6__(x: i8, y: i8, direction: i8, type_: JRef<dyn MapCursorType>, visible: bool, caption: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:101
     pub fn new_6___(x: i8, y: i8, direction: i8, type_: JRef<dyn MapCursorType>, visible: bool, caption: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:118
     pub fn get_x(&self) -> i8 { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:132
     pub fn get_y(&self) -> i8 { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:141
@@ -35,8 +35,8 @@ impl MapCursor {
     pub fn set_type(&self, type_: JRef<dyn MapCursorType>) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:217
     pub fn set_raw_type(&self, type_: i8) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:227
     pub fn set_visible(&self, visible: bool) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:239
-    pub fn caption(&self) -> crate::text::Text { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:249
-    pub fn caption_1(&self, caption: crate::text::Text) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:257
+    pub fn caption(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:249
+    pub fn caption_1(&self, caption: crate::azalea::chat::FormattedText) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:257
     pub fn get_caption(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:267
     pub fn set_caption(&self, caption: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursor.java:279
 }

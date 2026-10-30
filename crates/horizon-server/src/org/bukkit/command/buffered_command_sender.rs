@@ -51,7 +51,7 @@ impl CommandSender for BufferedCommandSender {
     fn get_server(&self) -> JRef<dyn Server> { message_command_sender::get_server(self) }
     fn get_name(&self) -> String { message_command_sender::get_name(self) }
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait> { message_command_sender::spigot(self) }
-    fn name(&self) -> crate::text::Text { message_command_sender::name(self) }
+    fn name(&self) -> crate::azalea::chat::FormattedText { message_command_sender::name(self) }
 }
 impl Permissible for BufferedCommandSender {
     fn is_permission_set(&self, name: &str) -> bool { message_command_sender::is_permission_set(self, name) }

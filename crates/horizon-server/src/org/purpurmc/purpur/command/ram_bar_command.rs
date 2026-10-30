@@ -11,7 +11,7 @@ pub struct RamBarCommand {
 impl RamBarCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamBarCommand.java:19
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamBarCommand.java:20
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamBarCommand.java:20
     pub fn execute(sender: JRef<CommandSourceStack>, targets: &Vec<JRef<ServerPlayer>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamBarCommand.java:31
 }
 crate::jobject!(RamBarCommand);

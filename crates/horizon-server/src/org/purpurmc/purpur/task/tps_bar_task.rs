@@ -36,9 +36,9 @@ impl TPSBarTask {
     pub fn is_good_2(&self, mode: TPSBarTaskFillMode, ping: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:114
     pub fn is_medium(&self, mode: TPSBarTaskFillMode) -> bool { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:126
     pub fn is_medium_2(&self, mode: TPSBarTaskFillMode, ping: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:130
-    pub fn get_tps_color(&self) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:142
-    pub fn get_mspt_color(&self) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:154
-    pub fn get_ping_color(&self, ping: i32) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:166
+    pub fn get_tps_color(&self) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:142
+    pub fn get_mspt_color(&self) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:154
+    pub fn get_ping_color(&self, ping: i32) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:166
     pub fn calculate_world_mspt(&self, level: JRef<ServerLevel>) -> f64 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/TPSBarTask.java:179
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

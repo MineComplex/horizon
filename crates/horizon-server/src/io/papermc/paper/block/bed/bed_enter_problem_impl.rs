@@ -8,15 +8,15 @@ use crate::net::minecraft::world::entity::player::player::PlayerBedSleepingProbl
 #[derive(Clone)]
 pub struct BedEnterProblemImpl {
     pub vanilla_problem: PlayerBedSleepingProblem,
-    pub error_message: Option<crate::text::Text>,
+    pub error_message: Option<crate::azalea::chat::FormattedText>,
 }
 impl BedEnterProblemImpl {
     pub fn new(vanilla_problem: PlayerBedSleepingProblem) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterProblemImpl.java:15
-    pub fn new_2(vanilla_problem: PlayerBedSleepingProblem, error_message: Option<crate::text::Text>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterProblemImpl.java:9
+    pub fn new_2(vanilla_problem: PlayerBedSleepingProblem, error_message: Option<crate::azalea::chat::FormattedText>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterProblemImpl.java:9
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl BedEnterProblem for BedEnterProblemImpl {
-    fn error_message(&self) -> Option<crate::text::Text> { todo!("abstract BedEnterProblem.errorMessage") }
+    fn error_message(&self) -> Option<crate::azalea::chat::FormattedText> { todo!("abstract BedEnterProblem.errorMessage") }
 }
 crate::jobject!(BedEnterProblemImpl: dyn BedEnterProblem);

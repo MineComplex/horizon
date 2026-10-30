@@ -4,21 +4,21 @@ use crate::prelude::*;
 
 // ---- class io.papermc.paper.command.brigadier.ShadowBrigNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:8)
 pub struct ShadowBrigNode {
-    pub base: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>,
+    pub base: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>,
     pub this: Weak<Self>,
-    pub handle: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>>, // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:10
+    pub handle: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>>, // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:10
 }
 impl std::ops::Deref for ShadowBrigNode {
-    type Target = Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>;
+    type Target = Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>;
     fn deref(&self) -> &Self::Target { &self.base }
 }
 impl ShadowBrigNode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:12
-    pub fn get_children(&self) -> Vec<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:17
-    pub fn get_child(&self, name: &str) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:22
-    pub fn add_child(&self, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:27
-    pub fn get_handle(&self) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:32
+    pub fn new(node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:12
+    pub fn get_children(&self) -> Vec<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:17
+    pub fn get_child(&self, name: &str) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:22
+    pub fn add_child(&self, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:27
+    pub fn get_handle(&self) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:32
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

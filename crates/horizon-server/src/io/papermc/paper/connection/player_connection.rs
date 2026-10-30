@@ -5,7 +5,7 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.connection.PlayerConnection (paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:8)
 pub trait PlayerConnection: JObject {
-    fn disconnect(&self, component: crate::text::Text); // paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:17
+    fn disconnect(&self, component: crate::azalea::chat::FormattedText); // paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:17
     fn is_connected(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:22
     fn is_transferred(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:31
     fn get_address(&self) -> std::net::SocketAddr; // paper-api/src/main/java/io/papermc/paper/connection/PlayerConnection.java:39

@@ -28,7 +28,7 @@ impl NullCommandSender {
     pub fn get_server(&self) -> JRef<dyn Server> { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:44
     pub fn get_name(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:54
     pub fn spigot(&self) -> JRef<NullCommandSenderSpigot> { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:60
-    pub fn name(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:84
+    pub fn name(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:84
     pub fn is_permission_set(&self, name: &str) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:89
     pub fn is_permission_set_1(&self, perm: JRef<Permission>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:94
     pub fn has_permission(&self, name: &str) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/brigadier/NullCommandSender.java:99
@@ -53,7 +53,7 @@ impl CommandSender for NullCommandSender {
     fn get_server(&self) -> JRef<dyn Server> { NullCommandSender::get_server(self) }
     fn get_name(&self) -> String { NullCommandSender::get_name(self) }
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait> { NullCommandSender::spigot(self) }
-    fn name(&self) -> crate::text::Text { NullCommandSender::name(self) }
+    fn name(&self) -> crate::azalea::chat::FormattedText { NullCommandSender::name(self) }
 }
 impl Permissible for NullCommandSender {
     fn is_permission_set(&self, name: &str) -> bool { NullCommandSender::is_permission_set(self, name) }

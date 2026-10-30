@@ -8,10 +8,10 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.registry.data.TrimMaterialRegistryEntry (paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:13)
 pub trait TrimMaterialRegistryEntry: JObject {
     fn palette_id(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:21
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:29
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:29
 }
 // ---- interface io.papermc.paper.registry.data.TrimMaterialRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:41)
 pub trait TrimMaterialRegistryEntryBuilder: TrimMaterialRegistryEntry + RegistryBuilder<JRef<dyn TrimMaterial>> {
     fn palette_id_1(&self, palette_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimMaterialRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:51
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimMaterialRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:61
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimMaterialRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimMaterialRegistryEntry.java:61
 }

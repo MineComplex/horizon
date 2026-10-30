@@ -10,6 +10,6 @@ pub struct RamCommand {
 impl RamCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamCommand.java:13
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamCommand.java:14
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/RamCommand.java:14
 }
 crate::jobject!(RamCommand);

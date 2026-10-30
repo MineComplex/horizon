@@ -17,7 +17,7 @@ pub struct SignChangeEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
     pub player: JRef<dyn Player>, // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:23
-    pub adventure_lines: Mut<Vec<crate::text::Text>>, // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:24
+    pub adventure_lines: Mut<Vec<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:24
     pub side: Side, // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:25
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:27
 }
@@ -28,17 +28,17 @@ impl std::ops::Deref for SignChangeEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:21
 impl SignChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<crate::text::Text>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:37
+    pub fn new(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:37
     pub fn new_3(sign: JRef<dyn Block>, the_player: JRef<dyn Player>, the_lines: &Vec<String>) -> JRef<Self> { Self::new_4_(sign, the_player, &the_lines.clone(), Side::FRONT) } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:43
-    pub fn new_4(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<crate::text::Text>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:29
+    pub fn new_4(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<crate::azalea::chat::FormattedText>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:29
     pub fn new_4_(sign: JRef<dyn Block>, the_player: JRef<dyn Player>, the_lines: &Vec<String>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:49
     pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:157
     pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:162
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:167
     pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:66
-    pub fn lines(&self) -> Vec<crate::text::Text> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:76
-    pub fn line(&self, index: i32) -> Result<crate::text::Text, anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:89
-    pub fn line_2(&self, index: i32, line: crate::text::Text) -> Result<(), anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:101
+    pub fn lines(&self) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:76
+    pub fn line(&self, index: i32) -> Result<crate::azalea::chat::FormattedText, anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:89
+    pub fn line_2(&self, index: i32, line: crate::azalea::chat::FormattedText) -> Result<(), anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:101
     pub fn get_lines(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:111
     pub fn get_line(&self, index: i32) -> Result<Option<String>, anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:127
     pub fn set_line(&self, index: i32, line: Option<String>) -> Result<(), anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:142

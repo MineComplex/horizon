@@ -40,19 +40,19 @@ impl ViewerUnawareImpl {
     pub fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
         viewer: (),
-    ) -> crate::text::Text {
+    ) -> crate::azalea::chat::FormattedText {
         let _ = viewer;
         ChatRendererViewerUnaware::render(&*self.this(), source, source_display_name, message)
     } // paper-api/src/main/java/io/papermc/paper/chat/ViewerUnawareImpl.java:18
     pub fn render_3(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
-    ) -> crate::text::Text {
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
+    ) -> crate::azalea::chat::FormattedText {
         self.unaware.render(source, source_display_name, message)
     } // paper-api/src/main/java/io/papermc/paper/chat/ViewerUnawareImpl.java:23
 }
@@ -67,10 +67,10 @@ impl ChatRenderer for ViewerUnawareImpl {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
         viewer: (),
-    ) -> crate::text::Text {
+    ) -> crate::azalea::chat::FormattedText {
         ViewerUnawareImpl::render(self, source, source_display_name, message, viewer)
     }
 }
@@ -78,9 +78,9 @@ impl ChatRendererViewerUnaware for ViewerUnawareImpl {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
-    ) -> crate::text::Text {
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
+    ) -> crate::azalea::chat::FormattedText {
         ViewerUnawareImpl::render_3(self, source, source_display_name, message)
     }
 }
@@ -98,8 +98,8 @@ impl std::ops::Deref for ViewerUnawareImplDefault {
 }
 pub static DEFAULT_INSTANCE: LazyLock<JRef<ViewerUnawareImplDefault>> = LazyLock::new(|| {
     ViewerUnawareImplDefault::new(Arc::new(
-        |_source: JRef<dyn Player>, source_display_name: crate::text::Text, message: crate::text::Text| {
-            // PORT: adventure crate::text::Text.translatable(String, ComponentLike...)
+        |_source: JRef<dyn Player>, source_display_name: crate::azalea::chat::FormattedText, message: crate::azalea::chat::FormattedText| {
+            // PORT: adventure crate::azalea::chat::FormattedText.translatable(String, ComponentLike...)
             Component::translatable_2("chat.type.text", vec![source_display_name, message])
         },
     ))
@@ -127,10 +127,10 @@ impl ChatRenderer for ViewerUnawareImplDefault {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
         viewer: (),
-    ) -> crate::text::Text {
+    ) -> crate::azalea::chat::FormattedText {
         ViewerUnawareImpl::render(self, source, source_display_name, message, viewer)
     }
 }
@@ -138,9 +138,9 @@ impl ChatRendererViewerUnaware for ViewerUnawareImplDefault {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
-    ) -> crate::text::Text {
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
+    ) -> crate::azalea::chat::FormattedText {
         ViewerUnawareImpl::render_3(self, source, source_display_name, message)
     }
 }

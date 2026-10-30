@@ -18,9 +18,9 @@ pub struct CommandRegisteredEvent<S: JGeneric> {
     pub command_label: String, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:30
     pub command: JRef<dyn CommandTrait>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:31
     pub brigadier_command: JRef<dyn BukkitBrigadierCommand<S>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:32
-    pub root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:33
-    pub default_args: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:34
-    pub literal: Mut<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:35
+    pub root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:33
+    pub default_args: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:34
+    pub literal: Mut<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:35
     pub raw_command: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:36
     pub cancelled: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:38
     pub _phantom: std::marker::PhantomData<(S,)>,
@@ -32,7 +32,7 @@ impl<S: JGeneric> std::ops::Deref for CommandRegisteredEvent<S> {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:28
 impl<S: JGeneric> CommandRegisteredEvent<S> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(command_label: &str, brigadier_command: JRef<dyn BukkitBrigadierCommand<S>>, command: JRef<dyn CommandTrait>, root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, literal: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, default_args: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> JRef<Self> {
+    pub fn new(command_label: &str, brigadier_command: JRef<dyn BukkitBrigadierCommand<S>>, command: JRef<dyn CommandTrait>, root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, literal: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, default_args: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> JRef<Self> {
 Arc::new_cyclic(|this| CommandRegisteredEvent {
     base: ServerEvent::new_base(this),
     this: this.clone(),
@@ -65,16 +65,16 @@ self.brigadier_command.clone()
     pub fn get_command(&self) -> JRef<dyn CommandTrait> {
 self.command.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:75
-    pub fn get_root(&self) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> {
+    pub fn get_root(&self) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> {
 self.root.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:84
-    pub fn get_default_args(&self) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> {
+    pub fn get_default_args(&self) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> {
 self.default_args.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:94
-    pub fn get_literal(&self) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> {
+    pub fn get_literal(&self) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> {
 self.literal.get()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:103
-    pub fn set_literal(&self, literal: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) {
+    pub fn set_literal(&self, literal: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) {
 self.literal.set(literal)
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:113
     pub fn is_raw_command(&self) -> bool {

@@ -59,7 +59,7 @@ impl PlayerChatMessageAdventureView {
     pub fn timestamp(&self) -> std::time::SystemTime { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:25
     pub fn salt(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:29
     pub fn signature(&self) -> Option<JObjectRef /* Signature */> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:33
-    pub fn unsigned_content(&self) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:37
+    pub fn unsigned_content(&self) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:37
     pub fn message(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:41
     pub fn identity(&self) -> Uuid { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:45
     pub fn player_chat_message(&self) -> PlayerChatMessage { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/PlayerChatMessage.java:49

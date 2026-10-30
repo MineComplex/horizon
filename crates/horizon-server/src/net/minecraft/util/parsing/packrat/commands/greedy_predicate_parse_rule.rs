@@ -10,9 +10,9 @@ pub struct GreedyPredicateParseRule {
     pub this: Weak<dyn GreedyPredicateParseRuleTrait>,
     pub min_size: i32, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:11
     pub max_size: i32, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:12
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:13
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:13
 }
-pub trait GreedyPredicateParseRuleTrait: Rule<azalea_brigadier::string_reader::StringReader, String> {
+pub trait GreedyPredicateParseRuleTrait: Rule<crate::azalea::brigadier::string_reader::StringReader, String> {
     fn as_greedy_predicate_parse_rule(&self) -> &GreedyPredicateParseRule;
     fn is_accepted(&self, c: char) -> bool; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:46
 }
@@ -22,7 +22,7 @@ impl std::ops::Deref for dyn GreedyPredicateParseRuleTrait {
 }
 impl GreedyPredicateParseRule {
     pub fn this(&self) -> JRef<dyn GreedyPredicateParseRuleTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: GreedyPredicateParseRuleTrait + 'static>(this: &Weak<S>, min_size: i32, error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:15
-    pub fn new_base_3<S: GreedyPredicateParseRuleTrait + 'static>(this: &Weak<S>, min_size: i32, max_size: i32, error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:19
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:25
+    pub fn new_base<S: GreedyPredicateParseRuleTrait + 'static>(this: &Weak<S>, min_size: i32, error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:15
+    pub fn new_base_3<S: GreedyPredicateParseRuleTrait + 'static>(this: &Weak<S>, min_size: i32, max_size: i32, error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:19
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/GreedyPredicateParseRule.java:25
 }

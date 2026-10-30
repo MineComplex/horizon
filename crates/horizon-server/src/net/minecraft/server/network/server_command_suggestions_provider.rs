@@ -17,16 +17,16 @@ impl ServerCommandSuggestionsProvider {
     pub fn new(player: JRef<ServerPlayer>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:24
     pub fn tick(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:28
     pub fn try_process_request(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:35
-    pub fn limit_suggestion_count(suggestions: azalea_brigadier::suggestion::suggestions::Suggestions) -> azalea_brigadier::suggestion::suggestions::Suggestions { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:76
+    pub fn limit_suggestion_count(suggestions: crate::azalea::brigadier::suggestion::suggestions::Suggestions) -> crate::azalea::brigadier::suggestion::suggestions::Suggestions { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:76
     pub fn try_schedule(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:80
-    pub fn request(&self, command: &str) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:86
+    pub fn request(&self, command: &str) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:86
 }
 crate::jobject!(ServerCommandSuggestionsProvider);
 // ---- class net.minecraft.server.network.ServerCommandSuggestionsProvider.Request (leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:96)
 pub struct ServerCommandSuggestionsProviderRequest {
     pub this: Weak<Self>,
     pub command: String, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:97
-    pub future: crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:98
+    pub future: crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommandSuggestionsProvider.java:98
 }
 impl ServerCommandSuggestionsProviderRequest {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }

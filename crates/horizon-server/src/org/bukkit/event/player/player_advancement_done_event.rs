@@ -15,7 +15,7 @@ pub struct PlayerAdvancementDoneEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
     pub advancement: JRef<dyn Advancement>, // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:18
-    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:19
+    pub message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:19
 }
 impl std::ops::Deref for PlayerAdvancementDoneEvent {
     type Target = PlayerEvent;
@@ -25,11 +25,11 @@ pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList
 impl PlayerAdvancementDoneEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, advancement: JRef<dyn Advancement>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:21
-    pub fn new_3(player: JRef<dyn Player>, advancement: JRef<dyn Advancement>, message: Option<crate::text::Text>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:27
+    pub fn new_3(player: JRef<dyn Player>, advancement: JRef<dyn Advancement>, message: Option<crate::azalea::chat::FormattedText>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:27
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:68
     pub fn get_advancement(&self) -> JRef<dyn Advancement> { self.advancement.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:39
-    pub fn message(&self) -> Option<crate::text::Text> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:52
-    pub fn message_1(&self, message: Option<crate::text::Text>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:64
+    pub fn message(&self) -> Option<crate::azalea::chat::FormattedText> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:52
+    pub fn message_1(&self, message: Option<crate::azalea::chat::FormattedText>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:64
     pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

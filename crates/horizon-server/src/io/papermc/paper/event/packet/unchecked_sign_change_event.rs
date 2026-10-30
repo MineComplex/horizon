@@ -18,7 +18,7 @@ pub struct UncheckedSignChangeEvent {
     pub this: Weak<Self>,
     pub edited_block_position: JRef<dyn BlockPosition>, // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:31
     pub side: Side, // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:32
-    pub lines: Mut<Vec<crate::text::Text>>, // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:33
+    pub lines: Mut<Vec<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:33
     pub cancelled: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:35
 }
 impl std::ops::Deref for UncheckedSignChangeEvent {
@@ -36,7 +36,7 @@ impl UncheckedSignChangeEvent {
         editor: JRef<dyn Player>,
         edited_block_position: JRef<dyn BlockPosition>,
         side: Side,
-        lines: &Vec<crate::text::Text>,
+        lines: &Vec<crate::azalea::chat::FormattedText>,
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| Self {
             base: PlayerEvent::new_base(this, editor),
@@ -62,7 +62,7 @@ impl UncheckedSignChangeEvent {
     pub fn get_side(&self) -> Side {
         self.side
     } // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:64
-    pub fn lines(&self) -> Vec<crate::text::Text> {
+    pub fn lines(&self) -> Vec<crate::azalea::chat::FormattedText> {
         // Collections.unmodifiableList: a copy
         self.lines.get()
     } // paper-api/src/main/java/io/papermc/paper/event/packet/UncheckedSignChangeEvent.java:73

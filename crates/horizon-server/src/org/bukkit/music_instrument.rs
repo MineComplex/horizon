@@ -20,7 +20,7 @@ pub trait MusicInstrumentTrait: Keyed {
     fn as_music_instrument(&self) -> &MusicInstrument;
     fn get_duration(&self) -> f32; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:80
     fn get_range(&self) -> f32; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:87
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:94
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:94
     fn get_sound(&self) -> JRef<dyn Sound>; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:101
     fn translation_key(&self) -> String; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:125
 }

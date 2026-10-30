@@ -19,13 +19,13 @@ impl TemplateMirrorArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TemplateMirrorArgument.java:8
     pub fn template_mirror() -> JRef<dyn StringRepresentableArgumentTrait<Mirror>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TemplateMirrorArgument.java:12
-    pub fn get_mirror(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Mirror { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TemplateMirrorArgument.java:16
+    pub fn get_mirror(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Mirror { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TemplateMirrorArgument.java:16
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl StringRepresentableArgumentTrait<JObjectRef> for TemplateMirrorArgument {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<JObjectRef> { self }
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { StringRepresentableArgument::get_examples(self) }
     fn convert_id(&self, id: &str) -> String { StringRepresentableArgument::convert_id(self, id) }
 }

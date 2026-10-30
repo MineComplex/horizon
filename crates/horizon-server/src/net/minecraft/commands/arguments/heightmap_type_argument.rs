@@ -23,13 +23,13 @@ impl HeightmapTypeArgument {
     pub fn convert_id(&self, id: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HeightmapTypeArgument.java:32
     pub fn kept_types() -> Vec<HeightmapTypes> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HeightmapTypeArgument.java:16
     pub fn heightmap() -> JRef<HeightmapTypeArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HeightmapTypeArgument.java:24
-    pub fn get_heightmap(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> HeightmapTypes { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HeightmapTypeArgument.java:28
+    pub fn get_heightmap(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> HeightmapTypes { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HeightmapTypeArgument.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl StringRepresentableArgumentTrait<JObjectRef> for HeightmapTypeArgument {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<JObjectRef> { self }
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { StringRepresentableArgument::get_examples(self) }
     fn convert_id(&self, id: &str) -> String { HeightmapTypeArgument::convert_id(self, id) }
 }

@@ -14,13 +14,13 @@ use crate::net::minecraft::world::phys::vec3::Vec3;
 pub struct TeleportCommand {
     pub this: Weak<Self>,
 }
-pub static INVALID_POSITION: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:33
+pub static INVALID_POSITION: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:33
 pub static RESPONSE_TELEPORT_TO_ENTITY: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<dyn EntityTrait>, JRef<dyn EntityTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:36
 pub static RESPONSE_TELEPORT_TO_POS: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<dyn EntityTrait>, Vec3>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:40
 impl TeleportCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:32
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:49
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:49
     pub fn teleport_to_entity(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, destination: JRef<dyn EntityTrait>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:163
     pub fn teleport_to_pos(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, level: JRef<ServerLevel>, destination: JRef<dyn Coordinates>, rotation: Option<JRef<dyn Coordinates>>, look_at: Option<JRef<dyn LookAt>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:185
     pub fn get_relatives(destination: JRef<dyn Coordinates>, rotation: Option<JRef<dyn Coordinates>>, same_dimension: bool) -> HashSet<Relative> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeleportCommand.java:211

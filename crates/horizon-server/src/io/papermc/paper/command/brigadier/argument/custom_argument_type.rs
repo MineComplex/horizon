@@ -5,27 +5,27 @@ use crate::prelude::*;
 
 // ---- interface io.papermc.paper.command.brigadier.argument.CustomArgumentType (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:25)
 pub trait CustomArgumentType<T: JGeneric, N: JGeneric>: JObject {
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:39
-    fn parse_2<S: JGeneric>(&self, reader: azalea_brigadier::string_reader::StringReader, source: S) -> Result<T, anyhow::Error>
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:39
+    fn parse_2<S: JGeneric>(&self, reader: crate::azalea::brigadier::string_reader::StringReader, source: S) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
-        // Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>.super.parse(reader, source)
+        // Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>.super.parse(reader, source)
         ArgumentType::parse_2(self, reader, source)
     } // default, paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:57
-    fn get_native_type(&self) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:68
+    fn get_native_type(&self) -> Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:68
     fn get_examples(&self) -> Vec<String> {
         self.get_native_type().get_examples()
     } // default, paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:77
     fn list_suggestions<S: JGeneric>(
         &self,
-        context: azalea_brigadier::context::CommandContext<S>,
-        builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder,
-    ) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions>
+        context: crate::azalea::brigadier::context::CommandContext<S>,
+        builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder,
+    ) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions>
     where
         Self: Sized,
     {
-        // Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>.super.listSuggestions(context, builder)
+        // Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>.super.listSuggestions(context, builder)
         ArgumentType::list_suggestions(self, context, builder)
     } // default, paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:91
 }
@@ -43,14 +43,14 @@ pub trait CustomArgumentTypeConverted<T: JGeneric, N: JGeneric>: CustomArgumentT
 // ---- Converted's default overrides of CustomArgumentType.parse (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:109-122).
 // A Rust subtrait cannot override its supertrait's methods: a type implementing CustomArgumentTypeConverted
 // implements `parse`/`parse_2` by calling these.
-/// `Converted.parse(azalea_brigadier::string_reader::StringReader)`: `return this.convert(this.getNativeType().parse(reader));`
+/// `Converted.parse(crate::azalea::brigadier::string_reader::StringReader)`: `return this.convert(this.getNativeType().parse(reader));`
 pub fn converted_parse<T: JGeneric, N: JGeneric, C: CustomArgumentTypeConverted<T, N> + ?Sized>(
     this: &C,
-    reader: azalea_brigadier::string_reader::StringReader,
+    reader: crate::azalea::brigadier::string_reader::StringReader,
 ) -> Result<T, anyhow::Error> {
     this.convert(this.get_native_type().parse(reader)?)
 }
-/// `Converted.parse(azalea_brigadier::string_reader::StringReader, S)`: `return this.convert(this.getNativeType().parse(reader, source), source);`
+/// `Converted.parse(crate::azalea::brigadier::string_reader::StringReader, S)`: `return this.convert(this.getNativeType().parse(reader, source), source);`
 pub fn converted_parse_2<
     T: JGeneric,
     N: JGeneric,
@@ -58,7 +58,7 @@ pub fn converted_parse_2<
     C: CustomArgumentTypeConverted<T, N> + Sized,
 >(
     this: &C,
-    reader: azalea_brigadier::string_reader::StringReader,
+    reader: crate::azalea::brigadier::string_reader::StringReader,
     source: S,
 ) -> Result<T, anyhow::Error> {
     this.convert_2(

@@ -12,13 +12,13 @@ use crate::net::minecraft::world::item::item_stack::ItemStack;
 pub struct GiveCommand {
     pub this: Weak<Self>,
 }
-pub static TOO_MANY_ITEMS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:22
+pub static TOO_MANY_ITEMS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:22
 pub static RESPONSE_GIVE: LazyLock<CommandResponseTrackerMessagesWithArgs<JRef<ServerPlayer>, i32, JRef<ItemStack>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:25
 pub const MAX_ALLOWED_ITEMSTACKS: i32 = 100; // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:33
 impl GiveCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:21
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:35
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:35
     pub fn give_item(source: JRef<CommandSourceStack>, input: ItemInput, players: &Vec<JRef<ServerPlayer>>, count: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GiveCommand.java:60
 }
 crate::jobject!(GiveCommand);

@@ -13,7 +13,7 @@ use crate::api_prelude::*;
 pub struct AsyncPlayerSendCommandsEvent<S: JGeneric> {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
-    pub node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:38
+    pub node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:38
     pub has_fired_async: bool, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:39
     pub _phantom: std::marker::PhantomData<(S,)>,
 }
@@ -24,7 +24,7 @@ impl<S: JGeneric> std::ops::Deref for AsyncPlayerSendCommandsEvent<S> {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:36
 impl<S: JGeneric> AsyncPlayerSendCommandsEvent<S> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, has_fired_async: bool) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, has_fired_async: bool) -> JRef<Self> {
 Arc::new_cyclic(|this| AsyncPlayerSendCommandsEvent {
     base: PlayerEvent::new_base_2(this, player, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
     this: this.clone(),
@@ -36,7 +36,7 @@ Arc::new_cyclic(|this| AsyncPlayerSendCommandsEvent {
     pub fn get_handlers(&self) -> JRef<HandlerList> {
 HANDLER_LIST.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:66
-    pub fn get_command_node(&self) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> {
+    pub fn get_command_node(&self) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> {
 self.node.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:53
     pub fn has_fired_async(&self) -> bool {

@@ -5,10 +5,10 @@ use crate::prelude::*;
 
 // ---- interface io.papermc.paper.block.bed.BedEnterProblem (paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterProblem.java:12)
 pub trait BedEnterProblem: Send + Sync + 'static {
-    fn error_message(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterProblem.java:59
+    fn error_message(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterProblem.java:59
 }
-impl<F: Fn() -> Option<crate::text::Text> + Send + Sync + 'static> BedEnterProblem for F {
-    fn error_message(&self) -> Option<crate::text::Text> {
+impl<F: Fn() -> Option<crate::azalea::chat::FormattedText> + Send + Sync + 'static> BedEnterProblem for F {
+    fn error_message(&self) -> Option<crate::azalea::chat::FormattedText> {
         self()
     }
 }

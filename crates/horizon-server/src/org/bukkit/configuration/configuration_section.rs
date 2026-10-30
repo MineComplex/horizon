@@ -80,24 +80,24 @@ pub trait ConfigurationSection: JObject {
     fn get_inline_comments(&self, path: &str) -> Vec<Option<String>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1025
     fn set_comments(&self, path: &str, comments: Option<Vec<Option<String>>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1043
     fn set_inline_comments(&self, path: &str, comments: Option<Vec<Option<String>>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1060
-    fn get_rich_message(&self, path: &str) -> Option<crate::text::Text> {
+    fn get_rich_message(&self, path: &str) -> Option<crate::azalea::chat::FormattedText> {
         self.get_rich_message_2(path, None)
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1073
-    fn get_rich_message_2(&self, path: &str, fallback: Option<crate::text::Text>) -> Option<crate::text::Text> {
+    fn get_rich_message_2(&self, path: &str, fallback: Option<crate::azalea::chat::FormattedText>) -> Option<crate::azalea::chat::FormattedText> {
         // PORT: MiniMessage as a () (Adventure port).
         self.get_component_3(path, MiniMessage::mini_message().into(), fallback)
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1088
-    fn set_rich_message(&self, path: &str, value: Option<crate::text::Text>) {
+    fn set_rich_message(&self, path: &str, value: Option<crate::azalea::chat::FormattedText>) {
         self.set_component(path, MiniMessage::mini_message().into(), value);
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1102
-    fn get_component(&self, path: &str, decoder: ()) -> Option<crate::text::Text> {
+    fn get_component(&self, path: &str, decoder: ()) -> Option<crate::azalea::chat::FormattedText> {
         self.get_component_3(path, decoder, None)
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1117
-    fn get_component_3(&self, path: &str, decoder: (), fallback: Option<crate::text::Text>) -> Option<crate::text::Text> {
+    fn get_component_3(&self, path: &str, decoder: (), fallback: Option<crate::azalea::chat::FormattedText>) -> Option<crate::azalea::chat::FormattedText> {
         let value = self.get_string(path);
         decoder.deserialize_or(value, fallback)
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1133
-    fn set_component(&self, path: &str, encoder: (), value: Option<crate::text::Text>) {
+    fn set_component(&self, path: &str, encoder: (), value: Option<crate::azalea::chat::FormattedText>) {
         self.set(path, encoder.serialize_or_null(value).map(|s| -> JObjectRef { Arc::new(s) }));
     } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1150
 }

@@ -26,7 +26,7 @@ pub trait InventoryView: JObject {
     fn close(&self); // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:254
     fn count_slots(&self) -> i32; // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:265
     fn set_property(&self, prop: InventoryViewProperty, value: i32) -> bool; // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:276
-    fn title(&self) -> crate::text::Text { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:284
+    fn title(&self) -> crate::azalea::chat::FormattedText { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:284
     fn get_title(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:296
     fn get_original_title(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:307
     fn set_title(&self, title: &str); // paper-api/src/main/java/org/bukkit/inventory/InventoryView.java:323

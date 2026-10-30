@@ -11,11 +11,11 @@ use crate::net::minecraft::world::phys::vec3::Vec3;
 pub struct ParticleCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:22
+pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:22
 impl ParticleCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:21
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:24
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:24
     pub fn send_particles(source: JRef<CommandSourceStack>, particle: JRef<dyn ParticleOptions>, pos: Vec3, delta: Vec3, speed: f32, count: i32, force: bool, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ParticleCommand.java:142
 }
 crate::jobject!(ParticleCommand);

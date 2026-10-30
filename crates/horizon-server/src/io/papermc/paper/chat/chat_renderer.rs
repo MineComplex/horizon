@@ -9,13 +9,13 @@ pub trait ChatRenderer: Send + Sync + 'static {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
         viewer: (),
-    ) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/chat/ChatRenderer.java:25
+    ) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/chat/ChatRenderer.java:25
 }
 impl<
-    F: Fn(JRef<dyn Player>, crate::text::Text, crate::text::Text, ()) -> crate::text::Text
+    F: Fn(JRef<dyn Player>, crate::azalea::chat::FormattedText, crate::azalea::chat::FormattedText, ()) -> crate::azalea::chat::FormattedText
         + Send
         + Sync
         + 'static,
@@ -24,10 +24,10 @@ impl<
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
         viewer: (),
-    ) -> crate::text::Text {
+    ) -> crate::azalea::chat::FormattedText {
         self(source, source_display_name, message, viewer)
     }
 }
@@ -44,19 +44,19 @@ pub trait ChatRendererViewerUnaware: Send + Sync + 'static {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
-    ) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/chat/ChatRenderer.java:67
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
+    ) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/chat/ChatRenderer.java:67
 }
-impl<F: Fn(JRef<dyn Player>, crate::text::Text, crate::text::Text) -> crate::text::Text + Send + Sync + 'static>
+impl<F: Fn(JRef<dyn Player>, crate::azalea::chat::FormattedText, crate::azalea::chat::FormattedText) -> crate::azalea::chat::FormattedText + Send + Sync + 'static>
     ChatRendererViewerUnaware for F
 {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: crate::text::Text,
-        message: crate::text::Text,
-    ) -> crate::text::Text {
+        source_display_name: crate::azalea::chat::FormattedText,
+        message: crate::azalea::chat::FormattedText,
+    ) -> crate::azalea::chat::FormattedText {
         self(source, source_display_name, message)
     }
 }

@@ -64,7 +64,7 @@ pub trait DatapackRegistrar: Registrar {
 }
 // ---- interface io.papermc.paper.datapack.DatapackRegistrar.Configurer (paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:170)
 pub trait DatapackRegistrarConfigurer: JObject {
-    fn title(&self, title: crate::text::Text) -> JRef<dyn DatapackRegistrarConfigurer>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:180
+    fn title(&self, title: crate::azalea::chat::FormattedText) -> JRef<dyn DatapackRegistrarConfigurer>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:180
     fn auto_enable_on_server_start(
         &self,
         auto_enable_on_server_start: bool,

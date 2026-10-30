@@ -11,7 +11,7 @@ pub struct ParserBasedArgument<T: JGeneric> {
 }
 pub trait ParserBasedArgumentTrait<T: JGeneric>: JObject {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<T>;
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
 }
 impl<T: JGeneric> std::ops::Deref for dyn ParserBasedArgumentTrait<T> {
     type Target = ParserBasedArgument<T>;
@@ -20,6 +20,6 @@ impl<T: JGeneric> std::ops::Deref for dyn ParserBasedArgumentTrait<T> {
 impl<T: JGeneric> ParserBasedArgument<T> {
     pub fn this(&self) -> JRef<dyn ParserBasedArgumentTrait<T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ParserBasedArgumentTrait<T> + 'static>(this: &Weak<S>, parser: JRef<dyn CommandArgumentParser<T>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:14
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:23
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:23
 }

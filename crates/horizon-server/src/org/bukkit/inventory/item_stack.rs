@@ -89,8 +89,8 @@ impl ItemStack {
     pub fn enchant_with_levels(&self, levels: i32, allow_treasure: bool, random: rand::rngs::StdRng) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:694
     pub fn enchant_with_levels_3(&self, levels: i32, key_set: JRef<dyn RegistryKeySet<JRef<dyn EnchantmentTrait>>>, random: rand::rngs::StdRng) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:712
     pub fn as_hover_event(&self, op: Arc<dyn Fn(()) -> () + Send + Sync>) -> () { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:723
-    pub fn display_name(&self) -> crate::text::Text { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:736
-    pub fn effective_name(&self) -> crate::text::Text { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:747
+    pub fn display_name(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:736
+    pub fn effective_name(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:747
     pub fn ensure_server_conversions(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:759
     pub fn deserialize_bytes(bytes: &Vec<i8>) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:773
     pub fn serialize_as_bytes(&self) -> Vec<i8> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:786
@@ -107,8 +107,8 @@ impl ItemStack {
     pub fn subtract(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:950
     pub fn subtract_1(&self, qty: i32) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:961
     pub fn get_lore(&self) -> Option<Vec<String>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:972
-    pub fn lore(&self) -> Option<Vec<crate::text::Text>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:988
-    pub fn lore_1(&self, lore: Option<Vec<crate::text::Text>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1022
+    pub fn lore(&self) -> Option<Vec<crate::azalea::chat::FormattedText>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:988
+    pub fn lore_1(&self, lore: Option<Vec<crate::azalea::chat::FormattedText>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1022
     pub fn set_lore(&self, lore: Option<Vec<String>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1006
     pub fn add_item_flags(&self, item_flags: &Vec<ItemFlag>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1036
     pub fn remove_item_flags(&self, item_flags: &Vec<ItemFlag>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1050
@@ -124,7 +124,7 @@ impl ItemStack {
     pub fn damage_2_2(&self, amount: i32, ignore_unbreaking: bool) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1845
     pub fn empty() -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1149
     pub fn is_empty(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1158
-    pub fn compute_tooltip_lines(&self, tooltip_context: JRef<dyn TooltipContext>, player: JRef<dyn Player>) -> Vec<crate::text::Text> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1174
+    pub fn compute_tooltip_lines(&self, tooltip_context: JRef<dyn TooltipContext>, player: JRef<dyn Player>) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1174
     pub fn get_data_types(&self) -> HashSet<JRef<dyn DataComponentType>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1225
     pub fn unset_data(&self, type_: JRef<dyn DataComponentType>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1297
     pub fn reset_data(&self, type_: JRef<dyn DataComponentType>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1307

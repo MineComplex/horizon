@@ -9,13 +9,13 @@ pub struct TickCommand {
 }
 pub const MAX_TICKRATE: f32 = 10000.0; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:20
 pub static DEFAULT_TICKRATE: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:21
-pub static ERROR_TICK_STEP_NOT_FROZEN: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:22
-pub static ERROR_STEP_STOP_NOT_STEPPING: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:25
-pub static ERROR_SPRINT_STOP_NOT_SPRINTING: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:28
+pub static ERROR_TICK_STEP_NOT_FROZEN: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:22
+pub static ERROR_STEP_STOP_NOT_STEPPING: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:25
+pub static ERROR_SPRINT_STOP_NOT_SPRINTING: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:28
 impl TickCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:19
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:32
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:32
     pub fn nanos_to_milis_string(nanos: i64) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:69
     pub fn set_ticking_rate(source: JRef<CommandSourceStack>, rate: f32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:73
     pub fn tick_query(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:81

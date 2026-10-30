@@ -15,7 +15,7 @@ pub struct ProfileWhitelistVerifyEvent {
     pub whitelist_enabled: bool, // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:48
     pub is_op: bool, // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:49
     pub whitelisted: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:50
-    pub kick_message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:51
+    pub kick_message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:51
 }
 impl std::ops::Deref for ProfileWhitelistVerifyEvent {
     type Target = Event;
@@ -24,7 +24,7 @@ impl std::ops::Deref for ProfileWhitelistVerifyEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:45
 impl ProfileWhitelistVerifyEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(profile: JRef<dyn PlayerProfile>, whitelist_enabled: bool, whitelisted: bool, is_op: bool, kick_message: Option<crate::text::Text>) -> JRef<Self> {
+    pub fn new(profile: JRef<dyn PlayerProfile>, whitelist_enabled: bool, whitelisted: bool, is_op: bool, kick_message: Option<crate::azalea::chat::FormattedText>) -> JRef<Self> {
 Arc::new_cyclic(|this| ProfileWhitelistVerifyEvent {
 base: Event::new_base(this),
 this: this.clone(),
@@ -48,10 +48,10 @@ self.kick_message_1(kick_message.map(|kick_message| {
     crate::rt::Unported::legacy_section().deserialize(&kick_message)
 }))
 } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:75
-    pub fn kick_message(&self) -> Option<crate::text::Text> {
+    pub fn kick_message(&self) -> Option<crate::azalea::chat::FormattedText> {
 self.kick_message.get()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:83
-    pub fn kick_message_1(&self, kick_message: Option<crate::text::Text>) {
+    pub fn kick_message_1(&self, kick_message: Option<crate::azalea::chat::FormattedText>) {
 self.kick_message.set(kick_message)
 } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:91
     pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> {

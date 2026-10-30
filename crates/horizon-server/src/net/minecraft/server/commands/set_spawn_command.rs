@@ -16,7 +16,7 @@ pub static RESPONSE_SET: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<Ser
 impl SetSpawnCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetSpawnCommand.java:23
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetSpawnCommand.java:47
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetSpawnCommand.java:47
     pub fn set_spawn(source: JRef<CommandSourceStack>, targets: &Vec<JRef<ServerPlayer>>, pos: BlockPos, rotation: JRef<dyn Coordinates>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetSpawnCommand.java:95
 }
 crate::jobject!(SetSpawnCommand);

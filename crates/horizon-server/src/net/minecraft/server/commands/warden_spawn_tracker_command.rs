@@ -14,7 +14,7 @@ pub static RESPONSE_RESET: LazyLock<CommandResponseTrackerMessages<JRef<ServerPl
 impl WardenSpawnTrackerCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WardenSpawnTrackerCommand.java:13
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WardenSpawnTrackerCommand.java:23
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WardenSpawnTrackerCommand.java:23
     pub fn set_warning_level(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, warning_level: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WardenSpawnTrackerCommand.java:44
     pub fn reset_tracker(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WardenSpawnTrackerCommand.java:55
 }

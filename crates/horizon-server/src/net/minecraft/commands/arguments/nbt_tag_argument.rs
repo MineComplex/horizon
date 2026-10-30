@@ -21,13 +21,13 @@ impl NbtTagArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtTagArgument.java:16
     pub fn nbt_tag() -> JRef<NbtTagArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtTagArgument.java:20
-    pub fn get_nbt_tag<S: JGeneric>(context: azalea_brigadier::context::CommandContext<S>, name: &str) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtTagArgument.java:24
+    pub fn get_nbt_tag<S: JGeneric>(context: crate::azalea::brigadier::context::CommandContext<S>, name: &str) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtTagArgument.java:24
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtTagArgument.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for NbtTagArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(NbtTagArgument);

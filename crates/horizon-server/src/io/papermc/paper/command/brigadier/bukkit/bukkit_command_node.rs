@@ -6,12 +6,12 @@ use crate::org::bukkit::command::command::CommandTrait;
 
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitCommandNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:29)
 pub struct BukkitCommandNode {
-    pub base: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>,
+    pub base: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>,
     pub this: Weak<Self>,
     pub command: JRef<dyn CommandTrait>, // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:31
 }
 impl std::ops::Deref for BukkitCommandNode {
-    type Target = Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>;
+    type Target = Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>;
     fn deref(&self) -> &Self::Target { &self.base }
 }
 impl BukkitCommandNode {
@@ -32,7 +32,7 @@ pub struct BukkitCommandNodeBukkitBrigCommand {
 impl BukkitCommandNodeBukkitBrigCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command: JRef<dyn CommandTrait>, literal: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:70
-    pub fn run(&self, context: azalea_brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> Result<i32, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:75
+    pub fn run(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> Result<i32, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:75
 }
 crate::jobject!(BukkitCommandNodeBukkitBrigCommand);
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitCommandNode.BukkitBrigSuggestionProvider (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:90)
@@ -44,6 +44,6 @@ pub struct BukkitCommandNodeBukkitBrigSuggestionProvider {
 impl BukkitCommandNodeBukkitBrigSuggestionProvider {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command: JRef<dyn CommandTrait>, literal: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:95
-    pub fn get_suggestions(&self, context: azalea_brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:100
+    pub fn get_suggestions(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:100
 }
 crate::jobject!(BukkitCommandNodeBukkitBrigSuggestionProvider);

@@ -8,11 +8,11 @@ use crate::net::minecraft::server::permissions::permission_check::PermissionChec
 #[derive(Clone)]
 pub struct PermissionProviderCheck<T: JGeneric> {
     pub test: JRef<dyn PermissionCheck>,
-    pub vanilla_node: parking_lot::Mutex<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>>,
+    pub vanilla_node: parking_lot::Mutex<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>>,
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> PermissionProviderCheck<T> {
     pub fn new(test: JRef<dyn PermissionCheck>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/permissions/PermissionProviderCheck.java:18
-    pub fn new_2(test: JRef<dyn PermissionCheck>, vanilla_node: parking_lot::Mutex<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/permissions/PermissionProviderCheck.java:5
+    pub fn new_2(test: JRef<dyn PermissionCheck>, vanilla_node: parking_lot::Mutex<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<CommandSourceStack>>>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/permissions/PermissionProviderCheck.java:5
     pub fn test(&self, t: T) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/permissions/PermissionProviderCheck.java:6
 }

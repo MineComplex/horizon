@@ -8,14 +8,14 @@ use crate::prelude::*;
 // ---- interface io.papermc.paper.advancement.AdvancementDisplay (paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:19)
 pub trait AdvancementDisplay: JObject {
     fn frame(&self) -> AdvancementDisplayFrame; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:30
-    fn title(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:37
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:44
+    fn title(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:37
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:44
     fn icon(&self) -> JRef<ItemStack>; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:51
     fn does_show_toast(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:61
     fn does_announce_to_chat(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:70
     fn is_hidden(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:80
     fn background_path(&self) -> Option<JRef<NamespacedKey>>; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:91
-    fn display_name(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:101
+    fn display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:101
 }
 // ---- enum io.papermc.paper.advancement.AdvancementDisplay.Frame (paper-api/src/main/java/io/papermc/paper/advancement/AdvancementDisplay.java:107)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

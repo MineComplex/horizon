@@ -9,6 +9,6 @@ use crate::api_prelude::*;
 pub trait CommandBlock: TileState + CommandBlockHolder {
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:38
     fn set_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:49
-    fn name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:59
-    fn name_1(&self, name: crate::text::Text); // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:67
+    fn name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:59
+    fn name_1(&self, name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/block/CommandBlock.java:67
 }

@@ -6,7 +6,7 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.input.BooleanDialogInput (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:11)
 pub trait BooleanDialogInput: DialogInput {
-    fn label(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:19
+    fn label(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:19
     fn initial(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:27
     fn on_true(&self) -> String; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:35
     fn on_false(&self) -> String; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInput.java:43

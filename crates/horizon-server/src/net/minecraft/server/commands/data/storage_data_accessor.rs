@@ -17,7 +17,7 @@ pub struct StorageDataAccessor {
     pub storage: JRef<CommandStorage>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:26
     pub id: JRef<Identifier>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:27
 }
-pub static SUGGEST_STORAGE: LazyLock<Arc<dyn azalea_brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:20
+pub static SUGGEST_STORAGE: LazyLock<Arc<dyn crate::azalea::brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:20
 pub static PROVIDER: LazyLock<JRef<dyn ArgProviderFactory<JRef<dyn DataAccessor>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:21
 impl StorageDataAccessor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -27,7 +27,7 @@ impl StorageDataAccessor {
     pub fn get_modified_success(&self) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:48
     pub fn get_print_success(&self, data: JRef<dyn Tag>) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:53
     pub fn get_print_success_3(&self, path: JRef<NbtPathArgumentNbtPath>, scale: f64, value: i32) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:58
-    pub fn get_global_tags(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> JRef<CommandStorage> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:29
+    pub fn get_global_tags(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> JRef<CommandStorage> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/StorageDataAccessor.java:29
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

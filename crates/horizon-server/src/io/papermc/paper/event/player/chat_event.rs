@@ -25,7 +25,7 @@ impl std::ops::Deref for ChatEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/ChatEvent.java:25
 impl ChatEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, viewers: &HashSet<()>, renderer: JRef<dyn ChatRenderer>, message: crate::text::Text, original_message: crate::text::Text, signed_message: ()) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, viewers: &HashSet<()>, renderer: JRef<dyn ChatRenderer>, message: crate::azalea::chat::FormattedText, original_message: crate::azalea::chat::FormattedText, signed_message: ()) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| ChatEvent {
             base: AbstractChatEvent::new_base(this, false, player, viewers, renderer, message, original_message, signed_message),
             this: this.clone(),

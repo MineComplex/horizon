@@ -29,18 +29,18 @@ pub const TYPE_LITERAL: i8 = 1; // leaf-server/src/minecraft/java/net/minecraft/
 pub const TYPE_ARGUMENT: i8 = 2; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:46
 impl ClientboundCommandsPacket {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JObjectRef /* S */>>>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<JObjectRef /* S */>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:50
+    pub fn new(root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JObjectRef /* S */>>>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<JObjectRef /* S */>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:50
     pub fn new_2(entries: &Vec<ClientboundCommandsPacketEntry>, root_index: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:56
     pub fn type_(&self) -> PacketType<JRef<ClientboundCommandsPacket>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:191
     pub fn handle(&self, listener: JRef<dyn ClientGamePacketListener>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:196
     pub fn validate_entries(entries: &Vec<ClientboundCommandsPacketEntry>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:75
     pub fn validate_entries_2(entries: &Vec<ClientboundCommandsPacketEntry>, validator: Arc<dyn Fn(ClientboundCommandsPacketEntry, HashSet<i32>) -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:62
-    pub fn enumerate_nodes<S: JGeneric>(root: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> HashMap<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, i32> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:80
-    pub fn create_entries<S: JGeneric>(node_to_id: &HashMap<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, i32>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<S>>) -> Vec<ClientboundCommandsPacketEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:103
+    pub fn enumerate_nodes<S: JGeneric>(root: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> HashMap<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, i32> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:80
+    pub fn create_entries<S: JGeneric>(node_to_id: &HashMap<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, i32>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<S>>) -> Vec<ClientboundCommandsPacketEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:103
     pub fn read_node(input: JRef<dyn FriendlyByteBufTrait>) -> ClientboundCommandsPacketEntry { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:116
     pub fn read(input: JRef<dyn FriendlyByteBufTrait>, flags: i8) -> JRef<dyn ClientboundCommandsPacketNodeStub> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:124
-    pub fn create_entry<S: JGeneric>(node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<S>>, ids: &HashMap<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, i32>) -> ClientboundCommandsPacketEntry { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:145
-    pub fn get_root<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:201
+    pub fn create_entry<S: JGeneric>(node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<S>>, ids: &HashMap<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, i32>) -> ClientboundCommandsPacketEntry { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:145
+    pub fn get_root<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:201
     pub fn root_index(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:348
     pub fn set_root_index(&self, root_index: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:352
     pub fn entries(&self) -> Vec<ClientboundCommandsPacketEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:356
@@ -63,7 +63,7 @@ pub struct ClientboundCommandsPacketArgumentNodeStub {
 impl ClientboundCommandsPacketArgumentNodeStub {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:205
     pub fn new_3(id: &str, argument_type: JRef<dyn ArgumentTypeInfoTemplate<JObjectRef>>, suggestion_id: Option<JRef<Identifier>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:205
-    pub fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:207
+    pub fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:207
     pub fn write(&self, output: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:213
     pub fn serialize_cap<A: JGeneric>(output: JRef<dyn FriendlyByteBufTrait>, argument_type: JRef<dyn ArgumentTypeInfoTemplate<A>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:222
     pub fn serialize_cap_3<A: JGeneric, T: JGeneric>(output: JRef<dyn FriendlyByteBufTrait>, info: JRef<dyn ArgumentTypeInfo<A, T>>, argument_type: JRef<dyn ArgumentTypeInfoTemplate<A>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:226
@@ -71,7 +71,7 @@ impl ClientboundCommandsPacketArgumentNodeStub {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ClientboundCommandsPacketNodeStub for ClientboundCommandsPacketArgumentNodeStub {
-    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized { ClientboundCommandsPacketArgumentNodeStub::build::<S>(self, context, builder) }
+    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized { ClientboundCommandsPacketArgumentNodeStub::build::<S>(self, context, builder) }
     fn write(&self, output: JRef<dyn FriendlyByteBufTrait>) { ClientboundCommandsPacketArgumentNodeStub::write(self, output) }
 }
 crate::jobject!(ClientboundCommandsPacketArgumentNodeStub: dyn ClientboundCommandsPacketNodeStub);
@@ -99,27 +99,27 @@ pub struct ClientboundCommandsPacketLiteralNodeStub {
 impl ClientboundCommandsPacketLiteralNodeStub {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:262
     pub fn new_1(id: &str) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:262
-    pub fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:263
+    pub fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:263
     pub fn write(&self, output: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:268
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ClientboundCommandsPacketNodeStub for ClientboundCommandsPacketLiteralNodeStub {
-    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized { ClientboundCommandsPacketLiteralNodeStub::build::<S>(self, context, builder) }
+    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized { ClientboundCommandsPacketLiteralNodeStub::build::<S>(self, context, builder) }
     fn write(&self, output: JRef<dyn FriendlyByteBufTrait>) { ClientboundCommandsPacketLiteralNodeStub::write(self, output) }
 }
 crate::jobject!(ClientboundCommandsPacketLiteralNodeStub: dyn ClientboundCommandsPacketNodeStub);
 // ---- interface net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeBuilder (leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:274)
 pub trait ClientboundCommandsPacketNodeBuilder<S: JGeneric>: JObject {
-    fn create_literal(&self, id: &str) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:275
-    fn create_argument(&self, id: &str, argument_type: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, suggestion_id: Option<JRef<Identifier>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:277
-    fn configure(&self, input: azalea_brigadier::builder::argument_builder::ArgumentBuilder<S>, executable: bool, restricted: bool) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:279
+    fn create_literal(&self, id: &str) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:275
+    fn create_argument(&self, id: &str, argument_type: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, suggestion_id: Option<JRef<Identifier>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:277
+    fn configure(&self, input: crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S>, executable: bool, restricted: bool) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:279
 }
 // ---- interface net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeInspector (leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:282)
 pub trait ClientboundCommandsPacketNodeInspector<S: JGeneric>: JObject {
-    fn suggestion_id(&self, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> Option<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:283
-    fn is_executable(&self, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:285
-    fn is_restricted(&self, node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:287
+    fn suggestion_id(&self, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> Option<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:283
+    fn is_executable(&self, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:285
+    fn is_restricted(&self, node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:287
 }
 // ---- class net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeResolver (leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:290)
 pub struct ClientboundCommandsPacketNodeResolver<S: JGeneric> {
@@ -127,16 +127,16 @@ pub struct ClientboundCommandsPacketNodeResolver<S: JGeneric> {
     pub context: JRef<dyn CommandBuildContext>, // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:291
     pub builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>, // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:292
     pub entries: Mut<Vec<ClientboundCommandsPacketEntry>>, // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:293
-    pub nodes: Mut<Vec<Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>>>, // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:294
+    pub nodes: Mut<Vec<Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>>>, // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:294
     pub _phantom: std::marker::PhantomData<(S,)>,
 }
 impl<S: JGeneric> ClientboundCommandsPacketNodeResolver<S> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>, entries: &Vec<ClientboundCommandsPacketEntry>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:296
-    pub fn resolve(&self, index: i32) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:307
+    pub fn resolve(&self, index: i32) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:307
 }
 // ---- interface net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeStub (leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:341)
 pub trait ClientboundCommandsPacketNodeStub: JObject {
-    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:342
+    fn build<S: JGeneric>(&self, context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ClientboundCommandsPacketNodeBuilder<S>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<S> where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:342
     fn write(&self, output: JRef<dyn FriendlyByteBufTrait>); // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:344
 }

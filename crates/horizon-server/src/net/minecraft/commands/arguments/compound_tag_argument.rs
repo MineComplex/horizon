@@ -12,8 +12,8 @@ impl CompoundTagArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:15
     pub fn compound_tag() -> JRef<CompoundTagArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:18
-    pub fn get_compound_tag<S: JGeneric>(context: azalea_brigadier::context::CommandContext<S>, name: &str) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:22
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:26
+    pub fn get_compound_tag<S: JGeneric>(context: crate::azalea::brigadier::context::CommandContext<S>, name: &str) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:22
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:26
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:31
 }
 crate::jobject!(CompoundTagArgument);

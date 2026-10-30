@@ -13,16 +13,16 @@ pub struct ForceLoadCommand {
     pub this: Weak<Self>,
 }
 pub const MAX_CHUNK_LIMIT: i32 = 256; // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:23
-pub static ERROR_TOO_MANY_CHUNKS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:24
-pub static ERROR_NOT_TICKING: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:27
-pub static ERROR_ALL_ADDED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:30
-pub static ERROR_NONE_REMOVED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:31
+pub static ERROR_TOO_MANY_CHUNKS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:24
+pub static ERROR_NOT_TICKING: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:27
+pub static ERROR_ALL_ADDED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:30
+pub static ERROR_NONE_REMOVED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:31
 pub static RESPONSE_ADD: LazyLock<CommandResponseTrackerMessagesWithArg<ChunkPos, ForceLoadCommandForceLoadParams>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:34
 pub static RESPONSE_REMOVE: LazyLock<CommandResponseTrackerMessagesWithArg<ChunkPos, ForceLoadCommandForceLoadParams>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:47
 impl ForceLoadCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:22
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:61
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:61
     pub fn query_force_load(source: JRef<CommandSourceStack>, pos: ColumnPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:115
     pub fn list_force_load(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:133
     pub fn remove_all(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:157

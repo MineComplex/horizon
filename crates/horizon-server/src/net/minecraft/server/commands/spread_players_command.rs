@@ -13,13 +13,13 @@ pub struct SpreadPlayersCommand {
     pub this: Weak<Self>,
 }
 pub const MAX_ITERATION_COUNT: i32 = 10000; // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:35
-pub static ERROR_FAILED_TO_SPREAD_TEAMS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:36
-pub static ERROR_FAILED_TO_SPREAD_ENTITIES: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:39
-pub static ERROR_INVALID_MAX_HEIGHT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:42
+pub static ERROR_FAILED_TO_SPREAD_TEAMS: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:36
+pub static ERROR_FAILED_TO_SPREAD_ENTITIES: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:39
+pub static ERROR_INVALID_MAX_HEIGHT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:42
 impl SpreadPlayersCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:34
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:46
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:46
     pub fn spread_players(source: JRef<CommandSourceStack>, center: Vec2, spread_distance: f32, max_range: f32, max_height: i32, respect_teams: bool, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:102
     pub fn get_number_of_teams(players: &Vec<JRef<dyn EntityTrait>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:140
     pub fn spread_positions(center: Vec2, spread_dist: f64, level: JRef<ServerLevel>, random: JRef<dyn RandomSource>, min_x: f64, min_z: f64, max_x: f64, max_z: f64, max_height: i32, positions: &Vec<JRef<SpreadPlayersCommandPosition>>, respect_teams: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:154

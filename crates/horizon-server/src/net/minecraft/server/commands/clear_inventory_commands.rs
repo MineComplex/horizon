@@ -12,15 +12,15 @@ use crate::net::minecraft::world::item::item_stack::ItemStack;
 pub struct ClearInventoryCommands {
     pub this: Weak<Self>,
 }
-pub static ERROR_SINGLE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:20
-pub static ERROR_MULTIPLE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:23
+pub static ERROR_SINGLE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:20
+pub static ERROR_MULTIPLE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:23
 pub static RESPONSE_TEST: LazyLock<CommandResponseTrackerMessages<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:26
 pub static RESPONSE_CLEAR: LazyLock<CommandResponseTrackerMessages<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:30
-pub static ERROR_DISPATCH: LazyLock<CommandResponseTrackerDispatch<azalea_brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:34
+pub static ERROR_DISPATCH: LazyLock<CommandResponseTrackerDispatch<crate::azalea::brigadier::errors::CommandSyntaxError, JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:34
 impl ClearInventoryCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:19
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:38
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:38
     pub fn clear_unlimited(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:69
     pub fn clear_inventory(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, max_count: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:73
 }

@@ -9,14 +9,14 @@ pub struct TeamColorArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:19
-pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:20
+pub static ERROR_INVALID_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:20
 impl TeamColorArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:24
     pub fn team_color() -> JRef<TeamColorArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:27
-    pub fn get_team_color(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> TeamColor { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:31
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<TeamColor, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:35
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:46
+    pub fn get_team_color(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> TeamColor { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:31
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<TeamColor, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:35
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:46
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:51
 }
 crate::jobject!(TeamColorArgument);

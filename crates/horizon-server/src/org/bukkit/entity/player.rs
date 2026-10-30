@@ -69,14 +69,14 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:78
     fn send_packet(&self, packet: Option<JObjectRef>); // paper-api/src/main/java/org/bukkit/entity/Player.java:88
     fn active_boss_bars(&self) -> Vec<()>; // paper-api/src/main/java/org/bukkit/entity/Player.java:100
-    fn display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:108
-    fn display_name_1(&self, display_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:115
+    fn display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/Player.java:108
+    fn display_name_1(&self, display_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/entity/Player.java:115
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:134
     fn set_display_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:147
-    fn player_list_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:165
-    fn player_list_name_1(&self, name: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:158
-    fn player_list_header(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:172
-    fn player_list_footer(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:179
+    fn player_list_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/Player.java:165
+    fn player_list_name_1(&self, name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/entity/Player.java:158
+    fn player_list_header(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/Player.java:172
+    fn player_list_footer(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/Player.java:179
     fn get_player_list_name(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:187
     fn set_player_list_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:198
     fn get_player_list_order(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:206
@@ -98,10 +98,10 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn kick(&self) {
         self.kick_1(Some(HOLDER_DEFAULT_KICK_MESSAGE.clone()));
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:347
-    fn kick_1(&self, message: Option<crate::text::Text>) {
+    fn kick_1(&self, message: Option<crate::azalea::chat::FormattedText>) {
         self.kick_2(message, PlayerKickEventCause::PLUGIN);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:359
-    fn kick_2(&self, message: Option<crate::text::Text>, cause: PlayerKickEventCause); // paper-api/src/main/java/org/bukkit/entity/Player.java:369
+    fn kick_2(&self, message: Option<crate::azalea::chat::FormattedText>, cause: PlayerKickEventCause); // paper-api/src/main/java/org/bukkit/entity/Player.java:369
     fn ban_4<E: JGeneric>(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:384
     fn ban_4_2<E: JGeneric>(&self, reason: Option<String>, expires: Option<std::time::SystemTime>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:400
     fn ban_4_3<E: JGeneric>(&self, reason: Option<String>, duration: Option<std::time::Duration>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:416
@@ -190,22 +190,22 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1045
     fn send_equipment_change(&self, entity: JRef<dyn LivingEntity>, items: &HashMap<EquipmentSlot, JRef<ItemStack>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1103
     fn send_equipment_change_3(&self, entity: JRef<dyn LivingEntity>, slot: EquipmentSlot, item: Option<JRef<ItemStack>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1093
-    fn send_sign_change(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>) {
+    fn send_sign_change(&self, loc: JRef<Location>, lines: &Vec<crate::azalea::chat::FormattedText>) {
         self.send_sign_change_3(loc, lines, DyeColor::BLACK);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1124
     fn send_sign_change_2(&self, loc: JRef<Location>, lines: Option<Vec<String>>) {
         self.send_sign_change_3_3(loc, lines, DyeColor::BLACK);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1225
-    fn send_sign_change_3(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, color: DyeColor) {
+    fn send_sign_change_3(&self, loc: JRef<Location>, lines: &Vec<crate::azalea::chat::FormattedText>, color: DyeColor) {
         self.send_sign_change_4(loc, lines, color, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1149
-    fn send_sign_change_3_2(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, has_glowing_text: bool) {
+    fn send_sign_change_3_2(&self, loc: JRef<Location>, lines: &Vec<crate::azalea::chat::FormattedText>, has_glowing_text: bool) {
         self.send_sign_change_4(loc, lines, DyeColor::BLACK, has_glowing_text);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1174
     fn send_sign_change_3_3(&self, loc: JRef<Location>, lines: Option<Vec<String>>, color: DyeColor) {
         self.send_sign_change_4_2(loc, lines, color, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1253
-    fn send_sign_change_4(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1200
+    fn send_sign_change_4(&self, loc: JRef<Location>, lines: &Vec<crate::azalea::chat::FormattedText>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1200
     fn send_sign_change_4_2(&self, loc: JRef<Location>, lines: Option<Vec<String>>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1282
     fn send_block_update(&self, loc: JRef<Location>, tile_state: JRef<dyn TileState>) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:1302
     fn send_potion_effect_change(&self, entity: JRef<dyn LivingEntity>, effect: JRef<PotionEffect>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1316
@@ -347,7 +347,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn set_resource_pack_3(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>) {
         self.set_resource_pack_4(url, hash, prompt, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2405
-    fn set_resource_pack_3_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>) {
+    fn set_resource_pack_3_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::azalea::chat::FormattedText>) {
         self.set_resource_pack_4_2(url, hash, prompt, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2453
     fn set_resource_pack_3_3(&self, url: &str, hash: Option<&Vec<i8>>, force: bool) {
@@ -357,17 +357,17 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
         self.set_resource_pack_4_3(url, hash, required, None);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2764
     fn set_resource_pack_4(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2550
-    fn set_resource_pack_4_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>, force: bool) {
+    fn set_resource_pack_4_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::azalea::chat::FormattedText>, force: bool) {
         // PORT: UUID.nameUUIDFromBytes (an MD5, version 3 UUID without a namespace) needs a shared helper
         self.set_resource_pack_5_2(crate::java::util::name_uuid_from_bytes(url.as_bytes()), url, hash, prompt, force);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2598
-    fn set_resource_pack_4_3(&self, url: &str, hash: &str, required: bool, resource_pack_prompt: Option<crate::text::Text>) {
+    fn set_resource_pack_4_3(&self, url: &str, hash: &str, required: bool, resource_pack_prompt: Option<crate::azalea::chat::FormattedText>) {
         // PORT: UUID.nameUUIDFromBytes (an MD5, version 3 UUID without a namespace) needs a shared helper
         self.set_resource_pack_5_3(crate::java::util::name_uuid_from_bytes(url.as_bytes()), url, hash, resource_pack_prompt, required);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2799
     fn set_resource_pack_5(&self, id: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2648
-    fn set_resource_pack_5_2(&self, uuid: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2697
-    fn set_resource_pack_5_3(&self, uuid: Uuid, url: &str, hash: &str, resource_pack_prompt: Option<crate::text::Text>, required: bool) {
+    fn set_resource_pack_5_2(&self, uuid: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::azalea::chat::FormattedText>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2697
+    fn set_resource_pack_5_3(&self, uuid: Uuid, url: &str, hash: &str, resource_pack_prompt: Option<crate::azalea::chat::FormattedText>, required: bool) {
         // PORT: Adventure ResourcePackRequest/ResourcePackInfo and Audience.sendResourcePacks, java.net.()
         self.send_resource_packs(
             crate::rt::Unported::resource_pack_request()
@@ -533,14 +533,14 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn send_block_highlight_4_2(&self, location: JRef<Location>, duration: i32, color: Color, transparency: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:4173
     fn send_block_highlight_5(&self, location: JRef<Location>, duration: i32, text: &str, color: Color, transparency: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:4186
     fn clear_block_highlights(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:4191
-    fn send_death_screen(&self, message: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:4198
-    fn send_death_screen_2(&self, message: crate::text::Text, killer: Option<JRef<dyn Entity>>) {
+    fn send_death_screen(&self, message: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/entity/Player.java:4198
+    fn send_death_screen_2(&self, message: crate::azalea::chat::FormattedText, killer: Option<JRef<dyn Entity>>) {
         self.send_death_screen(message);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:4208
 }
 /// `Player.kick()`'s local `class Holder { DEFAULT_KICK_MESSAGE }`.
-pub static HOLDER_DEFAULT_KICK_MESSAGE: LazyLock<crate::text::Text> = LazyLock::new(|| {
-    // PORT: Adventure crate::text::Text.translatable(String)
+pub static HOLDER_DEFAULT_KICK_MESSAGE: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| {
+    // PORT: Adventure crate::azalea::chat::FormattedText.translatable(String)
     Component::translatable("multiplayer.disconnect.kicked")
 }); // paper-api/src/main/java/org/bukkit/entity/Player.java:349
 // ---- class org.bukkit.entity.Player.Spigot (paper-api/src/main/java/org/bukkit/entity/Player.java:3723)

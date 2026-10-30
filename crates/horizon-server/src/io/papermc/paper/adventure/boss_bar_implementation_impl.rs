@@ -17,7 +17,7 @@ impl BossBarImplementationImpl {
     pub fn new(bar: ()) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:23
     pub fn player_show(&self, player: JRef<dyn Player>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:27
     pub fn player_hide(&self, player: JRef<dyn Player>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:41
-    pub fn boss_bar_name_changed(&self, bar: (), old_name: crate::text::Text, new_name: crate::text::Text) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:51
+    pub fn boss_bar_name_changed(&self, bar: (), old_name: crate::azalea::chat::FormattedText, new_name: crate::azalea::chat::FormattedText) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:51
     pub fn boss_bar_progress_changed(&self, bar: (), old_progress: f32, new_progress: f32) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:56
     pub fn boss_bar_color_changed(&self, bar: (), old_color: (), new_color: ()) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:61
     pub fn boss_bar_overlay_changed(&self, bar: (), old_overlay: (), new_overlay: ()) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/BossBarImplementationImpl.java:66

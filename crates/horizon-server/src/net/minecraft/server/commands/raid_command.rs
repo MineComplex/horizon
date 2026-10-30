@@ -14,7 +14,7 @@ pub struct RaidCommand {
 impl RaidCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:29
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:30
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:30
     pub fn glow(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:62
     pub fn set_raid_omen_level(source: JRef<CommandSourceStack>, level: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:73
     pub fn spawn_leader(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RaidCommand.java:91

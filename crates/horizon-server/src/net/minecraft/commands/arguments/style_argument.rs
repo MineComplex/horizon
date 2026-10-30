@@ -21,13 +21,13 @@ impl std::ops::Deref for StyleArgument {
     fn deref(&self) -> &Self::Target { &self.base }
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:20
-pub static ERROR_INVALID_STYLE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:21
+pub static ERROR_INVALID_STYLE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:21
 pub static OPS: LazyLock<JRef<dyn DynamicOps<JRef<dyn Tag>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:24
 pub static TAG_PARSER: LazyLock<JRef<dyn CommandArgumentParser<JRef<dyn Tag>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:25
 impl StyleArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registries: JRef<dyn HolderLookupProvider>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:27
-    pub fn get_style(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<Style> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:31
+    pub fn get_style(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<Style> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:31
     pub fn style(context: JRef<dyn CommandBuildContext>) -> JRef<StyleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:35
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StyleArgument.java:39
 }
@@ -35,6 +35,6 @@ impl StyleArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for StyleArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(StyleArgument);

@@ -16,10 +16,10 @@ pub struct TagParseRule<T: JGeneric> {
 impl<T: JGeneric> TagParseRule<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(ops: JRef<dyn DynamicOps<T>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/TagParseRule.java:14
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<JRef<Dynamic<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/TagParseRule.java:18
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<JRef<Dynamic<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/TagParseRule.java:18
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl<T: JGeneric> Rule<azalea_brigadier::string_reader::StringReader, JRef<Dynamic<JObjectRef>>> for TagParseRule<T> {
+impl<T: JGeneric> Rule<crate::azalea::brigadier::string_reader::StringReader, JRef<Dynamic<JObjectRef>>> for TagParseRule<T> {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { TagParseRule::parse(self, state) }
 }

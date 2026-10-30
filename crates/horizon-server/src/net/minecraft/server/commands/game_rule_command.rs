@@ -9,13 +9,13 @@ use crate::net::minecraft::world::level::gamerules::game_rule::GameRule;
 pub struct GameRuleCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_GAME_RULE_NOT_SET: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:17
+pub static ERROR_GAME_RULE_NOT_SET: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:17
 impl GameRuleCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:16
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:21
-    pub fn build_rule_arguments<T: JGeneric>(game_rule: JRef<GameRule<T>>, rule_literal: azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:34
-    pub fn set_rule<T: JGeneric>(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, game_rule: JRef<GameRule<T>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:41
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:21
+    pub fn build_rule_arguments<T: JGeneric>(game_rule: JRef<GameRule<T>>, rule_literal: crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>>) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:34
+    pub fn set_rule<T: JGeneric>(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, game_rule: JRef<GameRule<T>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:41
     pub fn query_rule<T: JGeneric>(source: JRef<CommandSourceStack>, game_rule: JRef<GameRule<T>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:55
 }
 crate::jobject!(GameRuleCommand);

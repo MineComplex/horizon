@@ -53,7 +53,7 @@ pub trait InternalAPIBridge: JObject {
     ) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:82
     fn default_mannequin_profile(&self) -> JRef<dyn ResolvableProfile>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:84
     fn all_skin_parts(&self) -> JRef<dyn SkinPartsMutable>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:86
-    fn default_mannequin_description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:89
+    fn default_mannequin_description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:89
     fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(
         &self,
         rule: JRef<dyn GameRuleTrait<MODERN>>,
@@ -87,11 +87,11 @@ pub trait InternalAPIBridge: JObject {
     fn create_empty_stack(&self) -> JRef<ItemStack>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:115
     fn resolve_with_context(
         &self,
-        component: crate::text::Text,
+        component: crate::azalea::chat::FormattedText,
         context: Option<JRef<dyn CommandSender>>,
         scoreboard_subject: Option<JRef<dyn Entity>>,
         bypass_permissions: bool,
-    ) -> Result<crate::text::Text, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
+    ) -> Result<crate::azalea::chat::FormattedText, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
     fn component_flattener(&self) -> (); // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:119
     fn create_persistent_data_key<C: JGeneric>(
         &self,

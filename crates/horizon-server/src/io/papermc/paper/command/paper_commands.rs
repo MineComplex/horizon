@@ -16,6 +16,6 @@ impl PaperCommands {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperCommands.java:19
     pub fn register_commands() { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperCommands.java:32
     pub fn register_commands_1(server: JRef<dyn MinecraftServerTrait>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperCommands.java:24
-    pub fn register_internal_command(node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>, namespace: &str, description: &str, aliases: &Vec<String>, flags: &HashSet<CommandRegistrationFlag>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperCommands.java:37
+    pub fn register_internal_command(node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>>, namespace: &str, description: &str, aliases: &Vec<String>, flags: &HashSet<CommandRegistrationFlag>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperCommands.java:37
 }
 crate::jobject!(PaperCommands);

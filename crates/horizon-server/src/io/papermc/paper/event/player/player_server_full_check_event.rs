@@ -12,7 +12,7 @@ pub struct PlayerServerFullCheckEvent {
     pub base: Event,
     pub this: Weak<Self>,
     pub profile: JRef<dyn PlayerProfile>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:42
-    pub kick_message: Mut<crate::text::Text>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:43
+    pub kick_message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:43
     pub allow: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:44
 }
 impl std::ops::Deref for PlayerServerFullCheckEvent {
@@ -22,7 +22,7 @@ impl std::ops::Deref for PlayerServerFullCheckEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:40
 impl PlayerServerFullCheckEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(profile: JRef<dyn PlayerProfile>, kick_message: crate::text::Text, should_kick: bool) -> JRef<Self> {
+    pub fn new(profile: JRef<dyn PlayerProfile>, kick_message: crate::azalea::chat::FormattedText, should_kick: bool) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| PlayerServerFullCheckEvent {
             base: Event::new_base(this),
             this: this.clone(),
@@ -32,8 +32,8 @@ impl PlayerServerFullCheckEvent {
         })
     } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:46
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:95
-    pub fn kick_message(&self) -> crate::text::Text { self.kick_message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:56
-    pub fn deny(&self, kick_message: crate::text::Text) {
+    pub fn kick_message(&self) -> crate::azalea::chat::FormattedText { self.kick_message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:56
+    pub fn deny(&self, kick_message: crate::azalea::chat::FormattedText) {
         self.kick_message.set(kick_message);
         self.allow.set(false);
     } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:66

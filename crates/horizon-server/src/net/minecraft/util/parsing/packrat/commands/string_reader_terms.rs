@@ -11,17 +11,17 @@ use crate::net::minecraft::util::parsing::packrat::term::Term;
 // ---- interface net.minecraft.util.parsing.packrat.commands.StringReaderTerms (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:15)
 pub trait StringReaderTerms: JObject {
 }
-pub fn word(value: &str) -> JRef<dyn Term<azalea_brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:16
-pub fn character(value: char) -> JRef<dyn Term<azalea_brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:20
-pub fn characters(v1: char, v2: char) -> JRef<dyn Term<azalea_brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:29
-pub fn create_reader(contents: &str, cursor: i32) -> azalea_brigadier::string_reader::StringReader { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:38
+pub fn word(value: &str) -> JRef<dyn Term<crate::azalea::brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:16
+pub fn character(value: char) -> JRef<dyn Term<crate::azalea::brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:20
+pub fn characters(v1: char, v2: char) -> JRef<dyn Term<crate::azalea::brigadier::string_reader::StringReader>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:29
+pub fn create_reader(contents: &str, cursor: i32) -> crate::azalea::brigadier::string_reader::StringReader { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:38
 // ---- class net.minecraft.util.parsing.packrat.commands.StringReaderTerms.TerminalCharacters (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:44)
 pub struct StringReaderTermsTerminalCharacters {
     pub this: Weak<dyn StringReaderTermsTerminalCharactersTrait>,
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:45
-    pub suggestions: JRef<dyn SuggestionSupplier<azalea_brigadier::string_reader::StringReader>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:46
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:45
+    pub suggestions: JRef<dyn SuggestionSupplier<crate::azalea::brigadier::string_reader::StringReader>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:46
 }
-pub trait StringReaderTermsTerminalCharactersTrait: Term<azalea_brigadier::string_reader::StringReader> {
+pub trait StringReaderTermsTerminalCharactersTrait: Term<crate::azalea::brigadier::string_reader::StringReader> {
     fn as_string_reader_terms_terminal_characters(&self) -> &StringReaderTermsTerminalCharacters;
     fn is_accepted(&self, value: char) -> bool; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:66
 }
@@ -32,24 +32,24 @@ impl std::ops::Deref for dyn StringReaderTermsTerminalCharactersTrait {
 impl StringReaderTermsTerminalCharacters {
     pub fn this(&self) -> JRef<dyn StringReaderTermsTerminalCharactersTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: StringReaderTermsTerminalCharactersTrait + 'static>(this: &Weak<S>, values: &Vec<char>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:48
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>, scope: JRef<Scope>, control: JRef<dyn Control>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:54
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>, scope: JRef<Scope>, control: JRef<dyn Control>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:54
 }
 // ---- class net.minecraft.util.parsing.packrat.commands.StringReaderTerms.TerminalWord (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:69)
 pub struct StringReaderTermsTerminalWord {
     pub this: Weak<Self>,
     pub value: String, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:70
-    pub error: JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:71
-    pub suggestions: JRef<dyn SuggestionSupplier<azalea_brigadier::string_reader::StringReader>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:72
+    pub error: JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:71
+    pub suggestions: JRef<dyn SuggestionSupplier<crate::azalea::brigadier::string_reader::StringReader>>, // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:72
 }
 impl StringReaderTermsTerminalWord {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(value: &str) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:74
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>, scope: JRef<Scope>, control: JRef<dyn Control>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:80
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>, scope: JRef<Scope>, control: JRef<dyn Control>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:80
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/StringReaderTerms.java:93
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl Term<azalea_brigadier::string_reader::StringReader> for StringReaderTermsTerminalWord {
+impl Term<crate::azalea::brigadier::string_reader::StringReader> for StringReaderTermsTerminalWord {
     fn parse(&self, state: JRef<dyn ParseState<S>>, scope: JRef<Scope>, control: JRef<dyn Control>) -> bool { StringReaderTermsTerminalWord::parse(self, state, scope, control) }
 }
 crate::jobject!(StringReaderTermsTerminalWord);

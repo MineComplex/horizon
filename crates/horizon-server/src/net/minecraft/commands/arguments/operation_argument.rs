@@ -9,16 +9,16 @@ pub struct OperationArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:20
-pub static ERROR_INVALID_OPERATION: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:21
-pub static ERROR_DIVIDE_BY_ZERO: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:24
+pub static ERROR_INVALID_OPERATION: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:21
+pub static ERROR_DIVIDE_BY_ZERO: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:24
 impl OperationArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:19
     pub fn operation() -> JRef<OperationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:26
     pub fn get_operation(op: &str) -> Result<JRef<dyn OperationArgumentOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:59
-    pub fn get_operation_2(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn OperationArgumentOperation> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:30
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn OperationArgumentOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:49
+    pub fn get_operation_2(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn OperationArgumentOperation> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:30
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn OperationArgumentOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:49
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:54
     pub fn get_simple_operation(op: &str) -> Result<JRef<dyn OperationArgumentSimpleOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:67
 }

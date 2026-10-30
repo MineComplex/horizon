@@ -14,7 +14,7 @@ pub struct PlayerPreLoginEvent {
     pub ip_address: std::net::IpAddr, // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:34
     pub unique_id: Uuid, // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:35
     pub result: Mut<PlayerPreLoginEventResult>, // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:36
-    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:37
+    pub message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:37
 }
 impl std::ops::Deref for PlayerPreLoginEvent {
     type Target = Event;
@@ -28,9 +28,9 @@ impl PlayerPreLoginEvent {
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:177
     pub fn get_result(&self) -> PlayerPreLoginEventResult { self.result.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:59
     pub fn set_result(&self, result: PlayerPreLoginEventResult) { self.result.set(result) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:69
-    pub fn kick_message(&self) -> crate::text::Text { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:78
-    pub fn kick_message_1(&self, message: crate::text::Text) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:88
-    pub fn disallow(&self, result: PlayerPreLoginEventResult, message: crate::text::Text) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:98
+    pub fn kick_message(&self) -> crate::azalea::chat::FormattedText { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:78
+    pub fn kick_message_1(&self, message: crate::azalea::chat::FormattedText) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:88
+    pub fn disallow(&self, result: PlayerPreLoginEventResult, message: crate::azalea::chat::FormattedText) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:98
     pub fn disallow_2(&self, result: PlayerPreLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:141
     pub fn get_kick_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:109
     pub fn set_kick_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:121

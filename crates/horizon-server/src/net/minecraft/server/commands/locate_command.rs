@@ -17,10 +17,10 @@ use crate::net::minecraft::world::level::levelgen::structure::structure::Structu
 pub struct LocateCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_STRUCTURE_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:38
-pub static ERROR_STRUCTURE_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:41
-pub static ERROR_BIOME_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:44
-pub static ERROR_POI_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:47
+pub static ERROR_STRUCTURE_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:38
+pub static ERROR_STRUCTURE_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:41
+pub static ERROR_BIOME_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:44
+pub static ERROR_POI_NOT_FOUND: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:47
 pub const MAX_STRUCTURE_SEARCH_RADIUS: i32 = 100; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:50
 pub const MAX_BIOME_SEARCH_RADIUS: i32 = 6400; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:51
 pub const BIOME_SAMPLE_RESOLUTION_HORIZONTAL: i32 = 32; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:52
@@ -29,7 +29,7 @@ pub const POI_SEARCH_RADIUS: i32 = 256; // leaf-server/src/minecraft/java/net/mi
 impl LocateCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:36
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:56
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:56
     pub fn get_holders(resource_or_tag: JRef<dyn ResourceOrTagKeyArgumentResult<JRef<dyn StructureTrait>>>, registry: JRef<dyn Registry<JRef<dyn StructureTrait>>>) -> Option<JRef<dyn HolderSetListBackedTrait<JRef<dyn StructureTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:89
     pub fn locate_structure(source: JRef<CommandSourceStack>, resource_or_tag: JRef<dyn ResourceOrTagKeyArgumentResult<JRef<dyn StructureTrait>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:95
     pub fn locate_biome(source: JRef<CommandSourceStack>, element_or_tag: JRef<dyn ResourceOrTagArgumentResult<JRef<Biome>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:113

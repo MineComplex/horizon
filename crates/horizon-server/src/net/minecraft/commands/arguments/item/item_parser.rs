@@ -18,23 +18,23 @@ pub struct ItemParser {
     pub registry_ops: JRef<dyn RegistryOpsTrait<JRef<dyn Tag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:57
     pub tag_parser: JRef<TagParser<JRef<dyn Tag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:58
 }
-pub static ERROR_UNKNOWN_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:35
-pub static ERROR_UNKNOWN_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:38
-pub static ERROR_MALFORMED_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:41
-pub static ERROR_EXPECTED_COMPONENT: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:44
-pub static ERROR_REPEATED_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:47
+pub static ERROR_UNKNOWN_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:35
+pub static ERROR_UNKNOWN_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:38
+pub static ERROR_MALFORMED_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:41
+pub static ERROR_EXPECTED_COMPONENT: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:44
+pub static ERROR_REPEATED_COMPONENT: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:47
 pub const SYNTAX_START_COMPONENTS: char = '['; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:50
 pub const SYNTAX_END_COMPONENTS: char = ']'; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:51
 pub const SYNTAX_COMPONENT_SEPARATOR: char = ','; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:52
 pub const SYNTAX_COMPONENT_ASSIGNMENT: char = '='; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:53
 pub const SYNTAX_REMOVED_COMPONENT: char = '!'; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:54
-pub static SUGGEST_NOTHING: LazyLock<Arc<dyn Fn(azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:55
+pub static SUGGEST_NOTHING: LazyLock<Arc<dyn Fn(crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:55
 impl ItemParser {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registries: JRef<dyn HolderLookupProvider>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:60
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<ItemInput, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:66
-    pub fn parse_2(&self, reader: azalea_brigadier::string_reader::StringReader, visitor: JRef<dyn ItemParserVisitor>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:90
-    pub fn fill_suggestions(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:101
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<ItemInput, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:66
+    pub fn parse_2(&self, reader: crate::azalea::brigadier::string_reader::StringReader, visitor: JRef<dyn ItemParserVisitor>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:90
+    pub fn fill_suggestions(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:101
 }
 crate::jobject!(ItemParser);
 // ---- class net.minecraft.commands.arguments.item.ItemParser.State (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:115)
@@ -42,41 +42,41 @@ pub struct ItemParserState {
     pub this: Weak<Self>,
     /// The enclosing instance (Java inner class).
     pub outer: Weak<ItemParser>,
-    pub reader: azalea_brigadier::string_reader::StringReader, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:116
+    pub reader: crate::azalea::brigadier::string_reader::StringReader, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:116
     pub visitor: JRef<dyn ItemParserVisitor>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:117
 }
 impl ItemParserState {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(reader: azalea_brigadier::string_reader::StringReader, visitor: JRef<dyn ItemParserVisitor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:119
+    pub fn new(reader: crate::azalea::brigadier::string_reader::StringReader, visitor: JRef<dyn ItemParserVisitor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:119
     pub fn parse(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:124
     pub fn read_item(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:134
     pub fn read_components(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:143
-    pub fn read_component_type(reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn DataComponentType<JObjectRef>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:193
+    pub fn read_component_type(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn DataComponentType<JObjectRef>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:193
     pub fn read_component<T: JGeneric, O: JGeneric>(&self, tag_parser: JRef<TagParser<O>>, registry_ops: JRef<dyn RegistryOpsTrait<O>>, component_type: JRef<dyn DataComponentType<T>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:209
-    pub fn suggest_start_components(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:219
-    pub fn suggest_next_or_end_components(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:227
-    pub fn suggest_assignment(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:236
-    pub fn suggest_item(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:244
-    pub fn suggest_component_assignment_or_removal(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:248
-    pub fn suggest_component(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:253
-    pub fn suggest_component_2(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, suffix: &str) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:257
+    pub fn suggest_start_components(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:219
+    pub fn suggest_next_or_end_components(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:227
+    pub fn suggest_assignment(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:236
+    pub fn suggest_item(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:244
+    pub fn suggest_component_assignment_or_removal(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:248
+    pub fn suggest_component(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:253
+    pub fn suggest_component_2(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, suffix: &str) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:257
 }
 crate::jobject!(ItemParserState);
 // ---- class net.minecraft.commands.arguments.item.ItemParser.SuggestionsVisitor (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:272)
 pub struct ItemParserSuggestionsVisitor {
     pub this: Weak<Self>,
-    pub suggestions: Mut<Arc<dyn Fn(azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:273
+    pub suggestions: Mut<Arc<dyn Fn(crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:273
 }
 impl ItemParserSuggestionsVisitor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:272
-    pub fn visit_suggestions(&self, suggestions: Arc<dyn Fn(azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:275
-    pub fn resolve_suggestions(&self, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder, reader: azalea_brigadier::string_reader::StringReader) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:280
+    pub fn visit_suggestions(&self, suggestions: Arc<dyn Fn(crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:275
+    pub fn resolve_suggestions(&self, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder, reader: crate::azalea::brigadier::string_reader::StringReader) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:280
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ItemParserVisitor for ItemParserSuggestionsVisitor {
-    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { ItemParserSuggestionsVisitor::visit_suggestions(self, suggestions) }
+    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { ItemParserSuggestionsVisitor::visit_suggestions(self, suggestions) }
 }
 crate::jobject!(ItemParserSuggestionsVisitor: dyn ItemParserVisitor);
 // ---- interface net.minecraft.commands.arguments.item.ItemParser.Visitor (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:285)
@@ -84,5 +84,5 @@ pub trait ItemParserVisitor: JObject {
     fn visit_item(&self, item: JRef<dyn Holder<JRef<dyn ItemTrait>>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:286
     fn visit_component<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, value: T) where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:289
     fn visit_removed_component<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>) where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:292
-    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:295
+    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> + Send + Sync>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:295
 }

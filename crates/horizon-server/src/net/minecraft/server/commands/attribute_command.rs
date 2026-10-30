@@ -16,14 +16,14 @@ use crate::net::minecraft::world::entity::living_entity::LivingEntityTrait;
 pub struct AttributeCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_LIVING_ENTITY: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:30
-pub static ERROR_NO_SUCH_ATTRIBUTE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:33
-pub static ERROR_NO_SUCH_MODIFIER: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:36
-pub static ERROR_MODIFIER_ALREADY_PRESENT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:39
+pub static ERROR_NOT_LIVING_ENTITY: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:30
+pub static ERROR_NO_SUCH_ATTRIBUTE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:33
+pub static ERROR_NO_SUCH_MODIFIER: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:36
+pub static ERROR_MODIFIER_ALREADY_PRESENT: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:39
 impl AttributeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:29
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:43
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:43
     pub fn get_attribute_instance(target: JRef<dyn EntityTrait>, attribute: JRef<dyn Holder<JRef<dyn AttributeTrait>>>) -> Result<JRef<AttributeInstance>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:234
     pub fn get_living_entity(target: JRef<dyn EntityTrait>) -> Result<JRef<dyn LivingEntityTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:243
     pub fn get_entity_with_attribute(target: JRef<dyn EntityTrait>, attribute: JRef<dyn Holder<JRef<dyn AttributeTrait>>>) -> Result<JRef<dyn LivingEntityTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AttributeCommand.java:251

@@ -28,7 +28,7 @@ impl PaperTrimPatternRegistryEntry {
     pub fn new_base<S: PaperTrimPatternRegistryEntryTrait + 'static>(this: &Weak<S>, conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_pattern::TrimPattern>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:22
     pub fn new(conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_pattern::TrimPattern>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, conversions, internal)) }
     pub fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:33
-    pub fn description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:38
+    pub fn description(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:38
     pub fn decal(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:43
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -38,7 +38,7 @@ impl PaperTrimPatternRegistryEntryTrait for PaperTrimPatternRegistryEntry {
 }
 impl TrimPatternRegistryEntry for PaperTrimPatternRegistryEntry {
     fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperTrimPatternRegistryEntry::asset_id(self) }
-    fn description(&self) -> crate::text::Text { PaperTrimPatternRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperTrimPatternRegistryEntry::description(self) }
     fn decal(&self) -> bool { PaperTrimPatternRegistryEntry::decal(self) }
 }
 crate::jobject!(PaperTrimPatternRegistryEntry: dyn PaperTrimPatternRegistryEntryTrait, dyn TrimPatternRegistryEntry);
@@ -55,7 +55,7 @@ impl PaperTrimPatternRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::equipment::trim::trim_pattern::TrimPattern>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:50
     pub fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:54
-    pub fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:60
+    pub fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:60
     pub fn decal_1(&self, decal: bool) -> JRef<dyn TrimPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:66
     pub fn build(&self) -> crate::net::minecraft::world::item::equipment::trim::trim_pattern::TrimPattern { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperTrimPatternRegistryEntry.java:72
 }
@@ -66,12 +66,12 @@ impl PaperTrimPatternRegistryEntryTrait for PaperTrimPatternRegistryEntryPaperBu
 }
 impl TrimPatternRegistryEntryBuilder for PaperTrimPatternRegistryEntryPaperBuilder {
     fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimPatternRegistryEntryBuilder> { PaperTrimPatternRegistryEntryPaperBuilder::asset_id_1(self, asset_id) }
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimPatternRegistryEntryBuilder> { PaperTrimPatternRegistryEntryPaperBuilder::description_1(self, description) }
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimPatternRegistryEntryBuilder> { PaperTrimPatternRegistryEntryPaperBuilder::description_1(self, description) }
     fn decal_1(&self, decal: bool) -> JRef<dyn TrimPatternRegistryEntryBuilder> { PaperTrimPatternRegistryEntryPaperBuilder::decal_1(self, decal) }
 }
 impl TrimPatternRegistryEntry for PaperTrimPatternRegistryEntryPaperBuilder {
     fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperTrimPatternRegistryEntry::asset_id(self) }
-    fn description(&self) -> crate::text::Text { PaperTrimPatternRegistryEntry::description(self) }
+    fn description(&self) -> crate::azalea::chat::FormattedText { PaperTrimPatternRegistryEntry::description(self) }
     fn decal(&self) -> bool { PaperTrimPatternRegistryEntry::decal(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperTrimPatternRegistryEntryPaperBuilder {

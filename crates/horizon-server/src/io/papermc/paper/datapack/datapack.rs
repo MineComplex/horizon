@@ -8,7 +8,7 @@ use crate::api_prelude::*;
 pub trait Datapack: DiscoveredDatapack {
     fn is_enabled(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datapack/Datapack.java:21
     fn set_enabled(&self, enabled: bool); // paper-api/src/main/java/io/papermc/paper/datapack/Datapack.java:31
-    fn compute_display_name(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/datapack/Datapack.java:40
+    fn compute_display_name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/datapack/Datapack.java:40
 }
 // ---- enum io.papermc.paper.datapack.Datapack.Compatibility (paper-api/src/main/java/io/papermc/paper/datapack/Datapack.java:43)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

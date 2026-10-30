@@ -7,10 +7,10 @@ use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 pub struct SaveOnCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_ALREADY_ON: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SaveOnCommand.java:11
+pub static ERROR_ALREADY_ON: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SaveOnCommand.java:11
 impl SaveOnCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SaveOnCommand.java:10
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SaveOnCommand.java:13
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SaveOnCommand.java:13
 }
 crate::jobject!(SaveOnCommand);

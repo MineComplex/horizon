@@ -10,14 +10,14 @@ pub struct ColumnPosArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:22
-pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:23
+pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:23
 impl ColumnPosArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:21
     pub fn column_pos() -> JRef<ColumnPosArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:25
-    pub fn get_column_pos(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> ColumnPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:29
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:52
+    pub fn get_column_pos(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> ColumnPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:29
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:52
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:69
 }
 crate::jobject!(ColumnPosArgument);

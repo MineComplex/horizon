@@ -11,7 +11,7 @@ use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input:
 pub struct TextDialogInputImpl {
     pub key: String,
     pub width: i32,
-    pub label: crate::text::Text,
+    pub label: crate::azalea::chat::FormattedText,
     pub label_visible: bool,
     pub initial: String,
     pub max_length: i32,
@@ -19,13 +19,13 @@ pub struct TextDialogInputImpl {
 }
 impl TextDialogInputImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:15
-    pub fn new_7(key: &str, width: i32, label: crate::text::Text, label_visible: bool, initial: &str, max_length: i32, multiline: JRef<dyn TextDialogInputMultilineOptions>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:15
+    pub fn new_7(key: &str, width: i32, label: crate::azalea::chat::FormattedText, label_visible: bool, initial: &str, max_length: i32, multiline: JRef<dyn TextDialogInputMultilineOptions>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:15
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl TextDialogInput for TextDialogInputImpl {
     fn width(&self) -> i32 { todo!("abstract TextDialogInput.width") }
-    fn label(&self) -> crate::text::Text { todo!("abstract TextDialogInput.label") }
+    fn label(&self) -> crate::azalea::chat::FormattedText { todo!("abstract TextDialogInput.label") }
     fn label_visible(&self) -> bool { todo!("abstract TextDialogInput.labelVisible") }
     fn initial(&self) -> String { todo!("abstract TextDialogInput.initial") }
     fn max_length(&self) -> i32 { todo!("abstract TextDialogInput.maxLength") }
@@ -56,7 +56,7 @@ pub struct TextDialogInputImplBuilderImpl {
     pub this: Weak<Self>,
     pub key: String, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:38
     pub width: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:39
-    pub label: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:40
+    pub label: crate::azalea::chat::FormattedText, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:40
     pub label_visible: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:41
     pub initial: Mut<String>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:42
     pub max_length: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:43
@@ -64,7 +64,7 @@ pub struct TextDialogInputImplBuilderImpl {
 }
 impl TextDialogInputImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: &str, label: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:46
+    pub fn new(key: &str, label: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:46
     pub fn width(&self, width: i32) -> JRef<dyn TextDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:52
     pub fn label_visible(&self, label_visible: bool) -> JRef<dyn TextDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:58
     pub fn initial(&self, initial: &str) -> JRef<dyn TextDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInputImpl.java:64

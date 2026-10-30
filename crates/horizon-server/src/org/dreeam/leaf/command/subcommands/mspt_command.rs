@@ -20,7 +20,7 @@ impl std::ops::Deref for MSPTCommand {
 pub const LITERAL_ARGUMENT: &str = "mspt"; // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:23
 pub static PERM: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:24
 pub static DF: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:25
-pub static SLASH: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:26
+pub static SLASH: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:26
 impl MSPTCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:28
@@ -29,9 +29,9 @@ impl MSPTCommand {
     pub fn display_compact_stats(&self, sender: JRef<dyn CommandSender>, server: JRef<dyn MinecraftServerTrait>) { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:76
     pub fn display_server_mspt(&self, sender: JRef<dyn CommandSender>, server: JRef<dyn MinecraftServerTrait>) { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:99
     pub fn display_world_mspt(&self, sender: JRef<dyn CommandSender>, server: JRef<dyn MinecraftServerTrait>) { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:133
-    pub fn eval(times: &Vec<i64>) -> Vec<crate::text::Text> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:190
-    pub fn eval_1(tick_data: ()) -> Vec<crate::text::Text> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:221
-    pub fn get_colored_value(value: f64) -> crate::text::Text { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:229
+    pub fn eval(times: &Vec<i64>) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:190
+    pub fn eval_1(tick_data: ()) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:221
+    pub fn get_colored_value(value: f64) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/command/subcommands/MSPTCommand.java:229
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

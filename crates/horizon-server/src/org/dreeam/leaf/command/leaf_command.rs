@@ -59,8 +59,8 @@ impl CommandTrait for LeafCommand {
     fn set_description(&self, description: &str) -> JRef<dyn CommandTrait> { Command::set_description(self, description) }
     fn set_permission_message(&self, permission_message: Option<String>) -> JRef<dyn CommandTrait> { Command::set_permission_message(self, permission_message) }
     fn set_usage(&self, usage: &str) -> JRef<dyn CommandTrait> { Command::set_usage(self, usage) }
-    fn permission_message(&self) -> crate::text::Text { Command::permission_message(self) }
-    fn permission_message_1(&self, permission_message: crate::text::Text) { Command::permission_message_1(self, permission_message) }
+    fn permission_message(&self) -> crate::azalea::chat::FormattedText { Command::permission_message(self) }
+    fn permission_message_1(&self, permission_message: crate::azalea::chat::FormattedText) { Command::permission_message_1(self, permission_message) }
     fn to_string(&self) -> String { Command::to_string(self) }
     fn can_be_overriden(&self) -> bool { Command::can_be_overriden(self) }
 }

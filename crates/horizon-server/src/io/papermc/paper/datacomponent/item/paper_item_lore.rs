@@ -14,14 +14,14 @@ impl PaperItemLore {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:14
     pub fn new_1(impl_: crate::net::minecraft::world::item::component::item_lore::ItemLore) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:14
     pub fn get_handle(&self) -> crate::net::minecraft::world::item::component::item_lore::ItemLore { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:18
-    pub fn lines(&self) -> Vec<crate::text::Text> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:23
-    pub fn styled_lines(&self) -> Vec<crate::text::Text> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:28
+    pub fn lines(&self) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:23
+    pub fn styled_lines(&self) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl crate::io::papermc::paper::datacomponent::item::item_lore::ItemLore for PaperItemLore {
-    fn lines(&self) -> Vec<crate::text::Text> { PaperItemLore::lines(self) }
-    fn styled_lines(&self) -> Vec<crate::text::Text> { PaperItemLore::styled_lines(self) }
+    fn lines(&self) -> Vec<crate::azalea::chat::FormattedText> { PaperItemLore::lines(self) }
+    fn styled_lines(&self) -> Vec<crate::azalea::chat::FormattedText> { PaperItemLore::styled_lines(self) }
 }
 impl Handleable<crate::net::minecraft::world::item::component::item_lore::ItemLore> for PaperItemLore {
     fn get_handle(&self) -> M { PaperItemLore::get_handle(self) }
@@ -30,23 +30,23 @@ crate::jobject!(PaperItemLore: dyn crate::io::papermc::paper::datacomponent::ite
 // ---- class io.papermc.paper.datacomponent.item.PaperItemLore.BuilderImpl (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:33)
 pub struct PaperItemLoreBuilderImpl {
     pub this: Weak<Self>,
-    pub lines: Mut<Vec<crate::text::Text>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:35
+    pub lines: Mut<Vec<crate::azalea::chat::FormattedText>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:35
 }
 impl PaperItemLoreBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:33
-    pub fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:47
-    pub fn add_line(&self, line: crate::text::Text) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:54
-    pub fn add_lines(&self, lines: &mut Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:61
+    pub fn lines(&self, lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:47
+    pub fn add_line(&self, line: crate::azalea::chat::FormattedText) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:54
+    pub fn add_lines(&self, lines: &mut Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:61
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::item_lore::ItemLore> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:68
     pub fn validate_line_count(current: i32, add: i32) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemLore.java:37
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ItemLoreBuilder for PaperItemLoreBuilderImpl {
-    fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::lines(self, lines) }
-    fn add_line(&self, line: crate::text::Text) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::add_line(self, line) }
-    fn add_lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::add_lines(self, lines) }
+    fn lines(&self, lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::lines(self, lines) }
+    fn add_line(&self, line: crate::azalea::chat::FormattedText) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::add_line(self, line) }
+    fn add_lines(&self, lines: &Vec<crate::azalea::chat::FormattedText>) -> JRef<dyn ItemLoreBuilder> { PaperItemLoreBuilderImpl::add_lines(self, lines) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperItemLoreBuilderImpl {
     fn build(&self) -> C { PaperItemLoreBuilderImpl::build(self) }

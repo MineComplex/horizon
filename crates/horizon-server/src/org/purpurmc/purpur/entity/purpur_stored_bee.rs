@@ -20,14 +20,14 @@ pub struct PurpurStoredBee {
     pub block_storage: JRef<dyn EntityBlockStorage<JRef<dyn Bee>>>, // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:30
     pub handle: JRef<BeehiveBlockEntityBeeData>, // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:31
     pub persistent_data_container: JRef<dyn PersistentDataContainer>, // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:32
-    pub custom_name: Mut<crate::text::Text>, // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:34
+    pub custom_name: Mut<crate::azalea::chat::FormattedText>, // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:34
 }
 pub static DATA_TYPE_REGISTRY: LazyLock<JRef<CraftPersistentDataTypeRegistry>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:28
 impl PurpurStoredBee {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(data: JRef<BeehiveBlockEntityBeeData>, block_storage: JRef<dyn EntityBlockStorage<JRef<dyn Bee>>>, block_entity: JRef<BeehiveBlockEntity>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:36
-    pub fn custom_name(&self) -> Option<crate::text::Text> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:58
-    pub fn custom_name_1(&self, custom_name: Option<crate::text::Text>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:63
+    pub fn custom_name(&self) -> Option<crate::azalea::chat::FormattedText> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:58
+    pub fn custom_name_1(&self, custom_name: Option<crate::azalea::chat::FormattedText>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:63
     pub fn get_custom_name(&self) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:68
     pub fn set_custom_name(&self, name: Option<String>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:73
     pub fn get_persistent_data_container(&self) -> JRef<dyn PersistentDataContainer> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/entity/PurpurStoredBee.java:78
@@ -53,8 +53,8 @@ impl PersistentDataViewHolder for PurpurStoredBee {
     fn get_persistent_data_container(&self) -> JRef<dyn PersistentDataContainerView> { PurpurStoredBee::get_persistent_data_container(self) }
 }
 impl Nameable for PurpurStoredBee {
-    fn custom_name(&self) -> crate::text::Text { PurpurStoredBee::custom_name(self) }
-    fn custom_name_1(&self, custom_name: crate::text::Text) { PurpurStoredBee::custom_name_1(self, custom_name) }
+    fn custom_name(&self) -> crate::azalea::chat::FormattedText { PurpurStoredBee::custom_name(self) }
+    fn custom_name_1(&self, custom_name: crate::azalea::chat::FormattedText) { PurpurStoredBee::custom_name_1(self, custom_name) }
     fn get_custom_name(&self) -> Option<String> { PurpurStoredBee::get_custom_name(self) }
     fn set_custom_name(&self, name: Option<String>) { PurpurStoredBee::set_custom_name(self, name) }
 }

@@ -18,7 +18,7 @@ pub struct PlayerHandshakeEvent {
     pub unique_id: Mut<Option<Uuid>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:32
     pub properties_json: Mut<Option<String>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:33
     pub failed: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:34
-    pub fail_message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:35
+    pub fail_message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:35
     pub cancelled: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:37
 }
 impl std::ops::Deref for PlayerHandshakeEvent {
@@ -91,16 +91,16 @@ self.failed.set(failed)
     pub fn set_properties_json(&self, properties_json: &str) {
 self.properties_json.set(Some(properties_json.to_string()))
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:178
-    pub fn fail_message(&self) -> crate::text::Text {
+    pub fn fail_message(&self) -> crate::azalea::chat::FormattedText {
 if self.fail_message.borrow().is_none() {
     self.fail_message.set(Some(Component::text_2(
         "If you wish to use IP forwarding, please enable it in your BungeeCord config as well!",
         u32::YELLOW.clone(),
-    ))); // PORT: adventure crate::text::Text.text(String, TextColor)
+    ))); // PORT: adventure crate::azalea::chat::FormattedText.text(String, TextColor)
 }
 self.fail_message.get().expect("failMessage")
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:187
-    pub fn fail_message_1(&self, fail_message: crate::text::Text) {
+    pub fn fail_message_1(&self, fail_message: crate::azalea::chat::FormattedText) {
 self.fail_message.set(Some(fail_message))
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:198
     pub fn get_fail_message(&self) -> String {

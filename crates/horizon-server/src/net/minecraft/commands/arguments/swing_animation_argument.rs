@@ -10,14 +10,14 @@ pub struct SwingAnimationArgument {
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:21
 pub static VALUES: LazyLock<Vec<SwingAnimationType>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:24
-pub static ERROR_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:25
+pub static ERROR_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:25
 impl SwingAnimationArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:20
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:29
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:40
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:29
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:47
     pub fn swing_animation_type() -> JRef<SwingAnimationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:52
-    pub fn get_swing_animation_type(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:56
+    pub fn get_swing_animation_type(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:56
 }
 crate::jobject!(SwingAnimationArgument);

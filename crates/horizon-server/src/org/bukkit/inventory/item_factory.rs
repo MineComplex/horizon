@@ -27,7 +27,7 @@ pub trait ItemFactory: JObject {
     fn enchant_item_4(&self, entity: JRef<dyn Entity>, item: JRef<ItemStack>, level: i32, allow_treasures: bool) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:176
     fn enchant_item_4_2(&self, world: JRef<dyn World>, item: JRef<ItemStack>, level: i32, allow_treasures: bool) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:193
     fn as_hover_event(&self, item: JRef<ItemStack>, op: Arc<dyn Fn(()) -> () + Send + Sync>) -> (); // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:220
-    fn display_name(&self, item_stack: JRef<ItemStack>) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:231
+    fn display_name(&self, item_stack: JRef<ItemStack>) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:231
     fn get_i18_n_display_name(&self, item: Option<JRef<ItemStack>>) -> Option<String>; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:245
     fn ensure_server_conversions(&self, item: JRef<ItemStack>) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:260
     fn hover_content_of(&self, item_stack: JRef<ItemStack>) -> (); // paper-api/src/main/java/org/bukkit/inventory/ItemFactory.java:272

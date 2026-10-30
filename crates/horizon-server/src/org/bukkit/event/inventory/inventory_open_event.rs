@@ -16,7 +16,7 @@ use crate::api_prelude::*;
 pub struct InventoryOpenEvent {
     pub base: InventoryEvent,
     pub this: Weak<Self>,
-    pub title_override: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:19
+    pub title_override: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:19
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:20
 }
 impl std::ops::Deref for InventoryOpenEvent {
@@ -31,8 +31,8 @@ impl InventoryOpenEvent {
     pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:79
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:84
     pub fn get_player(&self) -> JRef<dyn HumanEntity> { self.transaction.get().get_player() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:32
-    pub fn title_override(&self) -> Option<crate::text::Text> { self.title_override.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:43
-    pub fn title_override_1(&self, title_override: Option<crate::text::Text>) { self.title_override.set(title_override) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:58
+    pub fn title_override(&self) -> Option<crate::azalea::chat::FormattedText> { self.title_override.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:43
+    pub fn title_override_1(&self, title_override: Option<crate::azalea::chat::FormattedText>) { self.title_override.set(title_override) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:58
     pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

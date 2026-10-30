@@ -8,14 +8,14 @@ pub struct AngleArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:16
-pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:17
-pub static ERROR_INVALID_ANGLE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:18
+pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:17
+pub static ERROR_INVALID_ANGLE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:18
 impl AngleArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:15
     pub fn angle() -> JRef<AngleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:20
-    pub fn get_angle(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:24
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<AngleArgumentSingleAngle, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:28
+    pub fn get_angle(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:24
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<AngleArgumentSingleAngle, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:28
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:43
 }
 crate::jobject!(AngleArgument);

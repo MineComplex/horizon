@@ -12,16 +12,16 @@ use crate::net::minecraft::world::item::enchantment::enchantment::Enchantment;
 pub struct EnchantCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_LIVING_ENTITY: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:25
-pub static ERROR_NO_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:28
-pub static ERROR_INCOMPATIBLE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:31
-pub static ERROR_LEVEL_TOO_HIGH: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:34
-pub static ERROR_NOTHING_HAPPENED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:37
+pub static ERROR_NOT_LIVING_ENTITY: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:25
+pub static ERROR_NO_ITEM: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:28
+pub static ERROR_INCOMPATIBLE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:31
+pub static ERROR_LEVEL_TOO_HIGH: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:34
+pub static ERROR_NOTHING_HAPPENED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:37
 pub static RESPONSE_ENCHANT: LazyLock<CommandResponseTrackerMessagesWithArgs<JRef<dyn EntityTrait>, JRef<dyn Holder<Enchantment>>, i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:38
 impl EnchantCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:24
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:48
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:48
     pub fn enchant(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, enchantment_holder: JRef<dyn Holder<Enchantment>>, level: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:75
 }
 crate::jobject!(EnchantCommand);

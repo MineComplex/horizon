@@ -19,7 +19,7 @@ pub struct PlayerSetSpawnEvent {
     pub location: Mut<Option<JRef<Location>>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:24
     pub forced: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:25
     pub notify_player: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:26
-    pub notification: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:27
+    pub notification: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:27
     pub cancelled: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:29
 }
 impl std::ops::Deref for PlayerSetSpawnEvent {
@@ -29,7 +29,7 @@ impl std::ops::Deref for PlayerSetSpawnEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:21
 impl PlayerSetSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, cause: PlayerSetSpawnEventCause, location: Option<JRef<Location>>, forced: bool, notify_player: bool, notification: Option<crate::text::Text>) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, cause: PlayerSetSpawnEventCause, location: Option<JRef<Location>>, forced: bool, notify_player: bool, notification: Option<crate::azalea::chat::FormattedText>) -> JRef<Self> {
 Arc::new_cyclic(|this| PlayerSetSpawnEvent {
 base: PlayerEvent::new_base(this, player),
 this: this.clone(),
@@ -71,10 +71,10 @@ self.notify_player.get()
     pub fn set_notify_player(&self, notify_player: bool) {
 self.notify_player.set(notify_player)
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:106
-    pub fn get_notification(&self) -> Option<crate::text::Text> {
+    pub fn get_notification(&self) -> Option<crate::azalea::chat::FormattedText> {
 self.notification.get()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:116
-    pub fn set_notification(&self, notification: Option<crate::text::Text>) {
+    pub fn set_notification(&self, notification: Option<crate::azalea::chat::FormattedText>) {
 self.notification.set(notification)
 } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:125
     pub fn get_handler_list() -> JRef<HandlerList> {

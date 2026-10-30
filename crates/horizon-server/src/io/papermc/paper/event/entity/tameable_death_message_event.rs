@@ -16,7 +16,7 @@ use crate::prelude::*;
 pub struct TameableDeathMessageEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub death_message: Mut<crate::text::Text>, // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:19
+    pub death_message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:19
     pub cancelled: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:20
 }
 impl std::ops::Deref for TameableDeathMessageEvent {
@@ -30,7 +30,7 @@ impl TameableDeathMessageEvent {
     pub fn this(&self) -> JRef<Self> {
         self.this.upgrade().expect("this")
     }
-    pub fn new(tameable: JRef<dyn Tameable>, death_message: crate::text::Text) -> JRef<Self> {
+    pub fn new(tameable: JRef<dyn Tameable>, death_message: crate::azalea::chat::FormattedText) -> JRef<Self> {
         Arc::new_cyclic(|this| Self {
             base: EntityEvent::new_base(this, tameable),
             this: this.clone(),
@@ -50,10 +50,10 @@ impl TameableDeathMessageEvent {
     pub fn get_handlers(&self) -> JRef<HandlerList> {
         HANDLER_LIST.clone()
     } // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:61
-    pub fn death_message(&self) -> crate::text::Text {
+    pub fn death_message(&self) -> crate::azalea::chat::FormattedText {
         self.death_message.get()
     } // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:42
-    pub fn death_message_1(&self, death_message: crate::text::Text) {
+    pub fn death_message_1(&self, death_message: crate::azalea::chat::FormattedText) {
         self.death_message.set(death_message)
     } // paper-api/src/main/java/io/papermc/paper/event/entity/TameableDeathMessageEvent.java:33
     pub fn get_handler_list() -> JRef<HandlerList> {

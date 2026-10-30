@@ -128,22 +128,22 @@ crate::jobject!(AsyncTabCompleteEvent: dyn EventTrait, dyn Cancellable);
 // ---- interface com.destroystokyo.paper.event.server.AsyncTabCompleteEvent.Completion (paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:240)
 pub trait AsyncTabCompleteEventCompletion: JObject {
     fn suggestion(&self) -> String; // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:247
-    fn tooltip(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:254
+    fn tooltip(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:254
 }
 pub fn completion_completion(suggestion: &str) -> JRef<dyn AsyncTabCompleteEventCompletion> {
 Arc::new(AsyncTabCompleteEventCompletionImpl::new(suggestion, None))
 } // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:262
-pub fn completion_completion_2(suggestion: &str, tooltip: Option<crate::text::Text>) -> JRef<dyn AsyncTabCompleteEventCompletion> {
+pub fn completion_completion_2(suggestion: &str, tooltip: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn AsyncTabCompleteEventCompletion> {
 Arc::new(AsyncTabCompleteEventCompletionImpl::new(suggestion, tooltip))
 } // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:275
 // ---- record com.destroystokyo.paper.event.server.AsyncTabCompleteEvent.CompletionImpl (paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:280)
 #[derive(Clone)]
 pub struct AsyncTabCompleteEventCompletionImpl {
     pub suggestion: String,
-    pub tooltip: Option<crate::text::Text>,
+    pub tooltip: Option<crate::azalea::chat::FormattedText>,
 }
 impl AsyncTabCompleteEventCompletionImpl {
-    pub fn new(suggestion: &str, tooltip: Option<crate::text::Text>) -> Self {
+    pub fn new(suggestion: &str, tooltip: Option<crate::azalea::chat::FormattedText>) -> Self {
 AsyncTabCompleteEventCompletionImpl { suggestion: suggestion.to_string(), tooltip }
 } // paper-api/src/main/java/com/destroystokyo/paper/event/server/AsyncTabCompleteEvent.java:280
 }
@@ -153,7 +153,7 @@ impl AsyncTabCompleteEventCompletion for AsyncTabCompleteEventCompletionImpl {
     fn suggestion(&self) -> String {
 self.suggestion.clone()
 }
-    fn tooltip(&self) -> Option<crate::text::Text> {
+    fn tooltip(&self) -> Option<crate::azalea::chat::FormattedText> {
 self.tooltip.clone()
 }
 }

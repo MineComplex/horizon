@@ -12,16 +12,16 @@ use crate::net::minecraft::world::level::storage::loot::providers::number::ints:
 pub struct ComputeCommand {
     pub this: Weak<Self>,
 }
-pub static INVALID_NAMED_VALUE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:22
-pub static INVALID_UNNAMED_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:25
+pub static INVALID_NAMED_VALUE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:22
+pub static INVALID_UNNAMED_VALUE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:25
 impl ComputeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:21
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:29
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:29
     pub fn print_exact_output(source: JRef<CommandSourceStack>, provider: JRef<dyn Holder<JObjectRef>>, result: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:64
     pub fn print_rounded_output(source: JRef<CommandSourceStack>, provider: JRef<dyn Holder<JObjectRef>>, result: i32, original: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:73
-    pub fn compute_as_int(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextIntProvider>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:82
-    pub fn compute_as_float(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextFloatProvider>>>, scale: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:97
-    pub fn throw_invalid_value(provider: JRef<dyn Holder<JObjectRef>>, invalid_value: &str) -> azalea_brigadier::errors::CommandSyntaxError { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:128
+    pub fn compute_as_int(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextIntProvider>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:82
+    pub fn compute_as_float(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextFloatProvider>>>, scale: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:97
+    pub fn throw_invalid_value(provider: JRef<dyn Holder<JObjectRef>>, invalid_value: &str) -> crate::azalea::brigadier::errors::CommandSyntaxError { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:128
 }
 crate::jobject!(ComputeCommand);

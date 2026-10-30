@@ -13,7 +13,7 @@ pub static RESPONSE_KILL: LazyLock<CommandResponseTrackerMessages<JRef<dyn Entit
 impl KillCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/KillCommand.java:13
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/KillCommand.java:19
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/KillCommand.java:19
     pub fn kill(source: JRef<CommandSourceStack>, victims: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/KillCommand.java:28
 }
 crate::jobject!(KillCommand);

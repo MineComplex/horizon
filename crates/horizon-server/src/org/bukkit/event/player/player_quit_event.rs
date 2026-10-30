@@ -14,7 +14,7 @@ pub struct PlayerQuitEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
     pub reason: PlayerQuitEventQuitReason, // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:18
-    pub quit_message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:19
+    pub quit_message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:19
 }
 impl std::ops::Deref for PlayerQuitEvent {
     type Target = PlayerEvent;
@@ -24,12 +24,12 @@ pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList
 impl PlayerQuitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, quit_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:21
-    pub fn new_2(player: JRef<dyn Player>, quit_message: Option<crate::text::Text>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:35
+    pub fn new_2(player: JRef<dyn Player>, quit_message: Option<crate::azalea::chat::FormattedText>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:35
     pub fn new_3(player: JRef<dyn Player>, quit_message: Option<String>, quit_reason: Option<PlayerQuitEventQuitReason>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:27
-    pub fn new_3_(player: JRef<dyn Player>, quit_message: Option<crate::text::Text>, quit_reason: Option<PlayerQuitEventQuitReason>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:41
+    pub fn new_3_(player: JRef<dyn Player>, quit_message: Option<crate::azalea::chat::FormattedText>, quit_reason: Option<PlayerQuitEventQuitReason>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:41
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:94
-    pub fn quit_message(&self) -> Option<crate::text::Text> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:53
-    pub fn quit_message_1(&self, quit_message: Option<crate::text::Text>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:62
+    pub fn quit_message(&self) -> Option<crate::azalea::chat::FormattedText> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:53
+    pub fn quit_message_1(&self, quit_message: Option<crate::azalea::chat::FormattedText>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:62
     pub fn get_quit_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:72
     pub fn set_quit_message(&self, quit_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:84
     pub fn get_reason(&self) -> PlayerQuitEventQuitReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:89

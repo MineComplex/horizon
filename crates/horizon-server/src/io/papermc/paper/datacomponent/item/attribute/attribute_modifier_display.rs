@@ -11,7 +11,7 @@ pub fn reset() -> JRef<dyn AttributeModifierDisplayDefault> {
 pub fn hidden() -> JRef<dyn AttributeModifierDisplayHidden> {
     crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display_bridge::bridge().hidden()
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:33
-pub fn override_(text: crate::text::Text) -> JRef<dyn AttributeModifierDisplayOverrideText> {
+pub fn override_(text: crate::azalea::chat::FormattedText) -> JRef<dyn AttributeModifierDisplayOverrideText> {
     crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display_bridge::bridge().override_(text)
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:45
 // ---- interface io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplay.Hidden (paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:53)
@@ -20,5 +20,5 @@ pub trait AttributeModifierDisplayHidden: AttributeModifierDisplay {}
 pub trait AttributeModifierDisplayDefault: AttributeModifierDisplay {}
 // ---- interface io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplay.OverrideText (paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:69)
 pub trait AttributeModifierDisplayOverrideText: AttributeModifierDisplay {
-    fn text(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:77
+    fn text(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplay.java:77
 }

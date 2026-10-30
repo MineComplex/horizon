@@ -332,7 +332,7 @@ impl ChatColor {
             .replace("&o", "<i>")
             .replace("&r", "<r>")
     }
-    pub fn parse_mm(string: &str, args: Option<Vec<JObjectRef>>) -> crate::text::Text {
+    pub fn parse_mm(string: &str, args: Option<Vec<JObjectRef>>) -> crate::azalea::chat::FormattedText {
         // PORT: java.lang.String.format(String, Object...) helper (crate::java::lang::string_format)
         crate::net::kyori::adventure::text::minimessage::mini_message::mini_message().deserialize(
             &crate::java::lang::string_format(string, &args.unwrap_or_default()),

@@ -12,7 +12,7 @@ pub struct SetWorldSpawnCommand {
 impl SetWorldSpawnCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetWorldSpawnCommand.java:17
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetWorldSpawnCommand.java:18
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetWorldSpawnCommand.java:18
     pub fn set_spawn(source: JRef<CommandSourceStack>, pos: BlockPos, rotation: JRef<dyn Coordinates>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetWorldSpawnCommand.java:34
 }
 crate::jobject!(SetWorldSpawnCommand);

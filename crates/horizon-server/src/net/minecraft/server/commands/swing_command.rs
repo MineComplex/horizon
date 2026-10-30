@@ -12,13 +12,13 @@ use crate::net::minecraft::world::item::swing_animation_type::SwingAnimationType
 pub struct SwingCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NO_LIVING_ENTITY: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:23
+pub static ERROR_NO_LIVING_ENTITY: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:23
 pub static RESPONSE_SWING: LazyLock<CommandResponseTrackerMessages<JRef<dyn LivingEntityTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:26
 impl SwingCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:22
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:32
-    pub fn hand_swing(name: &str, hand: InteractionHand) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:46
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:32
+    pub fn hand_swing(name: &str, hand: InteractionHand) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:46
     pub fn swing(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:75
     pub fn swing_5(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand, animation_type: SwingAnimationType, duration: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:79
 }

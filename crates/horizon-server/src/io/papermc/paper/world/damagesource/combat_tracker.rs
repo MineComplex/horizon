@@ -16,7 +16,7 @@ pub trait CombatTracker: JObject {
     fn is_taking_damage(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:73
     fn get_combat_duration(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:81
     fn add_combat_entry(&self, combat_entry: JRef<dyn CombatEntry>); // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:89
-    fn get_death_message(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:96
+    fn get_death_message(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:96
     fn reset_combat_state(&self); // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:101
     fn calculate_fall_location_type(&self) -> Option<JRef<dyn FallLocationType>>; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:108
     fn get_last_damage_time(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatTracker.java:115

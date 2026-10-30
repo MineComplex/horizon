@@ -14,12 +14,12 @@ impl PaperBrigadier {
     pub fn new() -> JRef<Self> {
         panic!("RuntimeException: PaperBrigadier is not to be instantiated!")
     } // paper-api/src/main/java/io/papermc/paper/brigadier/PaperBrigadier.java:19
-    pub fn message(component_like: crate::text::Text) -> String {
+    pub fn message(component_like: crate::azalea::chat::FormattedText) -> String {
         // PORT: adventure ComponentSerializer.serialize/deserialize (stub trait today)
         crate::io::papermc::paper::command::brigadier::message_component_serializer::message()
             .serialize(component_like.as_component())
     } // paper-api/src/main/java/io/papermc/paper/brigadier/PaperBrigadier.java:31
-    pub fn component_from_message(message: String) -> crate::text::Text {
+    pub fn component_from_message(message: String) -> crate::azalea::chat::FormattedText {
         crate::io::papermc::paper::command::brigadier::message_component_serializer::message()
             .deserialize(message)
     } // paper-api/src/main/java/io/papermc/paper/brigadier/PaperBrigadier.java:45

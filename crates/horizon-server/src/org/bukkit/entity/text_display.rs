@@ -9,8 +9,8 @@ use crate::api_prelude::*;
 pub trait TextDisplay: Display {
     fn get_text(&self) -> Option<String>; // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:18
     fn set_text(&self, text: Option<String>); // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:28
-    fn text(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:36
-    fn text_1(&self, text: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:43
+    fn text(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:36
+    fn text_1(&self, text: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:43
     fn get_line_width(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:50
     fn set_line_width(&self, width: i32); // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:57
     fn get_background_color(&self) -> Option<Color>; // paper-api/src/main/java/org/bukkit/entity/TextDisplay.java:64

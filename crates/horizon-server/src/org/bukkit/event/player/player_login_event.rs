@@ -17,7 +17,7 @@ pub struct PlayerLoginEvent {
     pub address: std::net::IpAddr, // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:34
     pub real_address: std::net::IpAddr, // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:35
     pub result: Mut<PlayerLoginEventResult>, // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:36
-    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:37
+    pub message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:37
 }
 impl std::ops::Deref for PlayerLoginEvent {
     type Target = PlayerEvent;
@@ -29,20 +29,20 @@ impl PlayerLoginEvent {
     pub fn new(player: JRef<dyn Player>, hostname: &str, address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:47
     pub fn new_4(player: JRef<dyn Player>, hostname: &str, address: std::net::IpAddr, real_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:39
     pub fn new_6(player: JRef<dyn Player>, hostname: &str, address: std::net::IpAddr, result: PlayerLoginEventResult, message: &str, real_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:52
-    pub fn new_6_(player: JRef<dyn Player>, hostname: &str, address: std::net::IpAddr, result: PlayerLoginEventResult, message: crate::text::Text, real_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:60
+    pub fn new_6_(player: JRef<dyn Player>, hostname: &str, address: std::net::IpAddr, result: PlayerLoginEventResult, message: crate::azalea::chat::FormattedText, real_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:60
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:195
     pub fn get_hostname(&self) -> String { self.hostname.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:73
     pub fn get_address(&self) -> std::net::IpAddr { self.address } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:86
     pub fn get_real_address(&self) -> std::net::IpAddr { self.real_address } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:98
     pub fn get_result(&self) -> PlayerLoginEventResult { self.result.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:108
     pub fn set_result(&self, result: PlayerLoginEventResult) { self.result.set(result) } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:118
-    pub fn kick_message(&self) -> crate::text::Text { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:127
-    pub fn kick_message_1(&self, message: crate::text::Text) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:136
+    pub fn kick_message(&self) -> crate::azalea::chat::FormattedText { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:127
+    pub fn kick_message_1(&self, message: crate::azalea::chat::FormattedText) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:136
     pub fn get_kick_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:146
     pub fn set_kick_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:158
     pub fn allow(&self) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:166
     pub fn disallow(&self, result: PlayerLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:178
-    pub fn disallow_2(&self, result: PlayerLoginEventResult, message: crate::text::Text) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:190
+    pub fn disallow_2(&self, result: PlayerLoginEventResult, message: crate::azalea::chat::FormattedText) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:190
     pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLoginEvent.java:201
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

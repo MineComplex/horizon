@@ -16,7 +16,7 @@ impl LegacyPaperConfig {
     pub fn to_new_format() -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:102
     pub fn new_format_transformation() -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:109
     pub fn mini_message_with_translatable(builder: (), english_check: Arc<dyn Fn(String) -> bool + Send + Sync>, i18n_key: &str, str_path: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:171
-    pub fn mini_message_with_translatable_4(builder: (), english_check: Arc<dyn Fn(String) -> bool + Send + Sync>, component: crate::text::Text, str_path: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:174
+    pub fn mini_message_with_translatable_4(builder: (), english_check: Arc<dyn Fn(String) -> bool + Send + Sync>, component: crate::azalea::chat::FormattedText, str_path: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:174
     pub fn mini_message(input: &str) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:199
     pub fn mini_message_2(builder: (), str_path: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:189
     pub fn move_from_root_to_misc(builder: (), key: &str) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/transformation/global/LegacyPaperConfig.java:204

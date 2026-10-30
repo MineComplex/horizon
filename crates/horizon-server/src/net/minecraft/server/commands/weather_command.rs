@@ -12,7 +12,7 @@ pub const DEFAULT_TIME: i32 = -1; // leaf-server/src/minecraft/java/net/minecraf
 impl WeatherCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:12
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:15
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:15
     pub fn get_duration(source: JRef<CommandSourceStack>, input: i32, default_distribution: JRef<dyn IntProvider>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:46
     pub fn set_clear(source: JRef<CommandSourceStack>, duration: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:50
     pub fn set_rain(source: JRef<CommandSourceStack>, duration: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WeatherCommand.java:56

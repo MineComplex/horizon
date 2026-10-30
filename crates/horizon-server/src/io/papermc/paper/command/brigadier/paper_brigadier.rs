@@ -13,8 +13,8 @@ pub static DUMMY: LazyLock<JRef<CommandSourceStack>> = LazyLock::new(|| todo!())
 impl PaperBrigadier {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:18
-    pub fn wrap_node(node: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JObjectRef>>>) -> JRef<dyn CommandTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:31
+    pub fn wrap_node(node: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JObjectRef>>>) -> JRef<dyn CommandTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:31
     pub fn move_bukkit_commands(before: JRef<Commands>, after: JRef<Commands>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:63
-    pub fn copy_literal<S: JGeneric>(new_literal: &str, source: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>) -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:75
+    pub fn copy_literal<S: JGeneric>(new_literal: &str, source: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>) -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/PaperBrigadier.java:75
 }
 crate::jobject!(PaperBrigadier);

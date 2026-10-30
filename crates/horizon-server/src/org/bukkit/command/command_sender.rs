@@ -9,7 +9,7 @@ use crate::api_prelude::*;
 pub trait CommandSender: Permissible {
     fn send_message(&self, message: &str); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:23
     fn send_message_1(&self, messages: &Vec<String>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:34
-    fn send_message_1_2(&self, message: crate::text::Text) {
+    fn send_message_1_2(&self, message: crate::azalea::chat::FormattedText) {
         self.send_message(&LegacyComponentSerializer::legacy_section().serialize(&message));
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:137
     fn send_message_1_3(&self, component: ()) {
@@ -20,7 +20,7 @@ pub trait CommandSender: Permissible {
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:209
     fn send_message_2(&self, sender: Option<Uuid>, message: &str); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:45
     fn send_message_2_2(&self, sender: Option<Uuid>, messages: &Vec<String>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:56
-    fn send_message_2_3(&self, message: crate::text::Text, bound_chat_type: ()) {
+    fn send_message_2_3(&self, message: crate::azalea::chat::FormattedText, bound_chat_type: ()) {
         let _ = bound_chat_type;
         self.send_message_1_2(message);
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:142
@@ -31,7 +31,7 @@ pub trait CommandSender: Permissible {
     fn get_server(&self) -> JRef<dyn Server>; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:64
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:72
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait>; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:125
-    fn name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:135
+    fn name(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:135
     fn send_rich_message(&self, message: &str) {
         // PORT: ().deserialize(String, Pointered) takes this sender as its `Pointered` target.
         self.send_message_1_2(MiniMessage::mini_message().deserialize_2(message, self));

@@ -10,8 +10,8 @@ use crate::net::minecraft::world::entity::entity::EntityTrait;
 pub struct TagCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_ADD_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:19
-pub static ERROR_REMOVE_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:20
+pub static ERROR_ADD_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:19
+pub static ERROR_REMOVE_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:20
 pub static RESPONSE_NO_TAGS: LazyLock<CommandResponseTrackerMessages<JRef<dyn EntityTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:21
 pub static RESPONSE_REMOVE: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<dyn EntityTrait>, String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:25
 pub static RESPONSE_ADD: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<dyn EntityTrait>, String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:30
@@ -19,7 +19,7 @@ pub static RESPONSE_LIST: LazyLock<CommandResponseTrackerMessagesWithArg<JRef<dy
 impl TagCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:18
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:42
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:42
     pub fn get_tags(entities: &Vec<JRef<dyn EntityTrait>>) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:70
     pub fn add_tag(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, name: &str) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:80
     pub fn remove_tag(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, name: &str) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TagCommand.java:90

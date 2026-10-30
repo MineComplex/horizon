@@ -9,7 +9,7 @@ pub struct ComponentSerializer {
 impl ComponentSerializer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/serializer/ComponentSerializer.java:12
-    pub fn deserialize(&self, type_: (), obj: JObjectRef) -> Result<crate::text::Text, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/serializer/ComponentSerializer.java:16
-    pub fn serialize(&self, type_: (), item: crate::text::Text, type_supported: Arc<dyn Fn(Class) -> bool + Send + Sync>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/serializer/ComponentSerializer.java:21
+    pub fn deserialize(&self, type_: (), obj: JObjectRef) -> Result<crate::azalea::chat::FormattedText, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/serializer/ComponentSerializer.java:16
+    pub fn serialize(&self, type_: (), item: crate::azalea::chat::FormattedText, type_supported: Arc<dyn Fn(Class) -> bool + Send + Sync>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/serializer/ComponentSerializer.java:21
 }
 crate::jobject!(ComponentSerializer);

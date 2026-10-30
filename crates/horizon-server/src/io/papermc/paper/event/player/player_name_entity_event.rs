@@ -16,7 +16,7 @@ pub struct PlayerNameEntityEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
     pub entity: Mut<JRef<dyn LivingEntity>>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:21
-    pub name: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:22
+    pub name: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:22
     pub persistent: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:23
     pub cancelled: Mut<bool>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:25
 }
@@ -27,7 +27,7 @@ impl std::ops::Deref for PlayerNameEntityEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:19
 impl PlayerNameEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, name: crate::text::Text, persistent: bool) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, name: crate::azalea::chat::FormattedText, persistent: bool) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| PlayerNameEntityEvent {
             base: PlayerEvent::new_base(this, player),
             this: this.clone(),
@@ -40,8 +40,8 @@ impl PlayerNameEntityEvent {
     pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:89
     pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:94
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:99
-    pub fn get_name(&self) -> Option<crate::text::Text> { self.name.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:40
-    pub fn set_name(&self, name: Option<crate::text::Text>) { self.name.set(name) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:49
+    pub fn get_name(&self) -> Option<crate::azalea::chat::FormattedText> { self.name.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:40
+    pub fn set_name(&self, name: Option<crate::azalea::chat::FormattedText>) { self.name.set(name) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:49
     pub fn get_entity(&self) -> JRef<dyn LivingEntity> { self.entity.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:58
     pub fn set_entity(&self, entity: JRef<dyn LivingEntity>) { self.entity.set(entity) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:67
     pub fn is_persistent(&self) -> bool { self.persistent.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:76

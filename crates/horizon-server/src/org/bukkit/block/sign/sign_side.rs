@@ -6,9 +6,9 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.sign.SignSide (paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:9)
 pub trait SignSide: Colorable {
-    fn lines(&self) -> Vec<crate::text::Text>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:16
-    fn line(&self, index: i32) -> Result<crate::text::Text, anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:28
-    fn line_2(&self, index: i32, line: crate::text::Text) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:41
+    fn lines(&self) -> Vec<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:16
+    fn line(&self, index: i32) -> Result<crate::azalea::chat::FormattedText, anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:28
+    fn line_2(&self, index: i32, line: crate::azalea::chat::FormattedText) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:41
     fn get_lines(&self) -> Vec<String>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:50
     fn get_line(&self, index: i32) -> Result<String, anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:64
     fn set_line(&self, index: i32, line: &str) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/block/sign/SignSide.java:79

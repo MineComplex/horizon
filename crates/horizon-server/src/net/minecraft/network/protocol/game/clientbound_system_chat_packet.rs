@@ -18,7 +18,7 @@ impl ClientboundSystemChatPacket {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(content: JRef<dyn crate::net::minecraft::network::chat::component::Component>, overlay: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:16
     pub fn new_2(content: &Vec<()>, overlay: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:30
-    pub fn new_2_(content: crate::text::Text, overlay: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:35
+    pub fn new_2_(content: crate::azalea::chat::FormattedText, overlay: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:35
     pub fn type_(&self) -> PacketType<JRef<ClientboundSystemChatPacket>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:40
     pub fn handle(&self, listener: JRef<dyn ClientGamePacketListener>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:45
     pub fn is_skippable(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java:50

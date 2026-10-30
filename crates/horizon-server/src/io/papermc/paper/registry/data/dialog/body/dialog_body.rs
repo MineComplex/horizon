@@ -12,5 +12,5 @@ pub trait DialogBody: JObject {
 }
 pub fn item(item: JRef<ItemStack>) -> JRef<dyn ItemDialogBodyBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:50
 pub fn item_6(item: JRef<ItemStack>, description: Option<JRef<dyn PlainMessageDialogBody>>, show_decorations: bool, show_tooltip: bool, width: i32, height: i32) -> JRef<dyn ItemDialogBody> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:26
-pub fn plain_message(contents: crate::text::Text) -> JRef<dyn PlainMessageDialogBody> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:61
-pub fn plain_message_2(contents: crate::text::Text, width: i32) -> JRef<dyn PlainMessageDialogBody> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:73
+pub fn plain_message(contents: crate::azalea::chat::FormattedText) -> JRef<dyn PlainMessageDialogBody> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:61
+pub fn plain_message_2(contents: crate::azalea::chat::FormattedText, width: i32) -> JRef<dyn PlainMessageDialogBody> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/body/DialogBody.java:73

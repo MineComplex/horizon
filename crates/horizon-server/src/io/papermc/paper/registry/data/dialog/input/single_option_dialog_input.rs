@@ -8,16 +8,16 @@ use crate::api_prelude::*;
 pub trait SingleOptionDialogInput: DialogInput {
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:24
     fn entries(&self) -> Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:32
-    fn label(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:40
+    fn label(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:40
     fn label_visible(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:48
 }
 // ---- interface io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput.OptionEntry (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:55)
 pub trait SingleOptionDialogInputOptionEntry: JObject {
     fn id(&self) -> String; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:76
-    fn display(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:84
+    fn display(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:84
     fn initial(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:93
 }
-pub fn option_entry_create(id: &str, display: Option<crate::text::Text>, initial: bool) -> JRef<dyn SingleOptionDialogInputOptionEntry> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:66
+pub fn option_entry_create(id: &str, display: Option<crate::azalea::chat::FormattedText>, initial: bool) -> JRef<dyn SingleOptionDialogInputOptionEntry> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:66
 // ---- interface io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:101)
 pub trait SingleOptionDialogInputBuilder: JObject {
     fn width(&self, width: i32) -> JRef<dyn SingleOptionDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/SingleOptionDialogInput.java:110

@@ -14,8 +14,8 @@ use crate::api_prelude::*;
 pub struct PlayerKickEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
-    pub kick_reason: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:20
-    pub leave_message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:21
+    pub kick_reason: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:20
+    pub leave_message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:21
     pub cause: PlayerKickEventCause, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:22
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:24
 }
@@ -27,17 +27,17 @@ pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList
 impl PlayerKickEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player_kicked: JRef<dyn Player>, kick_reason: &str, leave_message: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:26
-    pub fn new_3(player_kicked: JRef<dyn Player>, kick_reason: crate::text::Text, leave_message: crate::text::Text) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:35
-    pub fn new_4(player_kicked: JRef<dyn Player>, kick_reason: crate::text::Text, leave_message: crate::text::Text, cause: PlayerKickEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:44
+    pub fn new_3(player_kicked: JRef<dyn Player>, kick_reason: crate::azalea::chat::FormattedText, leave_message: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:35
+    pub fn new_4(player_kicked: JRef<dyn Player>, kick_reason: crate::azalea::chat::FormattedText, leave_message: crate::azalea::chat::FormattedText, cause: PlayerKickEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:44
     pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:139
     pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:144
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:149
-    pub fn reason(&self) -> crate::text::Text { self.kick_reason.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:57
-    pub fn reason_1(&self, kick_reason: crate::text::Text) { self.kick_reason.set(kick_reason) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:66
+    pub fn reason(&self) -> crate::azalea::chat::FormattedText { self.kick_reason.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:57
+    pub fn reason_1(&self, kick_reason: crate::azalea::chat::FormattedText) { self.kick_reason.set(kick_reason) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:66
     pub fn get_reason(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:76
     pub fn set_reason(&self, kick_reason: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:87
-    pub fn leave_message(&self) -> Option<crate::text::Text> { self.leave_message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:97
-    pub fn leave_message_1(&self, leave_message: Option<crate::text::Text>) { self.leave_message.set(leave_message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:106
+    pub fn leave_message(&self) -> Option<crate::azalea::chat::FormattedText> { self.leave_message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:97
+    pub fn leave_message_1(&self, leave_message: Option<crate::azalea::chat::FormattedText>) { self.leave_message.set(leave_message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:106
     pub fn get_leave_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:116
     pub fn set_leave_message(&self, leave_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:127
     pub fn get_cause(&self) -> PlayerKickEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:135

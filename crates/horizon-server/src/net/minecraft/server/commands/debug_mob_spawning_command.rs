@@ -12,7 +12,7 @@ pub struct DebugMobSpawningCommand {
 impl DebugMobSpawningCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugMobSpawningCommand.java:13
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugMobSpawningCommand.java:14
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugMobSpawningCommand.java:14
     pub fn spawn_mobs(source: JRef<CommandSourceStack>, mob_category: MobCategory, at: BlockPos) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugMobSpawningCommand.java:30
 }
 crate::jobject!(DebugMobSpawningCommand);

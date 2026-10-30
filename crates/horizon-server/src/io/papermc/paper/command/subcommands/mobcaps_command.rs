@@ -19,7 +19,7 @@ impl MobcapsCommand {
     pub fn suggest_player_mobcaps(&self, sender: JRef<dyn CommandSender>, args: &Vec<String>) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/MobcapsCommand.java:72
     pub fn print_mobcaps(&self, sender: JRef<dyn CommandSender>, args: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/MobcapsCommand.java:86
     pub fn print_player_mobcaps(&self, sender: JRef<dyn CommandSender>, args: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/MobcapsCommand.java:143
-    pub fn create_mobcaps_component(count_getter: Arc<dyn Fn(MobCategory) -> i32 + Send + Sync>, limit_getter: Arc<dyn Fn(MobCategory) -> i32 + Send + Sync>) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/MobcapsCommand.java:179
+    pub fn create_mobcaps_component(count_getter: Arc<dyn Fn(MobCategory) -> i32 + Send + Sync>, limit_getter: Arc<dyn Fn(MobCategory) -> i32 + Send + Sync>) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/MobcapsCommand.java:179
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

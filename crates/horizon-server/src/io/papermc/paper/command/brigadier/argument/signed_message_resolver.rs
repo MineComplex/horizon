@@ -7,5 +7,5 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.command.brigadier.argument.SignedMessageResolver (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:15)
 pub trait SignedMessageResolver: JObject {
     fn content(&self) -> String; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:23
-    fn resolve_signed_message(&self, argument_name: &str, context: azalea_brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> Result<crate::rt::CompletableFuture<()>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:37
+    fn resolve_signed_message(&self, argument_name: &str, context: crate::azalea::brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> Result<crate::rt::CompletableFuture<()>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:37
 }

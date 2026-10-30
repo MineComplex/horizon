@@ -10,7 +10,7 @@ pub trait WrittenBookContent: JObject {
     fn title(&self) -> JRef<dyn Filtered<String>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:36
     fn author(&self) -> String; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:44
     fn generation(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:52
-    fn pages(&self) -> Vec<JRef<dyn Filtered<crate::text::Text>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:60
+    fn pages(&self) -> Vec<JRef<dyn Filtered<crate::azalea::chat::FormattedText>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:60
     fn resolved(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:69
 }
 pub fn written_book_content(title: &str, author: &str) -> JRef<dyn WrittenBookContentBuilder> {
@@ -36,15 +36,15 @@ pub trait WrittenBookContentBuilder: DataComponentBuilder<JRef<dyn WrittenBookCo
     fn author(&self, author: &str) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:105
     fn generation(&self, generation: i32) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:115
     fn resolved(&self, resolved: bool) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:126
-    fn add_page(&self, page: crate::text::Text) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:136
-    fn add_pages(&self, page: &Vec<crate::text::Text>)
+    fn add_page(&self, page: crate::azalea::chat::FormattedText) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:136
+    fn add_pages(&self, page: &Vec<crate::azalea::chat::FormattedText>)
     -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:146
     fn add_filtered_page(
         &self,
-        page: JRef<dyn Filtered<crate::text::Text>>,
+        page: JRef<dyn Filtered<crate::azalea::chat::FormattedText>>,
     ) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:156
     fn add_filtered_pages(
         &self,
-        pages: &Vec<JRef<dyn Filtered<crate::text::Text>>>,
+        pages: &Vec<JRef<dyn Filtered<crate::azalea::chat::FormattedText>>>,
     ) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:166
 }

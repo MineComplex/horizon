@@ -16,7 +16,7 @@ pub struct DebugConfigCommand {
 impl DebugConfigCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:26
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:27
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:27
     pub fn get_uuids_in_config(server: JRef<dyn MinecraftServerTrait>) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:63
     pub fn config(source: JRef<CommandSourceStack>, target: JRef<ServerPlayer>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:75
     pub fn find_config_player(server: JRef<dyn MinecraftServerTrait>, target: Uuid) -> Option<JRef<ServerConfigurationPacketListenerImpl>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugConfigCommand.java:82

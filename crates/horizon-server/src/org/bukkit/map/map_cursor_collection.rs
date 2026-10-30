@@ -20,6 +20,6 @@ impl MapCursorCollection {
     pub fn add_cursor_4(&self, x: i32, y: i32, direction: i8, type_: i8) -> JRef<MapCursor> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursorCollection.java:80
     pub fn add_cursor_5(&self, x: i32, y: i32, direction: i8, type_: i8, visible: bool) -> JRef<MapCursor> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursorCollection.java:97
     pub fn add_cursor_6(&self, x: i32, y: i32, direction: i8, type_: i8, visible: bool, caption: Option<String>) -> JRef<MapCursor> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursorCollection.java:115
-    pub fn add_cursor_6_2(&self, x: i32, y: i32, direction: i8, type_: i8, visible: bool, caption: crate::text::Text) -> JRef<MapCursor> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursorCollection.java:133
+    pub fn add_cursor_6_2(&self, x: i32, y: i32, direction: i8, type_: i8, visible: bool, caption: crate::azalea::chat::FormattedText) -> JRef<MapCursor> { todo!() } // paper-api/src/main/java/org/bukkit/map/MapCursorCollection.java:133
 }
 crate::jobject!(MapCursorCollection);

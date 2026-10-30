@@ -10,7 +10,7 @@ pub struct UptimeCommand {
 impl UptimeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/UptimeCommand.java:16
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/UptimeCommand.java:17
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/UptimeCommand.java:17
     pub fn execute(sender: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/UptimeCommand.java:24
     pub fn process(data: JRef<UptimeCommandData>, replace: &str, singular: &str, plural: &str, unit: crate::rt::TimeUnit, func: Arc<dyn Fn(i64) -> i64 + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/command/UptimeCommand.java:42
 }

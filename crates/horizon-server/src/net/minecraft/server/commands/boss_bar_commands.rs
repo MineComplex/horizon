@@ -14,21 +14,21 @@ use crate::net::minecraft::world::boss_event::BossEventBossBarOverlay;
 pub struct BossBarCommands {
     pub this: Weak<Self>,
 }
-pub static ERROR_ALREADY_EXISTS: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:31
-pub static ERROR_DOESNT_EXIST: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:34
-pub static ERROR_NO_PLAYER_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:37
-pub static ERROR_NO_NAME_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:40
-pub static ERROR_NO_COLOR_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:43
-pub static ERROR_NO_STYLE_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:46
-pub static ERROR_NO_VALUE_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:49
-pub static ERROR_NO_MAX_CHANGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:52
-pub static ERROR_ALREADY_HIDDEN: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:55
-pub static ERROR_ALREADY_VISIBLE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:58
-pub static SUGGEST_BOSS_BAR: LazyLock<Arc<dyn azalea_brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:61
+pub static ERROR_ALREADY_EXISTS: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:31
+pub static ERROR_DOESNT_EXIST: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:34
+pub static ERROR_NO_PLAYER_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:37
+pub static ERROR_NO_NAME_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:40
+pub static ERROR_NO_COLOR_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:43
+pub static ERROR_NO_STYLE_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:46
+pub static ERROR_NO_VALUE_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:49
+pub static ERROR_NO_MAX_CHANGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:52
+pub static ERROR_ALREADY_HIDDEN: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:55
+pub static ERROR_ALREADY_VISIBLE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:58
+pub static SUGGEST_BOSS_BAR: LazyLock<Arc<dyn crate::azalea::brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:61
 impl BossBarCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:30
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:65
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:65
     pub fn get_value(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:178
     pub fn get_max(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:183
     pub fn get_visible(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:188
@@ -43,6 +43,6 @@ impl BossBarCommands {
     pub fn list_bars(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:309
     pub fn create_bar(source: JRef<CommandSourceStack>, id: JRef<Identifier>, name: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:325
     pub fn remove_bar(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:338
-    pub fn get_boss_bar(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<CustomBossEvent>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:346
+    pub fn get_boss_bar(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<CustomBossEvent>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:346
 }
 crate::jobject!(BossBarCommands);

@@ -65,8 +65,8 @@ impl PlayerListTrait for DedicatedPlayerList {
     fn add_worldborder_listener(&self, level: JRef<ServerLevel>) { PlayerList::add_worldborder_listener(self, level) }
     fn load_player_data(&self, name_and_id: NameAndId) -> Option<JRef<CompoundTag>> { PlayerList::load_player_data(self, name_and_id) }
     fn save(&self, player: JRef<ServerPlayer>) { PlayerList::save(self, player) }
-    fn remove(&self, player: JRef<ServerPlayer>) -> crate::text::Text { PlayerList::remove(self, player) }
-    fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::text::Text) -> crate::text::Text { PlayerList::remove_2(self, player, leave_message) }
+    fn remove(&self, player: JRef<ServerPlayer>) -> crate::azalea::chat::FormattedText { PlayerList::remove(self, player) }
+    fn remove_2(&self, player: JRef<ServerPlayer>, leave_message: crate::azalea::chat::FormattedText) -> crate::azalea::chat::FormattedText { PlayerList::remove_2(self, player, leave_message) }
     fn can_player_login(&self, address: std::net::SocketAddr, name_and_id: NameAndId) -> PlayerListLoginResult { PlayerList::can_player_login(self, address, name_and_id) }
     fn disconnect_all_players_with_profile(&self, profile: crate::rt::GameProfile) -> bool { PlayerList::disconnect_all_players_with_profile(self, profile) }
     fn respawn(&self, server_player: JRef<ServerPlayer>, keep_all_player_data: bool, removal_reason: EntityRemovalReason, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<ServerPlayer> { PlayerList::respawn(self, server_player, keep_all_player_data, removal_reason, respawn_reason) }
@@ -82,7 +82,7 @@ impl PlayerListTrait for DedicatedPlayerList {
     fn broadcast_all_2_2(&self, packet: JRef<dyn Packet<JObjectRef>>, world: JRef<dyn LevelTrait>) { PlayerList::broadcast_all_2_2(self, packet, world) }
     fn broadcast_all_2_3(&self, packet: JRef<dyn Packet<JObjectRef>>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>) { PlayerList::broadcast_all_2_3(self, packet, dimension) }
     fn broadcast_mini_message(&self, message: Option<String>, overlay: bool) { PlayerList::broadcast_mini_message(self, message, overlay) }
-    fn broadcast_message(&self, message: crate::text::Text, overlay: bool) { PlayerList::broadcast_message(self, message, overlay) }
+    fn broadcast_message(&self, message: crate::azalea::chat::FormattedText, overlay: bool) { PlayerList::broadcast_message(self, message, overlay) }
     fn broadcast_system_to_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { PlayerList::broadcast_system_to_team(self, player, message) }
     fn broadcast_system_to_all_except_team(&self, player: JRef<dyn PlayerTrait>, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { PlayerList::broadcast_system_to_all_except_team(self, player, message) }
     fn get_player_names_array(&self) -> Vec<String> { PlayerList::get_player_names_array(self) }

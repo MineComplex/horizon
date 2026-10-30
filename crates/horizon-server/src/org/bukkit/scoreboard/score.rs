@@ -19,8 +19,8 @@ pub trait Score: JObject {
     fn reset_score(&self) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:84
     fn is_triggerable(&self) -> bool; // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:96
     fn set_triggerable(&self, triggerable: bool); // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:111
-    fn custom_name(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:119
-    fn custom_name_1(&self, custom_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:130
+    fn custom_name(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:119
+    fn custom_name_1(&self, custom_name: crate::azalea::chat::FormattedText); // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:130
     fn number_format(&self) -> Option<JRef<dyn NumberFormat>>; // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:142
     fn number_format_1(&self, format: Option<JRef<dyn NumberFormat>>); // paper-api/src/main/java/org/bukkit/scoreboard/Score.java:151
 }

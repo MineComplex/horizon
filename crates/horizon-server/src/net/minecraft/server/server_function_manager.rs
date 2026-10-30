@@ -20,7 +20,7 @@ pub static LOAD_FUNCTION_TAG: LazyLock<JRef<Identifier>> = LazyLock::new(|| todo
 impl ServerFunctionManager {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(server: JRef<dyn MinecraftServerTrait>, library: JRef<ServerFunctionLibrary>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:29
-    pub fn get_dispatcher(&self) -> JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:35
+    pub fn get_dispatcher(&self) -> JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:35
     pub fn tick(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:39
     pub fn execute_tag_functions(&self, functions: &Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, load_function_tag: JRef<Identifier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:51
     pub fn execute(&self, function_in: JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, sender: JRef<CommandSourceStack>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/ServerFunctionManager.java:59

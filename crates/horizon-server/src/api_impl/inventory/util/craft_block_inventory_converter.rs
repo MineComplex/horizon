@@ -16,7 +16,7 @@ impl CraftBlockInventoryConverter {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:25
     pub fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:29
-    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:34
+    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:34
     pub fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:44
     pub fn get_inventory(&self, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:54
     pub fn get_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:59
@@ -39,7 +39,7 @@ impl CraftBlockInventoryConverterFurnace {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterFurnace {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterFurnace: dyn CraftInventoryCreatorInventoryConverter);
@@ -55,7 +55,7 @@ impl std::ops::Deref for CraftBlockInventoryConverterAbstractFurnaceInventoryCon
 impl CraftBlockInventoryConverterAbstractFurnaceInventoryConverter {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:75
-    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:78
+    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:78
     pub fn create_inventory_3_2(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:85
     pub fn get_inventory(&self, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:92
     pub fn get_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:97
@@ -73,7 +73,7 @@ impl CraftBlockInventoryConverterBrewingStand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:104
     pub fn get_block_entity(&self) -> JRef<dyn Container> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:106
-    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:111
+    pub fn create_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:111
     pub fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:121
     pub fn get_inventory(&self, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:131
     pub fn get_inventory_3(&self, owner: JRef<dyn InventoryHolder>, type_: InventoryType, block_entity: JRef<dyn Container>) -> JRef<dyn Inventory> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/util/CraftBlockInventoryConverter.java:136
@@ -82,7 +82,7 @@ impl CraftBlockInventoryConverterBrewingStand {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterBrewingStand {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverterBrewingStand::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverterBrewingStand::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverterBrewingStand::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterBrewingStand: dyn CraftInventoryCreatorInventoryConverter);
@@ -104,7 +104,7 @@ impl CraftBlockInventoryConverterDispenser {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterDispenser {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterDispenser: dyn CraftInventoryCreatorInventoryConverter);
@@ -126,7 +126,7 @@ impl CraftBlockInventoryConverterDropper {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterDropper {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterDropper: dyn CraftInventoryCreatorInventoryConverter);
@@ -148,7 +148,7 @@ impl CraftBlockInventoryConverterHopper {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterHopper {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterHopper: dyn CraftInventoryCreatorInventoryConverter);
@@ -170,7 +170,7 @@ impl CraftBlockInventoryConverterBlastFurnace {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterBlastFurnace {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterBlastFurnace: dyn CraftInventoryCreatorInventoryConverter);
@@ -192,7 +192,7 @@ impl CraftBlockInventoryConverterLectern {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterLectern {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterLectern: dyn CraftInventoryCreatorInventoryConverter);
@@ -214,7 +214,7 @@ impl CraftBlockInventoryConverterSmoker {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterSmoker {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverterAbstractFurnaceInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterSmoker: dyn CraftInventoryCreatorInventoryConverter);
@@ -236,7 +236,7 @@ impl CraftBlockInventoryConverterCrafter {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CraftInventoryCreatorInventoryConverter for CraftBlockInventoryConverterCrafter {
     fn create_inventory(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory(self, holder, type_) }
-    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::text::Text) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
+    fn create_inventory_3(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: crate::azalea::chat::FormattedText) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3(self, holder, type_, title) }
     fn create_inventory_3_2(&self, holder: JRef<dyn InventoryHolder>, type_: InventoryType, title: &str) -> JRef<dyn Inventory> { CraftBlockInventoryConverter::create_inventory_3_2(self, holder, type_, title) }
 }
 crate::jobject!(CraftBlockInventoryConverterCrafter: dyn CraftInventoryCreatorInventoryConverter);

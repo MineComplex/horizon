@@ -9,7 +9,7 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.meta.trim.TrimPattern (paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:21)
 pub trait TrimPattern: Keyed + Translatable {
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:82
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:82
 }
 pub static BOLT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("bolt")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:35
 pub static COAST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("coast")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:37

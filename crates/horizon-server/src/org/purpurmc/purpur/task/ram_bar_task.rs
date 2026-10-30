@@ -34,7 +34,7 @@ impl RamBarTask {
     pub fn instance() -> JRef<RamBarTask> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:22
     pub fn get_boss_bar_progress(&self) -> f32 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:65
     pub fn get_boss_bar_color(&self) -> () { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:69
-    pub fn format(&self, v: i64) -> crate::text::Text { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:79
+    pub fn format(&self, v: i64) -> crate::azalea::chat::FormattedText { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:79
     pub fn get_allocated(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:98
     pub fn get_used(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:102
     pub fn get_xmx(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/task/RamBarTask.java:106

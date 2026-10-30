@@ -19,16 +19,16 @@ use crate::net::minecraft::world::level::levelgen::structure::structure::Structu
 pub struct PlaceCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_FEATURE_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:51
-pub static ERROR_JIGSAW_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:54
-pub static ERROR_STRUCTURE_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:55
-pub static ERROR_TEMPLATE_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:58
-pub static ERROR_TEMPLATE_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:61
-pub static SUGGEST_TEMPLATES: LazyLock<Arc<dyn azalea_brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:64
+pub static ERROR_FEATURE_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:51
+pub static ERROR_JIGSAW_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:54
+pub static ERROR_STRUCTURE_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:55
+pub static ERROR_TEMPLATE_INVALID: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:58
+pub static ERROR_TEMPLATE_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:61
+pub static SUGGEST_TEMPLATES: LazyLock<Arc<dyn crate::azalea::brigadier::suggestion::suggestion_provider::SuggestionProvider<JRef<CommandSourceStack>> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:64
 impl PlaceCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:50
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:69
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:69
     pub fn place_feature(source: JRef<CommandSourceStack>, feature_holder: JRef<dyn Holder<JRef<dyn Feature>>>, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:258
     pub fn place_jigsaw(source: JRef<CommandSourceStack>, pool: JRef<dyn Holder<JRef<StructureTemplatePool>>>, target: JRef<Identifier>, max_depth: i32, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:278
     pub fn place_structure(source: JRef<CommandSourceStack>, structure_holder: JRef<dyn HolderReferenceTrait<JRef<dyn StructureTrait>>>, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:292

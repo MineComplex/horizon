@@ -9,13 +9,13 @@ pub struct SwizzleArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:16
-pub static ERROR_INVALID: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:17
+pub static ERROR_INVALID: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:17
 impl SwizzleArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:15
     pub fn swizzle() -> JRef<SwizzleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:19
-    pub fn get_swizzle(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> HashSet<DirectionAxis> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:23
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<HashSet<DirectionAxis>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:27
+    pub fn get_swizzle(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> HashSet<DirectionAxis> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:23
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<HashSet<DirectionAxis>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:27
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:50
 }
 crate::jobject!(SwizzleArgument);

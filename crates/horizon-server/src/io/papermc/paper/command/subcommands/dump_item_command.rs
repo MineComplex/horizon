@@ -15,7 +15,7 @@ impl DumpItemCommand {
     pub fn execute(&self, sender: JRef<dyn CommandSender>, sub_command: &str, args: &Vec<String>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/DumpItemCommand.java:51
     pub fn tab_complete(&self, sender: JRef<dyn CommandSender>, sub_command: &str, args: &Vec<String>) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/DumpItemCommand.java:130
     pub fn do_dump_item(&self, sender: JRef<dyn CommandSender>, include_all_components: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/DumpItemCommand.java:57
-    pub fn write_component_value(output: Arc<dyn Fn(crate::text::Text) + Send + Sync>, copy_output: Arc<dyn Fn(String) + Send + Sync>, path: &str, serialized: JRef<dyn Tag>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/DumpItemCommand.java:121
+    pub fn write_component_value(output: Arc<dyn Fn(crate::azalea::chat::FormattedText) + Send + Sync>, copy_output: Arc<dyn Fn(String) + Send + Sync>, path: &str, serialized: JRef<dyn Tag>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/subcommands/DumpItemCommand.java:121
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

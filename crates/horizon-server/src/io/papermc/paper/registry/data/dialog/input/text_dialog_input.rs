@@ -7,7 +7,7 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.registry.data.dialog.input.TextDialogInput (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:15)
 pub trait TextDialogInput: DialogInput {
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:23
-    fn label(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:31
+    fn label(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:31
     fn label_visible(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:39
     fn initial(&self) -> String; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:47
     fn max_length(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/TextDialogInput.java:55

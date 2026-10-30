@@ -23,8 +23,8 @@ impl WorldCoordinates {
     pub fn is_x_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:24
     pub fn is_y_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:29
     pub fn is_z_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:34
-    pub fn parse_int(reader: azalea_brigadier::string_reader::StringReader) -> Result<WorldCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:39
-    pub fn parse_double(reader: azalea_brigadier::string_reader::StringReader, center_correct: bool) -> Result<WorldCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:59
+    pub fn parse_int(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<WorldCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:39
+    pub fn parse_double(reader: crate::azalea::brigadier::string_reader::StringReader, center_correct: bool) -> Result<WorldCoordinates, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:59
     pub fn absolute(rotation: Vec2) -> WorldCoordinates { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:83
     pub fn absolute_3(x: f64, y: f64, z: f64) -> WorldCoordinates { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinates.java:79
 }

@@ -11,11 +11,11 @@ use crate::net::minecraft::world::level::block::state::pattern::block_in_world::
 pub struct SetBlockCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:23
+pub static ERROR_FAILED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:23
 impl SetBlockCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:22
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:25
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:25
     pub fn set_block(source: JRef<CommandSourceStack>, pos: BlockPos, block: JRef<BlockInput>, mode: SetBlockCommandMode, predicate: Option<Arc<dyn Fn(JRef<BlockInWorld>) -> bool + Send + Sync>>, strict: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:101
 }
 crate::jobject!(SetBlockCommand);

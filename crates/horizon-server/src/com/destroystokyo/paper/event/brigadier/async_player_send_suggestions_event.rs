@@ -14,7 +14,7 @@ use crate::api_prelude::*;
 pub struct AsyncPlayerSendSuggestionsEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
-    pub suggestions: Mut<azalea_brigadier::suggestion::suggestions::Suggestions>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:24
+    pub suggestions: Mut<crate::azalea::brigadier::suggestion::suggestions::Suggestions>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:24
     pub buffer: String, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:25
     pub cancelled: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:27
 }
@@ -25,7 +25,7 @@ impl std::ops::Deref for AsyncPlayerSendSuggestionsEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:22
 impl AsyncPlayerSendSuggestionsEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, suggestions: azalea_brigadier::suggestion::suggestions::Suggestions, buffer: &str) -> JRef<Self> {
+    pub fn new(player: JRef<dyn Player>, suggestions: crate::azalea::brigadier::suggestion::suggestions::Suggestions, buffer: &str) -> JRef<Self> {
 Arc::new_cyclic(|this| AsyncPlayerSendSuggestionsEvent {
     base: PlayerEvent::new_base_2(this, player, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
     this: this.clone(),
@@ -46,10 +46,10 @@ HANDLER_LIST.clone()
     pub fn get_buffer(&self) -> String {
 self.buffer.clone()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:41
-    pub fn get_suggestions(&self) -> azalea_brigadier::suggestion::suggestions::Suggestions {
+    pub fn get_suggestions(&self) -> crate::azalea::brigadier::suggestion::suggestions::Suggestions {
 self.suggestions.get()
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:50
-    pub fn set_suggestions(&self, suggestions: azalea_brigadier::suggestion::suggestions::Suggestions) {
+    pub fn set_suggestions(&self, suggestions: crate::azalea::brigadier::suggestion::suggestions::Suggestions) {
 self.suggestions.set(suggestions)
 } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:61
     pub fn get_handler_list() -> JRef<HandlerList> {

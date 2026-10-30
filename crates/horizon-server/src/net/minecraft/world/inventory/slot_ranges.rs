@@ -11,7 +11,7 @@ pub struct SlotRanges {
 pub const MOB_INVENTORY_SLOT_OFFSET: i32 = 300; // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:22
 pub const MOB_INVENTORY_SIZE: i32 = 8; // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:23
 pub static SLOTS: LazyLock<Vec<JRef<dyn SlotRange>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:24
-pub static ERROR_UNKNOWN: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:54
+pub static ERROR_UNKNOWN: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:54
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn SlotRange>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:55
 pub static NAME_LOOKUP: LazyLock<Arc<dyn Fn(String) -> JRef<dyn SlotRange> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:56
 impl SlotRanges {
@@ -26,7 +26,7 @@ impl SlotRanges {
     pub fn name_to_ids(name: &str) -> Option<JRef<dyn SlotRange>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:90
     pub fn all_names() -> Box<dyn Iterator<Item = String> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:94
     pub fn single_slot_names() -> Box<dyn Iterator<Item = String> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:98
-    pub fn try_read(reader: azalea_brigadier::string_reader::StringReader) -> Option<JRef<dyn SlotRange>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:102
-    pub fn read(reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn SlotRange>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:107
+    pub fn try_read(reader: crate::azalea::brigadier::string_reader::StringReader) -> Option<JRef<dyn SlotRange>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:102
+    pub fn read(reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn SlotRange>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:107
 }
 crate::jobject!(SlotRanges);

@@ -10,11 +10,11 @@ use crate::net::minecraft::world::entity::entity::EntityTrait;
 pub struct DamageCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_INVULNERABLE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:20
+pub static ERROR_INVULNERABLE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:20
 impl DamageCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:19
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:22
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:22
     pub fn damage(stack: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>, amount: f32, source: JRef<DamageSource>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:106
 }
 crate::jobject!(DamageCommand);

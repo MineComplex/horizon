@@ -9,13 +9,13 @@ pub struct RotationArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:14
-pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:15
+pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:15
 impl RotationArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:13
     pub fn rotation() -> JRef<RotationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:17
-    pub fn get_rotation(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Coordinates> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:21
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:25
+    pub fn get_rotation(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Coordinates> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:21
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:25
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:43
 }
 crate::jobject!(RotationArgument);

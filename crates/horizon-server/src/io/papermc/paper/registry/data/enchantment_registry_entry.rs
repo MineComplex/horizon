@@ -10,7 +10,7 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.EnchantmentRegistryEntry (paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:25)
 pub trait EnchantmentRegistryEntry: JObject {
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:34
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:34
     fn supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:41
     fn primary_items(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:53
     fn weight(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:61
@@ -23,7 +23,7 @@ pub trait EnchantmentRegistryEntry: JObject {
 }
 // ---- interface io.papermc.paper.registry.data.EnchantmentRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:140)
 pub trait EnchantmentRegistryEntryBuilder: EnchantmentRegistryEntry + RegistryBuilder<JRef<dyn EnchantmentTrait>> {
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn EnchantmentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:150
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn EnchantmentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:150
     fn supported_items_1(&self, supported_items: JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:166
     fn primary_items_1(&self, primary_items: Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:187
     fn weight_1(&self, weight: i32) -> JRef<dyn EnchantmentRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/EnchantmentRegistryEntry.java:197

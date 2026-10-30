@@ -18,8 +18,8 @@ pub static FLOATS_EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); /
 impl RangeArgumentFloats {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:21
-    pub fn get_range(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> MinMaxBoundsDoubles { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:24
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<MinMaxBoundsDoubles, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:28
+    pub fn get_range(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> MinMaxBoundsDoubles { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:24
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<MinMaxBoundsDoubles, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:28
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:33
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -35,8 +35,8 @@ pub static INTS_EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // 
 impl RangeArgumentInts {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:39
-    pub fn get_range(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> MinMaxBoundsInts { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:42
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<MinMaxBoundsInts, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:46
+    pub fn get_range(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> MinMaxBoundsInts { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:42
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<MinMaxBoundsInts, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:46
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/RangeArgument.java:51
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

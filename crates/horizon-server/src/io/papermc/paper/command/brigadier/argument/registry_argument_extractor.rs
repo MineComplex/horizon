@@ -17,7 +17,7 @@ impl RegistryArgumentExtractor {
         Arc::new_cyclic(|this| Self { this: this.clone() })
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/RegistryArgumentExtractor.java:32
     pub fn get_typed_key<T: JGeneric, S: JGeneric>(
-        context: azalea_brigadier::context::CommandContext<S>,
+        context: crate::azalea::brigadier::context::CommandContext<S>,
         registry_key: JRef<dyn RegistryKey<T>>,
         name: &str,
     ) -> JRef<dyn TypedKey<T>> {

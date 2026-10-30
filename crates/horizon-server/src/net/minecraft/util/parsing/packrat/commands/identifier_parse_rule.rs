@@ -9,15 +9,15 @@ use crate::net::minecraft::util::parsing::packrat::rule::Rule;
 pub struct IdentifierParseRule {
     pub this: Weak<Self>,
 }
-pub static INSTANCE: LazyLock<JRef<dyn Rule<azalea_brigadier::string_reader::StringReader, JRef<Identifier>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/IdentifierParseRule.java:11
+pub static INSTANCE: LazyLock<JRef<dyn Rule<crate::azalea::brigadier::string_reader::StringReader, JRef<Identifier>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/IdentifierParseRule.java:11
 impl IdentifierParseRule {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/IdentifierParseRule.java:13
-    pub fn parse(&self, state: JRef<dyn ParseState<azalea_brigadier::string_reader::StringReader>>) -> Option<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/IdentifierParseRule.java:16
+    pub fn parse(&self, state: JRef<dyn ParseState<crate::azalea::brigadier::string_reader::StringReader>>) -> Option<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/IdentifierParseRule.java:16
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl Rule<azalea_brigadier::string_reader::StringReader, JRef<Identifier>> for IdentifierParseRule {
+impl Rule<crate::azalea::brigadier::string_reader::StringReader, JRef<Identifier>> for IdentifierParseRule {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { IdentifierParseRule::parse(self, state) }
 }
 crate::jobject!(IdentifierParseRule);

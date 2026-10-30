@@ -13,7 +13,7 @@ use crate::api_prelude::*;
 pub struct PlayerJoinEvent {
     pub base: PlayerEvent,
     pub this: Weak<Self>,
-    pub join_message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:21
+    pub join_message: Mut<crate::azalea::chat::FormattedText>, // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:21
 }
 impl std::ops::Deref for PlayerJoinEvent {
     type Target = PlayerEvent;
@@ -22,11 +22,11 @@ impl std::ops::Deref for PlayerJoinEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:19
 impl PlayerJoinEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player_joined: JRef<dyn Player>, join_message: Option<crate::text::Text>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:23
+    pub fn new(player_joined: JRef<dyn Player>, join_message: Option<crate::azalea::chat::FormattedText>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:23
     pub fn new_2(player_joined: JRef<dyn Player>, join_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:29
     pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:77
-    pub fn join_message(&self) -> Option<crate::text::Text> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:41
-    pub fn join_message_1(&self, join_message: Option<crate::text::Text>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:50
+    pub fn join_message(&self) -> Option<crate::azalea::chat::FormattedText> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:41
+    pub fn join_message_1(&self, join_message: Option<crate::azalea::chat::FormattedText>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:50
     pub fn get_join_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:60
     pub fn set_join_message(&self, join_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:72
     pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerJoinEvent.java:83

@@ -12,7 +12,7 @@ pub struct PlayerConnectionValidateLoginEvent {
     pub base: Event,
     pub this: Weak<Self>,
     pub connection: JRef<dyn PlayerConnection>, // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:28
-    pub kick_message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:29
+    pub kick_message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:29
 }
 impl std::ops::Deref for PlayerConnectionValidateLoginEvent {
     type Target = Event;
@@ -27,7 +27,7 @@ impl PlayerConnectionValidateLoginEvent {
     }
     pub fn new(
         connection: JRef<dyn PlayerConnection>,
-        kick_message: Option<crate::text::Text>,
+        kick_message: Option<crate::azalea::chat::FormattedText>,
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| Self {
             base: Event::new_base_1(this, false),
@@ -45,10 +45,10 @@ impl PlayerConnectionValidateLoginEvent {
     pub fn allow(&self) {
         self.kick_message.set(None)
     } // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:59
-    pub fn kick_message(&self, message: crate::text::Text) {
+    pub fn kick_message(&self, message: crate::azalea::chat::FormattedText) {
         self.kick_message.set(Some(message))
     } // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:68
-    pub fn get_kick_message(&self) -> Option<crate::text::Text> {
+    pub fn get_kick_message(&self) -> Option<crate::azalea::chat::FormattedText> {
         self.kick_message.get()
     } // paper-api/src/main/java/io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.java:78
     pub fn is_allowed(&self) -> bool {

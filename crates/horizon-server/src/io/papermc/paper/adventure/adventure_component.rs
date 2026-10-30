@@ -12,12 +12,12 @@ use crate::net::minecraft::util::formatted_char_sequence::FormattedCharSequence;
 // ---- class io.papermc.paper.adventure.AdventureComponent (paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:15)
 pub struct AdventureComponent {
     pub this: Weak<Self>,
-    pub adventure: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:16
+    pub adventure: crate::azalea::chat::FormattedText, // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:16
     pub vanilla: Mut<JRef<dyn crate::net::minecraft::network::chat::component::Component>>, // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:17
 }
 impl AdventureComponent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(adventure: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:19
+    pub fn new(adventure: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:19
     pub fn get_style(&self) -> JRef<Style> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:36
     pub fn get_contents(&self) -> JRef<dyn ComponentContents> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:41
     pub fn get_string(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:50
@@ -27,7 +27,7 @@ impl AdventureComponent {
     pub fn get_visual_order_text(&self) -> JRef<dyn FormattedCharSequence> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:70
     pub fn deep_converted(&self) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:23
     pub fn deep_converted_if_present(&self) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:32
-    pub fn adventure_component(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:75
+    pub fn adventure_component(&self) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:75
     pub fn hash_code(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:79
     pub fn equals(&self, obj: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureComponent.java:84
 }

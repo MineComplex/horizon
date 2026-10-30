@@ -10,8 +10,8 @@ pub struct MessageComponentSerializerImpl {
 impl MessageComponentSerializerImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/MessageComponentSerializerImpl.java:9
-    pub fn deserialize(&self, input: String) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/MessageComponentSerializerImpl.java:11
-    pub fn serialize(&self, component: crate::text::Text) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/MessageComponentSerializerImpl.java:16
+    pub fn deserialize(&self, input: String) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/MessageComponentSerializerImpl.java:11
+    pub fn serialize(&self, component: crate::azalea::chat::FormattedText) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/MessageComponentSerializerImpl.java:16
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

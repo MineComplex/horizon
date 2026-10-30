@@ -7,15 +7,15 @@ use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 pub struct UuidArgument {
     pub this: Weak<Self>,
 }
-pub static ERROR_INVALID_UUID: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:17
+pub static ERROR_INVALID_UUID: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:17
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:18
 pub static ALLOWED_CHARACTERS: LazyLock<regex::Regex> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:19
 impl UuidArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:16
-    pub fn get_uuid(source: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Uuid { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:21
+    pub fn get_uuid(source: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Uuid { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:21
     pub fn uuid() -> JRef<UuidArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:25
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<Uuid, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:29
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<Uuid, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:29
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:47
 }
 crate::jobject!(UuidArgument);

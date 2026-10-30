@@ -10,6 +10,6 @@ pub struct ParserUtils {
 impl ParserUtils {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ParserUtils.java:6
-    pub fn read_while(reader: azalea_brigadier::string_reader::StringReader, predicate: JRef<dyn CharPredicate>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ParserUtils.java:7
+    pub fn read_while(reader: crate::azalea::brigadier::string_reader::StringReader, predicate: JRef<dyn CharPredicate>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ParserUtils.java:7
 }
 crate::jobject!(ParserUtils);

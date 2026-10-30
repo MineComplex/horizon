@@ -9,12 +9,12 @@ pub struct ArgumentVisitor {
 impl ArgumentVisitor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:11
-    pub fn visit_arguments<S: JGeneric>(command: azalea_brigadier::parse_results::ParseResults<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>, reject_root_redirects: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:12
-    pub fn visit_node_arguments<S: JGeneric>(context: azalea_brigadier::context::CommandContextBuilder<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:24
-    pub fn call_visitor<S: JGeneric, T: JGeneric>(context: azalea_brigadier::context::CommandContextBuilder<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>, argument: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, value: Option<azalea_brigadier::context::ParsedArgument>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:35
+    pub fn visit_arguments<S: JGeneric>(command: crate::azalea::brigadier::parse_results::ParseResults<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>, reject_root_redirects: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:12
+    pub fn visit_node_arguments<S: JGeneric>(context: crate::azalea::brigadier::context::CommandContextBuilder<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:24
+    pub fn call_visitor<S: JGeneric, T: JGeneric>(context: crate::azalea::brigadier::context::CommandContextBuilder<'static, S>, output: JRef<dyn ArgumentVisitorOutput<S>>, argument: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, value: Option<crate::azalea::brigadier::context::ParsedArgument>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:35
 }
 crate::jobject!(ArgumentVisitor);
 // ---- interface net.minecraft.commands.ArgumentVisitor.Output (leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:44)
 pub trait ArgumentVisitorOutput<S: JGeneric>: JObject {
-    fn accept<T: JGeneric>(&self, context: azalea_brigadier::context::CommandContextBuilder<'static, S>, argument: Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<S>>>, value: Option<azalea_brigadier::context::ParsedArgument>) where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:46
+    fn accept<T: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContextBuilder<'static, S>, argument: Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<S>>>, value: Option<crate::azalea::brigadier::context::ParsedArgument>) where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/commands/ArgumentVisitor.java:46
 }

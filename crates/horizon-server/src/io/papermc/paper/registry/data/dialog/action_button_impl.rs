@@ -8,20 +8,20 @@ use crate::io::papermc::paper::registry::data::dialog::action_button::ActionButt
 // ---- record io.papermc.paper.registry.data.dialog.ActionButtonImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:11)
 #[derive(Clone)]
 pub struct ActionButtonImpl {
-    pub label: crate::text::Text,
-    pub tooltip: Option<crate::text::Text>,
+    pub label: crate::azalea::chat::FormattedText,
+    pub tooltip: Option<crate::azalea::chat::FormattedText>,
     pub width: i32,
     pub action: Option<JRef<dyn DialogAction>>,
 }
 impl ActionButtonImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:11
-    pub fn new_4(label: crate::text::Text, tooltip: Option<crate::text::Text>, width: i32, action: Option<JRef<dyn DialogAction>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:11
+    pub fn new_4(label: crate::azalea::chat::FormattedText, tooltip: Option<crate::azalea::chat::FormattedText>, width: i32, action: Option<JRef<dyn DialogAction>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:11
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ActionButton for ActionButtonImpl {
-    fn label(&self) -> crate::text::Text { todo!("abstract ActionButton.label") }
-    fn tooltip(&self) -> Option<crate::text::Text> { todo!("abstract ActionButton.tooltip") }
+    fn label(&self) -> crate::azalea::chat::FormattedText { todo!("abstract ActionButton.label") }
+    fn tooltip(&self) -> Option<crate::azalea::chat::FormattedText> { todo!("abstract ActionButton.tooltip") }
     fn width(&self) -> i32 { todo!("abstract ActionButton.width") }
     fn action(&self) -> Option<JRef<dyn DialogAction>> { todo!("abstract ActionButton.action") }
 }
@@ -29,15 +29,15 @@ crate::jobject!(ActionButtonImpl: dyn ActionButton);
 // ---- class io.papermc.paper.registry.data.dialog.ActionButtonImpl.BuilderImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:13)
 pub struct ActionButtonImplBuilderImpl {
     pub this: Weak<Self>,
-    pub label: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:15
-    pub tooltip: Mut<Option<crate::text::Text>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:16
+    pub label: crate::azalea::chat::FormattedText, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:15
+    pub tooltip: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:16
     pub width: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:17
     pub action: Mut<Option<JRef<dyn DialogAction>>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:18
 }
 impl ActionButtonImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(label: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:20
-    pub fn tooltip(&self, tooltip: Option<crate::text::Text>) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:24
+    pub fn new(label: crate::azalea::chat::FormattedText) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:20
+    pub fn tooltip(&self, tooltip: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:24
     pub fn width(&self, width: i32) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:30
     pub fn action(&self, action: Option<JRef<dyn DialogAction>>) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:36
     pub fn build(&self) -> JRef<dyn ActionButton> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/ActionButtonImpl.java:42
@@ -45,7 +45,7 @@ impl ActionButtonImplBuilderImpl {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ActionButtonBuilder for ActionButtonImplBuilderImpl {
-    fn tooltip(&self, tooltip: Option<crate::text::Text>) -> JRef<dyn ActionButtonBuilder> { ActionButtonImplBuilderImpl::tooltip(self, tooltip) }
+    fn tooltip(&self, tooltip: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn ActionButtonBuilder> { ActionButtonImplBuilderImpl::tooltip(self, tooltip) }
     fn width(&self, width: i32) -> JRef<dyn ActionButtonBuilder> { ActionButtonImplBuilderImpl::width(self, width) }
     fn action(&self, action: Option<JRef<dyn DialogAction>>) -> JRef<dyn ActionButtonBuilder> { ActionButtonImplBuilderImpl::action(self, action) }
     fn build(&self) -> JRef<dyn ActionButton> { ActionButtonImplBuilderImpl::build(self) }

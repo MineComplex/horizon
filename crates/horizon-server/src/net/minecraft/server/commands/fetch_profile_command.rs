@@ -11,11 +11,11 @@ use crate::net::minecraft::world::item::component::resolvable_profile::Resolvabl
 pub struct FetchProfileCommand {
     pub this: Weak<Self>,
 }
-pub static NO_PROFILE: LazyLock<Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:33
+pub static NO_PROFILE: LazyLock<Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:33
 impl FetchProfileCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:32
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:37
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:37
     pub fn report_resolved_profile(sender: JRef<CommandSourceStack>, game_profile: crate::rt::GameProfile, message_id: &str, argument: JRef<dyn Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:62
     pub fn report_resolved_profile_4(sender: JRef<CommandSourceStack>, message_id: &str, argument: JRef<dyn Component>, profile: JRef<dyn ResolvableProfileTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:66
     pub fn resolve_name(source: JRef<CommandSourceStack>, name: &str) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FetchProfileCommand.java:122

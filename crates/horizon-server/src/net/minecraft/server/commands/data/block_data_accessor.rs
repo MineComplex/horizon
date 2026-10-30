@@ -16,7 +16,7 @@ pub struct BlockDataAccessor {
     pub entity: JRef<dyn BlockEntityTrait>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/BlockDataAccessor.java:38
     pub pos: BlockPos, // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/BlockDataAccessor.java:39
 }
-pub static ERROR_NOT_A_BLOCK_ENTITY: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/BlockDataAccessor.java:24
+pub static ERROR_NOT_A_BLOCK_ENTITY: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/BlockDataAccessor.java:24
 pub static PROVIDER: LazyLock<JRef<dyn ArgProviderFactory<JRef<dyn DataAccessor>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/data/BlockDataAccessor.java:27
 impl BlockDataAccessor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }

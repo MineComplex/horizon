@@ -10,11 +10,11 @@ use crate::net::minecraft::server::level::server_player::ServerPlayer;
 pub struct ExperienceCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_SET_POINTS_INVALID: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:21
+pub static ERROR_SET_POINTS_INVALID: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:21
 impl ExperienceCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:20
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:25
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:25
     pub fn query_experience(source: JRef<CommandSourceStack>, target: JRef<ServerPlayer>, type_: ExperienceCommandType) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:125
     pub fn add_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:131
     pub fn set_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:144

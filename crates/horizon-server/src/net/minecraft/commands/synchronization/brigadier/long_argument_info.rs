@@ -16,11 +16,11 @@ impl LongArgumentInfo {
     pub fn serialize_to_network(&self, template: LongArgumentInfoTemplate, out: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:11
     pub fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> LongArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:25
     pub fn serialize_to_json(&self, template: LongArgumentInfoTemplate, out: serde_json::Map<String, serde_json::Value>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:33
-    pub fn unpack(&self, argument: Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>) -> LongArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:44
+    pub fn unpack(&self, argument: Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>) -> LongArgumentInfoTemplate { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, LongArgumentInfoTemplate> for LongArgumentInfo {
+impl ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, LongArgumentInfoTemplate> for LongArgumentInfo {
     fn serialize_to_network(&self, template: T, out: JRef<dyn FriendlyByteBufTrait>) { LongArgumentInfo::serialize_to_network(self, template, out) }
     fn deserialize_from_network(&self, in_: JRef<dyn FriendlyByteBufTrait>) -> T { LongArgumentInfo::deserialize_from_network(self, in_) }
     fn serialize_to_json(&self, template: T, out: serde_json::Map<String, serde_json::Value>) { LongArgumentInfo::serialize_to_json(self, template, out) }
@@ -35,12 +35,12 @@ pub struct LongArgumentInfoTemplate {
 }
 impl LongArgumentInfoTemplate {
     pub fn new(min: i64, max: i64) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:53
-    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:58
-    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:63
+    pub fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:58
+    pub fn type_(&self) -> JRef<dyn ArgumentTypeInfo<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/brigadier/LongArgumentInfo.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ArgumentTypeInfoTemplate<Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>> for LongArgumentInfoTemplate {
+impl ArgumentTypeInfoTemplate<Arc<dyn crate::azalea::brigadier::arguments::ArgumentType + Send + Sync>> for LongArgumentInfoTemplate {
     fn instantiate(&self, context: JRef<dyn CommandBuildContext>) -> A { LongArgumentInfoTemplate::instantiate(self, context) }
     fn type_(&self) -> JRef<dyn ArgumentTypeInfo<A, JObjectRef>> { LongArgumentInfoTemplate::type_(self) }
 }

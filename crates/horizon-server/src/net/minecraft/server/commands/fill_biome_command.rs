@@ -17,13 +17,13 @@ use crate::net::minecraft::world::level::levelgen::structure::bounding_box::Boun
 pub struct FillBiomeCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_NOT_LOADED: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:37
-pub static ERROR_VOLUME_TOO_LARGE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:38
-pub static ERROR_NO_BIOMES_SET: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:41
+pub static ERROR_NOT_LOADED: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:37
+pub static ERROR_VOLUME_TOO_LARGE: LazyLock<Arc<dyn Fn(JObjectRef, JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:38
+pub static ERROR_NO_BIOMES_SET: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:41
 impl FillBiomeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:36
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:43
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:43
     pub fn quantize(block_coord: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:83
     pub fn quantize_1(block: BlockPos) -> BlockPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:87
     pub fn make_resolver(count: i32, chunk: JRef<dyn ChunkAccessTrait>, region: JRef<BoundingBox>, to_fill: JRef<dyn Holder<JRef<Biome>>>, filter: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>) -> JRef<dyn BiomeResolver> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:91

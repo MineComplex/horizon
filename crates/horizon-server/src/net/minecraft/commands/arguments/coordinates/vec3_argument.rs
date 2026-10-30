@@ -11,16 +11,16 @@ pub struct Vec3Argument {
     pub center_correct: bool, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:24
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:21
-pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:22
-pub static ERROR_MIXED_TYPE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:23
+pub static ERROR_NOT_COMPLETE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:22
+pub static ERROR_MIXED_TYPE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:23
 impl Vec3Argument {
     pub fn new(center_correct: bool) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:26
     pub fn vec3() -> Vec3Argument { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:30
     pub fn vec3_1(center_correct: bool) -> Vec3Argument { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:34
-    pub fn get_vec3(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:38
-    pub fn get_coordinates(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Coordinates> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:42
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:46
-    pub fn list_suggestions<S: JGeneric>(&self, context: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:51
+    pub fn get_vec3(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:38
+    pub fn get_coordinates(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Coordinates> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:42
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:46
+    pub fn list_suggestions<S: JGeneric>(&self, context: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:51
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec3Argument.java:68
 }
 crate::jobject!(Vec3Argument);

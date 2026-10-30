@@ -12,8 +12,8 @@ pub struct PaperComponents {
 impl PaperComponents {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:23
-    pub fn resolve_with_context(input: crate::text::Text, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>) -> Result<crate::text::Text, anyhow::Error> { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:52
-    pub fn resolve_with_context_4(input: crate::text::Text, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<crate::text::Text, anyhow::Error> { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:83
+    pub fn resolve_with_context(input: crate::azalea::chat::FormattedText, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>) -> Result<crate::azalea::chat::FormattedText, anyhow::Error> { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:52
+    pub fn resolve_with_context_4(input: crate::azalea::chat::FormattedText, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<crate::azalea::chat::FormattedText, anyhow::Error> { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:83
     pub fn flattener() -> () { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:92
     pub fn plain_text_serializer() -> () { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:106
     pub fn gson_serializer() -> () { todo!() } // paper-api/src/main/java/io/papermc/paper/text/PaperComponents.java:122

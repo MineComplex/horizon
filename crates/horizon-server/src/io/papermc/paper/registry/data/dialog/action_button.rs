@@ -6,16 +6,16 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.ActionButton (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:14)
 pub trait ActionButton: JObject {
-    fn label(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:47
-    fn tooltip(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:55
+    fn label(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:47
+    fn tooltip(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:55
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:63
     fn action(&self) -> Option<JRef<dyn DialogAction>>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:71
 }
-pub fn create(label: crate::text::Text, tooltip: Option<crate::text::Text>, width: i32, action: Option<JRef<dyn DialogAction>>) -> JRef<dyn ActionButton> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:26
-pub fn builder(label: crate::text::Text) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:37
+pub fn create(label: crate::azalea::chat::FormattedText, tooltip: Option<crate::azalea::chat::FormattedText>, width: i32, action: Option<JRef<dyn DialogAction>>) -> JRef<dyn ActionButton> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:26
+pub fn builder(label: crate::azalea::chat::FormattedText) -> JRef<dyn ActionButtonBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:37
 // ---- interface io.papermc.paper.registry.data.dialog.ActionButton.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:77)
 pub trait ActionButtonBuilder: JObject {
-    fn tooltip(&self, tooltip: Option<crate::text::Text>) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:86
+    fn tooltip(&self, tooltip: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:86
     fn width(&self, width: i32) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:95
     fn action(&self, action: Option<JRef<dyn DialogAction>>) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:104
     fn build(&self) -> JRef<dyn ActionButton>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/ActionButton.java:112

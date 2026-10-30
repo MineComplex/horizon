@@ -8,12 +8,12 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.registry.data.TrimPatternRegistryEntry (paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:13)
 pub trait TrimPatternRegistryEntry: JObject {
     fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:21
-    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:29
+    fn description(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:29
     fn decal(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:37
 }
 // ---- interface io.papermc.paper.registry.data.TrimPatternRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:49)
 pub trait TrimPatternRegistryEntryBuilder: TrimPatternRegistryEntry + RegistryBuilder<JRef<dyn TrimPattern>> {
     fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TrimPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:59
-    fn description_1(&self, description: crate::text::Text) -> JRef<dyn TrimPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:69
+    fn description_1(&self, description: crate::azalea::chat::FormattedText) -> JRef<dyn TrimPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:69
     fn decal_1(&self, decal: bool) -> JRef<dyn TrimPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/TrimPatternRegistryEntry.java:79
 }

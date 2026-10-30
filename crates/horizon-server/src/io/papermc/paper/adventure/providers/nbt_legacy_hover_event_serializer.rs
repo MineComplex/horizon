@@ -18,9 +18,9 @@ pub const ENTITY_ID: &str = "id"; // paper-server/src/main/java/io/papermc/paper
 impl NBTLegacyHoverEventSerializer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:30
-    pub fn deserialize_show_item(&self, input: crate::text::Text) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:33
-    pub fn deserialize_show_entity(&self, input: crate::text::Text, component_codec: ()) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:50
-    pub fn serialize_show_item(&self, input: ()) -> Result<crate::text::Text, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:66
-    pub fn serialize_show_entity(&self, input: (), component_codec: ()) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:81
+    pub fn deserialize_show_item(&self, input: crate::azalea::chat::FormattedText) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:33
+    pub fn deserialize_show_entity(&self, input: crate::azalea::chat::FormattedText, component_codec: ()) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:50
+    pub fn serialize_show_item(&self, input: ()) -> Result<crate::azalea::chat::FormattedText, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:66
+    pub fn serialize_show_entity(&self, input: (), component_codec: ()) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/NBTLegacyHoverEventSerializer.java:81
 }
 crate::jobject!(NBTLegacyHoverEventSerializer);

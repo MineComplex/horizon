@@ -18,7 +18,7 @@ pub struct BlockLockCheckEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
     pub player: JRef<dyn Player>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:28
-    pub locked_message: Mut<Option<crate::text::Text>>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:29
+    pub locked_message: Mut<Option<crate::azalea::chat::FormattedText>>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:29
     pub locked_sound: Mut<Option<()>>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:30
     pub item_stack: Mut<Option<JRef<ItemStack>>>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:31
     pub result: Mut<EventResult>, // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:32
@@ -37,7 +37,7 @@ impl BlockLockCheckEvent {
     pub fn new(
         block: JRef<dyn Block>,
         player: JRef<dyn Player>,
-        locked_message: crate::text::Text,
+        locked_message: crate::azalea::chat::FormattedText,
         locked_sound: (),
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| Self {
@@ -89,17 +89,17 @@ impl BlockLockCheckEvent {
     } // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:122
     pub fn deny_with_message_and_sound(
         &self,
-        locked_message: Option<crate::text::Text>,
+        locked_message: Option<crate::azalea::chat::FormattedText>,
         locked_sound: Option<()>,
     ) {
         self.result.set(EventResult::DENY);
         self.locked_message.set(locked_message);
         self.locked_sound.set(locked_sound);
     } // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:133
-    pub fn get_locked_message(&self) -> Option<crate::text::Text> {
+    pub fn get_locked_message(&self) -> Option<crate::azalea::chat::FormattedText> {
         self.locked_message.get()
     } // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:145
-    pub fn set_locked_message(&self, locked_message: Option<crate::text::Text>) {
+    pub fn set_locked_message(&self, locked_message: Option<crate::azalea::chat::FormattedText>) {
         self.locked_message.set(locked_message)
     } // paper-api/src/main/java/io/papermc/paper/event/block/BlockLockCheckEvent.java:155
     pub fn get_locked_sound(&self) -> Option<()> {

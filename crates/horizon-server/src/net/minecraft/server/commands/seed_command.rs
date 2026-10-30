@@ -10,6 +10,6 @@ pub struct SeedCommand {
 impl SeedCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SeedCommand.java:9
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, check_permissions: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SeedCommand.java:10
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>, check_permissions: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SeedCommand.java:10
 }
 crate::jobject!(SeedCommand);

@@ -7,7 +7,7 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.registry.data.dialog.input.NumberRangeDialogInput (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:14)
 pub trait NumberRangeDialogInput: DialogInput {
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:22
-    fn label(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:30
+    fn label(&self) -> crate::azalea::chat::FormattedText; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:30
     fn label_format(&self) -> String; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:39
     fn start(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:47
     fn end(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/NumberRangeDialogInput.java:55

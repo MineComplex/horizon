@@ -12,24 +12,24 @@ pub struct PaperPluginsCommand {
 }
 pub const DESCRIPTION: &str = "Gets a list of plugins running on the server"; // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:38
 pub static INFO_COLOR: LazyLock<u32> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:40
-pub static SERVER_PLUGIN_INFO: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:42
-pub static LEGACY_PLUGIN_INFO: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:50
-pub static LEGACY_PLUGIN_STAR: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:60
-pub static INFO_ICON_START: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:61
-pub static PLUGIN_TICK: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:62
-pub static PLUGIN_TICK_EMPTY: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:63
-pub static INFO_ICON_SERVER_PLUGIN: LazyLock<crate::text::Text> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:65
+pub static SERVER_PLUGIN_INFO: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:42
+pub static LEGACY_PLUGIN_INFO: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:50
+pub static LEGACY_PLUGIN_STAR: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:60
+pub static INFO_ICON_START: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:61
+pub static PLUGIN_TICK: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:62
+pub static PLUGIN_TICK_EMPTY: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:63
+pub static INFO_ICON_SERVER_PLUGIN: LazyLock<crate::azalea::chat::FormattedText> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:65
 pub static JAVA_PLUGIN_PROVIDER_TYPE: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:67
 impl PaperPluginsCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:36
-    pub fn create() -> Arc<parking_lot::RwLock<azalea_brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:69
-    pub fn format_providers<T: JGeneric>(plugins: &BTreeMap<String, JRef<dyn PluginProvider<T>>>, sender: JRef<dyn CommandSender>) -> Vec<crate::text::Text> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:77
-    pub fn format_provider(provider: JRef<dyn PluginProvider<JObjectRef>>, sender: JRef<dyn CommandSender>) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:107
-    pub fn header(header: &str, color: i32, count: i32, show_size: bool) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:156
-    pub fn get_authors(plugin_meta: JRef<dyn PluginMeta>) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:168
-    pub fn as_plain_components(strings: &str) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:184
+    pub fn create() -> Arc<parking_lot::RwLock<crate::azalea::brigadier::tree::CommandNode<JRef<dyn CommandSourceStack>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:69
+    pub fn format_providers<T: JGeneric>(plugins: &BTreeMap<String, JRef<dyn PluginProvider<T>>>, sender: JRef<dyn CommandSender>) -> Vec<crate::azalea::chat::FormattedText> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:77
+    pub fn format_provider(provider: JRef<dyn PluginProvider<JObjectRef>>, sender: JRef<dyn CommandSender>) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:107
+    pub fn header(header: &str, color: i32, count: i32, show_size: bool) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:156
+    pub fn get_authors(plugin_meta: JRef<dyn PluginMeta>) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:168
+    pub fn as_plain_components(strings: &str) -> crate::azalea::chat::FormattedText { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:184
     pub fn from_status(provider: JRef<dyn PluginProvider<JObjectRef>>) -> u32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:194
-    pub fn execute(&self, context: azalea_brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:224
+    pub fn execute(&self, context: crate::azalea::brigadier::context::CommandContext<JRef<dyn CommandSourceStack>>) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:224
 }
 crate::jobject!(PaperPluginsCommand);

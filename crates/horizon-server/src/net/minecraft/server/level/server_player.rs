@@ -291,7 +291,7 @@ pub struct ServerPlayer {
     pub mob_backoff_counts: Mut<Vec<i32>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:425
     pub last_known_name: Mut<Option<String>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:427
     pub display_name: Mut<String>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:428
-    pub adventure_display_name: Mut<crate::text::Text>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:429
+    pub adventure_display_name: Mut<crate::azalea::chat::FormattedText>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:429
     pub list_name: Mut<Option<JRef<dyn crate::net::minecraft::network::chat::component::Component>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:430
     pub list_order: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:431
     pub compass_target: Mut<JRef<Location>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:432
@@ -493,18 +493,18 @@ impl ServerPlayer {
     pub fn has_disconnected(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2256
     pub fn reset_sent_info(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2260
     pub fn send_action_bar_message(&self, message: Option<String>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2266
-    pub fn send_action_bar_message_1(&self, message: crate::text::Text) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2272
+    pub fn send_action_bar_message_1(&self, message: crate::azalea::chat::FormattedText) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2272
     pub fn send_action_bar_message_1_2(&self, message: Option<JRef<dyn crate::net::minecraft::network::chat::component::Component>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2278
     pub fn look_at_3(&self, from_anchor: EntityAnchorArgumentAnchor, entity: JRef<dyn EntityTrait>, to_anchor: EntityAnchorArgumentAnchor) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2299
     pub fn restore_from_2(&self, old_player: JRef<ServerPlayer>, restore_all: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2305
     pub fn transfer_inventory_xp_and_score(&self, old_player: JRef<dyn PlayerTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2347
     pub fn teleport_to_4(&self, x: f64, y: f64, z: f64, cause: PlayerTeleportEventTeleportCause) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2401
     pub fn set_game_mode(&self, mode: GameType) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2474
-    pub fn set_game_mode_3(&self, mode: GameType, cause: PlayerGameModeChangeEventCause, message: crate::text::Text) -> JRef<PlayerGameModeChangeEvent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2479
+    pub fn set_game_mode_3(&self, mode: GameType, cause: PlayerGameModeChangeEventCause, message: crate::azalea::chat::FormattedText) -> JRef<PlayerGameModeChangeEvent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2479
     pub fn command_source(&self) -> JRef<dyn CommandSource> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2508
     pub fn create_command_source_stack(&self) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2512
     pub fn send_mini_message(&self, message: Option<String>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2517
-    pub fn send_message(&self, message: crate::text::Text) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2523
+    pub fn send_message(&self, message: crate::azalea::chat::FormattedText) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2523
     pub fn send_build_limit_message(&self, is_too_high: bool, limit: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2540
     pub fn send_spawn_protection_message(&self, pos: BlockPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2544
     pub fn send_system_message_2(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>, overlay: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2548

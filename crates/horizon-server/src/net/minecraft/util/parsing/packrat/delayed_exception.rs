@@ -9,5 +9,5 @@ pub trait DelayedException<T: JGeneric>: Send + Sync + 'static {
 impl<T: JGeneric, F: Fn(&str, i32) -> T + Send + Sync + 'static> DelayedException<T> for F {
     fn create_2(&self, contents: &str, position: i32) -> T { self(contents, position) }
 }
-pub fn create(type_: Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>) -> JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/DelayedException.java:11
-pub fn create_2_2(type_: Arc<dyn Fn(JObjectRef) -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>, argument: &str) -> JRef<dyn DelayedException<azalea_brigadier::errors::CommandSyntaxError>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/DelayedException.java:15
+pub fn create(type_: Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>) -> JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/DelayedException.java:11
+pub fn create_2_2(type_: Arc<dyn Fn(JObjectRef) -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>, argument: &str) -> JRef<dyn DelayedException<crate::azalea::brigadier::errors::CommandSyntaxError>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/DelayedException.java:15

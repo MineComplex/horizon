@@ -9,15 +9,15 @@ use crate::api_prelude::*;
 pub trait PaintingVariantRegistryEntry: JObject {
     fn width(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:24
     fn height(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:32
-    fn title(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:40
-    fn author(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:48
+    fn title(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:40
+    fn author(&self) -> Option<crate::azalea::chat::FormattedText>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:48
     fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:56
 }
 // ---- interface io.papermc.paper.registry.data.PaintingVariantRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:68)
 pub trait PaintingVariantRegistryEntryBuilder: PaintingVariantRegistryEntry + RegistryBuilder<JRef<dyn Art>> {
     fn width_1(&self, width: i32) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:79
     fn height_1(&self, height: i32) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:90
-    fn title_1(&self, title: Option<crate::text::Text>) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:101
-    fn author_1(&self, author: Option<crate::text::Text>) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:112
+    fn title_1(&self, title: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:101
+    fn author_1(&self, author: Option<crate::azalea::chat::FormattedText>) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:112
     fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn PaintingVariantRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/PaintingVariantRegistryEntry.java:123
 }

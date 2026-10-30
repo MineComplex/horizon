@@ -10,6 +10,6 @@ impl ComponentLoggerProviderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ComponentLoggerProviderImpl.java:12
     pub fn logger(&self, helper: JObjectRef /* LoggerHelper */, name: &str) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ComponentLoggerProviderImpl.java:14
-    pub fn serialize(&self, message: crate::text::Text) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ComponentLoggerProviderImpl.java:19
+    pub fn serialize(&self, message: crate::azalea::chat::FormattedText) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/providers/ComponentLoggerProviderImpl.java:19
 }
 crate::jobject!(ComponentLoggerProviderImpl);

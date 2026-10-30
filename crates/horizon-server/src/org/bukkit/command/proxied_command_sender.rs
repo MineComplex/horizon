@@ -17,10 +17,10 @@ pub trait ProxiedCommandSender: CommandSender {
 // ForwardingAudience.Single's (which forward to audience()). A Rust subtrait cannot override a
 // supertrait's default: implementors forward `send_message_1_2`, `send_message_2_3` and `send_message_2_4`
 // to these.
-pub fn send_message_2_3<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::text::Text, bound_chat_type: ()) {
+pub fn send_message_2_3<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::azalea::chat::FormattedText, bound_chat_type: ()) {
     this.audience().send_message_2(message, bound_chat_type);
 }
-pub fn send_message_1_2<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::text::Text) {
+pub fn send_message_1_2<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::azalea::chat::FormattedText) {
     this.audience().send_message_1(message);
 }
 pub fn send_message_2_4<S: ProxiedCommandSender + ?Sized>(this: &S, signed_message: (), bound_chat_type: ()) {

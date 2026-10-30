@@ -9,14 +9,14 @@ use crate::net::minecraft::resources::identifier::Identifier;
 pub struct RandomCommand {
     pub this: Weak<Self>,
 }
-pub static ERROR_RANGE_TOO_LARGE: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:31
-pub static ERROR_RANGE_TOO_SMALL: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:34
+pub static ERROR_RANGE_TOO_LARGE: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:31
+pub static ERROR_RANGE_TOO_SMALL: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:34
 impl RandomCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:30
-    pub fn register(dispatcher: JRef<azalea_brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:38
-    pub fn draw_random_value_tree(name: &str, announce: bool) -> azalea_brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:117
-    pub fn suggest_random_sequence(context: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:133
+    pub fn register(dispatcher: JRef<crate::azalea::brigadier::command_dispatcher::CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:38
+    pub fn draw_random_value_tree(name: &str, announce: bool) -> crate::azalea::brigadier::builder::argument_builder::ArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:117
+    pub fn suggest_random_sequence(context: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:133
     pub fn random_sample(source: JRef<CommandSourceStack>, range: MinMaxBoundsInts, sequence: Option<JRef<Identifier>>, announce: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:139
     pub fn reset_sequence(source: JRef<CommandSourceStack>, sequence: JRef<Identifier>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:170
     pub fn reset_sequence_5(source: JRef<CommandSourceStack>, sequence: JRef<Identifier>, salt: i32, include_world_seed: bool, include_sequence_id: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RandomCommand.java:177

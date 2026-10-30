@@ -10,16 +10,16 @@ pub struct GameProfileArgument {
     pub this: Weak<Self>,
 }
 pub static EXAMPLES: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:27
-pub static ERROR_UNKNOWN_PLAYER: LazyLock<Arc<dyn Fn() -> azalea_brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:28
+pub static ERROR_UNKNOWN_PLAYER: LazyLock<Arc<dyn Fn() -> crate::azalea::brigadier::errors::CommandSyntaxError + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:28
 impl GameProfileArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:26
-    pub fn get_game_profiles(source: azalea_brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<NameAndId>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:30
+    pub fn get_game_profiles(source: crate::azalea::brigadier::context::CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<NameAndId>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:30
     pub fn game_profile() -> JRef<GameProfileArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:34
-    pub fn parse(&self, reader: azalea_brigadier::string_reader::StringReader) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:43
-    pub fn parse_2<S: JGeneric>(&self, reader: azalea_brigadier::string_reader::StringReader, source: S) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:38
-    pub fn parse_2_2(reader: azalea_brigadier::string_reader::StringReader, allow_selectors: bool) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:48
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: azalea_brigadier::context::CommandContext<S>, builder: azalea_brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<azalea_brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:72
+    pub fn parse(&self, reader: crate::azalea::brigadier::string_reader::StringReader) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:43
+    pub fn parse_2<S: JGeneric>(&self, reader: crate::azalea::brigadier::string_reader::StringReader, source: S) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:38
+    pub fn parse_2_2(reader: crate::azalea::brigadier::string_reader::StringReader, allow_selectors: bool) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:48
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: crate::azalea::brigadier::context::CommandContext<S>, builder: crate::azalea::brigadier::suggestion::suggestions_builder::SuggestionsBuilder) -> crate::rt::CompletableFuture<crate::azalea::brigadier::suggestion::suggestions::Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:72
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:90
 }
 crate::jobject!(GameProfileArgument);
