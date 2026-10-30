@@ -1700,7 +1700,6 @@ dependencies = [
  "serde_yaml",
  "sha1 0.11.0",
  "sha2 0.11.1",
- "simdnbt",
  "thiserror 2.0.21",
  "thread_local",
  "tokio",
@@ -4006,31 +4005,6 @@ checksum = "11031e251abf8611c80f460e19dbdeb54a66db918e49c65a7065b46ac7aec520"
 dependencies = [
  "rustc_version",
  "simdutf8",
-]
-
-[[package]]
-name = "simdnbt"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7893a73842e21e674dde2bb31be1b949c127294f13dd52ee530d2f75a90ffe44"
-dependencies = [
- "byteorder",
- "flate2",
- "serde",
- "simd_cesu8",
- "simdnbt-derive",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "simdnbt-derive"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4518807f59223e4e9c6765b7fb98d1eb70799a2dcee7db485a45cc422870afdb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]

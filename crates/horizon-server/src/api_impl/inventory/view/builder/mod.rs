@@ -1,9 +1,0 @@
-pub mod craft_abstract_inventory_view_builder;
-pub mod craft_abstract_location_inventory_view_builder;
-pub mod craft_access_location_inventory_view_builder;
-pub mod craft_block_entity_inventory_view_builder;
-pub mod craft_double_chest_inventory_view_builder;
-pub mod craft_enchantment_inventory_view_builder;
-pub mod craft_merchant_inventory_view_builder;
-pub mod craft_standard_inventory_view_builder;
-pub use self::craft_block_entity_inventory_view_builder::{CraftBlockEntityInventoryViewBuilderCraftBlockInventoryBuilder};

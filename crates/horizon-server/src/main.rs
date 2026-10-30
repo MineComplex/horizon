@@ -1,5 +1,4 @@
-//! `horizon-server`: Leaf's startup (`org.bukkit.craftbukkit.Main` -> `net.minecraft.server.Main`).
+//! `horizon-server`.
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    horizon_server::api_impl::main::Main::main(&args);
+    eprintln!("horizon-server: the native port is being built (crates/horizon-server/ARCHITECTURE.md)");
 }

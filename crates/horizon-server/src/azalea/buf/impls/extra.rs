@@ -73,7 +73,7 @@ impl_for_map_type!(IndexMap);
 macro_rules! impl_for_list_type {
     ($ty: ty) => {
         impl<T: AzBuf> AzBuf for $ty {
-            default fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
+            fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
                 let length = u32::azalea_read_var(buf)? as usize;
                 // we limit the capacity to not get exploited into allocating a bunch
                 let mut contents = Vec::with_capacity(usize::min(length, 65536));
@@ -82,7 +82,7 @@ macro_rules! impl_for_list_type {
                 }
                 Ok(contents.into())
             }
-            default fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
+            fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
                 (self.len() as u32).azalea_write_var(buf)?;
                 for item in self.iter() {
                     T::azalea_write(item, buf)?;
@@ -137,16 +137,6 @@ impl_for_list_type!(Box<[T]>);
 // counters on the heap) and we'd like to avoid that. for us it's typically
 // better to do `Arc<Box<[T]>>`.
 
-impl AzBuf for Vec<u8> {
-    fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
-        let length = i32::azalea_read_var(buf)? as usize;
-        read_bytes(buf, length).map(|b| b.to_vec())
-    }
-    fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
-        (self.len() as u32).azalea_write_var(buf)?;
-        buf.write_all(self)
-    }
-}
 
 impl AzBuf for String {
     fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
@@ -242,42 +232,6 @@ impl<T: AzBuf, const N: usize> AzBuf for [T; N] {
             i.azalea_write(buf)?;
         }
         Ok(())
-    }
-}
-
-impl AzBuf for simdnbt::owned::NbtTag {
-    fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
-        Ok(simdnbt::owned::read_tag(buf).map_err(simdnbt::Error::from)?)
-    }
-    fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
-        let mut data = Vec::new();
-        self.write(&mut data);
-        buf.write_all(&data)
-    }
-}
-
-impl AzBuf for simdnbt::owned::NbtCompound {
-    fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
-        match simdnbt::owned::read_tag(buf).map_err(simdnbt::Error::from)? {
-            simdnbt::owned::NbtTag::Compound(compound) => Ok(compound),
-            _ => Err(BufReadError::Custom("Expected compound tag".to_owned())),
-        }
-    }
-    fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
-        let mut data = Vec::new();
-        simdnbt::owned::NbtTag::Compound(self.clone()).write(&mut data);
-        buf.write_all(&data)
-    }
-}
-
-impl AzBuf for simdnbt::owned::Nbt {
-    fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
-        Ok(simdnbt::owned::read_unnamed(buf)?)
-    }
-    fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
-        let mut data = Vec::new();
-        self.write_unnamed(&mut data);
-        buf.write_all(&data)
     }
 }
 

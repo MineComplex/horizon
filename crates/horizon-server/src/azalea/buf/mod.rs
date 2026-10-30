@@ -1,5 +1,4 @@
 //! Taken from azalea-buf 0.16.0 (https://github.com/azalea-rs/azalea, MIT).
-// this is necessary for thiserror backtraces
 
 mod definitions;
 pub mod impls;

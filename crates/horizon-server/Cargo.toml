@@ -14,7 +14,6 @@ name = "horizon-server"
 path = "src/main.rs"
 
 [dependencies]
-simdnbt = "0.10.0"
 tracing = "0.1"
 thiserror = "2"
 compact_str = { version = "0.9.0", features = ["serde"] }
