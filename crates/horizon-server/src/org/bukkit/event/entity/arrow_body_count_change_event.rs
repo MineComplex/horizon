@@ -25,19 +25,19 @@ impl std::ops::Deref for ArrowBodyCountChangeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:15
 impl ArrowBodyCountChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn LivingEntity>, old_amount: i32, new_amount: i32, reset: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:23
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:69
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:75
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:80
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:85
-    pub fn is_reset(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:37
-    pub fn get_old_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:46
-    pub fn get_new_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:55
+    pub fn new(entity: JRef<dyn LivingEntity>, old_amount: i32, new_amount: i32, reset: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ArrowBodyCountChangeEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), reset: reset, old_amount: old_amount, new_amount: Mut::new(new_amount), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:23
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:69
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:75
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:80
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:85
+    pub fn is_reset(&self) -> bool { self.reset } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:37
+    pub fn get_old_amount(&self) -> i32 { self.old_amount } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:46
+    pub fn get_new_amount(&self) -> i32 { self.new_amount.get() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:55
     pub fn set_new_amount(&self, new_amount: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:91
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ArrowBodyCountChangeEvent.java:91
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

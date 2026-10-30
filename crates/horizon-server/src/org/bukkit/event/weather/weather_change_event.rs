@@ -22,17 +22,17 @@ impl std::ops::Deref for WeatherChangeEvent {
     type Target = WeatherEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:14
 impl WeatherChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(world: JRef<dyn World>, new_weather_state: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:28
-    pub fn new_3(world: JRef<dyn World>, new_weather_state: bool, cause: WeatherChangeEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:53
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:58
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:63
-    pub fn to_weather_state(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:39
-    pub fn get_cause(&self) -> WeatherChangeEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:48
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:69
+    pub fn new_3(world: JRef<dyn World>, new_weather_state: bool, cause: WeatherChangeEventCause) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: WeatherEvent::new_base(this, world), this: this.clone(), new_weather_state: new_weather_state, cause: cause, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:21
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:53
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:58
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:63
+    pub fn to_weather_state(&self) -> bool { self.new_weather_state } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:39
+    pub fn get_cause(&self) -> WeatherChangeEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:48
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherChangeEvent.java:69
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

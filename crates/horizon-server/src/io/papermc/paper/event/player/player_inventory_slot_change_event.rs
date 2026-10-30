@@ -24,18 +24,29 @@ impl std::ops::Deref for PlayerInventorySlotChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:16
 impl PlayerInventorySlotChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, raw_slot: i32, old_item_stack: JRef<ItemStack>, new_item_stack: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:24
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:90
-    pub fn get_raw_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:37
-    pub fn get_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:50
-    pub fn get_old_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:59
-    pub fn get_new_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:68
-    pub fn should_trigger_advancements(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:77
-    pub fn set_should_trigger_advancements(&self, trigger_advancements: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:86
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:95
+    pub fn new(player: JRef<dyn Player>, raw_slot: i32, old_item_stack: JRef<ItemStack>, new_item_stack: JRef<ItemStack>) -> JRef<Self> {
+        let slot = player.get_open_inventory().convert_slot(raw_slot);
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerInventorySlotChangeEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            raw_slot,
+            slot,
+            old_item_stack,
+            new_item_stack,
+            trigger_advancements: Mut::new(true),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:24
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:90
+    pub fn get_raw_slot(&self) -> i32 { self.raw_slot } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:37
+    pub fn get_slot(&self) -> i32 { self.slot } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:50
+    pub fn get_old_item_stack(&self) -> JRef<ItemStack> { self.old_item_stack.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:59
+    pub fn get_new_item_stack(&self) -> JRef<ItemStack> { self.new_item_stack.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:68
+    pub fn should_trigger_advancements(&self) -> bool { self.trigger_advancements.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:77
+    pub fn set_should_trigger_advancements(&self, trigger_advancements: bool) { self.trigger_advancements.set(trigger_advancements) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:86
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInventorySlotChangeEvent.java:95
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

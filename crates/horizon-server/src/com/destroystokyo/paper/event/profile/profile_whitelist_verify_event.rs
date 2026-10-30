@@ -22,21 +22,57 @@ impl std::ops::Deref for ProfileWhitelistVerifyEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:45
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:45
 impl ProfileWhitelistVerifyEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(profile: JRef<dyn PlayerProfile>, whitelist_enabled: bool, whitelisted: bool, is_op: bool, kick_message: Option<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:53
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:132
-    pub fn get_kick_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:66
-    pub fn set_kick_message(&self, kick_message: Option<String>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:75
-    pub fn kick_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:83
-    pub fn kick_message_1(&self, kick_message: Option<Component>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:91
-    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:98
-    pub fn is_whitelisted(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:105
-    pub fn set_whitelisted(&self, whitelisted: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:114
-    pub fn is_op(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:121
-    pub fn is_whitelist_enabled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:128
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:137
+    pub fn new(profile: JRef<dyn PlayerProfile>, whitelist_enabled: bool, whitelisted: bool, is_op: bool, kick_message: Option<Component>) -> JRef<Self> {
+Arc::new_cyclic(|this| ProfileWhitelistVerifyEvent {
+base: Event::new_base(this),
+this: this.clone(),
+profile: profile,
+whitelist_enabled: whitelist_enabled,
+is_op: is_op,
+whitelisted: Mut::new(whitelisted),
+kick_message: Mut::new(kick_message),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:53
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:132
+    pub fn get_kick_message(&self) -> Option<String> {
+self.kick_message
+    .get()
+    .map(|kick_message| crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer::legacy_section().serialize(kick_message))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:66
+    pub fn set_kick_message(&self, kick_message: Option<String>) {
+self.kick_message_1(kick_message.map(|kick_message| {
+    crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer::legacy_section().deserialize(&kick_message)
+}))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:75
+    pub fn kick_message(&self) -> Option<Component> {
+self.kick_message.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:83
+    pub fn kick_message_1(&self, kick_message: Option<Component>) {
+self.kick_message.set(kick_message)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:91
+    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> {
+self.profile.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:98
+    pub fn is_whitelisted(&self) -> bool {
+self.whitelisted.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:105
+    pub fn set_whitelisted(&self, whitelisted: bool) {
+self.whitelisted.set(whitelisted)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:114
+    pub fn is_op(&self) -> bool {
+self.is_op.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:121
+    pub fn is_whitelist_enabled(&self) -> bool {
+self.whitelist_enabled.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:128
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/ProfileWhitelistVerifyEvent.java:137
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

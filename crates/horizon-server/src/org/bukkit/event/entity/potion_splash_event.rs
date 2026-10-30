@@ -39,22 +39,22 @@ impl std::ops::Deref for dyn PotionSplashEventTrait {
     type Target = PotionSplashEvent;
     fn deref(&self) -> &PotionSplashEvent { self.as_potion_splash_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:23
 impl PotionSplashEvent {
     pub fn this(&self) -> JRef<dyn PotionSplashEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PotionSplashEventTrait + 'static>(this: &Weak<S>, potion: JRef<dyn ThrownPotion>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:28
+    pub fn new_base<S: PotionSplashEventTrait + 'static>(this: &Weak<S>, potion: JRef<dyn ThrownPotion>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> Self { Self::new_base_5(this, potion, None, None, None, &affected_entities.clone()) } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:28
     pub fn new(potion: JRef<dyn ThrownPotion>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, potion, affected_entities)) }
-    pub fn new_base_5<S: PotionSplashEventTrait + 'static>(this: &Weak<S>, potion: JRef<dyn ThrownPotion>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:34
+    pub fn new_base_5<S: PotionSplashEventTrait + 'static>(this: &Weak<S>, potion: JRef<dyn ThrownPotion>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> Self { PotionSplashEvent { base: ProjectileHitEvent::new_base_4(this, potion, hit_entity, hit_block, hit_face), this: this.clone(), affected_entities: Mut::new(affected_entities.clone()), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:34
     pub fn new_5(potion: JRef<dyn ThrownPotion>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, affected_entities: &HashMap<JRef<dyn LivingEntity>, f64>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_5(this, potion, hit_entity, hit_block, hit_face, affected_entities)) }
-    pub fn get_entity(&self) -> JRef<dyn ThrownPotion> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:40
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:94
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:99
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:104
+    pub fn get_entity(&self) -> JRef<dyn ThrownPotion> { cast::<dyn ThrownPotion, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:40
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:94
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:99
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:104
     pub fn get_potion(&self) -> JRef<dyn ThrownPotion> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:51
     pub fn get_affected_entities(&self) -> Vec<JRef<dyn LivingEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:61
     pub fn get_intensity(&self, entity: JRef<dyn LivingEntity>) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:74
     pub fn set_intensity(&self, entity: JRef<dyn LivingEntity>, intensity: f64) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:85
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:110
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PotionSplashEvent.java:110
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

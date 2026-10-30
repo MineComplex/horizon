@@ -21,15 +21,15 @@ impl std::ops::Deref for PlayerToggleSprintEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:14
 impl PlayerToggleSprintEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, is_sprinting: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:19
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:34
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:39
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:44
-    pub fn is_sprinting(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:50
+    pub fn new(player: JRef<dyn Player>, is_sprinting: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), is_sprinting: is_sprinting, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:19
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:34
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:39
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:44
+    pub fn is_sprinting(&self) -> bool { self.is_sprinting } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleSprintEvent.java:50
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

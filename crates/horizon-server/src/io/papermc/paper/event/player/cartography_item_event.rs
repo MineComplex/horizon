@@ -33,9 +33,21 @@ impl std::ops::Deref for CartographyItemEvent {
 }
 impl CartographyItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:18
-    pub fn new_6(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:23
-    pub fn get_inventory(&self) -> JRef<dyn CartographyInventory> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:28
+    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| CartographyItemEvent {
+            base: InventoryClickEvent::new_base(this, view, type_, slot, click, action),
+            this: this.clone(),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:18
+    pub fn new_6(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| CartographyItemEvent {
+            base: InventoryClickEvent::new_base_6(this, view, type_, slot, click, action, key),
+            this: this.clone(),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:23
+    pub fn get_inventory(&self) -> JRef<dyn CartographyInventory> {
+        cast::<dyn CartographyInventory, _>(&self.base.get_inventory()).expect("ClassCastException: not a CartographyInventory")
+    } // paper-api/src/main/java/io/papermc/paper/event/player/CartographyItemEvent.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -24,19 +24,19 @@ impl std::ops::Deref for PlayerItemDamageEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:16
 impl PlayerItemDamageEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, item: JRef<ItemStack>, damage: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:24
-    pub fn new_4(player: JRef<dyn Player>, item: JRef<ItemStack>, damage: i32, original_damage: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:72
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:77
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:82
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:43
-    pub fn get_damage(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:53
-    pub fn set_damage(&self, damage: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:57
-    pub fn get_original_damage(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:68
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:88
+    pub fn new_4(player: JRef<dyn Player>, item: JRef<ItemStack>, damage: i32, original_damage: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), item: item, original_damage: original_damage, damage: Mut::new(damage), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:30
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:72
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:77
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:82
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:43
+    pub fn get_damage(&self) -> i32 { self.damage.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:53
+    pub fn set_damage(&self, damage: i32) { self.damage.set(damage) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:57
+    pub fn get_original_damage(&self) -> i32 { self.original_damage } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:68
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemDamageEvent.java:88
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

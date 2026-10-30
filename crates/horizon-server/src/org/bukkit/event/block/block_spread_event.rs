@@ -25,13 +25,13 @@ impl std::ops::Deref for BlockSpreadEvent {
     type Target = BlockFormEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:27
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:27
 impl BlockSpreadEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, source: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:31
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:47
-    pub fn get_source(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:42
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:53
+    pub fn new(block: JRef<dyn Block>, source: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockSpreadEvent { base: BlockFormEvent::new_base(this, block, new_state), this: this.clone(), source: source }) } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:31
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:47
+    pub fn get_source(&self) -> JRef<dyn Block> { self.source.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:42
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockSpreadEvent.java:53
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

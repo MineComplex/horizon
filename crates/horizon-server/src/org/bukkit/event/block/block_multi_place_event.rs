@@ -30,7 +30,7 @@ impl BlockMultiPlaceEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(replaced_states: &Vec<JRef<dyn BlockState>>, clicked: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockMultiPlaceEvent.java:23
     pub fn new_6(replaced_states: &Vec<JRef<dyn BlockState>>, clicked: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockMultiPlaceEvent.java:29
-    pub fn get_replaced_block_states(&self) -> Vec<JRef<dyn BlockState>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockMultiPlaceEvent.java:42
+    pub fn get_replaced_block_states(&self) -> Vec<JRef<dyn BlockState>> { self.replaced_states.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockMultiPlaceEvent.java:42
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

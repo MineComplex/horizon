@@ -22,16 +22,16 @@ impl std::ops::Deref for PlayerAdvancementDoneEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:16
 impl PlayerAdvancementDoneEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, advancement: JRef<dyn Advancement>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:21
     pub fn new_3(player: JRef<dyn Player>, advancement: JRef<dyn Advancement>, message: Option<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:27
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:68
-    pub fn get_advancement(&self) -> JRef<dyn Advancement> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:39
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:68
+    pub fn get_advancement(&self) -> JRef<dyn Advancement> { self.advancement.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:39
     pub fn message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:52
     pub fn message_1(&self, message: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:74
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAdvancementDoneEvent.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

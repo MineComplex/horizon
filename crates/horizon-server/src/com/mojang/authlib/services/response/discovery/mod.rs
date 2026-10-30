@@ -1,2 +1,10 @@
-pub mod ext_stubs;
-pub use self::ext_stubs::*;
+pub mod discovery;
+pub mod discovery_response;
+pub mod endpoint;
+pub mod endpoints;
+pub mod service;
+pub use self::discovery::Discovery;
+pub use self::discovery_response::DiscoveryResponse;
+pub use self::endpoint::Endpoint;
+pub use self::endpoints::Endpoints;
+pub use self::service::Service;

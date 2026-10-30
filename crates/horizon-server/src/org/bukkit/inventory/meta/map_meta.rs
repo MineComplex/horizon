@@ -16,10 +16,10 @@ pub trait MapMeta: ItemMeta {
     fn set_map_view(&self, map: JRef<dyn MapView>); // paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:79
     fn is_scaling(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:86
     fn set_scaling(&self, value: bool); // paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:93
-    fn has_location_name(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:102
-    fn get_location_name(&self) -> Option<String> { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:117
-    fn set_location_name(&self, name: Option<String>) { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:130
-    fn has_color(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:141
-    fn get_color(&self) -> Option<Color> { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:157
-    fn set_color(&self, color: Option<Color>) { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:170
+    fn has_location_name(&self) -> bool { self.has_localized_name() /* SPIGOT-6308 */ } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:102
+    fn get_location_name(&self) -> Option<String> { Some(self.get_localized_name()) /* SPIGOT-6308 */ } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:117
+    fn set_location_name(&self, name: Option<String>) { self.set_localized_name(name); /* SPIGOT-6308 */ } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:130
+    fn has_color(&self) -> bool { false } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:141
+    fn get_color(&self) -> Option<Color> { None } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:157
+    fn set_color(&self, color: Option<Color>) { let _ = color; } // default, paper-api/src/main/java/org/bukkit/inventory/meta/MapMeta.java:170
 }

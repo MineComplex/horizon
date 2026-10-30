@@ -23,16 +23,36 @@ impl std::ops::Deref for PlayerStartSpectatingEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:17
 impl PlayerStartSpectatingEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, current_spectator_target: JRef<dyn Entity>, new_spectator_target: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:24
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:49
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:54
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:59
-    pub fn get_current_spectator_target(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:36
-    pub fn get_new_spectator_target(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:45
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:64
+    pub fn new(player: JRef<dyn Player>, current_spectator_target: JRef<dyn Entity>, new_spectator_target: JRef<dyn Entity>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerStartSpectatingEntityEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+current_spectator_target: current_spectator_target,
+new_spectator_target: new_spectator_target,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:24
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:49
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:54
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:59
+    pub fn get_current_spectator_target(&self) -> JRef<dyn Entity> {
+self.current_spectator_target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:36
+    pub fn get_new_spectator_target(&self) -> JRef<dyn Entity> {
+self.new_spectator_target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:45
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStartSpectatingEntityEvent.java:64
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

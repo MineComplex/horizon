@@ -21,16 +21,16 @@ impl std::ops::Deref for PlayerExpChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:15
 impl PlayerExpChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, exp_amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:21
-    pub fn new_3(player: JRef<dyn Player>, source_entity: Option<JRef<dyn Entity>>, exp_amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:26
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:61
-    pub fn get_source(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:38
-    pub fn get_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:48
-    pub fn set_amount(&self, amount: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:57
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:67
+    pub fn new_3(player: JRef<dyn Player>, source_entity: Option<JRef<dyn Entity>>, exp_amount: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), source: source_entity, exp: Mut::new(exp_amount) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:26
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:61
+    pub fn get_source(&self) -> Option<JRef<dyn Entity>> { self.source.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:38
+    pub fn get_amount(&self) -> i32 { self.exp.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:48
+    pub fn set_amount(&self, amount: i32) { self.exp.set(amount) } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:57
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerExpChangeEvent.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

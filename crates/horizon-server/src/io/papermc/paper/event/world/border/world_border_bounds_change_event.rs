@@ -27,22 +27,47 @@ impl std::ops::Deref for WorldBorderBoundsChangeEvent {
     type Target = WorldBorderEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:21
 impl WorldBorderBoundsChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, type_: WorldBorderBoundsChangeEventType, old_size: f64, new_size: f64, duration: i64) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:120
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:125
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:130
-    pub fn get_type(&self) -> WorldBorderBoundsChangeEventType { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:43
-    pub fn get_old_size(&self) -> f64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:52
-    pub fn get_new_size(&self) -> f64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:61
-    pub fn set_new_size(&self, new_size: f64) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:70
-    pub fn get_duration_ticks(&self) -> i64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:79
-    pub fn set_duration_ticks(&self, duration: i64) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:89
-    pub fn get_duration(&self) -> i64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:103
-    pub fn set_duration(&self, duration: i64) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:115
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:135
+    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, type_: WorldBorderBoundsChangeEventType, old_size: f64, new_size: f64, duration: i64) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| WorldBorderBoundsChangeEvent {
+            base: WorldBorderEvent::new_base(this, world, world_border),
+            this: this.clone(),
+            type_: Mut::new(type_),
+            old_size,
+            new_size: Mut::new(new_size),
+            duration: Mut::new(duration),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:29
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:120
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:125
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:130
+    pub fn get_type(&self) -> WorldBorderBoundsChangeEventType { self.type_.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:43
+    pub fn get_old_size(&self) -> f64 { self.old_size } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:52
+    pub fn get_new_size(&self) -> f64 { self.new_size.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:61
+    pub fn set_new_size(&self, new_size: f64) {
+        // Math.clamp(newSize, 1.0, this.worldBorder.getMaxSize())
+        self.new_size.set(new_size.clamp(1.0, self.world_border.get_max_size()));
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:70
+    pub fn get_duration_ticks(&self) -> i64 { self.duration.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:79
+    pub fn set_duration_ticks(&self, duration: i64) {
+        assert!(duration >= 0 && duration <= i32::MAX as i64, "duration must be between 0-{}", i32::MAX);
+        self.duration.set(duration);
+        if self.type_.get() == WorldBorderBoundsChangeEventType::INSTANT_MOVE {
+            self.type_.set(WorldBorderBoundsChangeEventType::STARTED_MOVE);
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:89
+    pub fn get_duration(&self) -> i64 {
+        crate::io::papermc::paper::util::tick::Tick::of(self.get_duration_ticks()).as_millis() as i64
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:103
+    pub fn set_duration(&self, duration: i64) {
+        self.set_duration_ticks(
+            crate::io::papermc::paper::util::tick::Tick::tick().from_duration(std::time::Duration::from_millis(duration as u64)) as i64,
+        );
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:115
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeEvent.java:135
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

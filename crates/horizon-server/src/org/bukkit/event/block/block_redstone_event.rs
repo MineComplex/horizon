@@ -20,15 +20,15 @@ impl std::ops::Deref for BlockRedstoneEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:22
 impl BlockRedstoneEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, old_current: i32, new_current: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:27
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:62
-    pub fn get_old_current(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:39
-    pub fn get_new_current(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:48
+    pub fn new(block: JRef<dyn Block>, old_current: i32, new_current: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockRedstoneEvent { base: BlockEvent::new_base(this, block), this: this.clone(), old_current: old_current, new_current: Mut::new(new_current) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:27
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:62
+    pub fn get_old_current(&self) -> i32 { self.old_current } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:39
+    pub fn get_new_current(&self) -> i32 { self.new_current.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:48
     pub fn set_new_current(&self, new_current: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:57
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockRedstoneEvent.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

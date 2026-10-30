@@ -21,15 +21,15 @@ impl std::ops::Deref for PlayerChatTabCompleteEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:20
 impl PlayerChatTabCompleteEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, message: &str, completions: &Vec<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:26
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:74
-    pub fn get_chat_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:46
-    pub fn get_last_token(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:59
-    pub fn get_tab_completions(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:69
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:80
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:74
+    pub fn get_chat_message(&self) -> String { self.message.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:46
+    pub fn get_last_token(&self) -> String { self.last_token.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:59
+    pub fn get_tab_completions(&self) -> Vec<String> { self.completions.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:69
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatTabCompleteEvent.java:80
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -29,16 +29,16 @@ impl std::ops::Deref for dyn HangingBreakEventTrait {
     type Target = HangingBreakEvent;
     fn deref(&self) -> &HangingBreakEvent { self.as_hanging_break_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:14
 impl HangingBreakEvent {
     pub fn this(&self) -> JRef<dyn HangingBreakEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: HangingBreakEventTrait + 'static>(this: &Weak<S>, hanging: JRef<dyn Hanging>, cause: HangingBreakEventRemoveCause) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:19
+    pub fn new_base<S: HangingBreakEventTrait + 'static>(this: &Weak<S>, hanging: JRef<dyn Hanging>, cause: HangingBreakEventRemoveCause) -> Self { HangingBreakEvent { base: HangingEvent::new_base(this, hanging), this: this.clone(), cause: cause, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:19
     pub fn new(hanging: JRef<dyn Hanging>, cause: HangingBreakEventRemoveCause) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, hanging, cause)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:35
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:40
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:45
-    pub fn get_cause(&self) -> HangingBreakEventRemoveCause { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:51
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:35
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:40
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:45
+    pub fn get_cause(&self) -> HangingBreakEventRemoveCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakEvent.java:51
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

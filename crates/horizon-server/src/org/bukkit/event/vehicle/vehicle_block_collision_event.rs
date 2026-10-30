@@ -27,8 +27,8 @@ impl std::ops::Deref for VehicleBlockCollisionEvent {
 impl VehicleBlockCollisionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(vehicle: JRef<dyn Vehicle>, block: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:17
-    pub fn new_3(vehicle: JRef<dyn Vehicle>, block: JRef<dyn Block>, velocity: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:23
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:35
+    pub fn new_3(vehicle: JRef<dyn Vehicle>, block: JRef<dyn Block>, velocity: JRef<dyn VectorTrait>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: VehicleCollisionEvent::new_base(this, vehicle), this: this.clone(), block: block, velocity: velocity }) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:23
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:35
     pub fn get_velocity(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleBlockCollisionEvent.java:45
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

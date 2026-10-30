@@ -29,19 +29,19 @@ impl std::ops::Deref for StructureGrowEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:20
 impl StructureGrowEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(location: JRef<Location>, species: TreeType, bonemeal: bool, player: Option<JRef<dyn Player>>, blocks: &Vec<JRef<dyn BlockState>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:91
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:96
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:101
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:91
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:96
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:101
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:45
-    pub fn get_species(&self) -> TreeType { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:56
-    pub fn is_from_bonemeal(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:66
+    pub fn get_species(&self) -> TreeType { self.species.clone() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:56
+    pub fn is_from_bonemeal(&self) -> bool { self.bonemeal } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:66
     pub fn get_player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:76
-    pub fn get_blocks(&self) -> Vec<JRef<dyn BlockState>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:86
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:107
+    pub fn get_blocks(&self) -> Vec<JRef<dyn BlockState>> { self.blocks.get() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:86
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/StructureGrowEvent.java:107
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

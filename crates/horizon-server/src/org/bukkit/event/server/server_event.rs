@@ -24,5 +24,5 @@ impl std::ops::Deref for dyn ServerEventTrait {
 impl ServerEvent {
     pub fn this(&self) -> JRef<dyn ServerEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ServerEventTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerEvent.java:11
-    pub fn new_base_1<S: ServerEventTrait + 'static>(this: &Weak<S>, is_async: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerEvent.java:15
+    pub fn new_base_1<S: ServerEventTrait + 'static>(this: &Weak<S>, is_async: bool) -> Self { Self { base: Event::new_base_1(this, is_async), this: this.clone() } } // paper-api/src/main/java/org/bukkit/event/server/ServerEvent.java:15
 }

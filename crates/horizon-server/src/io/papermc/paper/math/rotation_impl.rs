@@ -5,19 +5,21 @@ use crate::io::papermc::paper::math::rotation::Rotation;
 use crate::api_prelude::*;
 
 // ---- record io.papermc.paper.math.RotationImpl (paper-api/src/main/java/io/papermc/paper/math/RotationImpl.java:3)
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+// (f32 components: PartialEq only)
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct RotationImpl {
     pub yaw: f32,
     pub pitch: f32,
 }
 impl RotationImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/math/RotationImpl.java:3
-    pub fn new_2(yaw: f32, pitch: f32) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/math/RotationImpl.java:3
+    pub fn new_2(yaw: f32, pitch: f32) -> Self {
+        RotationImpl { yaw, pitch }
+    } // paper-api/src/main/java/io/papermc/paper/math/RotationImpl.java:3
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl Rotation for RotationImpl {
-    fn pitch(&self) -> f32 { todo!("abstract Rotation.pitch") }
-    fn yaw(&self) -> f32 { todo!("abstract Rotation.yaw") }
+    fn pitch(&self) -> f32 { self.pitch }
+    fn yaw(&self) -> f32 { self.yaw }
 }
 crate::jobject!(RotationImpl: dyn Rotation);

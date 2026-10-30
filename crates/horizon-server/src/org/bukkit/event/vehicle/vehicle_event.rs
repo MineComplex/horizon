@@ -25,6 +25,6 @@ impl std::ops::Deref for dyn VehicleEventTrait {
 }
 impl VehicleEvent {
     pub fn this(&self) -> JRef<dyn VehicleEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: VehicleEventTrait + 'static>(this: &Weak<S>, vehicle: JRef<dyn Vehicle>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEvent.java:14
-    pub fn get_vehicle(&self) -> JRef<dyn Vehicle> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEvent.java:23
+    pub fn new_base<S: VehicleEventTrait + 'static>(this: &Weak<S>, vehicle: JRef<dyn Vehicle>) -> Self { Self { base: Event::new_base(this), this: this.clone(), vehicle: Mut::new(vehicle) } } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEvent.java:14
+    pub fn get_vehicle(&self) -> JRef<dyn Vehicle> { self.vehicle.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEvent.java:23
 }

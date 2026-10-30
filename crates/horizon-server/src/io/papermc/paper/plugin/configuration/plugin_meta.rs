@@ -10,7 +10,9 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.plugin.configuration.PluginMeta (paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:18)
 pub trait PluginMeta: Namespaced {
     fn get_name(&self) -> String; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:39
-    fn get_display_name(&self) -> String { todo!() } // default, paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:46
+    fn get_display_name(&self) -> String {
+        format!("{} v{}", self.get_name(), self.get_version())
+    } // default, paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:46
     fn get_main_class(&self) -> String; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:56
     fn get_load_order(&self) -> PluginLoadOrder; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:64
     fn get_version(&self) -> String; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:73
@@ -26,5 +28,7 @@ pub trait PluginMeta: Namespaced {
     fn get_permissions(&self) -> Vec<JRef<Permission>>; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:166
     fn get_permission_default(&self) -> PermissionDefault; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:174
     fn get_api_version(&self) -> Option<String>; // paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:184
-    fn namespace(&self) -> String { todo!() } // default, paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:186
+    fn namespace(&self) -> String {
+        self.get_name().to_lowercase()
+    } // default, paper-api/src/main/java/io/papermc/paper/plugin/configuration/PluginMeta.java:186
 }

@@ -34,21 +34,21 @@ impl std::ops::Deref for dyn PlayerCommandPreprocessEventTrait {
     type Target = PlayerCommandPreprocessEvent;
     fn deref(&self) -> &PlayerCommandPreprocessEvent { self.as_player_command_preprocess_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:51
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:51
 impl PlayerCommandPreprocessEvent {
     pub fn this(&self) -> JRef<dyn PlayerCommandPreprocessEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PlayerCommandPreprocessEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, message: &str) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:58
     pub fn new(player: JRef<dyn Player>, message: &str) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, message)) }
-    pub fn new_base_3<S: PlayerCommandPreprocessEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, message: &str, recipients: &HashSet<JRef<dyn Player>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:65
+    pub fn new_base_3<S: PlayerCommandPreprocessEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, message: &str, recipients: &HashSet<JRef<dyn Player>>) -> Self { Self { base: PlayerEvent::new_base(this, player), this: this.clone(), message: Mut::new(message.to_string()), recipients: Mut::new(recipients.clone()), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:65
     pub fn new_3(player: JRef<dyn Player>, message: &str, recipients: &HashSet<JRef<dyn Player>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_3(this, player, message, recipients)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:132
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:137
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:142
-    pub fn get_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:80
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:132
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:137
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:142
+    pub fn get_message(&self) -> String { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:80
     pub fn set_message(&self, command: &str) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:94
-    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:113
+    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { self.recipients.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:113
     pub fn set_player(&self, player: JRef<dyn Player>) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:126
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:148
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandPreprocessEvent.java:148
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

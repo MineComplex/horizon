@@ -26,8 +26,8 @@ impl std::ops::Deref for PlayerPickupArrowEvent {
 }
 impl PlayerPickupArrowEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, item: JRef<dyn Item>, arrow: JRef<dyn AbstractArrow>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPickupArrowEvent.java:16
-    pub fn get_arrow(&self) -> JRef<dyn AbstractArrow> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPickupArrowEvent.java:27
+    pub fn new(player: JRef<dyn Player>, item: JRef<dyn Item>, arrow: JRef<dyn AbstractArrow>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerPickupItemEvent::new_base(this, player, item, 0), this: this.clone(), arrow: arrow }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPickupArrowEvent.java:16
+    pub fn get_arrow(&self) -> JRef<dyn AbstractArrow> { self.arrow.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPickupArrowEvent.java:27
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

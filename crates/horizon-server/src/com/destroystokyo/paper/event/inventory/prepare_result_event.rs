@@ -32,10 +32,19 @@ impl std::ops::Deref for dyn PrepareResultEventTrait {
 }
 impl PrepareResultEvent {
     pub fn this(&self) -> JRef<dyn PrepareResultEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PrepareResultEventTrait + 'static>(this: &Weak<S>, inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:18
+    pub fn new_base<S: PrepareResultEventTrait + 'static>(this: &Weak<S>, inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> Self {
+PrepareResultEvent {
+base: PrepareInventoryResultEvent::new_base(this, inventory, result),
+this: this.clone(),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:18
     pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, inventory, result)) }
-    pub fn get_result(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:28
-    pub fn set_result(&self, result: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:38
+    pub fn get_result(&self) -> Option<JRef<ItemStack>> {
+self.base.get_result()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:28
+    pub fn set_result(&self, result: Option<JRef<ItemStack>>) {
+self.base.set_result(result)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareResultEvent.java:38
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

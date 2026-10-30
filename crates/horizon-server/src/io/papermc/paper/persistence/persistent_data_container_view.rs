@@ -12,11 +12,20 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.persistence.PersistentDataContainerView (paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:20)
 pub trait PersistentDataContainerView: JObject {
     fn has(&self, key: JRef<NamespacedKey>) -> bool; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:68
-    fn has_1(&self, data_key: JRef<dyn PersistentDataKey<JObjectRef>>) -> bool { todo!() } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:91
+    fn has_1(&self, data_key: JRef<dyn PersistentDataKey<JObjectRef>>) -> bool {
+        // Preconditions.checkArgument(dataKey != null, "The data key cannot be null"): a JRef is never null
+        self.has_2(data_key.key(), data_key.data_type())
+    } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:91
     fn has_2<P: JGeneric, C: JGeneric>(&self, key: JRef<NamespacedKey>, type_: JRef<dyn PersistentDataType<P, C>>) -> bool where Self: Sized; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:51
-    fn get<C: JGeneric>(&self, data_key: JRef<dyn PersistentDataKey<C>>) -> C where Self: Sized { todo!() } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:154
+    fn get<C: JGeneric>(&self, data_key: JRef<dyn PersistentDataKey<C>>) -> C where Self: Sized {
+        // Preconditions.checkArgument(dataKey != null, "The data key cannot be null"): a JRef is never null
+        self.get_2(data_key.key(), data_key.data_type())
+    } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:154
     fn get_2<P: JGeneric, C: JGeneric>(&self, key: JRef<NamespacedKey>, type_: JRef<dyn PersistentDataType<P, C>>) -> C where Self: Sized; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:115
-    fn get_or_default<C: JGeneric>(&self, data_key: JRef<dyn PersistentDataKey<C>>, default_value: C) -> C where Self: Sized { todo!() } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:175
+    fn get_or_default<C: JGeneric>(&self, data_key: JRef<dyn PersistentDataKey<C>>, default_value: C) -> C where Self: Sized {
+        // Preconditions.checkArgument(dataKey != null, "The data key cannot be null"): a JRef is never null
+        self.get_or_default_3(data_key.key(), data_key.data_type(), default_value)
+    } // default, paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:175
     fn get_or_default_3<P: JGeneric, C: JGeneric>(&self, key: JRef<NamespacedKey>, type_: JRef<dyn PersistentDataType<P, C>>, default_value: C) -> C where Self: Sized; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:138
     fn get_keys(&self) -> HashSet<JRef<NamespacedKey>>; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:189
     fn is_empty(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataContainerView.java:197

@@ -29,19 +29,19 @@ impl std::ops::Deref for LingeringPotionSplashEvent {
     type Target = ProjectileHitEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:19
 impl LingeringPotionSplashEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(potion: JRef<dyn ThrownPotion>, effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:26
-    pub fn new_5(potion: JRef<dyn ThrownPotion>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:32
-    pub fn get_entity(&self) -> JRef<dyn ThrownPotion> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:38
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:72
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:77
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:82
-    pub fn get_area_effect_cloud(&self) -> JRef<dyn AreaEffectCloud> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:49
-    pub fn allows_empty_creation(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:68
-    pub fn allows_empty_creation_1(&self, allow_empty_area_effect_creation: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:59
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:88
+    pub fn new(potion: JRef<dyn ThrownPotion>, effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> { Self::new_5(potion, None, None, None, effect_cloud) } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:26
+    pub fn new_5(potion: JRef<dyn ThrownPotion>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| LingeringPotionSplashEvent { base: ProjectileHitEvent::new_base_4(this, potion, hit_entity, hit_block, hit_face), this: this.clone(), effect_cloud: effect_cloud, allow_empty_area_effect_creation: Mut::new(false), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:32
+    pub fn get_entity(&self) -> JRef<dyn ThrownPotion> { cast::<dyn ThrownPotion, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:72
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:77
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:82
+    pub fn get_area_effect_cloud(&self) -> JRef<dyn AreaEffectCloud> { self.effect_cloud.clone() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:49
+    pub fn allows_empty_creation(&self) -> bool { self.allow_empty_area_effect_creation.get() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:68
+    pub fn allows_empty_creation_1(&self, allow_empty_area_effect_creation: bool) { self.allow_empty_area_effect_creation.set(allow_empty_area_effect_creation); } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:59
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/LingeringPotionSplashEvent.java:88
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

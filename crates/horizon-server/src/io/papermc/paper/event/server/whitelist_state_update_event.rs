@@ -21,17 +21,28 @@ impl std::ops::Deref for WhitelistStateUpdateEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:18
 impl WhitelistStateUpdateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player_profile: JRef<dyn PlayerProfile>, status: WhitelistStateUpdateEventWhitelistStatus) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:58
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:63
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:68
-    pub fn get_player(&self) -> JRef<dyn OfflinePlayer> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:36
-    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:45
-    pub fn get_status(&self) -> WhitelistStateUpdateEventWhitelistStatus { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:73
+    pub fn new(player_profile: JRef<dyn PlayerProfile>, status: WhitelistStateUpdateEventWhitelistStatus) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| WhitelistStateUpdateEvent {
+            base: Event::new_base(this),
+            this: this.clone(),
+            player_profile,
+            status,
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:25
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:58
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:63
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:68
+    pub fn get_player(&self) -> JRef<dyn OfflinePlayer> {
+        // PORT: PlayerProfile.getId() is @Nullable; Java would pass null through to Bukkit.getOfflinePlayer
+        crate::org::bukkit::bukkit::Bukkit::get_offline_player_1(self.player_profile.get_id().expect("NullPointerException: profile id"))
+    } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:36
+    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { self.player_profile.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:45
+    pub fn get_status(&self) -> WhitelistStateUpdateEventWhitelistStatus { self.status.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/WhitelistStateUpdateEvent.java:73
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

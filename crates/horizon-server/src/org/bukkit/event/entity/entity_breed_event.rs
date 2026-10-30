@@ -19,8 +19,8 @@ pub struct EntityBreedEvent {
     pub this: Weak<Self>,
     pub mother: JRef<dyn LivingEntity>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:19
     pub father: JRef<dyn LivingEntity>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:20
-    pub breeder: JRef<dyn LivingEntity>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:21
-    pub bred_with: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:22
+    pub breeder: Option<JRef<dyn LivingEntity>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:21
+    pub bred_with: Option<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:22
     pub experience: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:23
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:25
 }
@@ -28,21 +28,21 @@ impl std::ops::Deref for EntityBreedEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:17
 impl EntityBreedEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(child: JRef<dyn LivingEntity>, mother: JRef<dyn LivingEntity>, father: JRef<dyn LivingEntity>, breeder: Option<JRef<dyn LivingEntity>>, bred_with: Option<JRef<ItemStack>>, experience: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:27
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:38
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:104
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:109
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:114
-    pub fn get_mother(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:49
-    pub fn get_father(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:59
-    pub fn get_breeder(&self) -> Option<JRef<dyn LivingEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:70
-    pub fn get_bred_with(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:80
-    pub fn get_experience(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:90
+    pub fn new(child: JRef<dyn LivingEntity>, mother: JRef<dyn LivingEntity>, father: JRef<dyn LivingEntity>, breeder: Option<JRef<dyn LivingEntity>>, bred_with: Option<JRef<ItemStack>>, experience: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityBreedEvent { base: EntityEvent::new_base(this, child), this: this.clone(), mother: mother, father: father, breeder: breeder, bred_with: bred_with, experience: Mut::new(experience), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:27
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:104
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:109
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:114
+    pub fn get_mother(&self) -> JRef<dyn LivingEntity> { self.mother.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:49
+    pub fn get_father(&self) -> JRef<dyn LivingEntity> { self.father.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:59
+    pub fn get_breeder(&self) -> Option<JRef<dyn LivingEntity>> { self.breeder.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:70
+    pub fn get_bred_with(&self) -> Option<JRef<ItemStack>> { self.bred_with.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:80
+    pub fn get_experience(&self) -> i32 { self.experience.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:90
     pub fn set_experience(&self, experience: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:99
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:120
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreedEvent.java:120
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

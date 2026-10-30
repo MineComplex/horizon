@@ -33,20 +33,20 @@ impl std::ops::Deref for dyn EntityUnleashEventTrait {
     type Target = EntityUnleashEvent;
     fn deref(&self) -> &EntityUnleashEvent { self.as_entity_unleash_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:22
 impl EntityUnleashEvent {
     pub fn this(&self) -> JRef<dyn EntityUnleashEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityUnleashEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:29
+    pub fn new_base<S: EntityUnleashEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason) -> Self { Self::new_base_3(this, entity, reason, false) } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:29
     pub fn new(entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, reason)) }
-    pub fn new_base_3<S: EntityUnleashEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason, drop_leash: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:35
+    pub fn new_base_3<S: EntityUnleashEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason, drop_leash: bool) -> Self { EntityUnleashEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), reason: reason, drop_leash: Mut::new(drop_leash), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:35
     pub fn new_3(entity: JRef<dyn Entity>, reason: EntityUnleashEventUnleashReason, drop_leash: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_3(this, entity, reason, drop_leash)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:70
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:80
-    pub fn get_reason(&self) -> EntityUnleashEventUnleashReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:47
-    pub fn is_drop_leash(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:57
-    pub fn set_drop_leash(&self, drop_leash: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:66
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:86
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:70
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:80
+    pub fn get_reason(&self) -> EntityUnleashEventUnleashReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:47
+    pub fn is_drop_leash(&self) -> bool { self.drop_leash.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:57
+    pub fn set_drop_leash(&self, drop_leash: bool) { self.drop_leash.set(drop_leash); } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:66
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityUnleashEvent.java:86
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

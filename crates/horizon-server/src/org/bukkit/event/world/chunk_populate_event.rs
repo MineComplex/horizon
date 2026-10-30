@@ -21,12 +21,12 @@ impl std::ops::Deref for ChunkPopulateEvent {
     type Target = ChunkEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:17
 impl ChunkPopulateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(chunk: JRef<dyn Chunk>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:19
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:24
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:30
+    pub fn new(chunk: JRef<dyn Chunk>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ChunkEvent::new_base(this, chunk), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:19
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:24
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ChunkPopulateEvent.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

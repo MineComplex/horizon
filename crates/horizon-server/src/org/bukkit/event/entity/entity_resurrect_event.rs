@@ -17,24 +17,24 @@ use crate::api_prelude::*;
 pub struct EntityResurrectEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub hand: EquipmentSlot, // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:20
+    pub hand: Option<EquipmentSlot>, // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:20
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:22
 }
 impl std::ops::Deref for EntityResurrectEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:18
 impl EntityResurrectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(living_entity: JRef<dyn LivingEntity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:30
-    pub fn new_2(living_entity: JRef<dyn LivingEntity>, hand: Option<EquipmentSlot>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:24
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:53
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:58
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:63
-    pub fn get_hand(&self) -> Option<EquipmentSlot> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:48
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:69
+    pub fn new(living_entity: JRef<dyn LivingEntity>) -> JRef<Self> { Self::new_2(living_entity, None) } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:30
+    pub fn new_2(living_entity: JRef<dyn LivingEntity>, hand: Option<EquipmentSlot>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityResurrectEvent { base: EntityEvent::new_base(this, living_entity), this: this.clone(), hand: hand, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:24
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:53
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:58
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:63
+    pub fn get_hand(&self) -> Option<EquipmentSlot> { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:48
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityResurrectEvent.java:69
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

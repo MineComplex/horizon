@@ -21,20 +21,20 @@ impl std::ops::Deref for PlayerQuitEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:16
 impl PlayerQuitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, quit_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:21
     pub fn new_2(player: JRef<dyn Player>, quit_message: Option<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:35
     pub fn new_3(player: JRef<dyn Player>, quit_message: Option<String>, quit_reason: Option<PlayerQuitEventQuitReason>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:27
     pub fn new_3_(player: JRef<dyn Player>, quit_message: Option<Component>, quit_reason: Option<PlayerQuitEventQuitReason>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:41
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:94
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:94
     pub fn quit_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:53
     pub fn quit_message_1(&self, quit_message: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:62
     pub fn get_quit_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:72
     pub fn set_quit_message(&self, quit_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:84
-    pub fn get_reason(&self) -> PlayerQuitEventQuitReason { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:89
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:100
+    pub fn get_reason(&self) -> PlayerQuitEventQuitReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:89
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerQuitEvent.java:100
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

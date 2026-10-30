@@ -28,11 +28,21 @@ impl Title {
     pub fn new_5(title: BaseComponent, subtitle: Option<BaseComponent>, fade_in: i32, stay: i32, fade_out: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:131
     pub fn new_5_(title: Option<Vec<BaseComponent>>, subtitle: &Vec<BaseComponent>, fade_in: i32, stay: i32, fade_out: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:151
     pub fn new_5__(title: &str, subtitle: Option<String>, fade_in: i32, stay: i32, fade_out: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:173
-    pub fn get_title(&self) -> Vec<BaseComponent> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:188
-    pub fn get_subtitle(&self) -> Option<Vec<BaseComponent>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:198
-    pub fn get_fade_in(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:210
-    pub fn get_stay(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:221
-    pub fn get_fade_out(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:232
+    pub fn get_title(&self) -> Vec<BaseComponent> {
+self.title.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/Title.java:188
+    pub fn get_subtitle(&self) -> Option<Vec<BaseComponent>> {
+self.subtitle.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/Title.java:198
+    pub fn get_fade_in(&self) -> i32 {
+self.fade_in.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/Title.java:210
+    pub fn get_stay(&self) -> i32 {
+self.stay.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/Title.java:221
+    pub fn get_fade_out(&self) -> i32 {
+self.fade_out.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/Title.java:232
     pub fn send(&self, player: JRef<dyn Player>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:241
     pub fn send_1(&self, players: &Vec<JRef<dyn Player>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:250
     pub fn send_1_2(&self, players: &Vec<JRef<dyn Player>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/Title.java:261

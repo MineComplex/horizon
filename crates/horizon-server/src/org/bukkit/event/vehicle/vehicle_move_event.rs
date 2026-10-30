@@ -21,14 +21,14 @@ impl std::ops::Deref for VehicleMoveEvent {
     type Target = VehicleEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:14
 impl VehicleMoveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(vehicle: JRef<dyn Vehicle>, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:19
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:47
+    pub fn new(vehicle: JRef<dyn Vehicle>, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: VehicleEvent::new_base(this, vehicle), this: this.clone(), from: from, to: to }) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:19
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:47
     pub fn get_from(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:32
     pub fn get_to(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:42
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:53
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleMoveEvent.java:53
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

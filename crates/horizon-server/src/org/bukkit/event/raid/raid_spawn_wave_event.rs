@@ -24,14 +24,14 @@ impl std::ops::Deref for RaidSpawnWaveEvent {
     type Target = RaidEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:18
 impl RaidSpawnWaveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(raid: JRef<dyn Raid>, world: JRef<dyn World>, leader: JRef<dyn Raider>, raiders: &Vec<JRef<dyn Raider>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:23
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:50
+    pub fn new(raid: JRef<dyn Raid>, world: JRef<dyn World>, leader: JRef<dyn Raider>, raiders: &Vec<JRef<dyn Raider>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: RaidEvent::new_base(this, raid, world), this: this.clone(), raiders: Mut::new(raiders.clone()), leader: leader }) } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:23
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:50
     pub fn get_raiders(&self) -> Vec<JRef<dyn Raider>> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:35
-    pub fn get_patrol_leader(&self) -> JRef<dyn Raider> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:45
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:56
+    pub fn get_patrol_leader(&self) -> JRef<dyn Raider> { self.leader.clone() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:45
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/raid/RaidSpawnWaveEvent.java:56
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

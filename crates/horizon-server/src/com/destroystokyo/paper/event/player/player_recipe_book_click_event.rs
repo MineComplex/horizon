@@ -23,18 +23,42 @@ impl std::ops::Deref for PlayerRecipeBookClickEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:17
 impl PlayerRecipeBookClickEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, recipe: JRef<NamespacedKey>, make_all: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:24
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:69
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:74
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:79
-    pub fn get_recipe(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:36
-    pub fn set_recipe(&self, recipe: JRef<NamespacedKey>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:45
-    pub fn is_make_all(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:55
-    pub fn set_make_all(&self, make_all: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:65
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:84
+    pub fn new(player: JRef<dyn Player>, recipe: JRef<NamespacedKey>, make_all: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerRecipeBookClickEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+recipe: Mut::new(recipe),
+make_all: Mut::new(make_all),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:24
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:69
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:74
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:79
+    pub fn get_recipe(&self) -> JRef<NamespacedKey> {
+self.recipe.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:36
+    pub fn set_recipe(&self, recipe: JRef<NamespacedKey>) {
+self.recipe.set(recipe)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:45
+    pub fn is_make_all(&self) -> bool {
+self.make_all.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:55
+    pub fn set_make_all(&self, make_all: bool) {
+self.make_all.set(make_all)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:65
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerRecipeBookClickEvent.java:84
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

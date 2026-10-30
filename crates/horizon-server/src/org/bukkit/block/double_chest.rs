@@ -15,17 +15,17 @@ pub struct DoubleChest {
 }
 impl DoubleChest {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(chest: JRef<dyn DoubleChestInventory>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:17
-    pub fn get_inventory(&self) -> JRef<dyn Inventory> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:21
-    pub fn get_left_side(&self) -> Option<JRef<dyn InventoryHolder>> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:27
-    pub fn get_left_side_1(&self, use_snapshot: bool) -> Option<JRef<dyn InventoryHolder>> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:38
-    pub fn get_right_side(&self) -> Option<JRef<dyn InventoryHolder>> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:32
-    pub fn get_right_side_1(&self, use_snapshot: bool) -> Option<JRef<dyn InventoryHolder>> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:43
-    pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:49
-    pub fn get_world(&self) -> Option<JRef<dyn World>> { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:54
-    pub fn get_x(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:59
-    pub fn get_y(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:63
-    pub fn get_z(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:67
+    pub fn new(chest: JRef<dyn DoubleChestInventory>) -> JRef<Self> { Arc::new_cyclic(|this| DoubleChest { this: this.clone(), inventory: Mut::new(chest) }) } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:17
+    pub fn get_inventory(&self) -> JRef<dyn Inventory> { self.inventory.get() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:21
+    pub fn get_left_side(&self) -> Option<JRef<dyn InventoryHolder>> { self.inventory.get().get_left_side().get_holder() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:27
+    pub fn get_left_side_1(&self, use_snapshot: bool) -> Option<JRef<dyn InventoryHolder>> { self.inventory.get().get_left_side().get_holder_1(use_snapshot) } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:38
+    pub fn get_right_side(&self) -> Option<JRef<dyn InventoryHolder>> { self.inventory.get().get_right_side().get_holder() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:32
+    pub fn get_right_side_1(&self, use_snapshot: bool) -> Option<JRef<dyn InventoryHolder>> { self.inventory.get().get_right_side().get_holder_1(use_snapshot) } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:43
+    pub fn get_location(&self) -> JRef<Location> { self.get_inventory().get_location().expect("NullPointerException: location") } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:49
+    pub fn get_world(&self) -> Option<JRef<dyn World>> { Some(self.get_location().get_world()) } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:54
+    pub fn get_x(&self) -> f64 { self.get_location().get_x() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:59
+    pub fn get_y(&self) -> f64 { self.get_location().get_y() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:63
+    pub fn get_z(&self) -> f64 { self.get_location().get_z() } // paper-api/src/main/java/org/bukkit/block/DoubleChest.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

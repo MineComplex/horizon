@@ -23,15 +23,15 @@ impl std::ops::Deref for EntityToggleSwimEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:14
 impl EntityToggleSwimEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(living_entity: JRef<dyn LivingEntity>, is_swimming: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:19
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:35
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:47
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:53
-    pub fn is_swimming(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:31
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:59
+    pub fn new(living_entity: JRef<dyn LivingEntity>, is_swimming: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityToggleSwimEvent { base: EntityEvent::new_base(this, living_entity), this: this.clone(), is_swimming: is_swimming, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:19
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:35
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:47
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:53
+    pub fn is_swimming(&self) -> bool { self.is_swimming } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:31
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityToggleSwimEvent.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

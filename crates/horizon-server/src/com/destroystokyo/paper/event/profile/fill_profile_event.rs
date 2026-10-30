@@ -18,14 +18,28 @@ impl std::ops::Deref for FillProfileEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:40
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:40
 impl FillProfileEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(profile: JRef<dyn PlayerProfile>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:44
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:67
-    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:53
-    pub fn get_properties(&self) -> HashSet<ProfileProperty> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:63
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:72
+    pub fn new(profile: JRef<dyn PlayerProfile>) -> JRef<Self> {
+Arc::new_cyclic(|this| FillProfileEvent {
+    base: Event::new_base_1(this, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
+    this: this.clone(),
+    profile,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:44
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:67
+    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> {
+self.profile.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:53
+    pub fn get_properties(&self) -> HashSet<ProfileProperty> {
+self.profile.get_properties()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:63
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/FillProfileEvent.java:72
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

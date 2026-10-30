@@ -9,8 +9,8 @@ pub trait Lootable: JObject {
     fn set_loot_table(&self, table: Option<JRef<dyn LootTable>>); // paper-api/src/main/java/org/bukkit/loot/Lootable.java:24
     fn set_loot_table_2(&self, table: Option<JRef<dyn LootTable>>, seed: i64); // paper-api/src/main/java/org/bukkit/loot/Lootable.java:47
     fn get_loot_table(&self) -> Option<JRef<dyn LootTable>>; // paper-api/src/main/java/org/bukkit/loot/Lootable.java:35
-    fn has_loot_table(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/loot/Lootable.java:53
-    fn clear_loot_table(&self) { todo!() } // default, paper-api/src/main/java/org/bukkit/loot/Lootable.java:61
+    fn has_loot_table(&self) -> bool { self.get_loot_table().is_some() } // default, paper-api/src/main/java/org/bukkit/loot/Lootable.java:53
+    fn clear_loot_table(&self) { self.set_loot_table(None); } // default, paper-api/src/main/java/org/bukkit/loot/Lootable.java:61
     fn set_seed(&self, seed: i64); // paper-api/src/main/java/org/bukkit/loot/Lootable.java:71
     fn get_seed(&self) -> i64; // paper-api/src/main/java/org/bukkit/loot/Lootable.java:80
 }

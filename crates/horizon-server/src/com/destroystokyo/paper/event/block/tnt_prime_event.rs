@@ -23,16 +23,36 @@ impl std::ops::Deref for TNTPrimeEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:30
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:30
 impl TNTPrimeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, reason: TNTPrimeEventPrimeReason, primer_entity: Option<JRef<dyn Entity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:37
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:73
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:83
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:88
-    pub fn get_reason(&self) -> TNTPrimeEventPrimeReason { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:49
-    pub fn get_primer_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:63
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:94
+    pub fn new(block: JRef<dyn Block>, reason: TNTPrimeEventPrimeReason, primer_entity: Option<JRef<dyn Entity>>) -> JRef<Self> {
+Arc::new_cyclic(|this| TNTPrimeEvent {
+base: BlockEvent::new_base(this, block),
+this: this.clone(),
+reason: reason,
+primer_entity: primer_entity,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:37
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:73
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:83
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:88
+    pub fn get_reason(&self) -> TNTPrimeEventPrimeReason {
+self.reason.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:49
+    pub fn get_primer_entity(&self) -> Option<JRef<dyn Entity>> {
+self.primer_entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:63
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/TNTPrimeEvent.java:94
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

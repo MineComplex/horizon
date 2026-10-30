@@ -24,19 +24,19 @@ impl std::ops::Deref for BrewingStandFuelEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:17
 impl BrewingStandFuelEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(brewing_stand: JRef<dyn Block>, fuel: JRef<ItemStack>, fuel_power: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:80
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:85
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:90
-    pub fn get_fuel(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:37
-    pub fn get_fuel_power(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:48
-    pub fn set_fuel_power(&self, fuel_power: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:58
-    pub fn is_consuming(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:67
-    pub fn set_consuming(&self, consuming: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:76
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:96
+    pub fn new(brewing_stand: JRef<dyn Block>, fuel: JRef<ItemStack>, fuel_power: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockEvent::new_base(this, brewing_stand), this: this.clone(), fuel: fuel, fuel_power: Mut::new(fuel_power), consuming: Mut::new(true), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:25
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:80
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:85
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:90
+    pub fn get_fuel(&self) -> JRef<ItemStack> { self.fuel.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:37
+    pub fn get_fuel_power(&self) -> i32 { self.fuel_power.get() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:48
+    pub fn set_fuel_power(&self, fuel_power: i32) { self.fuel_power.set(fuel_power) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:58
+    pub fn is_consuming(&self) -> bool { self.consuming.get() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:67
+    pub fn set_consuming(&self, consuming: bool) { self.consuming.set(consuming) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:76
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewingStandFuelEvent.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

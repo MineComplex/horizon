@@ -29,24 +29,24 @@ impl std::ops::Deref for PlayerPortalEvent {
     type Target = PlayerTeleportEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:20
 impl PlayerPortalEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:26
-    pub fn new_4(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:31
-    pub fn new_7(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause, search_radius: i32, can_create_portal: bool, creation_radius: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:36
+    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerTeleportEvent::new_base(this, player, from, to), this: this.clone(), search_radius: Mut::new(128), can_create_portal: Mut::new(true), creation_radius: Mut::new(16) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:26
+    pub fn new_4(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerTeleportEvent::new_base_4(this, player, from, to, cause), this: this.clone(), search_radius: Mut::new(128), can_create_portal: Mut::new(true), creation_radius: Mut::new(16) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:31
+    pub fn new_7(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause, search_radius: i32, can_create_portal: bool, creation_radius: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerTeleportEvent::new_base_4(this, player, from, to, cause), this: this.clone(), search_radius: Mut::new(search_radius), can_create_portal: Mut::new(can_create_portal), creation_radius: Mut::new(creation_radius) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:36
     pub fn get_to(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:54
     pub fn set_to(&self, to: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:64
     pub fn will_dismount_player(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:148
     pub fn get_relative_teleportation_flags(&self) -> HashSet<TeleportFlagRelative> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:160
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:166
-    pub fn set_search_radius(&self, search_radius: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:75
-    pub fn get_search_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:84
-    pub fn get_can_create_portal(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:94
-    pub fn set_can_create_portal(&self, can_create_portal: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:105
-    pub fn set_creation_radius(&self, creation_radius: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:122
-    pub fn get_creation_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:138
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:172
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:166
+    pub fn set_search_radius(&self, search_radius: i32) { self.search_radius.set(search_radius) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:75
+    pub fn get_search_radius(&self) -> i32 { self.search_radius.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:84
+    pub fn get_can_create_portal(&self) -> bool { self.can_create_portal.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:94
+    pub fn set_can_create_portal(&self, can_create_portal: bool) { self.can_create_portal.set(can_create_portal) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:105
+    pub fn set_creation_radius(&self, creation_radius: i32) { self.creation_radius.set(creation_radius) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:122
+    pub fn get_creation_radius(&self) -> i32 { self.creation_radius.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:138
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPortalEvent.java:172
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

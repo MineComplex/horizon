@@ -11,10 +11,20 @@ pub struct Reputation {
 }
 impl Reputation {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:16
-    pub fn new_1(reputation: &HashMap<ReputationType, i32>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:20
-    pub fn get_reputation(&self, type_: ReputationType) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:31
-    pub fn set_reputation(&self, type_: ReputationType, value: i32) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:42
-    pub fn has_reputation_set(&self, type_: ReputationType) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:53
+    pub fn new() -> JRef<Self> {
+Reputation::new_1(&HashMap::new())
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:16
+    pub fn new_1(reputation: &HashMap<ReputationType, i32>) -> JRef<Self> {
+Arc::new_cyclic(|this| Reputation { this: this.clone(), reputation: Mut::new(reputation.clone()) })
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:20
+    pub fn get_reputation(&self, type_: ReputationType) -> i32 {
+*self.reputation.borrow().get(&type_).unwrap_or(&0)
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:31
+    pub fn set_reputation(&self, type_: ReputationType, value: i32) {
+self.reputation.borrow_mut().insert(type_, value);
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:42
+    pub fn has_reputation_set(&self, type_: ReputationType) -> bool {
+self.reputation.borrow().contains_key(&type_)
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/villager/Reputation.java:53
 }
 crate::jobject!(Reputation);

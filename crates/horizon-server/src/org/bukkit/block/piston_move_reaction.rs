@@ -16,7 +16,13 @@ pub enum PistonMoveReaction {
 pub struct PistonMoveReactionData {
     pub id: i32,
 }
-pub static BY_ID: LazyLock<Mut<HashMap<i32, PistonMoveReaction>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:39
+pub static BY_ID: LazyLock<Mut<HashMap<i32, PistonMoveReaction>>> = LazyLock::new(|| {
+    let by_id = Mut::new(HashMap::new());
+    for reaction in PistonMoveReaction::VALUES {
+        by_id.borrow_mut().insert(reaction.data().id, reaction);
+    }
+    by_id
+}); // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:39
 impl PistonMoveReaction {
     pub const VALUES: [PistonMoveReaction; 5] = [PistonMoveReaction::MOVE, PistonMoveReaction::PUSH_ONLY, PistonMoveReaction::BREAK, PistonMoveReaction::BLOCK, PistonMoveReaction::IGNORE];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -25,8 +31,21 @@ impl PistonMoveReaction {
     }
     pub fn value_of(name: &str) -> Option<PistonMoveReaction> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static PistonMoveReactionData { todo!("paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:11") }
-    pub fn get_id(self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:54
-    pub fn get_by_id(id: i32) -> Option<PistonMoveReaction> { todo!() } // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:64
+    pub fn data(self) -> &'static PistonMoveReactionData {
+        static MOVE: PistonMoveReactionData = PistonMoveReactionData { id: 0 };
+        static PUSH_ONLY: PistonMoveReactionData = PistonMoveReactionData { id: 1 };
+        static BREAK: PistonMoveReactionData = PistonMoveReactionData { id: 2 };
+        static BLOCK: PistonMoveReactionData = PistonMoveReactionData { id: 3 };
+        static IGNORE: PistonMoveReactionData = PistonMoveReactionData { id: 4 };
+        match self {
+            PistonMoveReaction::MOVE => &MOVE,
+            PistonMoveReaction::PUSH_ONLY => &PUSH_ONLY,
+            PistonMoveReaction::BREAK => &BREAK,
+            PistonMoveReaction::BLOCK => &BLOCK,
+            PistonMoveReaction::IGNORE => &IGNORE,
+        }
+    }
+    pub fn get_id(self) -> i32 { self.data().id } // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:54
+    pub fn get_by_id(id: i32) -> Option<PistonMoveReaction> { BY_ID.borrow().get(&id).copied() } // paper-api/src/main/java/org/bukkit/block/PistonMoveReaction.java:64
 }
 crate::jobject!(PistonMoveReaction);

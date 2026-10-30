@@ -24,15 +24,15 @@ impl std::ops::Deref for BlockPistonExtendEvent {
     type Target = BlockPistonEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:18
 impl BlockPistonExtendEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(block: JRef<dyn Block>, length: i32, direction: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:23
     pub fn new_3(block: JRef<dyn Block>, blocks: &Vec<JRef<dyn Block>>, direction: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:31
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:70
-    pub fn get_length(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:46
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:70
+    pub fn get_length(&self) -> i32 { self.length } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:46
     pub fn get_blocks(&self) -> Vec<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:57
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:76
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonExtendEvent.java:76
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

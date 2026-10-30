@@ -26,8 +26,8 @@ impl std::ops::Deref for EntityTargetLivingEntityEvent {
 }
 impl EntityTargetLivingEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, target: Option<JRef<dyn LivingEntity>>, reason: EntityTargetEventTargetReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetLivingEntityEvent.java:15
-    pub fn get_target(&self) -> Option<JRef<dyn LivingEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetLivingEntityEvent.java:20
+    pub fn new(entity: JRef<dyn Entity>, target: Option<JRef<dyn LivingEntity>>, reason: EntityTargetEventTargetReason) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityTargetLivingEntityEvent { base: EntityTargetEvent::new_base(this, entity, target.map(|x| x as JRef<dyn Entity>), reason), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetLivingEntityEvent.java:15
+    pub fn get_target(&self) -> Option<JRef<dyn LivingEntity>> { self.base.get_target().map(|e| cast::<dyn LivingEntity, _>(&e).expect("ClassCastException")) } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetLivingEntityEvent.java:20
     pub fn set_target(&self, target: Option<JRef<dyn Entity>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetLivingEntityEvent.java:36
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

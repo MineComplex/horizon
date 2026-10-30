@@ -3,13 +3,14 @@
 use crate::prelude::*;
 use crate::org::bukkit::block::data::directional::Directional;
 use crate::org::bukkit::block::data::face_attachable::FaceAttachable;
+use crate::org::bukkit::block::data::face_attachable::FaceAttachableAttachedFace;
 use crate::org::bukkit::block::data::powerable::Powerable;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.data.type.Switch (paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:8)
 pub trait Switch: Directional + FaceAttachable + Powerable {
-    fn get_face(&self) -> SwitchFace { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:21
-    fn set_face(&self, face: SwitchFace) { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:33
+    fn get_face(&self) -> SwitchFace { SwitchFace::value_of(self.get_attached_face().name()).unwrap_or_else(|| panic!("IllegalArgumentException: No enum constant")) } // default, paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:21
+    fn set_face(&self, face: SwitchFace) { self.set_attached_face(FaceAttachableAttachedFace::value_of(face.name()).unwrap_or_else(|| panic!("IllegalArgumentException: No enum constant"))) } // default, paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:33
 }
 // ---- enum org.bukkit.block.data.type.Switch.Face (paper-api/src/main/java/org/bukkit/block/data/type/Switch.java:43)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

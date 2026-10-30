@@ -13,16 +13,25 @@ use crate::api_prelude::*;
 pub trait TrimMaterial: Keyed + Translatable {
     fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:67
 }
-pub static AMETHYST: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:35
-pub static COPPER: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:37
-pub static DIAMOND: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:39
-pub static EMERALD: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:41
-pub static GOLD: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:43
-pub static IRON: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:45
-pub static LAPIS: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:47
-pub static NETHERITE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:49
-pub static QUARTZ: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:51
-pub static REDSTONE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:53
-pub static RESIN: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:55
-pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:30
-pub fn get_trim_material(key: &str) -> JRef<dyn TrimMaterial> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:58
+pub static AMETHYST: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("amethyst")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:35
+pub static COPPER: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("copper")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:37
+pub static DIAMOND: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("diamond")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:39
+pub static EMERALD: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("emerald")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:41
+pub static GOLD: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("gold")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:43
+pub static IRON: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("iron")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:45
+pub static LAPIS: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("lapis")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:47
+pub static NETHERITE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("netherite")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:49
+pub static QUARTZ: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("quartz")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:51
+pub static REDSTONE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("redstone")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:53
+pub static RESIN: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("resin")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:55
+pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial> {
+    crate::io::papermc::paper::registry::data::inlined_registry_builder_provider::instance().create_trim_material(value)
+} // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:30
+pub fn get_trim_material(key: &str) -> JRef<dyn TrimMaterial> {
+    crate::io::papermc::paper::registry::registry_access::registry_access()
+        .get_registry_1(crate::io::papermc::paper::registry::registry_key::TRIM_MATERIAL.clone())
+        .get_or_throw(crate::net::kyori::adventure::key::key::key_2(
+            crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+            key,
+        ))
+} // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:58

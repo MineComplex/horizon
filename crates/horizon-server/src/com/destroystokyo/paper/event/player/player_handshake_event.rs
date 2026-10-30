@@ -19,38 +19,103 @@ pub struct PlayerHandshakeEvent {
     pub unique_id: Mut<Option<Uuid>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:32
     pub properties_json: Mut<Option<String>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:33
     pub failed: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:34
-    pub fail_message: Mut<Component>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:35
+    pub fail_message: Mut<Option<Component>>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:35
     pub cancelled: Mut<bool>, // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:37
 }
 impl std::ops::Deref for PlayerHandshakeEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:26
 impl PlayerHandshakeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(original_handshake: &str, cancelled: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:39
-    pub fn new_3(original_handshake: &str, original_socket_address_hostname: &str, cancelled: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:45
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:231
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:242
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:247
-    pub fn get_original_handshake(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:58
-    pub fn get_original_socket_address_hostname(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:70
-    pub fn get_server_hostname(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:81
-    pub fn set_server_hostname(&self, server_hostname: &str) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:92
-    pub fn get_socket_address_hostname(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:103
-    pub fn set_socket_address_hostname(&self, socket_address_hostname: &str) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:114
-    pub fn get_unique_id(&self) -> Option<Uuid> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:123
-    pub fn set_unique_id(&self, unique_id: Uuid) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:132
-    pub fn get_properties_json(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:143
-    pub fn is_failed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:155
-    pub fn set_failed(&self, failed: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:167
-    pub fn set_properties_json(&self, properties_json: &str) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:178
-    pub fn fail_message(&self) -> Component { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:187
-    pub fn fail_message_1(&self, fail_message: Component) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:198
-    pub fn get_fail_message(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:208
-    pub fn set_fail_message(&self, fail_message: &str) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:219
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:252
+    pub fn new(original_handshake: &str, cancelled: bool) -> JRef<Self> {
+PlayerHandshakeEvent::new_3(original_handshake, "127.0.0.1", cancelled)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:39
+    pub fn new_3(original_handshake: &str, original_socket_address_hostname: &str, cancelled: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerHandshakeEvent {
+    base: Event::new_base_1(this, true),
+    this: this.clone(),
+    original_handshake: original_handshake.to_string(),
+    original_socket_address_hostname: original_socket_address_hostname.to_string(),
+    server_hostname: Mut::new(None),
+    socket_address_hostname: Mut::new(None),
+    unique_id: Mut::new(None),
+    properties_json: Mut::new(None),
+    failed: Mut::new(false),
+    fail_message: Mut::new(None),
+    cancelled: Mut::new(cancelled),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:45
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:231
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:242
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:247
+    pub fn get_original_handshake(&self) -> String {
+self.original_handshake.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:58
+    pub fn get_original_socket_address_hostname(&self) -> String {
+self.original_socket_address_hostname.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:70
+    pub fn get_server_hostname(&self) -> Option<String> {
+self.server_hostname.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:81
+    pub fn set_server_hostname(&self, server_hostname: &str) {
+self.server_hostname.set(Some(server_hostname.to_string()))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:92
+    pub fn get_socket_address_hostname(&self) -> Option<String> {
+self.socket_address_hostname.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:103
+    pub fn set_socket_address_hostname(&self, socket_address_hostname: &str) {
+self.socket_address_hostname.set(Some(socket_address_hostname.to_string()))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:114
+    pub fn get_unique_id(&self) -> Option<Uuid> {
+self.unique_id.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:123
+    pub fn set_unique_id(&self, unique_id: Uuid) {
+self.unique_id.set(Some(unique_id))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:132
+    pub fn get_properties_json(&self) -> Option<String> {
+self.properties_json.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:143
+    pub fn is_failed(&self) -> bool {
+self.failed.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:155
+    pub fn set_failed(&self, failed: bool) {
+self.failed.set(failed)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:167
+    pub fn set_properties_json(&self, properties_json: &str) {
+self.properties_json.set(Some(properties_json.to_string()))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:178
+    pub fn fail_message(&self) -> Component {
+if self.fail_message.borrow().is_none() {
+    self.fail_message.set(Some(Component::text_2(
+        "If you wish to use IP forwarding, please enable it in your BungeeCord config as well!",
+        crate::net::kyori::adventure::text::format::NamedTextColor::YELLOW.clone(),
+    ))); // PORT: adventure Component.text(String, TextColor)
+}
+self.fail_message.get().expect("failMessage")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:187
+    pub fn fail_message_1(&self, fail_message: Component) {
+self.fail_message.set(Some(fail_message))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:198
+    pub fn get_fail_message(&self) -> String {
+crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer::legacy_section().serialize(self.fail_message())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:208
+    pub fn set_fail_message(&self, fail_message: &str) {
+assert!(!fail_message.is_empty(), "fail message cannot be null or empty");
+self.fail_message_1(
+    crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer::legacy_section().deserialize(fail_message),
+);
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:219
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerHandshakeEvent.java:252
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -10,10 +10,40 @@ use crate::api_prelude::*;
 pub struct JarManifests {
     pub this: Weak<Self>,
 }
-pub static MANIFESTS: LazyLock<HashMap<ClassLoader, Manifest>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:23
+// Collections.synchronizedMap(new WeakHashMap<>()): the map's lock is held across computeIfAbsent.
+// PORT: ClassLoader is a stand-in (needs Eq + Hash); there are no class loaders to collect weakly in Rust.
+pub static MANIFESTS: LazyLock<parking_lot::Mutex<HashMap<ClassLoader, Manifest>>> = LazyLock::new(|| parking_lot::Mutex::new(HashMap::new())); // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:23
 impl JarManifests {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:20
-    pub fn manifest(clazz: Class) -> Option<Manifest> { todo!() } // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:25
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this| JarManifests { this: this.clone() })
+    } // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:20
+    pub fn manifest(clazz: Class) -> Option<Manifest> {
+        // PORT: java.lang.Class / ClassLoader / java.net.URL / java.util.jar.Manifest are stand-ins; the calls are written as their ports will look.
+        let class_loader = clazz.get_class_loader();
+        let mut manifests = MANIFESTS.lock();
+        if let Some(manifest) = manifests.get(&class_loader) {
+            return Some(manifest.clone());
+        }
+        let computed = (|| -> Option<Manifest> {
+            let class_location = format!("/{}.class", clazz.get_name().replace('.', "/"));
+            let resource = clazz.get_resource(&class_location)?;
+            let class_file_path = resource.to_string().replace('\\', "/");
+            let archive_path = &class_file_path[..class_file_path.len() - class_location.len()];
+            let mut stream = match crate::java::net::URL::new(&format!("{}/META-INF/MANIFEST.MF", archive_path)).and_then(|url| url.open_stream()) {
+                Ok(stream) => stream,
+                Err(_ex) => return None,
+            };
+            match Manifest::new(&mut stream) {
+                Ok(manifest) => Some(manifest),
+                Err(_ex) => None,
+            }
+        })();
+        // computeIfAbsent stores nothing when the function returns null.
+        if let Some(manifest) = &computed {
+            manifests.insert(class_loader, manifest.clone());
+        }
+        computed
+    } // paper-api/src/main/java/io/papermc/paper/util/JarManifests.java:25
 }
 crate::jobject!(JarManifests);

@@ -21,15 +21,28 @@ impl std::ops::Deref for PlayerMapFilledEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:16
 impl PlayerMapFilledEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, original_item: JRef<ItemStack>, created_map: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:55
-    pub fn get_original_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:33
-    pub fn get_created_map(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:42
-    pub fn set_created_map(&self, created_map: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:51
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:60
+    pub fn new(player: JRef<dyn Player>, original_item: JRef<ItemStack>, created_map: JRef<ItemStack>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerMapFilledEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            original_item,
+            created_map: Mut::new(created_map),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:55
+    pub fn get_original_item(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.original_item)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:33
+    pub fn get_created_map(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.created_map.get())
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:42
+    pub fn set_created_map(&self, created_map: JRef<ItemStack>) {
+        self.created_map.set(ItemStack::clone(&created_map));
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:51
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerMapFilledEvent.java:60
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

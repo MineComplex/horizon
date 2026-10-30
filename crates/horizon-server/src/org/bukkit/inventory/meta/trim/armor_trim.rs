@@ -13,10 +13,29 @@ pub struct ArmorTrim {
 }
 impl ArmorTrim {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(material: JRef<dyn TrimMaterial>, pattern: JRef<dyn TrimPattern>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:25
-    pub fn get_material(&self) -> JRef<dyn TrimMaterial> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:38
-    pub fn get_pattern(&self) -> JRef<dyn TrimPattern> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:48
-    pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:53
-    pub fn equals(&self, obj: JObjectRef) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:61
+    pub fn new(material: JRef<dyn TrimMaterial>, pattern: JRef<dyn TrimPattern>) -> JRef<Self> {
+        // Preconditions.checkArgument(material != null / pattern != null): non-null by type.
+        Arc::new_cyclic(|this| ArmorTrim { this: this.clone(), material, pattern })
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:25
+    pub fn get_material(&self) -> JRef<dyn TrimMaterial> { self.material.clone() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:38
+    pub fn get_pattern(&self) -> JRef<dyn TrimPattern> { self.pattern.clone() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:48
+    pub fn hash_code(&self) -> i32 {
+        let mut hash: i32 = 7;
+        // Objects.hashCode(material/pattern): the registry values' hash is their holder's, an identity hash.
+        hash = 31 * hash + Arc::as_ptr(&self.material) as *const () as usize as i32;
+        hash = 31 * hash + Arc::as_ptr(&self.pattern) as *const () as usize as i32;
+        hash
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:53
+    pub fn equals(&self, obj: JObjectRef) -> bool {
+        if std::ptr::addr_eq(Arc::as_ptr(&obj), self as *const Self) {
+            return true;
+        }
+
+        let Some(other) = cast::<ArmorTrim, _>(&obj) else {
+            return false;
+        };
+
+        same(&self.material, &other.material) && same(&self.pattern, &other.pattern)
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/ArmorTrim.java:61
 }
 crate::jobject!(ArmorTrim);

@@ -20,17 +20,28 @@ impl std::ops::Deref for PlayerServerFullCheckEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:40
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:40
 impl PlayerServerFullCheckEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(profile: JRef<dyn PlayerProfile>, kick_message: Component, should_kick: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:46
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:95
-    pub fn kick_message(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:56
-    pub fn deny(&self, kick_message: Component) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:66
-    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:74
-    pub fn allow(&self, allow: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:82
-    pub fn is_allowed(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:91
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:100
+    pub fn new(profile: JRef<dyn PlayerProfile>, kick_message: Component, should_kick: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerServerFullCheckEvent {
+            base: Event::new_base(this),
+            this: this.clone(),
+            profile,
+            kick_message: Mut::new(kick_message),
+            allow: Mut::new(!should_kick),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:46
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:95
+    pub fn kick_message(&self) -> Component { self.kick_message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:56
+    pub fn deny(&self, kick_message: Component) {
+        self.kick_message.set(kick_message);
+        self.allow.set(false);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:66
+    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { self.profile.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:74
+    pub fn allow(&self, allow: bool) { self.allow.set(allow) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:82
+    pub fn is_allowed(&self) -> bool { self.allow.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:91
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerServerFullCheckEvent.java:100
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

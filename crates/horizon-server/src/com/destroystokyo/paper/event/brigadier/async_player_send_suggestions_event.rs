@@ -23,17 +23,39 @@ impl std::ops::Deref for AsyncPlayerSendSuggestionsEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:22
 impl AsyncPlayerSendSuggestionsEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, suggestions: Suggestions, buffer: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:65
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:80
-    pub fn get_buffer(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:41
-    pub fn get_suggestions(&self) -> Suggestions { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:50
-    pub fn set_suggestions(&self, suggestions: Suggestions) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:61
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:85
+    pub fn new(player: JRef<dyn Player>, suggestions: Suggestions, buffer: &str) -> JRef<Self> {
+Arc::new_cyclic(|this| AsyncPlayerSendSuggestionsEvent {
+    base: PlayerEvent::new_base_2(this, player, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
+    this: this.clone(),
+    suggestions: Mut::new(suggestions),
+    buffer: buffer.to_string(),
+    cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:29
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:65
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:80
+    pub fn get_buffer(&self) -> String {
+self.buffer.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:41
+    pub fn get_suggestions(&self) -> Suggestions {
+self.suggestions.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:50
+    pub fn set_suggestions(&self, suggestions: Suggestions) {
+self.suggestions.set(suggestions)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:61
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendSuggestionsEvent.java:85
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

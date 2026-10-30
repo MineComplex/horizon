@@ -15,11 +15,10 @@ pub struct ReferenceImpl<T: JGeneric> {
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> ReferenceImpl<T> {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:11
     pub fn new_2(registry: JRef<dyn Registry<T>>, key: JRef<NamespacedKey>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:11
     pub fn value(&self) -> T { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:13
     pub fn value_or_null(&self) -> Option<T> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:22
-    pub fn get_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:27
+    pub fn get_key(&self) -> JRef<NamespacedKey> { self.key.clone() } // paper-api/src/main/java/io/papermc/paper/registry/ReferenceImpl.java:27
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

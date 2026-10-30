@@ -18,26 +18,26 @@ pub struct FoodLevelChangeEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
     pub level: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:18
-    pub item: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:19
+    pub item: Option<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:19
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:21
 }
 impl std::ops::Deref for FoodLevelChangeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:16
 impl FoodLevelChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(human: JRef<dyn HumanEntity>, level: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:23
-    pub fn new_3(human: JRef<dyn HumanEntity>, level: i32, item: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:29
-    pub fn get_entity(&self) -> JRef<dyn HumanEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:77
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:82
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:87
+    pub fn new(human: JRef<dyn HumanEntity>, level: i32) -> JRef<Self> { Self::new_3(human, level, None) } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:23
+    pub fn new_3(human: JRef<dyn HumanEntity>, level: i32, item: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| FoodLevelChangeEvent { base: EntityEvent::new_base(this, human), this: this.clone(), level: Mut::new(level), item: item, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:29
+    pub fn get_entity(&self) -> JRef<dyn HumanEntity> { cast::<dyn HumanEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:77
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:82
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:87
     pub fn get_item(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:47
-    pub fn get_food_level(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:60
+    pub fn get_food_level(&self) -> i32 { self.level.get() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:60
     pub fn set_food_level(&self, level: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:71
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:93
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/FoodLevelChangeEvent.java:93
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

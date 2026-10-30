@@ -24,16 +24,35 @@ impl std::ops::Deref for SkeletonHorseTrapEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:18
 impl SkeletonHorseTrapEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(horse: JRef<dyn SkeletonHorse>, eligible_humans: &Vec<JRef<dyn HumanEntity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:23
-    pub fn get_entity(&self) -> JRef<dyn SkeletonHorse> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:38
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:43
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:48
-    pub fn get_eligible_humans(&self) -> Vec<JRef<dyn HumanEntity>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:34
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:53
+    pub fn new(horse: JRef<dyn SkeletonHorse>, eligible_humans: &Vec<JRef<dyn HumanEntity>>) -> JRef<Self> {
+Arc::new_cyclic(|this| SkeletonHorseTrapEvent {
+base: EntityEvent::new_base(this, horse),
+this: this.clone(),
+eligible_humans: Mut::new(eligible_humans.clone()),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:23
+    pub fn get_entity(&self) -> JRef<dyn SkeletonHorse> {
+cast::<dyn SkeletonHorse, _>(&self.base.get_entity()).expect("SkeletonHorse")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:29
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:38
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:43
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:48
+    pub fn get_eligible_humans(&self) -> Vec<JRef<dyn HumanEntity>> {
+self.eligible_humans.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:34
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SkeletonHorseTrapEvent.java:53
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

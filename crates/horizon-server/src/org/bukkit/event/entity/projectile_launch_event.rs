@@ -27,10 +27,10 @@ impl std::ops::Deref for ProjectileLaunchEvent {
 }
 impl ProjectileLaunchEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:16
-    pub fn get_entity(&self) -> JRef<dyn Projectile> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:27
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:32
+    pub fn new(entity: JRef<dyn Entity>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ProjectileLaunchEvent { base: EntitySpawnEvent::new_base(this, entity), this: this.clone(), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:16
+    pub fn get_entity(&self) -> JRef<dyn Projectile> { cast::<dyn Projectile, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:21
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:27
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileLaunchEvent.java:32
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

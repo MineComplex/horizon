@@ -11,12 +11,20 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.threadedregions.scheduler.RegionScheduler (paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:20)
 pub trait RegionScheduler: JObject {
-    fn execute(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, run: JRef<dyn Runnable>) { todo!() } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:40
+    fn execute(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, run: JRef<dyn Runnable>) {
+        self.execute_5(plugin, location.get_world(), location.get_block_x() >> 4, location.get_block_z() >> 4, run);
+    } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:40
     fn execute_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, run: JRef<dyn Runnable>); // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:31
-    fn run(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:64
+    fn run(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> {
+        self.run_5(plugin, location.get_world(), location.get_block_x() >> 4, location.get_block_z() >> 4, task)
+    } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:64
     fn run_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask>; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:54
-    fn run_delayed(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:91
+    fn run_delayed(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> {
+        self.run_delayed_6(plugin, location.get_world(), location.get_block_x() >> 4, location.get_block_z() >> 4, task, delay_ticks)
+    } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:91
     fn run_delayed_6(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask>; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:79
-    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:123
+    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, location: JRef<Location>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> {
+        self.run_at_fixed_rate_7(plugin, location.get_world(), location.get_block_x() >> 4, location.get_block_z() >> 4, task, initial_delay_ticks, period_ticks)
+    } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:123
     fn run_at_fixed_rate_7(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask>; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/RegionScheduler.java:109
 }

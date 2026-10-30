@@ -17,7 +17,7 @@ pub struct EntityTeleportEvent {
     pub base: EntityEvent,
     pub this: Weak<dyn EntityTeleportEventTrait>,
     pub from: Mut<JRef<Location>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:21
-    pub to: Mut<JRef<Location>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:22
+    pub to: Mut<Option<JRef<Location>>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:22
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:24
 }
 impl std::ops::Deref for EntityTeleportEvent {
@@ -35,19 +35,19 @@ impl std::ops::Deref for dyn EntityTeleportEventTrait {
     type Target = EntityTeleportEvent;
     fn deref(&self) -> &EntityTeleportEvent { self.as_entity_teleport_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:19
 impl EntityTeleportEvent {
     pub fn this(&self) -> JRef<dyn EntityTeleportEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityTeleportEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:26
+    pub fn new_base<S: EntityTeleportEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>) -> Self { EntityTeleportEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), from: Mut::new(from), to: Mut::new(to), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:26
     pub fn new(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, from, to)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:76
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:81
-    pub fn get_from(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:76
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:81
+    pub fn get_from(&self) -> JRef<Location> { self.from.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:38
     pub fn set_from(&self, from: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:48
-    pub fn get_to(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:57
+    pub fn get_to(&self) -> Option<JRef<Location>> { self.to.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:57
     pub fn set_to(&self, to: Option<JRef<Location>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:67
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:87
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTeleportEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

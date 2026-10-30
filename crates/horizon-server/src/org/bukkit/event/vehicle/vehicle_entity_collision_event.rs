@@ -28,14 +28,14 @@ impl std::ops::Deref for VehicleEntityCollisionEvent {
 }
 impl VehicleEntityCollisionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(vehicle: JRef<dyn Vehicle>, entity: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:52
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:57
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:27
-    pub fn is_pickup_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:32
-    pub fn set_pickup_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:37
-    pub fn is_collision_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:42
-    pub fn set_collision_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:47
+    pub fn new(vehicle: JRef<dyn Vehicle>, entity: JRef<dyn Entity>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: VehicleCollisionEvent::new_base(this, vehicle), this: this.clone(), entity: entity, cancelled_pickup: Mut::new(false), cancelled_collision: Mut::new(false), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:21
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:52
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:57
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:27
+    pub fn is_pickup_cancelled(&self) -> bool { self.cancelled_pickup.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:32
+    pub fn set_pickup_cancelled(&self, cancel: bool) { self.cancelled_pickup.set(cancel) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:37
+    pub fn is_collision_cancelled(&self) -> bool { self.cancelled_collision.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:42
+    pub fn set_collision_cancelled(&self, cancel: bool) { self.cancelled_collision.set(cancel) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleEntityCollisionEvent.java:47
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

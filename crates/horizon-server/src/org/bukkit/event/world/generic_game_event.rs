@@ -27,19 +27,19 @@ impl std::ops::Deref for GenericGameEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:21
 impl GenericGameEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(event: JRef<dyn GameEventTrait>, location: JRef<Location>, entity: Option<JRef<dyn Entity>>, radius: i32, is_async: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:30
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:88
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:93
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:98
-    pub fn get_event(&self) -> JRef<dyn GameEventTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:44
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:88
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:93
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:98
+    pub fn get_event(&self) -> JRef<dyn GameEventTrait> { self.event.clone() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:44
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:54
     pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:64
-    pub fn get_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:74
+    pub fn get_radius(&self) -> i32 { self.radius.get() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:74
     pub fn set_radius(&self, radius: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:83
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:104
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/GenericGameEvent.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -23,17 +23,17 @@ impl std::ops::Deref for BlockFromToEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:19
 impl BlockFromToEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(block: JRef<dyn Block>, face: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:26
     pub fn new_2(block: JRef<dyn Block>, to_block: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:61
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:66
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:71
-    pub fn get_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:43
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:61
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:66
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:71
+    pub fn get_face(&self) -> BlockFace { self.face.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:43
     pub fn get_to_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:53
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:77
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockFromToEvent.java:77
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

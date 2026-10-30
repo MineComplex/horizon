@@ -28,21 +28,32 @@ impl std::ops::Deref for PlayerBedFailEnterEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:17
 impl PlayerBedFailEnterEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerBedFailEnterEventFailReason, bed: JRef<dyn Block>, will_explode: bool, message: Option<Component>, enter_action: JRef<dyn BedEnterAction>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:75
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:86
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:91
-    pub fn get_fail_reason(&self) -> PlayerBedFailEnterEventFailReason { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:41
-    pub fn enter_action(&self) -> JRef<dyn BedEnterAction> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:51
-    pub fn get_bed(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:55
-    pub fn get_will_explode(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:59
-    pub fn set_will_explode(&self, will_explode: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:63
-    pub fn get_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:67
-    pub fn set_message(&self, message: Option<Component>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:71
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:96
+    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerBedFailEnterEventFailReason, bed: JRef<dyn Block>, will_explode: bool, message: Option<Component>, enter_action: JRef<dyn BedEnterAction>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerBedFailEnterEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            fail_reason,
+            bed,
+            enter_action,
+            will_explode: Mut::new(will_explode),
+            message: Mut::new(message),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:75
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:86
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:91
+    pub fn get_fail_reason(&self) -> PlayerBedFailEnterEventFailReason { self.fail_reason.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:41
+    pub fn enter_action(&self) -> JRef<dyn BedEnterAction> { self.enter_action.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:51
+    pub fn get_bed(&self) -> JRef<dyn Block> { self.bed.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:55
+    pub fn get_will_explode(&self) -> bool { self.will_explode.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:59
+    pub fn set_will_explode(&self, will_explode: bool) { self.will_explode.set(will_explode) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:63
+    pub fn get_message(&self) -> Option<Component> { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:67
+    pub fn set_message(&self, message: Option<Component>) { self.message.set(message) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:71
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerBedFailEnterEvent.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

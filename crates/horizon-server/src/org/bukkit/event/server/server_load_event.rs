@@ -18,13 +18,13 @@ impl std::ops::Deref for ServerLoadEvent {
     type Target = ServerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:12
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:12
 impl ServerLoadEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: ServerLoadEventLoadType) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:16
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:31
-    pub fn get_type(&self) -> ServerLoadEventLoadType { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:26
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:37
+    pub fn new(type_: ServerLoadEventLoadType) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ServerEvent::new_base(this), this: this.clone(), type_: type_ }) } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:16
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:31
+    pub fn get_type(&self) -> ServerLoadEventLoadType { self.type_.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:26
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerLoadEvent.java:37
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

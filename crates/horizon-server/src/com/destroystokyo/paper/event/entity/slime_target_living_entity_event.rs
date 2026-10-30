@@ -27,8 +27,16 @@ impl std::ops::Deref for SlimeTargetLivingEntityEvent {
 }
 impl SlimeTargetLivingEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>, target: JRef<dyn LivingEntity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeTargetLivingEntityEvent.java:19
-    pub fn get_target(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeTargetLivingEntityEvent.java:30
+    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>, target: JRef<dyn LivingEntity>) -> JRef<Self> {
+Arc::new_cyclic(|this| SlimeTargetLivingEntityEvent {
+base: SlimePathfindEvent::new_base(this, cube_mob),
+this: this.clone(),
+target: target,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeTargetLivingEntityEvent.java:19
+    pub fn get_target(&self) -> JRef<dyn LivingEntity> {
+self.target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeTargetLivingEntityEvent.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

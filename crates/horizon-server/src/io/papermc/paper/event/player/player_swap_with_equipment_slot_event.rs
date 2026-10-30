@@ -25,17 +25,34 @@ impl std::ops::Deref for PlayerSwapWithEquipmentSlotEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLERS: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:17
+pub static HANDLERS: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:17
 impl PlayerSwapWithEquipmentSlotEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, item_in_hand: JRef<ItemStack>, slot: EquipmentSlot, item_to_swap: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:57
-    pub fn set_cancelled(&self, cancelled: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:62
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:67
-    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:39
-    pub fn get_slot(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:46
-    pub fn get_item_to_swap(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:53
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:72
+    pub fn new(player: JRef<dyn Player>, item_in_hand: JRef<ItemStack>, slot: EquipmentSlot, item_to_swap: JRef<ItemStack>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerSwapWithEquipmentSlotEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            item_in_hand,
+            slot,
+            item_to_swap,
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:57
+    pub fn set_cancelled(&self, cancelled: bool) { self.cancelled.set(cancelled) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:62
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+        HANDLERS.clone()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:67
+    pub fn get_item_in_hand(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.item_in_hand)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:39
+    pub fn get_slot(&self) -> EquipmentSlot { self.slot.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:46
+    pub fn get_item_to_swap(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.item_to_swap)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:53
+    pub fn get_handler_list() -> JRef<HandlerList> {
+        HANDLERS.clone()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSwapWithEquipmentSlotEvent.java:72
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

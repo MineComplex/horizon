@@ -38,19 +38,19 @@ impl std::ops::Deref for dyn PlayerBucketEntityEventTrait {
     type Target = PlayerBucketEntityEvent;
     fn deref(&self) -> &PlayerBucketEntityEvent { self.as_player_bucket_entity_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:18
 impl PlayerBucketEntityEvent {
     pub fn this(&self) -> JRef<dyn PlayerBucketEntityEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerBucketEntityEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, entity: JRef<dyn Entity>, original_bucket: JRef<ItemStack>, entity_bucket: JRef<ItemStack>, hand: EquipmentSlot) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:27
+    pub fn new_base<S: PlayerBucketEntityEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, entity: JRef<dyn Entity>, original_bucket: JRef<ItemStack>, entity_bucket: JRef<ItemStack>, hand: EquipmentSlot) -> Self { Self { base: PlayerEvent::new_base(this, player), this: this.clone(), entity: entity, original_bucket: original_bucket, entity_bucket: entity_bucket, hand: hand, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:27
     pub fn new(player: JRef<dyn Player>, entity: JRef<dyn Entity>, original_bucket: JRef<ItemStack>, entity_bucket: JRef<ItemStack>, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, entity, original_bucket, entity_bucket, hand)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:81
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:86
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:91
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:41
-    pub fn get_original_bucket(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:53
-    pub fn get_entity_bucket(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:66
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:76
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:97
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:81
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:86
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:91
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:41
+    pub fn get_original_bucket(&self) -> JRef<ItemStack> { self.original_bucket.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:53
+    pub fn get_entity_bucket(&self) -> JRef<ItemStack> { self.entity_bucket.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:66
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:76
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEntityEvent.java:97
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

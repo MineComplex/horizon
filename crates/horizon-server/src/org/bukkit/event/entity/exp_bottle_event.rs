@@ -27,18 +27,18 @@ impl std::ops::Deref for ExpBottleEvent {
     type Target = ProjectileHitEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:17
 impl ExpBottleEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(bottle: JRef<dyn ThrownExpBottle>, exp: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:22
-    pub fn new_5(bottle: JRef<dyn ThrownExpBottle>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, exp: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:28
-    pub fn get_entity(&self) -> JRef<dyn ThrownExpBottle> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:34
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:83
-    pub fn get_show_effect(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:45
-    pub fn set_show_effect(&self, show_effect: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:57
-    pub fn get_experience(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:68
-    pub fn set_experience(&self, exp: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:79
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:89
+    pub fn new(bottle: JRef<dyn ThrownExpBottle>, exp: i32) -> JRef<Self> { Self::new_5(bottle, None, None, None, exp) } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:22
+    pub fn new_5(bottle: JRef<dyn ThrownExpBottle>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>, exp: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ExpBottleEvent { base: ProjectileHitEvent::new_base_4(this, bottle, hit_entity, hit_block, hit_face), this: this.clone(), exp: Mut::new(exp), show_effect: Mut::new(true) }) } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:28
+    pub fn get_entity(&self) -> JRef<dyn ThrownExpBottle> { cast::<dyn ThrownExpBottle, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:34
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:83
+    pub fn get_show_effect(&self) -> bool { self.show_effect.get() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:45
+    pub fn set_show_effect(&self, show_effect: bool) { self.show_effect.set(show_effect); } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:57
+    pub fn get_experience(&self) -> i32 { self.exp.get() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:68
+    pub fn set_experience(&self, exp: i32) { self.exp.set(exp); } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:79
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ExpBottleEvent.java:89
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

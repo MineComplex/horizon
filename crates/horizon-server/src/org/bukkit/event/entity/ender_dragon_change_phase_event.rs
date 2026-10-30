@@ -17,7 +17,7 @@ use crate::api_prelude::*;
 pub struct EnderDragonChangePhaseEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub current_phase: EnderDragonPhase, // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:18
+    pub current_phase: Option<EnderDragonPhase>, // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:18
     pub new_phase: Mut<EnderDragonPhase>, // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:19
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:21
 }
@@ -25,18 +25,18 @@ impl std::ops::Deref for EnderDragonChangePhaseEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:16
 impl EnderDragonChangePhaseEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(ender_dragon: JRef<dyn EnderDragon>, current_phase: Option<EnderDragonPhase>, new_phase: EnderDragonPhase) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:23
-    pub fn get_entity(&self) -> JRef<dyn EnderDragon> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:67
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:72
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:77
-    pub fn get_current_phase(&self) -> Option<EnderDragonPhase> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:42
-    pub fn get_new_phase(&self) -> EnderDragonPhase { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:52
+    pub fn new(ender_dragon: JRef<dyn EnderDragon>, current_phase: Option<EnderDragonPhase>, new_phase: EnderDragonPhase) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EnderDragonChangePhaseEvent { base: EntityEvent::new_base(this, ender_dragon), this: this.clone(), current_phase: current_phase, new_phase: Mut::new(new_phase), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:23
+    pub fn get_entity(&self) -> JRef<dyn EnderDragon> { cast::<dyn EnderDragon, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:30
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:67
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:72
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:77
+    pub fn get_current_phase(&self) -> Option<EnderDragonPhase> { self.current_phase.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:42
+    pub fn get_new_phase(&self) -> EnderDragonPhase { self.new_phase.get() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:52
     pub fn set_new_phase(&self, new_phase: EnderDragonPhase) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:62
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:83
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EnderDragonChangePhaseEvent.java:83
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

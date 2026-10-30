@@ -25,11 +25,23 @@ impl std::ops::Deref for dyn MemoryConfigurationOptionsTrait {
 }
 impl MemoryConfigurationOptions {
     pub fn this(&self) -> JRef<dyn MemoryConfigurationOptionsTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: MemoryConfigurationOptionsTrait + 'static>(this: &Weak<S>, configuration: JRef<dyn MemoryConfigurationTrait>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:10
+    pub fn new_base<S: MemoryConfigurationOptionsTrait + 'static>(this: &Weak<S>, configuration: JRef<dyn MemoryConfigurationTrait>) -> Self {
+        let base = ConfigurationOptions::new_base(this, configuration);
+        let this: Weak<dyn MemoryConfigurationOptionsTrait> = this.clone();
+        MemoryConfigurationOptions { base, this }
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:10
     pub fn new(configuration: JRef<dyn MemoryConfigurationTrait>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, configuration)) }
-    pub fn configuration(&self) -> JRef<dyn MemoryConfigurationTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:14
-    pub fn copy_defaults_1(&self, value: bool) -> JRef<dyn MemoryConfigurationOptionsTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:20
-    pub fn path_separator_1(&self, value: char) -> JRef<dyn MemoryConfigurationOptionsTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:27
+    pub fn configuration(&self) -> JRef<dyn MemoryConfigurationTrait> {
+        cast::<dyn MemoryConfigurationTrait, _>(&self.base.configuration()).expect("ClassCastException")
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:14
+    pub fn copy_defaults_1(&self, value: bool) -> JRef<dyn MemoryConfigurationOptionsTrait> {
+        self.base.copy_defaults_1(value);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:20
+    pub fn path_separator_1(&self, value: char) -> JRef<dyn MemoryConfigurationOptionsTrait> {
+        self.base.path_separator_1(value);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfigurationOptions.java:27
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

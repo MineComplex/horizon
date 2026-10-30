@@ -32,7 +32,12 @@ impl std::ops::Deref for dyn SlimeWanderEventTrait {
 }
 impl SlimeWanderEvent {
     pub fn this(&self) -> JRef<dyn SlimeWanderEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: SlimeWanderEventTrait + 'static>(this: &Weak<S>, cube_mob: JRef<dyn AbstractCubeMob>) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeWanderEvent.java:16
+    pub fn new_base<S: SlimeWanderEventTrait + 'static>(this: &Weak<S>, cube_mob: JRef<dyn AbstractCubeMob>) -> Self {
+SlimeWanderEvent {
+base: SlimePathfindEvent::new_base(this, cube_mob),
+this: this.clone(),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeWanderEvent.java:16
     pub fn new(cube_mob: JRef<dyn AbstractCubeMob>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, cube_mob)) }
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

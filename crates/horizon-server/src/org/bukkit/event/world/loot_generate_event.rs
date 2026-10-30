@@ -31,21 +31,21 @@ impl std::ops::Deref for LootGenerateEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:29
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:29
 impl LootGenerateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(world: JRef<dyn World>, entity: Option<JRef<dyn Entity>>, inventory_holder: Option<JRef<dyn InventoryHolder>>, loot_table: JRef<dyn LootTable>, loot_context: JRef<LootContext>, items: &Vec<JRef<ItemStack>>, plugin: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:40
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:140
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:145
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:150
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:140
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:145
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:150
     pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:62
     pub fn get_inventory_holder(&self) -> Option<JRef<dyn InventoryHolder>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:75
-    pub fn get_loot_table(&self) -> JRef<dyn LootTable> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:85
-    pub fn get_loot_context(&self) -> JRef<LootContext> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:96
+    pub fn get_loot_table(&self) -> JRef<dyn LootTable> { self.loot_table.clone() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:85
+    pub fn get_loot_context(&self) -> JRef<LootContext> { self.loot_context.clone() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:96
     pub fn set_loot(&self, loot: Option<Vec<JRef<ItemStack>>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:109
-    pub fn get_loot(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:124
-    pub fn is_plugin(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:136
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:156
+    pub fn get_loot(&self) -> Vec<JRef<ItemStack>> { self.loot.get() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:124
+    pub fn is_plugin(&self) -> bool { self.plugin } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:136
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/LootGenerateEvent.java:156
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

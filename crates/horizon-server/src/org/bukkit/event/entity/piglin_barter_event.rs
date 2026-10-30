@@ -25,17 +25,17 @@ impl std::ops::Deref for PiglinBarterEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:18
 impl PiglinBarterEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(piglin: JRef<dyn Piglin>, input: JRef<ItemStack>, outcome: &Vec<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn Piglin> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:33
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:59
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:64
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:69
+    pub fn new(piglin: JRef<dyn Piglin>, input: JRef<ItemStack>, outcome: &Vec<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| PiglinBarterEvent { base: EntityEvent::new_base(this, piglin), this: this.clone(), outcome: Mut::new(outcome.clone()), input: input, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn Piglin> { cast::<dyn Piglin, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:33
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:59
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:64
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:69
     pub fn get_input(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:44
-    pub fn get_outcome(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:75
+    pub fn get_outcome(&self) -> Vec<JRef<ItemStack>> { self.outcome.get() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PiglinBarterEvent.java:75
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -24,19 +24,19 @@ impl std::ops::Deref for PlayerAttemptPickupItemEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:16
 impl PlayerAttemptPickupItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, item: JRef<dyn Item>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:24
-    pub fn new_3(player: JRef<dyn Player>, item: JRef<dyn Item>, remaining: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:75
+    pub fn new_3(player: JRef<dyn Player>, item: JRef<dyn Item>, remaining: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), item: item, remaining: remaining, fly_at_player: Mut::new(true), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:30
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:75
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:80
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:86
-    pub fn get_item(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:42
-    pub fn get_remaining(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:51
-    pub fn set_fly_at_player(&self, fly_at_player: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:61
-    pub fn get_fly_at_player(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:70
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:91
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:86
+    pub fn get_item(&self) -> JRef<dyn Item> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:42
+    pub fn get_remaining(&self) -> i32 { self.remaining } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:51
+    pub fn set_fly_at_player(&self, fly_at_player: bool) { self.fly_at_player.set(fly_at_player) } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:61
+    pub fn get_fly_at_player(&self) -> bool { self.fly_at_player.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:70
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAttemptPickupItemEvent.java:91
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

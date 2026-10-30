@@ -13,11 +13,19 @@ pub trait Vex: Monster {
     fn set_charging(&self, charging: bool); // paper-api/src/main/java/org/bukkit/entity/Vex.java:27
     fn get_bound(&self) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/entity/Vex.java:40
     fn set_bound(&self, location: Option<JRef<Location>>); // paper-api/src/main/java/org/bukkit/entity/Vex.java:54
-    fn get_life_ticks(&self) -> i32 { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:62
+    fn get_life_ticks(&self) -> i32 {
+        self.get_limited_lifetime_ticks()
+    } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:62
     fn set_life_ticks(&self, life_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Vex.java:74
-    fn has_limited_life(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:83
-    fn get_summoner(&self) -> Option<JRef<dyn Mob>> { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:95
-    fn set_summoner(&self, summoner: Option<JRef<dyn Mob>>) { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:106
+    fn has_limited_life(&self) -> bool {
+        self.has_limited_lifetime()
+    } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:83
+    fn get_summoner(&self) -> Option<JRef<dyn Mob>> {
+        self.get_owner().and_then(|owner| cast::<dyn Mob, _>(&owner))
+    } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:95
+    fn set_summoner(&self, summoner: Option<JRef<dyn Mob>>) {
+        self.set_owner(summoner.map(|summoner| summoner as JRef<dyn LivingEntity>));
+    } // default, paper-api/src/main/java/org/bukkit/entity/Vex.java:106
     fn get_owner(&self) -> Option<JRef<dyn LivingEntity>>; // paper-api/src/main/java/org/bukkit/entity/Vex.java:117
     fn set_owner(&self, owner: Option<JRef<dyn LivingEntity>>); // paper-api/src/main/java/org/bukkit/entity/Vex.java:124
     fn has_limited_lifetime(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Vex.java:132

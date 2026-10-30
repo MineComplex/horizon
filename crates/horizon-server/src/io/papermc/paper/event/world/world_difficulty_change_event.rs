@@ -22,14 +22,21 @@ impl std::ops::Deref for WorldDifficultyChangeEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:21
 impl WorldDifficultyChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, command_source: Option<JRef<dyn CommandSourceStack>>, difficulty: Difficulty) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:26
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:51
-    pub fn get_command_source(&self) -> Option<JRef<dyn CommandSourceStack>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:38
-    pub fn get_difficulty(&self) -> Difficulty { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:47
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:56
+    pub fn new(world: JRef<dyn World>, command_source: Option<JRef<dyn CommandSourceStack>>, difficulty: Difficulty) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| WorldDifficultyChangeEvent {
+            base: WorldEvent::new_base(this, world),
+            this: this.clone(),
+            command_source,
+            difficulty,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:26
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:51
+    pub fn get_command_source(&self) -> Option<JRef<dyn CommandSourceStack>> { self.command_source.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:38
+    pub fn get_difficulty(&self) -> Difficulty { self.difficulty.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:47
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldDifficultyChangeEvent.java:56
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

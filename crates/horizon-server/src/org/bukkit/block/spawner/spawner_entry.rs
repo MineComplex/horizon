@@ -12,21 +12,32 @@ pub struct SpawnerEntry {
     pub this: Weak<Self>,
     pub snapshot: Mut<JRef<dyn EntitySnapshot>>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:16
     pub spawn_weight: Mut<i32>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:17
-    pub spawn_rule: Mut<JRef<SpawnRule>>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:18
-    pub equipment: Mut<JRef<SpawnerEntryEquipment>>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:19
+    pub spawn_rule: Mut<Option<JRef<SpawnRule>>>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:18
+    pub equipment: Mut<Option<JRef<SpawnerEntryEquipment>>>, // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:19
 }
 impl SpawnerEntry {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(snapshot: JRef<dyn EntitySnapshot>, spawn_weight: i32, spawn_rule: Option<JRef<SpawnRule>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:21
-    pub fn new_4(snapshot: JRef<dyn EntitySnapshot>, spawn_weight: i32, spawn_rule: Option<JRef<SpawnRule>>, equipment: Option<JRef<SpawnerEntryEquipment>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:25
-    pub fn get_snapshot(&self) -> JRef<dyn EntitySnapshot> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:39
-    pub fn set_snapshot(&self, snapshot: JRef<dyn EntitySnapshot>) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:49
-    pub fn get_spawn_weight(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:60
-    pub fn set_spawn_weight(&self, spawn_weight: i32) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:70
-    pub fn get_spawn_rule(&self) -> Option<JRef<SpawnRule>> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:80
-    pub fn set_spawn_rule(&self, spawn_rule: Option<JRef<SpawnRule>>) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:91
-    pub fn get_equipment(&self) -> Option<JRef<SpawnerEntryEquipment>> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:100
-    pub fn set_equipment(&self, equipment: Option<JRef<SpawnerEntryEquipment>>) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:110
+    pub fn new(snapshot: JRef<dyn EntitySnapshot>, spawn_weight: i32, spawn_rule: Option<JRef<SpawnRule>>) -> JRef<Self> {
+        Self::new_4(snapshot, spawn_weight, spawn_rule, None)
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:21
+    pub fn new_4(snapshot: JRef<dyn EntitySnapshot>, spawn_weight: i32, spawn_rule: Option<JRef<SpawnRule>>, equipment: Option<JRef<SpawnerEntryEquipment>>) -> JRef<Self> {
+        // Preconditions.checkArgument(snapshot != null): never null here
+        Arc::new_cyclic(|this| SpawnerEntry {
+            this: this.clone(),
+            snapshot: Mut::new(snapshot),
+            spawn_weight: Mut::new(spawn_weight),
+            spawn_rule: Mut::new(spawn_rule),
+            equipment: Mut::new(equipment),
+        })
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:25
+    pub fn get_snapshot(&self) -> JRef<dyn EntitySnapshot> { self.snapshot.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:39
+    pub fn set_snapshot(&self, snapshot: JRef<dyn EntitySnapshot>) { self.snapshot.set(snapshot); } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:49
+    pub fn get_spawn_weight(&self) -> i32 { self.spawn_weight.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:60
+    pub fn set_spawn_weight(&self, spawn_weight: i32) { self.spawn_weight.set(spawn_weight); } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:70
+    pub fn get_spawn_rule(&self) -> Option<JRef<SpawnRule>> { self.spawn_rule.get().map(|r| SpawnRule::clone(&r)) } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:80
+    pub fn set_spawn_rule(&self, spawn_rule: Option<JRef<SpawnRule>>) { self.spawn_rule.set(spawn_rule); } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:91
+    pub fn get_equipment(&self) -> Option<JRef<SpawnerEntryEquipment>> { self.equipment.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:100
+    pub fn set_equipment(&self, equipment: Option<JRef<SpawnerEntryEquipment>>) { self.equipment.set(equipment); } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:110
 }
 crate::jobject!(SpawnerEntry);
 // ---- class org.bukkit.block.spawner.SpawnerEntry.Equipment (paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:117)
@@ -37,9 +48,16 @@ pub struct SpawnerEntryEquipment {
 }
 impl SpawnerEntryEquipment {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(equipment_loot_table: JRef<dyn LootTable>, drop_chances: &HashMap<EquipmentSlot, f32>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:122
-    pub fn set_equipment_loot_table(&self, table: JRef<dyn LootTable>) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:135
-    pub fn get_equipment_loot_table(&self) -> JRef<dyn LootTable> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:149
-    pub fn get_drop_chances(&self) -> HashMap<EquipmentSlot, f32> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:161
+    pub fn new(equipment_loot_table: JRef<dyn LootTable>, drop_chances: &HashMap<EquipmentSlot, f32>) -> JRef<Self> {
+        // Preconditions.checkArgument(equipmentLootTable != null): never null here
+        Arc::new_cyclic(|this| SpawnerEntryEquipment {
+            this: this.clone(),
+            equipment_loot_table: Mut::new(equipment_loot_table),
+            drop_chances: Mut::new(drop_chances.clone()),
+        })
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:122
+    pub fn set_equipment_loot_table(&self, table: JRef<dyn LootTable>) { self.equipment_loot_table.set(table); } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:135
+    pub fn get_equipment_loot_table(&self) -> JRef<dyn LootTable> { self.equipment_loot_table.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:149
+    pub fn get_drop_chances(&self) -> HashMap<EquipmentSlot, f32> { self.drop_chances.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnerEntry.java:161
 }
 crate::jobject!(SpawnerEntryEquipment);

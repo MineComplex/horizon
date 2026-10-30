@@ -27,6 +27,6 @@ impl std::ops::Deref for dyn WorldEventTrait {
 impl WorldEvent {
     pub fn this(&self) -> JRef<dyn WorldEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: WorldEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldEvent.java:14
-    pub fn new_base_2<S: WorldEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, is_async: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldEvent.java:18
-    pub fn get_world(&self) -> JRef<dyn World> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldEvent.java:28
+    pub fn new_base_2<S: WorldEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, is_async: bool) -> Self { Self { base: Event::new_base_1(this, is_async), this: this.clone(), world: world } } // paper-api/src/main/java/org/bukkit/event/world/WorldEvent.java:18
+    pub fn get_world(&self) -> JRef<dyn World> { self.world.clone() } // paper-api/src/main/java/org/bukkit/event/world/WorldEvent.java:28
 }

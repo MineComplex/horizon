@@ -22,14 +22,30 @@ impl<S: JGeneric> std::ops::Deref for AsyncPlayerSendCommandsEvent<S> {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:36
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:36
 impl<S: JGeneric> AsyncPlayerSendCommandsEvent<S> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, node: RootCommandNode<S>, has_fired_async: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:41
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:66
-    pub fn get_command_node(&self) -> RootCommandNode<S> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:53
-    pub fn has_fired_async(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:62
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:71
+    pub fn new(player: JRef<dyn Player>, node: RootCommandNode<S>, has_fired_async: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| AsyncPlayerSendCommandsEvent {
+    base: PlayerEvent::new_base_2(this, player, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
+    this: this.clone(),
+    node,
+    has_fired_async,
+    _phantom: std::marker::PhantomData,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:41
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:66
+    pub fn get_command_node(&self) -> RootCommandNode<S> {
+self.node.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:53
+    pub fn has_fired_async(&self) -> bool {
+self.has_fired_async
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:62
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/AsyncPlayerSendCommandsEvent.java:71
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

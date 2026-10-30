@@ -26,8 +26,14 @@ impl std::ops::Deref for PlayerItemCooldownEvent {
 }
 impl PlayerItemCooldownEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, type_: Material, cooldown_group: JRef<NamespacedKey>, cooldown: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemCooldownEvent.java:20
-    pub fn get_type(&self) -> Material { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemCooldownEvent.java:31
+    pub fn new(player: JRef<dyn Player>, type_: Material, cooldown_group: JRef<NamespacedKey>, cooldown: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerItemCooldownEvent {
+            base: PlayerItemGroupCooldownEvent::new_base(this, player, cooldown_group, cooldown),
+            this: this.clone(),
+            type_,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemCooldownEvent.java:20
+    pub fn get_type(&self) -> Material { self.type_.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemCooldownEvent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

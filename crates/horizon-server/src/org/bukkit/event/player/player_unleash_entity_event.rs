@@ -33,10 +33,10 @@ impl PlayerUnleashEntityEvent {
     pub fn new(entity: JRef<dyn Entity>, player: JRef<dyn Player>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:34
     pub fn new_3(entity: JRef<dyn Entity>, player: JRef<dyn Player>, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:28
     pub fn new_4(entity: JRef<dyn Entity>, player: JRef<dyn Player>, hand: EquipmentSlot, drop_leash: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:60
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:65
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:45
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:55
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:60
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:65
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:45
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnleashEntityEvent.java:55
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

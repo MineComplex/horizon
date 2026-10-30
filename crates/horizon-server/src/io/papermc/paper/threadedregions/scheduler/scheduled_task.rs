@@ -10,7 +10,10 @@ pub trait ScheduledTask: JObject {
     fn is_repeating_task(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:21
     fn cancel(&self) -> ScheduledTaskCancelledState; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:28
     fn get_execution_state(&self) -> ScheduledTaskExecutionState; // paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:34
-    fn is_cancelled(&self) -> bool { todo!() } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:40
+    fn is_cancelled(&self) -> bool {
+        let state = self.get_execution_state();
+        state == ScheduledTaskExecutionState::CANCELLED || state == ScheduledTaskExecutionState::CANCELLED_RUNNING
+    } // default, paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:40
 }
 // ---- enum io.papermc.paper.threadedregions.scheduler.ScheduledTask.CancelledState (paper-api/src/main/java/io/papermc/paper/threadedregions/scheduler/ScheduledTask.java:48)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

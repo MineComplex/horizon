@@ -23,16 +23,16 @@ impl std::ops::Deref for ItemMergeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:11
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:11
 impl ItemMergeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(item: JRef<dyn Item>, target: JRef<dyn Item>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:17
-    pub fn get_entity(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:39
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:44
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:49
-    pub fn get_target(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:34
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:55
+    pub fn new(item: JRef<dyn Item>, target: JRef<dyn Item>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ItemMergeEvent { base: EntityEvent::new_base(this, item), this: this.clone(), target: target, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:17
+    pub fn get_entity(&self) -> JRef<dyn Item> { cast::<dyn Item, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:39
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:44
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:49
+    pub fn get_target(&self) -> JRef<dyn Item> { self.target.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:34
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ItemMergeEvent.java:55
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

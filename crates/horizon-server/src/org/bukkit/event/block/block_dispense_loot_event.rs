@@ -17,7 +17,7 @@ use crate::api_prelude::*;
 pub struct BlockDispenseLootEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
-    pub player: JRef<dyn Player>, // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:28
+    pub player: Option<JRef<dyn Player>>, // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:28
     pub dispensed_loot: Mut<Vec<JRef<ItemStack>>>, // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:29
     pub loot_table: JRef<dyn LootTable>, // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:30
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:32
@@ -26,18 +26,18 @@ impl std::ops::Deref for BlockDispenseLootEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:26
 impl BlockDispenseLootEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, dispensed_loot: &Vec<JRef<ItemStack>>, loot_table: JRef<dyn LootTable>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:34
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:85
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:90
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:95
-    pub fn get_dispensed_loot(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:47
+    pub fn new(player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, dispensed_loot: &Vec<JRef<ItemStack>>, loot_table: JRef<dyn LootTable>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockDispenseLootEvent { base: BlockEvent::new_base(this, block), this: this.clone(), player: player, dispensed_loot: Mut::new(dispensed_loot.clone()), loot_table: loot_table, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:34
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:85
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:90
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:95
+    pub fn get_dispensed_loot(&self) -> Vec<JRef<ItemStack>> { self.dispensed_loot.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:47
     pub fn set_dispensed_loot(&self, dispensed_loot: Option<Vec<JRef<ItemStack>>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:57
-    pub fn get_loot_table(&self) -> JRef<dyn LootTable> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:66
-    pub fn get_player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:80
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:101
+    pub fn get_loot_table(&self) -> JRef<dyn LootTable> { self.loot_table.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:66
+    pub fn get_player(&self) -> Option<JRef<dyn Player>> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:80
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseLootEvent.java:101
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -28,21 +28,21 @@ impl std::ops::Deref for PlayerStatisticIncrementEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:23
 impl PlayerStatisticIncrementEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, statistic: Statistic, initial_value: i32, new_value: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:33
-    pub fn new_5(player: JRef<dyn Player>, statistic: Statistic, initial_value: i32, new_value: i32, entity_type: EntityType) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:43
+    pub fn new(player: JRef<dyn Player>, statistic: Statistic, initial_value: i32, new_value: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), statistic: statistic, initial_value: initial_value, new_value: new_value, entity_type: None, material: None, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:33
+    pub fn new_5(player: JRef<dyn Player>, statistic: Statistic, initial_value: i32, new_value: i32, entity_type: EntityType) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), statistic: statistic, initial_value: initial_value, new_value: new_value, entity_type: entity_type, material: None, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:43
     pub fn new_5_(player: JRef<dyn Player>, statistic: Statistic, initial_value: i32, new_value: i32, material: Material) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:53
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:123
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:128
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:133
-    pub fn get_statistic(&self) -> Statistic { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:78
-    pub fn get_previous_value(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:88
-    pub fn get_new_value(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:97
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:123
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:128
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:133
+    pub fn get_statistic(&self) -> Statistic { self.statistic.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:78
+    pub fn get_previous_value(&self) -> i32 { self.initial_value } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:88
+    pub fn get_new_value(&self) -> i32 { self.new_value } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:97
     pub fn get_entity_type(&self) -> Option<EntityType> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:107
     pub fn get_material(&self) -> Option<Material> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:118
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:139
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerStatisticIncrementEvent.java:139
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

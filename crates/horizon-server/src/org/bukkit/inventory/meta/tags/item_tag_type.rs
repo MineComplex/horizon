@@ -13,17 +13,18 @@ pub trait ItemTagType<T: JGeneric, Z: JGeneric>: JObject {
     fn to_primitive(&self, complex: Z, context: JRef<dyn ItemTagAdapterContext>) -> T; // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:103
     fn from_primitive(&self, primitive: T, context: JRef<dyn ItemTagAdapterContext>) -> Z; // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:113
 }
-pub static BYTE: LazyLock<JRef<dyn ItemTagType<i8, i8>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:55
-pub static SHORT: LazyLock<JRef<dyn ItemTagType<i16, i16>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:56
-pub static INTEGER: LazyLock<JRef<dyn ItemTagType<i32, i32>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:57
-pub static LONG: LazyLock<JRef<dyn ItemTagType<i64, i64>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:58
-pub static FLOAT: LazyLock<JRef<dyn ItemTagType<f32, f32>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:59
-pub static DOUBLE: LazyLock<JRef<dyn ItemTagType<f64, f64>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:60
-pub static STRING: LazyLock<JRef<dyn ItemTagType<String, String>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:65
-pub static BYTE_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i8>, Vec<i8>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:70
-pub static INTEGER_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i32>, Vec<i32>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:71
-pub static LONG_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i64>, Vec<i64>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:72
-pub static TAG_CONTAINER: LazyLock<JRef<dyn ItemTagType<JRef<dyn CustomItemTagContainer>, JRef<dyn CustomItemTagContainer>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:77
+pub static BYTE: LazyLock<JRef<dyn ItemTagType<i8, i8>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<i8>::new(Class::of::<i8>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:55
+pub static SHORT: LazyLock<JRef<dyn ItemTagType<i16, i16>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<i16>::new(Class::of::<i16>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:56
+pub static INTEGER: LazyLock<JRef<dyn ItemTagType<i32, i32>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<i32>::new(Class::of::<i32>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:57
+pub static LONG: LazyLock<JRef<dyn ItemTagType<i64, i64>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<i64>::new(Class::of::<i64>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:58
+pub static FLOAT: LazyLock<JRef<dyn ItemTagType<f32, f32>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<f32>::new(Class::of::<f32>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:59
+pub static DOUBLE: LazyLock<JRef<dyn ItemTagType<f64, f64>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<f64>::new(Class::of::<f64>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:60
+pub static STRING: LazyLock<JRef<dyn ItemTagType<String, String>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<String>::new(Class::of::<String>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:65
+pub static BYTE_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i8>, Vec<i8>>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<Vec<i8>>::new(Class::of::<Vec<i8>>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:70
+pub static INTEGER_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i32>, Vec<i32>>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<Vec<i32>>::new(Class::of::<Vec<i32>>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:71
+pub static LONG_ARRAY: LazyLock<JRef<dyn ItemTagType<Vec<i64>, Vec<i64>>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<Vec<i64>>::new(Class::of::<Vec<i64>>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:72
+pub static TAG_CONTAINER: LazyLock<JRef<dyn ItemTagType<JRef<dyn CustomItemTagContainer>, JRef<dyn CustomItemTagContainer>>>> = LazyLock::new(|| ItemTagTypePrimitiveTagType::<JRef<dyn CustomItemTagContainer>>::new(Class::of::<JRef<dyn CustomItemTagContainer>>())); // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:77
+// PORT: java::lang::Class needs `Class::of::<T>()` (a type token), as material_class.rs uses it.
 // ---- class org.bukkit.inventory.meta.tags.ItemTagType.PrimitiveTagType (paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:125)
 pub struct ItemTagTypePrimitiveTagType<T: JGeneric> {
     pub this: Weak<Self>,
@@ -32,17 +33,40 @@ pub struct ItemTagTypePrimitiveTagType<T: JGeneric> {
 }
 impl<T: JGeneric> ItemTagTypePrimitiveTagType<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(primitive_type: Class) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:129
-    pub fn get_primitive_type(&self) -> Class { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:133
-    pub fn get_complex_type(&self) -> Class { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:139
-    pub fn to_primitive(&self, complex: T, context: JRef<dyn ItemTagAdapterContext>) -> T { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:145
-    pub fn from_primitive(&self, primitive: T, context: JRef<dyn ItemTagAdapterContext>) -> T { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:151
+    pub fn new(primitive_type: Class) -> JRef<Self> {
+        Arc::new_cyclic(|this| ItemTagTypePrimitiveTagType { this: this.clone(), primitive_type, _phantom: std::marker::PhantomData })
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:129
+    pub fn get_primitive_type(&self) -> Class { self.primitive_type.clone() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:133
+    pub fn get_complex_type(&self) -> Class { self.primitive_type.clone() } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:139
+    pub fn to_primitive(&self, complex: T, context: JRef<dyn ItemTagAdapterContext>) -> T {
+        let _ = context;
+        complex
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:145
+    pub fn from_primitive(&self, primitive: T, context: JRef<dyn ItemTagAdapterContext>) -> T {
+        let _ = context;
+        primitive
+    } // paper-api/src/main/java/org/bukkit/inventory/meta/tags/ItemTagType.java:151
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> ItemTagType<T, T> for ItemTagTypePrimitiveTagType<T> {
     fn get_primitive_type(&self) -> Class { ItemTagTypePrimitiveTagType::get_primitive_type(self) }
     fn get_complex_type(&self) -> Class { ItemTagTypePrimitiveTagType::get_complex_type(self) }
-    fn to_primitive(&self, complex: Z, context: JRef<dyn ItemTagAdapterContext>) -> T { ItemTagTypePrimitiveTagType::to_primitive(self, complex, context) }
-    fn from_primitive(&self, primitive: T, context: JRef<dyn ItemTagAdapterContext>) -> Z { ItemTagTypePrimitiveTagType::from_primitive(self, primitive, context) }
+    fn to_primitive(&self, complex: T, context: JRef<dyn ItemTagAdapterContext>) -> T { ItemTagTypePrimitiveTagType::to_primitive(self, complex, context) }
+    fn from_primitive(&self, primitive: T, context: JRef<dyn ItemTagAdapterContext>) -> T { ItemTagTypePrimitiveTagType::from_primitive(self, primitive, context) }
+}
+// `jobject!` takes no generics: the same impl, written out for PrimitiveTagType<T>.
+impl<T: JGeneric> crate::java::JObject for ItemTagTypePrimitiveTagType<T> {
+    fn as_any(&self) -> &dyn ::std::any::Any {
+        self
+    }
+    fn cast_arc(self: Arc<Self>, target: ::std::any::TypeId) -> Option<Box<dyn ::std::any::Any>> {
+        if target == ::std::any::TypeId::of::<Arc<Self>>() {
+            return Some(Box::new(self));
+        }
+        if target == ::std::any::TypeId::of::<Arc<dyn ItemTagType<T, T>>>() {
+            return Some(Box::new(self as Arc<dyn ItemTagType<T, T>>));
+        }
+        None
+    }
 }

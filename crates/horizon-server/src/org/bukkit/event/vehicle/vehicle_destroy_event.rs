@@ -24,16 +24,16 @@ impl std::ops::Deref for VehicleDestroyEvent {
     type Target = VehicleEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:19
 impl VehicleDestroyEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(vehicle: JRef<dyn Vehicle>, damage_source: JRef<dyn DamageSource>, attacker: Option<JRef<dyn Entity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:52
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:57
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:62
-    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:37
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:52
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:57
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:62
+    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { self.damage_source.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:37
     pub fn get_attacker(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:47
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:68
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleDestroyEvent.java:68
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -14,11 +14,41 @@ pub struct GoalKey<T: JGeneric> {
 }
 impl<T: JGeneric> GoalKey<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: Class, key: JRef<NamespacedKey>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:21
-    pub fn get_entity_class(&self) -> Class { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:26
-    pub fn get_namespaced_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:30
-    pub fn equals(&self, o: Option<JObjectRef>) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:34
-    pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:44
-    pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:49
-    pub fn of<A: JGeneric>(type_: Class, key: JRef<NamespacedKey>) -> JRef<GoalKey<A>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:57
+    pub fn new(type_: Class, key: JRef<NamespacedKey>) -> JRef<Self> {
+Arc::new_cyclic(|this| GoalKey { this: this.clone(), type_, key, _phantom: std::marker::PhantomData })
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:21
+    pub fn get_entity_class(&self) -> Class {
+self.type_.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:26
+    pub fn get_namespaced_key(&self) -> JRef<NamespacedKey> {
+self.key.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:30
+    pub fn equals(&self, o: Option<JObjectRef>) -> bool {
+let Some(o) = o else {
+    return false;
+};
+if same(&self.this(), &o) {
+    return true;
+}
+let Some(goal_key) = cast::<GoalKey<T>, _>(&o) else {
+    return false;
+};
+// PORT: java.lang.Class equality (Objects.equals(this.type, goalKey.type)); the Class stand-in has none.
+self.type_ == goal_key.type_ && self.key.equals(goal_key.key.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:34
+    pub fn hash_code(&self) -> i32 {
+// Objects.hash(type, key)
+// PORT: java.lang.Class.hashCode (the Class stand-in has none)
+let mut result: i32 = 1;
+result = 31 * result + self.type_.hash_code();
+result = 31 * result + self.key.hash_code();
+result
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:44
+    pub fn to_string(&self) -> String {
+// PORT: java.lang.Class.toString ("class " + name)
+format!("GoalKey[type={}, key={}]", self.type_.to_string(), self.key.to_string())
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:49
+    pub fn of<A: JGeneric>(type_: Class, key: JRef<NamespacedKey>) -> JRef<GoalKey<A>> {
+GoalKey::new(type_, key)
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/GoalKey.java:57
 }

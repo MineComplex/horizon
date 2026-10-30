@@ -26,20 +26,20 @@ impl std::ops::Deref for PlayerEditBookEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:18
 impl PlayerEditBookEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, slot: i32, previous_book_meta: JRef<dyn BookMeta>, new_book_meta: JRef<dyn BookMeta>, is_signing: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:111
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:116
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:121
+    pub fn new(player: JRef<dyn Player>, slot: i32, previous_book_meta: JRef<dyn BookMeta>, new_book_meta: JRef<dyn BookMeta>, is_signing: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), previous_book_meta: previous_book_meta, slot: slot, new_book_meta: Mut::new(new_book_meta), is_signing: Mut::new(is_signing), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:111
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:116
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:121
     pub fn get_previous_book_meta(&self) -> JRef<dyn BookMeta> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:45
     pub fn get_new_book_meta(&self) -> JRef<dyn BookMeta> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:59
-    pub fn get_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:74
+    pub fn get_slot(&self) -> i32 { self.slot } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:74
     pub fn set_new_book_meta(&self, new_book_meta: JRef<dyn BookMeta>) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:85
-    pub fn is_signing(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:97
-    pub fn set_signing(&self, signing: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:107
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:127
+    pub fn is_signing(&self) -> bool { self.is_signing.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:97
+    pub fn set_signing(&self, signing: bool) { self.is_signing.set(signing) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:107
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEditBookEvent.java:127
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

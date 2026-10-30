@@ -25,18 +25,32 @@ impl std::ops::Deref for PlayerItemFrameChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:19
 impl PlayerItemFrameChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, item_frame: JRef<dyn ItemFrame>, item_stack: JRef<ItemStack>, action: PlayerItemFrameChangeEventItemFrameChangeAction) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:75
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:80
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:85
-    pub fn get_item_frame(&self) -> JRef<dyn ItemFrame> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:40
-    pub fn get_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:52
-    pub fn set_item_stack(&self, item_stack: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:62
-    pub fn get_action(&self) -> PlayerItemFrameChangeEventItemFrameChangeAction { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:71
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:90
+    pub fn new(player: JRef<dyn Player>, item_frame: JRef<dyn ItemFrame>, item_stack: JRef<ItemStack>, action: PlayerItemFrameChangeEventItemFrameChangeAction) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerItemFrameChangeEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            item_frame,
+            action,
+            item_stack: Mut::new(item_stack),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:75
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:80
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:85
+    pub fn get_item_frame(&self) -> JRef<dyn ItemFrame> { self.item_frame.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:40
+    pub fn get_item_stack(&self) -> JRef<ItemStack> { self.item_stack.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:52
+    pub fn set_item_stack(&self, item_stack: Option<JRef<ItemStack>>) {
+        self.item_stack.set(match item_stack {
+            None => ItemStack::empty(),
+            Some(item_stack) => item_stack,
+        });
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:62
+    pub fn get_action(&self) -> PlayerItemFrameChangeEventItemFrameChangeAction { self.action.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:71
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemFrameChangeEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

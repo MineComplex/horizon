@@ -28,11 +28,11 @@ impl ClickType {
         match self {ClickType::LEFT => "LEFT", ClickType::SHIFT_LEFT => "SHIFT_LEFT", ClickType::RIGHT => "RIGHT", ClickType::SHIFT_RIGHT => "SHIFT_RIGHT", ClickType::WINDOW_BORDER_LEFT => "WINDOW_BORDER_LEFT", ClickType::WINDOW_BORDER_RIGHT => "WINDOW_BORDER_RIGHT", ClickType::MIDDLE => "MIDDLE", ClickType::NUMBER_KEY => "NUMBER_KEY", ClickType::DOUBLE_CLICK => "DOUBLE_CLICK", ClickType::DROP => "DROP", ClickType::CONTROL_DROP => "CONTROL_DROP", ClickType::CREATIVE => "CREATIVE", ClickType::SWAP_OFFHAND => "SWAP_OFFHAND", ClickType::UNKNOWN => "UNKNOWN", }
     }
     pub fn value_of(name: &str) -> Option<ClickType> { Self::VALUES.into_iter().find(|v| v.name() == name) }
-    pub fn is_keyboard_click(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:77
-    pub fn is_mouse_click(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:86
-    pub fn is_creative_action(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:97
-    pub fn is_right_click(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:107
-    pub fn is_left_click(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:116
-    pub fn is_shift_click(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:126
+    pub fn is_keyboard_click(self) -> bool { matches!(self, ClickType::NUMBER_KEY | ClickType::DROP | ClickType::CONTROL_DROP | ClickType::SWAP_OFFHAND) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:77
+    pub fn is_mouse_click(self) -> bool { matches!(self, ClickType::DOUBLE_CLICK | ClickType::LEFT | ClickType::RIGHT | ClickType::MIDDLE | ClickType::WINDOW_BORDER_LEFT | ClickType::SHIFT_LEFT | ClickType::SHIFT_RIGHT | ClickType::WINDOW_BORDER_RIGHT) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:86
+    pub fn is_creative_action(self) -> bool { matches!(self, ClickType::MIDDLE | ClickType::CREATIVE) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:97
+    pub fn is_right_click(self) -> bool { matches!(self, ClickType::RIGHT | ClickType::SHIFT_RIGHT) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:107
+    pub fn is_left_click(self) -> bool { matches!(self, ClickType::LEFT | ClickType::SHIFT_LEFT | ClickType::DOUBLE_CLICK | ClickType::CREATIVE) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:116
+    pub fn is_shift_click(self) -> bool { matches!(self, ClickType::SHIFT_LEFT | ClickType::SHIFT_RIGHT) } // paper-api/src/main/java/org/bukkit/event/inventory/ClickType.java:126
 }
 crate::jobject!(ClickType);

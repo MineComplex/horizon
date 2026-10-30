@@ -25,18 +25,18 @@ impl std::ops::Deref for PortalCreateEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:18
 impl PortalCreateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(blocks: &Vec<JRef<dyn BlockState>>, world: JRef<dyn World>, reason: PortalCreateEventCreateReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:26
     pub fn new_4(blocks: &Vec<JRef<dyn BlockState>>, world: JRef<dyn World>, entity: Option<JRef<dyn Entity>>, reason: PortalCreateEventCreateReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:76
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:81
-    pub fn get_blocks(&self) -> Vec<JRef<dyn BlockState>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:46
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:76
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:81
+    pub fn get_blocks(&self) -> Vec<JRef<dyn BlockState>> { self.blocks.get() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:46
     pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:56
-    pub fn get_reason(&self) -> PortalCreateEventCreateReason { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:66
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:87
+    pub fn get_reason(&self) -> PortalCreateEventCreateReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:66
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/PortalCreateEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

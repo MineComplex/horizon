@@ -12,11 +12,19 @@ pub struct PredicateRecipeChoice {
     pub item_stack_predicate: JRef<dyn Predicate<JObjectRef>>,
 }
 impl PredicateRecipeChoice {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:9
-    pub fn new_1(item_stack_predicate: JRef<dyn Predicate<JObjectRef>>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:9
-    pub fn get_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:13
-    pub fn clone(&self) -> JRef<dyn RecipeChoice> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:19
-    pub fn test(&self, item_stack: JRef<ItemStack>) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:28
+    pub fn new_1(item_stack_predicate: JRef<dyn Predicate<JObjectRef>>) -> Self {
+        PredicateRecipeChoice { item_stack_predicate }
+    } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:9
+    pub fn get_item_stack(&self) -> JRef<ItemStack> {
+        panic!("UnsupportedOperationException: PredicateRecipeChoice does not support this");
+    } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:13
+    pub fn clone(&self) -> JRef<dyn RecipeChoice> {
+        // (PredicateRecipeChoice) super.clone(): a shallow copy
+        Arc::new(PredicateRecipeChoice { item_stack_predicate: self.item_stack_predicate.clone() })
+    } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:19
+    pub fn test(&self, item_stack: JRef<ItemStack>) -> bool {
+        self.item_stack_predicate.test(item_stack)
+    } // paper-api/src/main/java/io/papermc/paper/potion/PredicateRecipeChoice.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

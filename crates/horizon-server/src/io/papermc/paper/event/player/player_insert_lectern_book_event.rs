@@ -25,18 +25,36 @@ impl std::ops::Deref for PlayerInsertLecternBookEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:22
 impl PlayerInsertLecternBookEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, book: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:80
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:85
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:90
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:41
-    pub fn get_lectern(&self) -> JRef<dyn Lectern> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:52
-    pub fn get_book(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:65
-    pub fn set_book(&self, book: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:75
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:95
+    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, book: JRef<ItemStack>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerInsertLecternBookEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            block,
+            book: Mut::new(book),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:29
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:80
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:85
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:90
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:41
+    pub fn get_lectern(&self) -> JRef<dyn Lectern> {
+        let state: JRef<dyn crate::org::bukkit::block::block_state::BlockState> = self.get_block().get_state();
+        let lectern = cast::<dyn Lectern, _>(&state);
+        assert!(lectern.is_some(), "Block state of lectern block is no longer a lectern tile state!");
+        lectern.unwrap()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:52
+    pub fn get_book(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.book.get())
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:65
+    pub fn set_book(&self, book: JRef<ItemStack>) {
+        // Preconditions.checkArgument(book != null, "Cannot set book to null"): a JRef is never null
+        self.book.set(ItemStack::clone(&book));
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:75
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerInsertLecternBookEvent.java:95
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

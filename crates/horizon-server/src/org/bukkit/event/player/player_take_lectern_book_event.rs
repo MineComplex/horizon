@@ -23,16 +23,16 @@ impl std::ops::Deref for PlayerTakeLecternBookEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:18
 impl PlayerTakeLecternBookEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, lectern: JRef<dyn Lectern>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:49
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:54
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:59
-    pub fn get_lectern(&self) -> JRef<dyn Lectern> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:34
+    pub fn new(player: JRef<dyn Player>, lectern: JRef<dyn Lectern>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), lectern: lectern, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:49
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:54
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:59
+    pub fn get_lectern(&self) -> JRef<dyn Lectern> { self.lectern.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:34
     pub fn get_book(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:44
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:65
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTakeLecternBookEvent.java:65
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

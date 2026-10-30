@@ -20,16 +20,31 @@ impl std::ops::Deref for AsyncPlayerSpawnLocationEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:22
 impl AsyncPlayerSpawnLocationEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(connection: JRef<dyn PlayerConfigurationConnection>, spawn_location: JRef<Location>, new_player: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:28
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:78
-    pub fn get_connection(&self) -> JRef<dyn PlayerConfigurationConnection> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:41
-    pub fn get_spawn_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:54
-    pub fn set_spawn_location(&self, location: JRef<Location>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:63
-    pub fn is_new_player(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:74
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:83
+    pub fn new(connection: JRef<dyn PlayerConfigurationConnection>, spawn_location: JRef<Location>, new_player: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| AsyncPlayerSpawnLocationEvent {
+            base: Event::new_base_1(this, true),
+            this: this.clone(),
+            connection,
+            new_player,
+            spawn_location: Mut::new(spawn_location),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:28
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:78
+    pub fn get_connection(&self) -> JRef<dyn PlayerConfigurationConnection> { self.connection.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:41
+    pub fn get_spawn_location(&self) -> JRef<Location> {
+        Location::clone(&self.spawn_location.get())
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:54
+    pub fn set_spawn_location(&self, location: JRef<Location>) {
+        // Preconditions.checkArgument(location != null, ...): a JRef is never null
+
+        // Preconditions.checkArgument(location.getWorld() != null, "World cannot be null"): PORT: Location.getWorld() is non-null in the port
+        self.spawn_location.set(Location::clone(&location));
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:63
+    pub fn is_new_player(&self) -> bool { self.new_player } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:74
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncPlayerSpawnLocationEvent.java:83
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

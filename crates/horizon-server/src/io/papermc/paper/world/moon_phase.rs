@@ -19,7 +19,13 @@ pub enum MoonPhase {
 pub struct MoonPhaseData {
     pub day: i64,
 }
-pub static BY_DAY: LazyLock<HashMap<i64, MoonPhase>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/world/MoonPhase.java:24
+pub static BY_DAY: LazyLock<HashMap<i64, MoonPhase>> = LazyLock::new(|| {
+    let mut by_day = HashMap::new();
+    for phase in MoonPhase::VALUES {
+        by_day.insert(phase.data().day, phase);
+    }
+    by_day
+}); // paper-api/src/main/java/io/papermc/paper/world/MoonPhase.java:24
 impl MoonPhase {
     pub const VALUES: [MoonPhase; 8] = [MoonPhase::FULL_MOON, MoonPhase::WANING_GIBBOUS, MoonPhase::LAST_QUARTER, MoonPhase::WANING_CRESCENT, MoonPhase::NEW_MOON, MoonPhase::WAXING_CRESCENT, MoonPhase::FIRST_QUARTER, MoonPhase::WAXING_GIBBOUS];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -28,7 +34,21 @@ impl MoonPhase {
     }
     pub fn value_of(name: &str) -> Option<MoonPhase> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static MoonPhaseData { todo!("paper-api/src/main/java/io/papermc/paper/world/MoonPhase.java:7") }
-    pub fn get_phase(day: i64) -> MoonPhase { todo!() } // paper-api/src/main/java/io/papermc/paper/world/MoonPhase.java:32
+    pub fn data(self) -> &'static MoonPhaseData {
+        match self {
+            MoonPhase::FULL_MOON => &MoonPhaseData { day: 0 },
+            MoonPhase::WANING_GIBBOUS => &MoonPhaseData { day: 1 },
+            MoonPhase::LAST_QUARTER => &MoonPhaseData { day: 2 },
+            MoonPhase::WANING_CRESCENT => &MoonPhaseData { day: 3 },
+            MoonPhase::NEW_MOON => &MoonPhaseData { day: 4 },
+            MoonPhase::WAXING_CRESCENT => &MoonPhaseData { day: 5 },
+            MoonPhase::FIRST_QUARTER => &MoonPhaseData { day: 6 },
+            MoonPhase::WAXING_GIBBOUS => &MoonPhaseData { day: 7 },
+        }
+    }
+    pub fn get_phase(day: i64) -> MoonPhase {
+        // Java returns null for a negative day (its remainder is negative): that is a panic here.
+        *BY_DAY.get(&(day % 8i64)).expect("MoonPhase.getPhase: no phase for a negative day")
+    } // paper-api/src/main/java/io/papermc/paper/world/MoonPhase.java:32
 }
 crate::jobject!(MoonPhase);

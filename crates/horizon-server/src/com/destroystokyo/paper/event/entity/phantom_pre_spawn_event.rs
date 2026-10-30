@@ -25,8 +25,16 @@ impl std::ops::Deref for PhantomPreSpawnEvent {
 }
 impl PhantomPreSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(location: JRef<Location>, entity: JRef<dyn Entity>, reason: CreatureSpawnEventSpawnReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PhantomPreSpawnEvent.java:18
-    pub fn get_spawning_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PhantomPreSpawnEvent.java:29
+    pub fn new(location: JRef<Location>, entity: JRef<dyn Entity>, reason: CreatureSpawnEventSpawnReason) -> JRef<Self> {
+Arc::new_cyclic(|this| PhantomPreSpawnEvent {
+    base: PreCreatureSpawnEvent::new_base(this, location, EntityType::PHANTOM, reason),
+    this: this.clone(),
+    entity,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PhantomPreSpawnEvent.java:18
+    pub fn get_spawning_entity(&self) -> JRef<dyn Entity> {
+self.entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PhantomPreSpawnEvent.java:29
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

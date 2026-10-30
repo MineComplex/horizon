@@ -28,14 +28,14 @@ impl std::ops::Deref for BlockBreakEvent {
 }
 impl BlockBreakEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, player: JRef<dyn Player>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:37
-    pub fn new_3(block: JRef<dyn Block>, player: JRef<dyn Player>, multi: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:42
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:94
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:99
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:56
-    pub fn set_drop_items(&self, drop_items: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:70
-    pub fn is_drop_items(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:82
-    pub fn is_multi(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:90
+    pub fn new(block: JRef<dyn Block>, player: JRef<dyn Player>) -> JRef<Self> { Self::new_3(block, player, false) } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:37
+    pub fn new_3(block: JRef<dyn Block>, player: JRef<dyn Player>, multi: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockBreakEvent { base: BlockExpEvent::new_base(this, block, 0), this: this.clone(), player: player, multi: multi, drop_items: Mut::new(true), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:42
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:94
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:99
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:56
+    pub fn set_drop_items(&self, drop_items: bool) { self.drop_items.set(drop_items); } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:70
+    pub fn is_drop_items(&self) -> bool { self.drop_items.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:82
+    pub fn is_multi(&self) -> bool { self.multi } // paper-api/src/main/java/org/bukkit/event/block/BlockBreakEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

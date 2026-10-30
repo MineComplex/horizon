@@ -23,15 +23,15 @@ impl std::ops::Deref for EntityDropItemEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:15
 impl EntityDropItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, drop: JRef<dyn Item>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:20
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:36
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:41
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:46
-    pub fn get_item_drop(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:31
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:52
+    pub fn new(entity: JRef<dyn Entity>, drop: JRef<dyn Item>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityDropItemEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), drop: drop, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:20
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:36
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:41
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:46
+    pub fn get_item_drop(&self) -> JRef<dyn Item> { self.drop.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:31
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDropItemEvent.java:52
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

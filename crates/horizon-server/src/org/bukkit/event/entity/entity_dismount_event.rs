@@ -23,17 +23,17 @@ impl std::ops::Deref for EntityDismountEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:14
 impl EntityDismountEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, dismounted: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:21
-    pub fn new_3(entity: JRef<dyn Entity>, dismounted: JRef<dyn Entity>, is_cancellable: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:43
+    pub fn new(entity: JRef<dyn Entity>, dismounted: JRef<dyn Entity>) -> JRef<Self> { Self::new_3(entity, dismounted, true) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:21
+    pub fn new_3(entity: JRef<dyn Entity>, dismounted: JRef<dyn Entity>, is_cancellable: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityDismountEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), dismounted: dismounted, is_cancellable: is_cancellable, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:43
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:48
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:60
-    pub fn get_dismounted(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:38
-    pub fn is_cancellable(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:56
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:66
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:60
+    pub fn get_dismounted(&self) -> JRef<dyn Entity> { self.dismounted.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:38
+    pub fn is_cancellable(&self) -> bool { self.is_cancellable } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:56
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDismountEvent.java:66
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

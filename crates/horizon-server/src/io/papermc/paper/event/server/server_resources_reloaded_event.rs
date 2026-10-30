@@ -18,13 +18,19 @@ impl std::ops::Deref for ServerResourcesReloadedEvent {
     type Target = ServerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:16
 impl ServerResourcesReloadedEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(cause: ServerResourcesReloadedEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:20
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:38
-    pub fn get_cause(&self) -> ServerResourcesReloadedEventCause { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:34
+    pub fn new(cause: ServerResourcesReloadedEventCause) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| ServerResourcesReloadedEvent {
+            base: ServerEvent::new_base(this),
+            this: this.clone(),
+            cause,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:20
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:38
+    pub fn get_cause(&self) -> ServerResourcesReloadedEventCause { self.cause.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/server/ServerResourcesReloadedEvent.java:34
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

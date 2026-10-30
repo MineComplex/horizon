@@ -27,9 +27,9 @@ impl std::ops::Deref for CampfireStartEvent {
 impl CampfireStartEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(campfire: JRef<dyn Block>, source: JRef<ItemStack>, recipe: JRef<CampfireRecipe>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:17
-    pub fn get_recipe(&self) -> JRef<CampfireRecipe> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:29
-    pub fn get_total_cook_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:39
-    pub fn set_total_cook_time(&self, cook_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:48
+    pub fn get_recipe(&self) -> JRef<CampfireRecipe> { self.campfire_recipe.clone() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:29
+    pub fn get_total_cook_time(&self) -> i32 { self.cooking_time.get() } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:39
+    pub fn set_total_cook_time(&self, cook_time: i32) { self.cooking_time.set(cook_time); } // paper-api/src/main/java/org/bukkit/event/block/CampfireStartEvent.java:48
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

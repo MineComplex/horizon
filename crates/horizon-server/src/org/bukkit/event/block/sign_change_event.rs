@@ -27,25 +27,25 @@ impl std::ops::Deref for SignChangeEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:21
 impl SignChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:37
-    pub fn new_3(sign: JRef<dyn Block>, the_player: JRef<dyn Player>, the_lines: &Vec<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:43
+    pub fn new_3(sign: JRef<dyn Block>, the_player: JRef<dyn Player>, the_lines: &Vec<String>) -> JRef<Self> { Self::new_4_(sign, the_player, &the_lines.clone(), Side::FRONT) } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:43
     pub fn new_4(sign: JRef<dyn Block>, player: JRef<dyn Player>, adventure_lines: &Vec<Component>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:29
     pub fn new_4_(sign: JRef<dyn Block>, the_player: JRef<dyn Player>, the_lines: &Vec<String>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:49
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:157
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:162
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:167
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:66
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:157
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:162
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:167
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:66
     pub fn lines(&self) -> Vec<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:76
     pub fn line(&self, index: i32) -> Result<Component, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:89
     pub fn line_2(&self, index: i32, line: Component) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:101
     pub fn get_lines(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:111
     pub fn get_line(&self, index: i32) -> Result<Option<String>, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:127
     pub fn set_line(&self, index: i32, line: Option<String>) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:142
-    pub fn get_side(&self) -> Side { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:152
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:173
+    pub fn get_side(&self) -> Side { self.side.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:152
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/SignChangeEvent.java:173
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -9,5 +9,7 @@ use crate::api_prelude::*;
 pub trait RangedEntity: Mob {
     fn ranged_attack(&self, target: JRef<dyn LivingEntity>, charge: f32); // paper-api/src/main/java/com/destroystokyo/paper/entity/RangedEntity.java:16
     fn set_charging_attack(&self, raise_hands: bool); // paper-api/src/main/java/com/destroystokyo/paper/entity/RangedEntity.java:24
-    fn is_charging_attack(&self) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/entity/RangedEntity.java:32
+    fn is_charging_attack(&self) -> bool {
+self.is_hand_raised()
+} // default, paper-api/src/main/java/com/destroystokyo/paper/entity/RangedEntity.java:32
 }

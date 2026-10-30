@@ -15,11 +15,23 @@ pub struct Vibration {
 }
 impl Vibration {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(destination: JRef<dyn VibrationDestination>, arrival_time: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:16
-    pub fn new_3(origin: JRef<Location>, destination: JRef<dyn VibrationDestination>, arrival_time: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:22
-    pub fn get_origin(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:35
-    pub fn get_destination(&self) -> JRef<dyn VibrationDestination> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:46
-    pub fn get_arrival_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:56
+    pub fn new(destination: JRef<dyn VibrationDestination>, arrival_time: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this| Vibration {
+            this: this.clone(),
+            destination,
+            arrival_time,
+            // Dummy origin because getter expects not null
+            // PORT: Location(World, ...) takes a nullable world (@UndefinedNullability); Location::new's
+            // first parameter must be an Option.
+            origin: Location::new(None, 0.0, 0.0, 0.0),
+        })
+    } // paper-api/src/main/java/org/bukkit/Vibration.java:16
+    pub fn new_3(origin: JRef<Location>, destination: JRef<dyn VibrationDestination>, arrival_time: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this| Vibration { this: this.clone(), origin, destination, arrival_time })
+    } // paper-api/src/main/java/org/bukkit/Vibration.java:22
+    pub fn get_origin(&self) -> JRef<Location> { self.origin.clone() } // paper-api/src/main/java/org/bukkit/Vibration.java:35
+    pub fn get_destination(&self) -> JRef<dyn VibrationDestination> { self.destination.clone() } // paper-api/src/main/java/org/bukkit/Vibration.java:46
+    pub fn get_arrival_time(&self) -> i32 { self.arrival_time } // paper-api/src/main/java/org/bukkit/Vibration.java:56
 }
 crate::jobject!(Vibration);
 // ---- interface org.bukkit.Vibration.Destination (paper-api/src/main/java/org/bukkit/Vibration.java:60)
@@ -32,8 +44,10 @@ pub struct VibrationDestinationEntityDestination {
 }
 impl VibrationDestinationEntityDestination {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:66
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:70
+    pub fn new(entity: JRef<dyn Entity>) -> JRef<Self> {
+        Arc::new_cyclic(|this| VibrationDestinationEntityDestination { this: this.clone(), entity })
+    } // paper-api/src/main/java/org/bukkit/Vibration.java:66
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/Vibration.java:70
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -47,10 +61,14 @@ pub struct VibrationDestinationBlockDestination {
 }
 impl VibrationDestinationBlockDestination {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:80
-    pub fn new_1(block: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:84
-    pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:88
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/Vibration.java:93
+    pub fn new(block: JRef<Location>) -> JRef<Self> {
+        Arc::new_cyclic(|this| VibrationDestinationBlockDestination { this: this.clone(), block: Location::clone(&block) })
+    } // paper-api/src/main/java/org/bukkit/Vibration.java:80
+    pub fn new_1(block: JRef<dyn Block>) -> JRef<Self> {
+        Self::new(block.get_location())
+    } // paper-api/src/main/java/org/bukkit/Vibration.java:84
+    pub fn get_location(&self) -> JRef<Location> { Location::clone(&self.block) } // paper-api/src/main/java/org/bukkit/Vibration.java:88
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.get_block() } // paper-api/src/main/java/org/bukkit/Vibration.java:93
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

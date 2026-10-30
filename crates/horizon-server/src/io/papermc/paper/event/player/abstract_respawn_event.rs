@@ -39,11 +39,34 @@ impl std::ops::Deref for dyn AbstractRespawnEventTrait {
 }
 impl AbstractRespawnEvent {
     pub fn this(&self) -> JRef<dyn AbstractRespawnEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: AbstractRespawnEventTrait + 'static>(this: &Weak<S>, respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:22
-    pub fn get_respawn_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:44
-    pub fn is_bed_spawn(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:53
-    pub fn is_anchor_spawn(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:62
-    pub fn is_missing_respawn_block(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:75
-    pub fn get_respawn_reason(&self) -> PlayerRespawnEventRespawnReason { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:84
-    pub fn get_respawn_flags(&self) -> HashSet<PlayerRespawnEventRespawnFlag> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:94
+    pub fn new_base<S: AbstractRespawnEventTrait + 'static>(this: &Weak<S>, respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> Self {
+        let mut builder: HashSet<PlayerRespawnEventRespawnFlag> = HashSet::new();
+        if respawn_reason == PlayerRespawnEventRespawnReason::END_PORTAL {
+            builder.insert(PlayerRespawnEventRespawnFlag::END_PORTAL);
+        }
+        if is_bed_spawn {
+            builder.insert(PlayerRespawnEventRespawnFlag::BED_SPAWN);
+        }
+        if is_anchor_spawn {
+            builder.insert(PlayerRespawnEventRespawnFlag::ANCHOR_SPAWN);
+        }
+        AbstractRespawnEvent {
+            base: PlayerEvent::new_base(this, respawn_player),
+            this: this.clone(),
+            respawn_location: Mut::new(respawn_location),
+            is_bed_spawn,
+            is_anchor_spawn,
+            missing_respawn_block,
+            respawn_reason,
+            respawn_flags: Mut::new(builder),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:22
+    pub fn get_respawn_location(&self) -> JRef<Location> {
+        Location::clone(&self.respawn_location.get())
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:44
+    pub fn is_bed_spawn(&self) -> bool { self.is_bed_spawn } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:53
+    pub fn is_anchor_spawn(&self) -> bool { self.is_anchor_spawn } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:62
+    pub fn is_missing_respawn_block(&self) -> bool { self.missing_respawn_block } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:75
+    pub fn get_respawn_reason(&self) -> PlayerRespawnEventRespawnReason { self.respawn_reason.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:84
+    pub fn get_respawn_flags(&self) -> HashSet<PlayerRespawnEventRespawnFlag> { self.respawn_flags.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractRespawnEvent.java:94
 }

@@ -31,15 +31,15 @@ impl std::ops::Deref for dyn PrepareInventoryResultEventTrait {
     type Target = PrepareInventoryResultEvent;
     fn deref(&self) -> &PrepareInventoryResultEvent { self.as_prepare_inventory_result_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:20
 impl PrepareInventoryResultEvent {
     pub fn this(&self) -> JRef<dyn PrepareInventoryResultEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PrepareInventoryResultEventTrait + 'static>(this: &Weak<S>, inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:24
     pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, inventory, result)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:49
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:49
     pub fn get_result(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:35
     pub fn set_result(&self, result: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:45
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:55
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareInventoryResultEvent.java:55
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

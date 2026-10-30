@@ -15,7 +15,9 @@ pub trait SkinParts: JObject {
     fn get_raw(&self) -> i32; // paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:37
     fn mutable_copy(&self) -> JRef<dyn SkinPartsMutable>; // paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:39
 }
-pub fn all_parts() -> JRef<dyn SkinPartsMutable> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:18
+pub fn all_parts() -> JRef<dyn SkinPartsMutable> {
+crate::io::papermc::paper::internal_api_bridge::get().all_skin_parts()
+} // paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:18
 // ---- interface com.destroystokyo.paper.SkinParts.Mutable (paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:41)
 pub trait SkinPartsMutable: SkinParts {
     fn set_cape_enabled(&self, enabled: bool); // paper-api/src/main/java/com/destroystokyo/paper/SkinParts.java:43

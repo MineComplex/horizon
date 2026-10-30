@@ -28,24 +28,24 @@ impl std::ops::Deref for EntityPortalEvent {
     type Target = EntityTeleportEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:19
 impl EntityPortalEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:26
-    pub fn new_4(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:31
-    pub fn new_6(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32, can_create_portal: bool, creation_radius: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:38
-    pub fn new_7(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32, can_create_portal: bool, creation_radius: i32, portal_type: PortalType) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:43
+    pub fn new(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { Self::new_4(entity, from, to, 128) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:26
+    pub fn new_4(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPortalEvent { base: EntityTeleportEvent::new_base(this, entity, from, to), this: this.clone(), type_: PortalType::CUSTOM, search_radius: Mut::new(search_radius), can_create_portal: Mut::new(true), creation_radius: Mut::new(16) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:31
+    pub fn new_6(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32, can_create_portal: bool, creation_radius: i32) -> JRef<Self> { Self::new_7(entity, from, to, search_radius, can_create_portal, creation_radius, PortalType::CUSTOM) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:38
+    pub fn new_7(entity: JRef<dyn Entity>, from: JRef<Location>, to: Option<JRef<Location>>, search_radius: i32, can_create_portal: bool, creation_radius: i32, portal_type: PortalType) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPortalEvent { base: EntityTeleportEvent::new_base(this, entity, from, to), this: this.clone(), type_: portal_type, search_radius: Mut::new(search_radius), can_create_portal: Mut::new(can_create_portal), creation_radius: Mut::new(creation_radius) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:43
     pub fn get_to(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:62
     pub fn set_to(&self, to: Option<JRef<Location>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:72
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:159
-    pub fn get_portal_type(&self) -> PortalType { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:82
-    pub fn set_search_radius(&self, search_radius: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:92
-    pub fn get_search_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:101
-    pub fn get_can_create_portal(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:111
-    pub fn set_can_create_portal(&self, can_create_portal: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:122
-    pub fn set_creation_radius(&self, creation_radius: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:139
-    pub fn get_creation_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:155
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:165
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:159
+    pub fn get_portal_type(&self) -> PortalType { self.type_.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:82
+    pub fn set_search_radius(&self, search_radius: i32) { self.search_radius.set(search_radius); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:92
+    pub fn get_search_radius(&self) -> i32 { self.search_radius.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:101
+    pub fn get_can_create_portal(&self) -> bool { self.can_create_portal.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:111
+    pub fn set_can_create_portal(&self, can_create_portal: bool) { self.can_create_portal.set(can_create_portal); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:122
+    pub fn set_creation_radius(&self, creation_radius: i32) { self.creation_radius.set(creation_radius); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:139
+    pub fn get_creation_radius(&self) -> i32 { self.creation_radius.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:155
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEvent.java:165
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -28,11 +28,11 @@ impl std::ops::Deref for FurnaceExtractEvent {
 }
 impl FurnaceExtractEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, item_stack: JRef<ItemStack>, item_amount: i32, exp: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:22
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:35
-    pub fn get_item_type(&self) -> Material { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:45
-    pub fn get_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:55
-    pub fn get_item_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:65
+    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, item_stack: JRef<ItemStack>, item_amount: i32, exp: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockExpEvent::new_base(this, block, exp), this: this.clone(), player: player, item_stack: item_stack, item_amount: item_amount }) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:22
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:35
+    pub fn get_item_type(&self) -> Material { self.item_stack.get_type() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:45
+    pub fn get_item_stack(&self) -> JRef<ItemStack> { ItemStack::clone(&self.item_stack) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:55
+    pub fn get_item_amount(&self) -> i32 { self.item_amount } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceExtractEvent.java:65
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

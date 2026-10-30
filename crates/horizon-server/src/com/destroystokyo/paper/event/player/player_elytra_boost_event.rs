@@ -27,19 +27,47 @@ impl std::ops::Deref for PlayerElytraBoostEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:19
 impl PlayerElytraBoostEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, item_stack: JRef<ItemStack>, firework: JRef<dyn Firework>, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:28
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:81
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:86
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:91
-    pub fn get_item_stack(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:41
-    pub fn get_firework(&self) -> JRef<dyn Firework> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:50
-    pub fn should_consume(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:59
-    pub fn set_should_consume(&self, consume: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:68
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:77
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:96
+    pub fn new(player: JRef<dyn Player>, item_stack: JRef<ItemStack>, firework: JRef<dyn Firework>, hand: EquipmentSlot) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerElytraBoostEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+item_stack: item_stack,
+firework: firework,
+consume: Mut::new(true),
+hand: hand,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:28
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:81
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:86
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:91
+    pub fn get_item_stack(&self) -> JRef<ItemStack> {
+self.item_stack.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:41
+    pub fn get_firework(&self) -> JRef<dyn Firework> {
+self.firework.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:50
+    pub fn should_consume(&self) -> bool {
+self.consume.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:59
+    pub fn set_should_consume(&self, consume: bool) {
+self.consume.set(consume)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:68
+    pub fn get_hand(&self) -> EquipmentSlot {
+self.hand.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:77
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerElytraBoostEvent.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -63,8 +63,8 @@ pub static SNIFFER_EXPLORED_POSITIONS: LazyLock<JRef<MemoryKey<JRef<Location>>>>
 impl<T: JGeneric> MemoryKey<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(namespaced_key: JRef<NamespacedKey>, t_class: Class) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:25
-    pub fn get_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:31
-    pub fn get_memory_class(&self) -> Class { todo!() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:42
+    pub fn get_key(&self) -> JRef<NamespacedKey> { self.namespaced_key.clone() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:31
+    pub fn get_memory_class(&self) -> Class { self.t_class.clone() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:42
     pub fn get_by_key(namespaced_key: JRef<NamespacedKey>) -> Option<JRef<MemoryKey<JObjectRef>>> { todo!() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:154
     pub fn values() -> HashSet<JRef<MemoryKey<JObjectRef>>> { todo!() } // paper-api/src/main/java/org/bukkit/entity/memory/MemoryKey.java:164
 }

@@ -17,12 +17,17 @@ impl std::ops::Deref for RegionizedServerInitEvent {
     type Target = ServerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:15
 impl RegionizedServerInitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:12
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:17
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:22
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| RegionizedServerInitEvent {
+            base: ServerEvent::new_base(this),
+            this: this.clone(),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:12
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:17
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/threadedregions/RegionizedServerInitEvent.java:22
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

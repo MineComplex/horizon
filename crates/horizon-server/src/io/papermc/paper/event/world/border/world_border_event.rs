@@ -27,6 +27,12 @@ impl std::ops::Deref for dyn WorldBorderEventTrait {
 }
 impl WorldBorderEvent {
     pub fn this(&self) -> JRef<dyn WorldBorderEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: WorldBorderEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderEvent.java:14
-    pub fn get_world_border(&self) -> JRef<dyn WorldBorder> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderEvent.java:20
+    pub fn new_base<S: WorldBorderEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>) -> Self {
+        WorldBorderEvent {
+            base: WorldEvent::new_base(this, world),
+            this: this.clone(),
+            world_border,
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderEvent.java:14
+    pub fn get_world_border(&self) -> JRef<dyn WorldBorder> { self.world_border.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderEvent.java:20
 }

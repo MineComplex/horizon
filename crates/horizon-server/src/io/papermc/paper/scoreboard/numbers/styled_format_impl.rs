@@ -14,14 +14,13 @@ pub struct StyledFormatImpl {
 }
 pub static NO_STYLE: LazyLock<JRef<dyn StyledFormat>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:8
 impl StyledFormatImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:6
     pub fn new_1(style: Style) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:6
     pub fn style_apply(&self, style: StyleBuilder) { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/StyledFormatImpl.java:10
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl StyledFormat for StyledFormatImpl {
-    fn style(&self) -> Style { todo!("abstract StyledFormat.style") }
+    fn style(&self) -> Style { self.style.clone() }
 }
 impl NumberFormat for StyledFormatImpl {
 }

@@ -8,10 +8,18 @@ use crate::api_prelude::*;
 // ---- interface com.destroystokyo.paper.entity.ai.Goal (paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:10)
 pub trait Goal<T: JGeneric>: JObject {
     fn should_activate(&self) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:18
-    fn should_stay_active(&self) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:25
-    fn start(&self) { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:32
-    fn stop(&self) { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:38
-    fn tick(&self) { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:44
+    fn should_stay_active(&self) -> bool {
+self.should_activate()
+} // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:25
+    fn start(&self) {
+
+} // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:32
+    fn stop(&self) {
+
+} // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:38
+    fn tick(&self) {
+
+} // default, paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:44
     fn get_key(&self) -> JRef<GoalKey<T>>; // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:53
     fn get_types(&self) -> HashSet<GoalType>; // paper-api/src/main/java/com/destroystokyo/paper/entity/ai/Goal.java:62
 }

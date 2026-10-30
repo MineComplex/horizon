@@ -12,6 +12,8 @@ pub trait Turtle: Animals {
     fn get_home(&self) -> JRef<Location>; // paper-api/src/main/java/org/bukkit/entity/Turtle.java:30
     fn set_home(&self, location: JRef<Location>); // paper-api/src/main/java/org/bukkit/entity/Turtle.java:38
     fn is_going_home(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Turtle.java:45
-    fn is_digging(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Turtle.java:53
+    fn is_digging(&self) -> bool {
+        self.is_laying_egg()
+    } // default, paper-api/src/main/java/org/bukkit/entity/Turtle.java:53
     fn set_has_egg(&self, has_egg: bool); // paper-api/src/main/java/org/bukkit/entity/Turtle.java:63
 }

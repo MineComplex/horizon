@@ -20,9 +20,9 @@ impl<T: JGeneric> RegistryValueSetImpl<T> {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> RegistryValueSet<T> for RegistryValueSetImpl<T> {
-    fn values(&self) -> Vec<T> { todo!("abstract RegistryValueSet.values") }
+    fn values(&self) -> Vec<T> { self.values.clone() }
 }
 impl<T: JGeneric> RegistrySet<JObjectRef> for RegistryValueSetImpl<T> {
-    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { todo!("abstract RegistrySet.registryKey") }
+    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { self.registry_key.clone() }
     fn size(&self) -> i32 { todo!("abstract RegistrySet.size") }
 }

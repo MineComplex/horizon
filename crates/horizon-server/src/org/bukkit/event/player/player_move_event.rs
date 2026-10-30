@@ -39,17 +39,17 @@ impl std::ops::Deref for dyn PlayerMoveEventTrait {
     type Target = PlayerMoveEvent;
     fn deref(&self) -> &PlayerMoveEvent { self.as_player_move_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:17
 impl PlayerMoveEvent {
     pub fn this(&self) -> JRef<dyn PlayerMoveEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PlayerMoveEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:24
     pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, from, to)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:123
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:135
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:145
-    pub fn get_from(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:123
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:135
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:145
+    pub fn get_from(&self) -> JRef<Location> { self.from.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:36
     pub fn set_from(&self, from: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:46
-    pub fn get_to(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:56
+    pub fn get_to(&self) -> JRef<Location> { self.to.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:56
     pub fn set_to(&self, to: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:66
     pub fn has_changed_position(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:76
     pub fn has_explicitly_changed_position(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:85
@@ -57,7 +57,7 @@ impl PlayerMoveEvent {
     pub fn has_explicitly_changed_block(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:103
     pub fn has_changed_orientation(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:112
     pub fn validate_location(&self, loc: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:140
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:151
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerMoveEvent.java:151
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

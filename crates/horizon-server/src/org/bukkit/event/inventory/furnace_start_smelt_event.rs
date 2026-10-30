@@ -26,11 +26,12 @@ impl std::ops::Deref for FurnaceStartSmeltEvent {
 }
 impl FurnaceStartSmeltEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(furnace: JRef<dyn Block>, source: JRef<ItemStack>, recipe: JRef<dyn CookingRecipeTrait<JObjectRef>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:22
-    pub fn new_4(furnace: JRef<dyn Block>, source: JRef<ItemStack>, recipe: JRef<dyn CookingRecipeTrait<JObjectRef>>, cooking_time: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:28
-    pub fn get_recipe(&self) -> JRef<dyn CookingRecipeTrait<JObjectRef>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:40
-    pub fn get_total_cook_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:50
-    pub fn set_total_cook_time(&self, cook_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:59
+    pub fn new(furnace: JRef<dyn Block>, source: JRef<ItemStack>, recipe: JRef<dyn CookingRecipeTrait<JObjectRef>>) -> JRef<Self> { let cooking_time = recipe.get_cooking_time();
+        Self::new_4(furnace, source, recipe, cooking_time) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:22
+    pub fn new_4(furnace: JRef<dyn Block>, source: JRef<ItemStack>, recipe: JRef<dyn CookingRecipeTrait<JObjectRef>>, cooking_time: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryBlockStartEvent::new_base(this, furnace, source), this: this.clone(), recipe: recipe, total_cook_time: Mut::new(cooking_time) }) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:28
+    pub fn get_recipe(&self) -> JRef<dyn CookingRecipeTrait<JObjectRef>> { self.recipe.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:40
+    pub fn get_total_cook_time(&self) -> i32 { self.total_cook_time.get() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:50
+    pub fn set_total_cook_time(&self, cook_time: i32) { self.total_cook_time.set(cook_time) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceStartSmeltEvent.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -21,13 +21,13 @@ impl std::ops::Deref for TimeSkipEvent {
     type Target = ClockTimeSkipEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:17
 impl TimeSkipEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, skip_reason: ClockTimeSkipEventSkipReason, skip_amount: i64) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:37
-    pub fn get_world(&self) -> JRef<dyn World> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:32
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:43
+    pub fn new(world: JRef<dyn World>, skip_reason: ClockTimeSkipEventSkipReason, skip_amount: i64) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ClockTimeSkipEvent::new_base(this, skip_reason, skip_amount), this: this.clone(), world: world }) } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:37
+    pub fn get_world(&self) -> JRef<dyn World> { self.world.clone() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:32
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/TimeSkipEvent.java:43
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

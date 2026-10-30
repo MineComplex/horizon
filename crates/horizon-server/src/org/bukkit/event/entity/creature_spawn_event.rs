@@ -27,9 +27,9 @@ impl std::ops::Deref for CreatureSpawnEvent {
 }
 impl CreatureSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(spawnee: JRef<dyn LivingEntity>, spawn_reason: CreatureSpawnEventSpawnReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:18
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:24
-    pub fn get_spawn_reason(&self) -> CreatureSpawnEventSpawnReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:36
+    pub fn new(spawnee: JRef<dyn LivingEntity>, spawn_reason: CreatureSpawnEventSpawnReason) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| CreatureSpawnEvent { base: EntitySpawnEvent::new_base(this, spawnee), this: this.clone(), spawn_reason: spawn_reason }) } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:18
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:24
+    pub fn get_spawn_reason(&self) -> CreatureSpawnEventSpawnReason { self.spawn_reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/CreatureSpawnEvent.java:36
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -10,8 +10,17 @@ pub struct SneakyThrow {
 }
 impl SneakyThrow {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:9
-    pub fn sneaky(exception: Throwable) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:13
-    pub fn throw_sneaky<T: JGeneric>(exception: Throwable) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:17
+    pub fn new() -> JRef<Self> {
+Arc::new_cyclic(|this| SneakyThrow { this: this.clone() })
+} // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:9
+    pub fn sneaky(exception: Throwable) {
+if let Err(exception) = SneakyThrow::throw_sneaky::<Throwable>(exception) {
+    // Java rethrows the checked exception unchecked.
+    std::panic::panic_any(exception);
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:13
+    pub fn throw_sneaky<T: JGeneric>(exception: Throwable) -> Result<(), Throwable> {
+Err(exception)
+} // paper-api/src/main/java/com/destroystokyo/paper/util/SneakyThrow.java:17
 }
 crate::jobject!(SneakyThrow);

@@ -23,17 +23,41 @@ impl std::ops::Deref for PlayerJumpEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:23
 impl PlayerJumpEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:44
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:56
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:93
-    pub fn get_from(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:66
-    pub fn set_from(&self, from: JRef<Location>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:75
-    pub fn get_to(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:89
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:98
+    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerJumpEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+to: to,
+from: Mut::new(from),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:30
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:44
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:56
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:93
+    pub fn get_from(&self) -> JRef<Location> {
+self.from.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:66
+    pub fn set_from(&self, from: JRef<Location>) {
+// Preconditions: from != null (non-null here); from.getWorld() != null ("Cannot use from location with null world!").
+let _ = from.get_world();
+self.from.set(Location::clone(&from));
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:75
+    pub fn get_to(&self) -> JRef<Location> {
+Location::clone(&self.to)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:89
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerJumpEvent.java:98
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

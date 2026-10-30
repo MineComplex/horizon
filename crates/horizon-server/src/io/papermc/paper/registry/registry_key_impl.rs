@@ -13,7 +13,6 @@ pub struct RegistryKeyImpl<T: JGeneric> {
 }
 pub static REGISTRY_KEYS: LazyLock<HashSet<JRef<dyn RegistryKey<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/registry/RegistryKeyImpl.java:13
 impl<T: JGeneric> RegistryKeyImpl<T> {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/RegistryKeyImpl.java:10
     pub fn new_1(key: JRef<dyn Key>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/RegistryKeyImpl.java:10
     pub fn equals(&self, obj: Option<JObjectRef>) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/RegistryKeyImpl.java:16
     pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/RegistryKeyImpl.java:21

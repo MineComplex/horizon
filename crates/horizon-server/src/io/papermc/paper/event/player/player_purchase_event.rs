@@ -40,22 +40,35 @@ impl std::ops::Deref for dyn PlayerPurchaseEventTrait {
     type Target = PlayerPurchaseEvent;
     fn deref(&self) -> &PlayerPurchaseEvent { self.as_player_purchase_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:19
 impl PlayerPurchaseEvent {
     pub fn this(&self) -> JRef<dyn PlayerPurchaseEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerPurchaseEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, merchant: JRef<dyn Merchant>, trade: JRef<MerchantRecipe>, reward_exp: bool, increase_trade_uses: bool) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:28
+    pub fn new_base<S: PlayerPurchaseEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, merchant: JRef<dyn Merchant>, trade: JRef<MerchantRecipe>, reward_exp: bool, increase_trade_uses: bool) -> Self {
+        PlayerPurchaseEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            merchant,
+            reward_exp: Mut::new(reward_exp),
+            increase_trade_uses: Mut::new(increase_trade_uses),
+            trade: Mut::new(trade),
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:28
     pub fn new(player: JRef<dyn Player>, merchant: JRef<dyn Merchant>, trade: JRef<MerchantRecipe>, reward_exp: bool, increase_trade_uses: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, merchant, trade, reward_exp, increase_trade_uses)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:97
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:102
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:107
-    pub fn get_merchant(&self) -> JRef<dyn Merchant> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:42
-    pub fn get_trade(&self) -> JRef<MerchantRecipe> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:51
-    pub fn set_trade(&self, trade: JRef<MerchantRecipe>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:60
-    pub fn is_rewarding_exp(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:68
-    pub fn set_reward_exp(&self, reward_exp: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:77
-    pub fn will_increase_trade_uses(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:84
-    pub fn set_increase_trade_uses(&self, increase_trade_uses: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:93
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:112
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:97
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:102
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:107
+    pub fn get_merchant(&self) -> JRef<dyn Merchant> { self.merchant.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:42
+    pub fn get_trade(&self) -> JRef<MerchantRecipe> { self.trade.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:51
+    pub fn set_trade(&self, trade: JRef<MerchantRecipe>) {
+        // Preconditions.checkArgument(trade != null, "Trade cannot be null!"): a JRef is never null
+        self.trade.set(trade);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:60
+    pub fn is_rewarding_exp(&self) -> bool { self.reward_exp.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:68
+    pub fn set_reward_exp(&self, reward_exp: bool) { self.reward_exp.set(reward_exp) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:77
+    pub fn will_increase_trade_uses(&self) -> bool { self.increase_trade_uses.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:84
+    pub fn set_increase_trade_uses(&self, increase_trade_uses: bool) { self.increase_trade_uses.set(increase_trade_uses) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:93
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPurchaseEvent.java:112
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

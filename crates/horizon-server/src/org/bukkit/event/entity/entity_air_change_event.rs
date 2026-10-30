@@ -22,16 +22,16 @@ impl std::ops::Deref for EntityAirChangeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:14
 impl EntityAirChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:19
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:43
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:48
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:53
-    pub fn get_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:30
-    pub fn set_amount(&self, amount: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:39
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:59
+    pub fn new(entity: JRef<dyn Entity>, amount: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityAirChangeEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), amount: Mut::new(amount), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:19
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:43
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:48
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:53
+    pub fn get_amount(&self) -> i32 { self.amount.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:30
+    pub fn set_amount(&self, amount: i32) { self.amount.set(amount); } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:39
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityAirChangeEvent.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

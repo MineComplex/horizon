@@ -22,15 +22,15 @@ impl std::ops::Deref for SheepRegrowWoolEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:14
 impl SheepRegrowWoolEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(sheep: JRef<dyn Sheep>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:18
-    pub fn get_entity(&self) -> JRef<dyn Sheep> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:29
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:34
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:39
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:45
+    pub fn new(sheep: JRef<dyn Sheep>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| SheepRegrowWoolEvent { base: EntityEvent::new_base(this, sheep), this: this.clone(), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:18
+    pub fn get_entity(&self) -> JRef<dyn Sheep> { cast::<dyn Sheep, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:29
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:34
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:39
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/SheepRegrowWoolEvent.java:45
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

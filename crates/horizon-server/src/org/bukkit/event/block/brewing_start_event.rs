@@ -25,12 +25,12 @@ impl std::ops::Deref for BrewingStartEvent {
 }
 impl BrewingStartEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(brewing_stand: JRef<dyn Block>, source: JRef<ItemStack>, brewing_time: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:18
-    pub fn get_total_brew_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:31
+    pub fn new(brewing_stand: JRef<dyn Block>, source: JRef<ItemStack>, brewing_time: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BrewingStartEvent { base: InventoryBlockStartEvent::new_base(this, brewing_stand, source), this: this.clone(), brewing_time: Mut::new(brewing_time), recipe_brew_time: Mut::new(brewing_time) }) } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:18
+    pub fn get_total_brew_time(&self) -> i32 { self.brewing_time.get() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:31
     pub fn set_total_brew_time(&self, brew_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:42
-    pub fn get_recipe_brew_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:54
+    pub fn get_recipe_brew_time(&self) -> i32 { self.recipe_brew_time.get() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:54
     pub fn set_recipe_brew_time(&self, recipe_brew_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:66
-    pub fn get_brewing_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:76
+    pub fn get_brewing_time(&self) -> i32 { self.brewing_time.get() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:76
     pub fn set_brewing_time(&self, brew_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BrewingStartEvent.java:86
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

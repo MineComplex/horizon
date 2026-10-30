@@ -18,15 +18,33 @@ impl std::ops::Deref for PlayerConnectionCloseEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:40
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:40
 impl PlayerConnectionCloseEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player_unique_id: Uuid, player_name: &str, ip_address: std::net::IpAddr, async_: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:46
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:75
-    pub fn get_player_unique_id(&self) -> Uuid { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:57
-    pub fn get_player_name(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:64
-    pub fn get_ip_address(&self) -> std::net::IpAddr { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:71
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:80
+    pub fn new(player_unique_id: Uuid, player_name: &str, ip_address: std::net::IpAddr, async_: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerConnectionCloseEvent {
+base: Event::new_base_1(this, async_),
+this: this.clone(),
+player_unique_id: player_unique_id,
+player_name: player_name.to_string(),
+ip_address: ip_address,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:46
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:75
+    pub fn get_player_unique_id(&self) -> Uuid {
+self.player_unique_id.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:57
+    pub fn get_player_name(&self) -> String {
+self.player_name.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:64
+    pub fn get_ip_address(&self) -> std::net::IpAddr {
+self.ip_address.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:71
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerConnectionCloseEvent.java:80
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -39,8 +39,8 @@ pub trait BlockState: Metadatable {
     fn set_raw_data(&self, data: i8); // paper-api/src/main/java/org/bukkit/block/BlockState.java:237
     fn is_placed(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/BlockState.java:249
     fn is_collidable(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/BlockState.java:256
-    fn get_drops(&self) -> Vec<JRef<ItemStack>> { todo!() } // default, paper-api/src/main/java/org/bukkit/block/BlockState.java:264
-    fn get_drops_1(&self, tool: Option<JRef<ItemStack>>) -> Vec<JRef<ItemStack>> { todo!() } // default, paper-api/src/main/java/org/bukkit/block/BlockState.java:277
+    fn get_drops(&self) -> Vec<JRef<ItemStack>> { self.get_drops_1(None) } // default, paper-api/src/main/java/org/bukkit/block/BlockState.java:264
+    fn get_drops_1(&self, tool: Option<JRef<ItemStack>>) -> Vec<JRef<ItemStack>> { self.get_drops_2(tool, None) } // default, paper-api/src/main/java/org/bukkit/block/BlockState.java:277
     fn get_drops_2(&self, tool: Option<JRef<ItemStack>>, entity: Option<JRef<dyn Entity>>) -> Vec<JRef<ItemStack>>; // paper-api/src/main/java/org/bukkit/block/BlockState.java:291
     fn is_suffocating(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/BlockState.java:301
 }

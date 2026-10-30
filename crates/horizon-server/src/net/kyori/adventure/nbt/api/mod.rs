@@ -1,2 +1,2 @@
-pub mod ext_stubs;
-pub use self::ext_stubs::*;
+pub mod binary_tag_holder;
+pub use self::binary_tag_holder::*;

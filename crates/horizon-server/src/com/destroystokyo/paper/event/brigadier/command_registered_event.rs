@@ -32,23 +32,63 @@ impl<S: JGeneric> std::ops::Deref for CommandRegisteredEvent<S> {
     type Target = ServerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:28
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:28
 impl<S: JGeneric> CommandRegisteredEvent<S> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(command_label: &str, brigadier_command: JRef<dyn BukkitBrigadierCommand<S>>, command: JRef<dyn CommandTrait>, root: RootCommandNode<S>, literal: JRef<dyn LiteralCommandNodeTrait<S>>, default_args: ArgumentCommandNode<S, String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:40
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:143
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:154
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:159
-    pub fn get_command_label(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:54
-    pub fn get_brigadier_command(&self) -> JRef<dyn BukkitBrigadierCommand<S>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:66
-    pub fn get_command(&self) -> JRef<dyn CommandTrait> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:75
-    pub fn get_root(&self) -> RootCommandNode<S> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:84
-    pub fn get_default_args(&self) -> ArgumentCommandNode<S, String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:94
-    pub fn get_literal(&self) -> JRef<dyn LiteralCommandNodeTrait<S>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:103
-    pub fn set_literal(&self, literal: JRef<dyn LiteralCommandNodeTrait<S>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:113
-    pub fn is_raw_command(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:123
-    pub fn set_raw_command(&self, raw_command: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:139
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:164
+    pub fn new(command_label: &str, brigadier_command: JRef<dyn BukkitBrigadierCommand<S>>, command: JRef<dyn CommandTrait>, root: RootCommandNode<S>, literal: JRef<dyn LiteralCommandNodeTrait<S>>, default_args: ArgumentCommandNode<S, String>) -> JRef<Self> {
+Arc::new_cyclic(|this| CommandRegisteredEvent {
+    base: ServerEvent::new_base(this),
+    this: this.clone(),
+    command_label: command_label.to_string(),
+    command,
+    brigadier_command,
+    root,
+    default_args,
+    literal: Mut::new(literal),
+    raw_command: Mut::new(false),
+    cancelled: Mut::new(false),
+    _phantom: std::marker::PhantomData,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:40
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:143
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:154
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:159
+    pub fn get_command_label(&self) -> String {
+self.command_label.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:54
+    pub fn get_brigadier_command(&self) -> JRef<dyn BukkitBrigadierCommand<S>> {
+self.brigadier_command.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:66
+    pub fn get_command(&self) -> JRef<dyn CommandTrait> {
+self.command.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:75
+    pub fn get_root(&self) -> RootCommandNode<S> {
+self.root.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:84
+    pub fn get_default_args(&self) -> ArgumentCommandNode<S, String> {
+self.default_args.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:94
+    pub fn get_literal(&self) -> JRef<dyn LiteralCommandNodeTrait<S>> {
+self.literal.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:103
+    pub fn set_literal(&self, literal: JRef<dyn LiteralCommandNodeTrait<S>>) {
+self.literal.set(literal)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:113
+    pub fn is_raw_command(&self) -> bool {
+self.raw_command.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:123
+    pub fn set_raw_command(&self, raw_command: bool) {
+self.raw_command.set(raw_command)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:139
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/brigadier/CommandRegisteredEvent.java:164
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

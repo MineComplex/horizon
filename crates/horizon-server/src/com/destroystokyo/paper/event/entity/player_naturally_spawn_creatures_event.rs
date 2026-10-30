@@ -21,16 +21,35 @@ impl std::ops::Deref for PlayerNaturallySpawnCreaturesEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:16
 impl PlayerNaturallySpawnCreaturesEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, radius: i8) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:44
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:52
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:57
-    pub fn get_spawn_radius(&self) -> i8 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:30
-    pub fn set_spawn_radius(&self, radius: i8) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:37
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:62
+    pub fn new(player: JRef<dyn Player>, radius: i8) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerNaturallySpawnCreaturesEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+radius: Mut::new(radius),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:21
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:44
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:52
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:57
+    pub fn get_spawn_radius(&self) -> i8 {
+self.radius.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:30
+    pub fn set_spawn_radius(&self, radius: i8) {
+self.radius.set(radius)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:37
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PlayerNaturallySpawnCreaturesEvent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

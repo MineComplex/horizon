@@ -26,21 +26,31 @@ impl std::ops::Deref for PlayerChangeBeaconEffectEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:19
 impl PlayerChangeBeaconEffectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, primary: Option<JRef<dyn PotionEffectTypeTrait>>, secondary: Option<JRef<dyn PotionEffectTypeTrait>>, beacon: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:28
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:110
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:123
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:128
-    pub fn get_primary(&self) -> Option<JRef<dyn PotionEffectTypeTrait>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:39
-    pub fn set_primary(&self, primary: Option<JRef<dyn PotionEffectTypeTrait>>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:50
-    pub fn get_secondary(&self) -> Option<JRef<dyn PotionEffectTypeTrait>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:57
-    pub fn set_secondary(&self, secondary: Option<JRef<dyn PotionEffectTypeTrait>>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:69
-    pub fn get_beacon(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:76
-    pub fn will_consume_item(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:88
-    pub fn set_consume_item(&self, consume_item: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:100
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:133
+    pub fn new(player: JRef<dyn Player>, primary: Option<JRef<dyn PotionEffectTypeTrait>>, secondary: Option<JRef<dyn PotionEffectTypeTrait>>, beacon: JRef<dyn Block>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerChangeBeaconEffectEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            beacon,
+            primary: Mut::new(primary),
+            secondary: Mut::new(secondary),
+            consume_item: Mut::new(true),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:28
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:110
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:123
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:128
+    pub fn get_primary(&self) -> Option<JRef<dyn PotionEffectTypeTrait>> { self.primary.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:39
+    pub fn set_primary(&self, primary: Option<JRef<dyn PotionEffectTypeTrait>>) { self.primary.set(primary) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:50
+    pub fn get_secondary(&self) -> Option<JRef<dyn PotionEffectTypeTrait>> { self.secondary.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:57
+    pub fn set_secondary(&self, secondary: Option<JRef<dyn PotionEffectTypeTrait>>) { self.secondary.set(secondary) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:69
+    pub fn get_beacon(&self) -> JRef<dyn Block> { self.beacon.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:76
+    pub fn will_consume_item(&self) -> bool { self.consume_item.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:88
+    pub fn set_consume_item(&self, consume_item: bool) { self.consume_item.set(consume_item) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:100
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerChangeBeaconEffectEvent.java:133
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

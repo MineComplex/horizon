@@ -27,20 +27,20 @@ impl std::ops::Deref for BlockDamageEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:22
 impl BlockDamageEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, insta_break: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:31
-    pub fn new_5(player: JRef<dyn Player>, block: JRef<dyn Block>, block_face: BlockFace, item_in_hand: JRef<ItemStack>, insta_break: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:37
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:97
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:102
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:107
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:51
-    pub fn get_insta_break(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:62
-    pub fn set_insta_break(&self, insta_break: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:72
-    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:81
+    pub fn new_5(player: JRef<dyn Player>, block: JRef<dyn Block>, block_face: BlockFace, item_in_hand: JRef<ItemStack>, insta_break: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockDamageEvent { base: BlockEvent::new_base(this, block), this: this.clone(), block_face: block_face, item_in_hand: item_in_hand, player: player, insta_break: Mut::new(insta_break), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:37
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:97
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:102
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:107
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:51
+    pub fn get_insta_break(&self) -> bool { self.insta_break.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:62
+    pub fn set_insta_break(&self, insta_break: bool) { self.insta_break.set(insta_break); } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:72
+    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { self.item_in_hand.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:81
     pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:91
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:113
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageEvent.java:113
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

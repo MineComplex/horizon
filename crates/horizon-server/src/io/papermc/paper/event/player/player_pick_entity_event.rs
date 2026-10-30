@@ -26,8 +26,14 @@ impl std::ops::Deref for PlayerPickEntityEvent {
 }
 impl PlayerPickEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn Entity>, item: JRef<ItemStack>, include_data: bool, target_slot: i32, source_slot: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickEntityEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickEntityEvent.java:31
+    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn Entity>, item: JRef<ItemStack>, include_data: bool, target_slot: i32, source_slot: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerPickEntityEvent {
+            base: PlayerPickItemEvent::new_base(this, player, item, include_data, target_slot, source_slot),
+            this: this.clone(),
+            entity,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickEntityEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickEntityEvent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

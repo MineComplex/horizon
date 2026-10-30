@@ -23,17 +23,17 @@ impl std::ops::Deref for PlayerBedLeaveEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:16
 impl PlayerBedLeaveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, bed: JRef<dyn Block>, set_bed_spawn: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:77
-    pub fn set_cancelled(&self, cancelled: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:82
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:87
-    pub fn get_bed(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:34
-    pub fn should_set_spawn_location(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:53
-    pub fn set_spawn_location(&self, set_bed_spawn: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:72
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:93
+    pub fn new(player: JRef<dyn Player>, bed: JRef<dyn Block>, set_bed_spawn: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), bed: bed, set_bed_spawn: Mut::new(set_bed_spawn), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:77
+    pub fn set_cancelled(&self, cancelled: bool) { self.cancelled.set(cancelled) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:82
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:87
+    pub fn get_bed(&self) -> JRef<dyn Block> { self.bed.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:34
+    pub fn should_set_spawn_location(&self) -> bool { self.set_bed_spawn.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:53
+    pub fn set_spawn_location(&self, set_bed_spawn: bool) { self.set_bed_spawn.set(set_bed_spawn) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:72
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedLeaveEvent.java:93
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

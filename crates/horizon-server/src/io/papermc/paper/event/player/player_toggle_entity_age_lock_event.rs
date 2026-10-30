@@ -27,18 +27,30 @@ impl std::ops::Deref for PlayerToggleEntityAgeLockEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:18
 impl PlayerToggleEntityAgeLockEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, item: JRef<ItemStack>, hand: EquipmentSlot, age_locked: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:63
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:68
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:73
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:38
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:45
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:52
-    pub fn is_age_locked(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:59
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:78
+    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, item: JRef<ItemStack>, hand: EquipmentSlot, age_locked: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerToggleEntityAgeLockEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            entity,
+            item,
+            hand,
+            age_locked,
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:63
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:68
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:73
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { self.entity.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:38
+    pub fn get_item(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.item)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:45
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:52
+    pub fn is_age_locked(&self) -> bool { self.age_locked } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:59
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerToggleEntityAgeLockEvent.java:78
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

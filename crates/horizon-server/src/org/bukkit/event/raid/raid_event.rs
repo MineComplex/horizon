@@ -27,6 +27,6 @@ impl std::ops::Deref for dyn RaidEventTrait {
 }
 impl RaidEvent {
     pub fn this(&self) -> JRef<dyn RaidEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: RaidEventTrait + 'static>(this: &Weak<S>, raid: JRef<dyn Raid>, world: JRef<dyn World>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidEvent.java:15
-    pub fn get_raid(&self) -> JRef<dyn Raid> { todo!() } // paper-api/src/main/java/org/bukkit/event/raid/RaidEvent.java:25
+    pub fn new_base<S: RaidEventTrait + 'static>(this: &Weak<S>, raid: JRef<dyn Raid>, world: JRef<dyn World>) -> Self { Self { base: WorldEvent::new_base(this, world), this: this.clone(), raid: raid } } // paper-api/src/main/java/org/bukkit/event/raid/RaidEvent.java:15
+    pub fn get_raid(&self) -> JRef<dyn Raid> { self.raid.clone() } // paper-api/src/main/java/org/bukkit/event/raid/RaidEvent.java:25
 }

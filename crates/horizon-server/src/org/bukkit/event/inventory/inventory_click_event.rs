@@ -28,7 +28,7 @@ pub struct InventoryClickEvent {
     pub slot_type: InventoryTypeSlotType, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:57
     pub which_slot: i32, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:58
     pub raw_slot: i32, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:59
-    pub current: Mut<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:60
+    pub current: Mut<Option<JRef<ItemStack>>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:60
     pub hotbar_key: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:61
 }
 impl std::ops::Deref for InventoryClickEvent {
@@ -56,29 +56,39 @@ impl std::ops::Deref for dyn InventoryClickEventTrait {
     type Target = InventoryClickEvent;
     fn deref(&self) -> &InventoryClickEvent { self.as_inventory_click_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:53
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:53
 impl InventoryClickEvent {
     pub fn this(&self) -> JRef<dyn InventoryClickEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: InventoryClickEventTrait + 'static>(this: &Weak<S>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:63
+    pub fn new_base<S: InventoryClickEventTrait + 'static>(this: &Weak<S>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> Self { let which_slot = view.convert_slot(slot);
+        Self { base: InventoryInteractEvent::new_base(this, view), this: this.clone(), click, action, slot_type: type_, which_slot, raw_slot: slot, current: Mut::new(None), hotbar_key: Mut::new(-1) } } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:63
     pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, view, type_, slot, click, action)) }
-    pub fn new_base_6<S: InventoryClickEventTrait + 'static>(this: &Weak<S>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:73
+    pub fn new_base_6<S: InventoryClickEventTrait + 'static>(this: &Weak<S>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> Self { let s = Self::new_base(this, view, type_, slot, click, action);
+        s.hotbar_key.set(key);
+        s } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:73
     pub fn new_6(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_6(this, view, type_, slot, click, action, key)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:241
-    pub fn get_slot_type(&self) -> InventoryTypeSlotType { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:84
-    pub fn get_cursor(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:94
-    pub fn get_current_item(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:104
-    pub fn is_right_click(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:119
-    pub fn is_left_click(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:130
-    pub fn is_shift_click(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:141
-    pub fn set_cursor(&self, stack: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:154
-    pub fn set_current_item(&self, stack: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:164
-    pub fn get_clicked_inventory(&self) -> Option<JRef<dyn Inventory>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:178
-    pub fn get_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:190
-    pub fn get_raw_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:200
-    pub fn get_hotbar_button(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:211
-    pub fn get_action(&self) -> InventoryAction { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:224
-    pub fn get_click(&self) -> ClickType { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:236
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:247
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:241
+    pub fn get_slot_type(&self) -> InventoryTypeSlotType { self.slot_type.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:84
+    pub fn get_cursor(&self) -> JRef<ItemStack> { self.this().get_view().get_cursor() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:94
+    pub fn get_current_item(&self) -> Option<JRef<ItemStack>> { if self.slot_type == InventoryTypeSlotType::OUTSIDE {
+            return self.current.get();
+        }
+        self.this().get_view().get_item(self.raw_slot) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:104
+    pub fn is_right_click(&self) -> bool { self.click.is_right_click() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:119
+    pub fn is_left_click(&self) -> bool { self.click.is_left_click() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:130
+    pub fn is_shift_click(&self) -> bool { self.click.is_shift_click() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:141
+    pub fn set_cursor(&self, stack: Option<JRef<ItemStack>>) { self.this().get_view().set_cursor(stack) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:154
+    pub fn set_current_item(&self, stack: Option<JRef<ItemStack>>) { if self.slot_type == InventoryTypeSlotType::OUTSIDE {
+            self.current.set(stack);
+        } else {
+            self.this().get_view().set_item(self.raw_slot, stack);
+        } } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:164
+    pub fn get_clicked_inventory(&self) -> Option<JRef<dyn Inventory>> { self.this().get_view().get_inventory(self.raw_slot) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:178
+    pub fn get_slot(&self) -> i32 { self.which_slot } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:190
+    pub fn get_raw_slot(&self) -> i32 { self.raw_slot } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:200
+    pub fn get_hotbar_button(&self) -> i32 { self.hotbar_key.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:211
+    pub fn get_action(&self) -> InventoryAction { self.action.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:224
+    pub fn get_click(&self) -> ClickType { self.click.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:236
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryClickEvent.java:247
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

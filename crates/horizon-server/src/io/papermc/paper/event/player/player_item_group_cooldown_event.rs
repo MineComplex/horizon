@@ -33,18 +33,29 @@ impl std::ops::Deref for dyn PlayerItemGroupCooldownEventTrait {
     type Target = PlayerItemGroupCooldownEvent;
     fn deref(&self) -> &PlayerItemGroupCooldownEvent { self.as_player_item_group_cooldown_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:20
 impl PlayerItemGroupCooldownEvent {
     pub fn this(&self) -> JRef<dyn PlayerItemGroupCooldownEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerItemGroupCooldownEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, cooldown_group: JRef<NamespacedKey>, cooldown: i32) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:27
+    pub fn new_base<S: PlayerItemGroupCooldownEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, cooldown_group: JRef<NamespacedKey>, cooldown: i32) -> Self {
+        PlayerItemGroupCooldownEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            cooldown_group,
+            cooldown: Mut::new(cooldown),
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:27
     pub fn new(player: JRef<dyn Player>, cooldown_group: JRef<NamespacedKey>, cooldown: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, cooldown_group, cooldown)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:63
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:68
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:73
-    pub fn get_cooldown_group(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:39
-    pub fn get_cooldown(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:48
-    pub fn set_cooldown(&self, cooldown: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:58
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:78
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:63
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:68
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:73
+    pub fn get_cooldown_group(&self) -> JRef<NamespacedKey> { self.cooldown_group.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:39
+    pub fn get_cooldown(&self) -> i32 { self.cooldown.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:48
+    pub fn set_cooldown(&self, cooldown: i32) {
+        assert!(cooldown >= 0, "The cooldown has to be equal to or greater than 0!");
+        self.cooldown.set(cooldown);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerItemGroupCooldownEvent.java:78
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

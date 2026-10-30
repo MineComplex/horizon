@@ -20,14 +20,14 @@ impl std::ops::Deref for PlayerChangedMainHandEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:18
 impl PlayerChangedMainHandEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, new_main_hand: MainHand) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:22
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:53
+    pub fn new(player: JRef<dyn Player>, new_main_hand: MainHand) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), new_main_hand: new_main_hand }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:22
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:53
     pub fn get_main_hand(&self) -> MainHand { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:37
-    pub fn get_new_main_hand(&self) -> MainHand { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:48
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:59
+    pub fn get_new_main_hand(&self) -> MainHand { self.new_main_hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:48
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChangedMainHandEvent.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -24,19 +24,19 @@ impl std::ops::Deref for VillagerReplenishTradeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:20
 impl VillagerReplenishTradeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(villager: JRef<dyn AbstractVillager>, recipe: JRef<MerchantRecipe>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn AbstractVillager> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:79
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:84
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:89
-    pub fn get_recipe(&self) -> JRef<MerchantRecipe> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:42
-    pub fn set_recipe(&self, recipe: JRef<MerchantRecipe>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:52
+    pub fn new(villager: JRef<dyn AbstractVillager>, recipe: JRef<MerchantRecipe>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| VillagerReplenishTradeEvent { base: EntityEvent::new_base(this, villager), this: this.clone(), recipe: Mut::new(recipe), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn AbstractVillager> { cast::<dyn AbstractVillager, _>(&self.base.get_entity()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:31
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:79
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:84
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:89
+    pub fn get_recipe(&self) -> JRef<MerchantRecipe> { self.recipe.get() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:42
+    pub fn set_recipe(&self, recipe: JRef<MerchantRecipe>) { self.recipe.set(recipe); } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:52
     pub fn get_bonus(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:63
     pub fn set_bonus(&self, bonus: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:75
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:95
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerReplenishTradeEvent.java:95
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

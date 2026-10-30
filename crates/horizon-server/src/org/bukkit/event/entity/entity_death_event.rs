@@ -59,34 +59,34 @@ impl std::ops::Deref for dyn EntityDeathEventTrait {
     type Target = EntityDeathEvent;
     fn deref(&self) -> &EntityDeathEvent { self.as_entity_death_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:18
 impl EntityDeathEvent {
     pub fn this(&self) -> JRef<dyn EntityDeathEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityDeathEventTrait + 'static>(this: &Weak<S>, living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:33
+    pub fn new_base<S: EntityDeathEventTrait + 'static>(this: &Weak<S>, living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>) -> Self { Self::new_base_4(this, living_entity, damage_source, &drops.clone(), 0) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:33
     pub fn new(living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, living_entity, damage_source, drops)) }
-    pub fn new_base_4<S: EntityDeathEventTrait + 'static>(this: &Weak<S>, living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:38
+    pub fn new_base_4<S: EntityDeathEventTrait + 'static>(this: &Weak<S>, living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32) -> Self { EntityDeathEvent { base: EntityEvent::new_base(this, living_entity), this: this.clone(), damage_source: damage_source, drops: Mut::new(drops.clone()), drop_exp: Mut::new(dropped_exp), revive_health: Mut::new(0.0), should_play_death_sound: Mut::new(false), death_sound: Mut::new(None), death_sound_category: Mut::new(None), death_sound_volume: Mut::new(0.0), death_sound_pitch: Mut::new(0.0), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:38
     pub fn new_4(living_entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_4(this, living_entity, damage_source, drops, dropped_exp)) }
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:46
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:213
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:218
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:223
-    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:57
-    pub fn get_dropped_exp(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:70
-    pub fn set_dropped_exp(&self, exp: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:82
-    pub fn get_drops(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:91
-    pub fn get_revive_health(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:102
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:46
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:213
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:218
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:223
+    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { self.damage_source.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:57
+    pub fn get_dropped_exp(&self) -> i32 { self.drop_exp.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:70
+    pub fn set_dropped_exp(&self, exp: i32) { self.drop_exp.set(exp); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:82
+    pub fn get_drops(&self) -> Vec<JRef<ItemStack>> { self.drops.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:91
+    pub fn get_revive_health(&self) -> f64 { self.revive_health.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:102
     pub fn set_revive_health(&self, revive_health: f64) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:113
-    pub fn should_play_death_sound(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:126
-    pub fn set_should_play_death_sound(&self, play_death_sound: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:135
-    pub fn get_death_sound(&self) -> Option<JRef<dyn Sound>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:144
-    pub fn set_death_sound(&self, sound: Option<JRef<dyn Sound>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:154
-    pub fn get_death_sound_category(&self) -> Option<SoundCategory> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:163
-    pub fn set_death_sound_category(&self, sound_category: Option<SoundCategory>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:173
-    pub fn get_death_sound_volume(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:182
-    pub fn set_death_sound_volume(&self, volume: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:191
-    pub fn get_death_sound_pitch(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:200
-    pub fn set_death_sound_pitch(&self, pitch: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:209
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:229
+    pub fn should_play_death_sound(&self) -> bool { self.should_play_death_sound.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:126
+    pub fn set_should_play_death_sound(&self, play_death_sound: bool) { self.should_play_death_sound.set(play_death_sound); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:135
+    pub fn get_death_sound(&self) -> Option<JRef<dyn Sound>> { self.death_sound.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:144
+    pub fn set_death_sound(&self, sound: Option<JRef<dyn Sound>>) { self.death_sound.set(sound); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:154
+    pub fn get_death_sound_category(&self) -> Option<SoundCategory> { self.death_sound_category.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:163
+    pub fn set_death_sound_category(&self, sound_category: Option<SoundCategory>) { self.death_sound_category.set(sound_category); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:173
+    pub fn get_death_sound_volume(&self) -> f32 { self.death_sound_volume.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:182
+    pub fn set_death_sound_volume(&self, volume: f32) { self.death_sound_volume.set(volume); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:191
+    pub fn get_death_sound_pitch(&self) -> f32 { self.death_sound_pitch.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:200
+    pub fn set_death_sound_pitch(&self, pitch: f32) { self.death_sound_pitch.set(pitch); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:209
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDeathEvent.java:229
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -35,19 +35,19 @@ impl std::ops::Deref for dyn BlockDispenseEventTrait {
     type Target = BlockDispenseEvent;
     fn deref(&self) -> &BlockDispenseEvent { self.as_block_dispense_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:19
 impl BlockDispenseEvent {
     pub fn this(&self) -> JRef<dyn BlockDispenseEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockDispenseEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, item: JRef<ItemStack>, velocity: JRef<dyn VectorTrait>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:26
+    pub fn new_base<S: BlockDispenseEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, item: JRef<ItemStack>, velocity: JRef<dyn VectorTrait>) -> Self { BlockDispenseEvent { base: BlockEvent::new_base(this, block), this: this.clone(), item: Mut::new(item), velocity: Mut::new(velocity), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:26
     pub fn new(block: JRef<dyn Block>, item: JRef<ItemStack>, velocity: JRef<dyn VectorTrait>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, item, velocity)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:76
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:81
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:86
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:76
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:81
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:86
     pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:40
-    pub fn set_item(&self, item: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:50
+    pub fn set_item(&self, item: JRef<ItemStack>) { self.item.set(item); } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:50
     pub fn get_velocity(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:62
     pub fn set_velocity(&self, velocity: JRef<dyn VectorTrait>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:72
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:92
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseEvent.java:92
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

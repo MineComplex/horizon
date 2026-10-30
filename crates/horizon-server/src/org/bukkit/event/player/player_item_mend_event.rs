@@ -29,24 +29,24 @@ impl std::ops::Deref for PlayerItemMendEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:21
 impl PlayerItemMendEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, item: JRef<ItemStack>, experience_orb: JRef<dyn ExperienceOrb>, repair_amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:47
     pub fn new_5(player: JRef<dyn Player>, item: JRef<ItemStack>, slot: EquipmentSlot, experience_orb: JRef<dyn ExperienceOrb>, repair_amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:31
-    pub fn new_6(player: JRef<dyn Player>, item: JRef<ItemStack>, slot: EquipmentSlot, experience_orb: JRef<dyn ExperienceOrb>, repair_amount: i32, consumed_experience: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:37
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:149
-    pub fn set_cancelled(&self, cancelled: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:154
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:159
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:59
-    pub fn get_slot(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:70
-    pub fn get_experience_orb(&self) -> JRef<dyn ExperienceOrb> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:80
-    pub fn get_repair_amount(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:93
-    pub fn set_repair_amount(&self, amount: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:104
-    pub fn get_consumed_experience(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:115
+    pub fn new_6(player: JRef<dyn Player>, item: JRef<ItemStack>, slot: EquipmentSlot, experience_orb: JRef<dyn ExperienceOrb>, repair_amount: i32, consumed_experience: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), item: item, slot: slot, experience_orb: experience_orb, consumed_experience: consumed_experience, repair_amount: Mut::new(repair_amount), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:37
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:149
+    pub fn set_cancelled(&self, cancelled: bool) { self.cancelled.set(cancelled) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:154
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:159
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:59
+    pub fn get_slot(&self) -> EquipmentSlot { self.slot.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:70
+    pub fn get_experience_orb(&self) -> JRef<dyn ExperienceOrb> { self.experience_orb.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:80
+    pub fn get_repair_amount(&self) -> i32 { self.repair_amount.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:93
+    pub fn set_repair_amount(&self, amount: i32) { self.repair_amount.set(amount) } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:104
+    pub fn get_consumed_experience(&self) -> i32 { self.consumed_experience } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:115
     pub fn get_durability_to_xp_operation(&self) -> JRef<dyn IntUnaryOperator> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:128
     pub fn set_durability_to_xp_operation(&self, durability_to_xp_op: JRef<dyn IntUnaryOperator>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:143
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:165
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerItemMendEvent.java:165
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

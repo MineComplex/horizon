@@ -28,7 +28,7 @@ impl std::ops::Deref for PlayerInteractAtEntityEvent {
 impl PlayerInteractAtEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, position: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractAtEntityEvent.java:19
-    pub fn new_4(player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, position: JRef<dyn VectorTrait>, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractAtEntityEvent.java:24
+    pub fn new_4(player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, position: JRef<dyn VectorTrait>, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerInteractEntityEvent::new_base_3(this, player, clicked_entity, hand), this: this.clone(), position: position }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractAtEntityEvent.java:24
     pub fn get_clicked_position(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractAtEntityEvent.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

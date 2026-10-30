@@ -23,17 +23,17 @@ impl std::ops::Deref for HorseJumpEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:14
 impl HorseJumpEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(horse: JRef<dyn AbstractHorse>, power: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn AbstractHorse> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:79
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:85
-    pub fn get_power(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:49
-    pub fn set_power(&self, power: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:66
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:91
+    pub fn new(horse: JRef<dyn AbstractHorse>, power: f32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| HorseJumpEvent { base: EntityEvent::new_base(this, horse), this: this.clone(), power: Mut::new(power), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn AbstractHorse> { cast::<dyn AbstractHorse, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:79
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:85
+    pub fn get_power(&self) -> f32 { self.power.get() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:49
+    pub fn set_power(&self, power: f32) { self.power.set(power); } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:66
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/HorseJumpEvent.java:91
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

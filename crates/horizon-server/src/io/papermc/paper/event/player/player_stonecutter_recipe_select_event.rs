@@ -24,17 +24,25 @@ impl std::ops::Deref for PlayerStonecutterRecipeSelectEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:14
 impl PlayerStonecutterRecipeSelectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, stonecutter_inventory: JRef<dyn StonecutterInventory>, stonecutting_recipe: JRef<StonecuttingRecipe>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:21
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:39
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:44
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:49
-    pub fn get_stonecutter_inventory(&self) -> JRef<dyn StonecutterInventory> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:27
-    pub fn get_stonecutting_recipe(&self) -> JRef<StonecuttingRecipe> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:31
-    pub fn set_stonecutting_recipe(&self, stonecutting_recipe: JRef<StonecuttingRecipe>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:35
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:54
+    pub fn new(player: JRef<dyn Player>, stonecutter_inventory: JRef<dyn StonecutterInventory>, stonecutting_recipe: JRef<StonecuttingRecipe>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerStonecutterRecipeSelectEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            stonecutter_inventory,
+            stonecutting_recipe: Mut::new(stonecutting_recipe),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:21
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:39
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:44
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:49
+    pub fn get_stonecutter_inventory(&self) -> JRef<dyn StonecutterInventory> { self.stonecutter_inventory.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:27
+    pub fn get_stonecutting_recipe(&self) -> JRef<StonecuttingRecipe> { self.stonecutting_recipe.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:31
+    pub fn set_stonecutting_recipe(&self, stonecutting_recipe: JRef<StonecuttingRecipe>) { self.stonecutting_recipe.set(stonecutting_recipe) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:35
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStonecutterRecipeSelectEvent.java:54
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -15,7 +15,7 @@ use crate::api_prelude::*;
 pub struct EntityTargetEvent {
     pub base: EntityEvent,
     pub this: Weak<dyn EntityTargetEventTrait>,
-    pub target: Mut<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:17
+    pub target: Mut<Option<JRef<dyn Entity>>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:17
     pub reason: EntityTargetEventTargetReason, // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:18
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:20
 }
@@ -33,18 +33,18 @@ impl std::ops::Deref for dyn EntityTargetEventTrait {
     type Target = EntityTargetEvent;
     fn deref(&self) -> &EntityTargetEvent { self.as_entity_target_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:15
 impl EntityTargetEvent {
     pub fn this(&self) -> JRef<dyn EntityTargetEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityTargetEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, target: Option<JRef<dyn Entity>>, reason: EntityTargetEventTargetReason) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:22
+    pub fn new_base<S: EntityTargetEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, target: Option<JRef<dyn Entity>>, reason: EntityTargetEventTargetReason) -> Self { EntityTargetEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), target: Mut::new(target), reason: reason, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:22
     pub fn new(entity: JRef<dyn Entity>, target: Option<JRef<dyn Entity>>, reason: EntityTargetEventTargetReason) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, target, reason)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:68
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:73
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:78
-    pub fn get_reason(&self) -> EntityTargetEventTargetReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:34
-    pub fn get_target(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:47
-    pub fn set_target(&self, target: Option<JRef<dyn Entity>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:84
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:68
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:78
+    pub fn get_reason(&self) -> EntityTargetEventTargetReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:34
+    pub fn get_target(&self) -> Option<JRef<dyn Entity>> { self.target.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:47
+    pub fn set_target(&self, target: Option<JRef<dyn Entity>>) { self.target.set(target); } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:64
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTargetEvent.java:84
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

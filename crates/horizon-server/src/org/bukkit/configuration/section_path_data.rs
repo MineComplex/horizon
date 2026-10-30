@@ -6,18 +6,38 @@ use crate::api_prelude::*;
 // ---- class org.bukkit.configuration.SectionPathData (paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:8)
 pub struct SectionPathData {
     pub this: Weak<Self>,
-    pub data: Mut<JObjectRef>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:10
-    pub comments: Mut<Vec<String>>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:11
-    pub inline_comments: Mut<Vec<String>>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:12
+    pub data: Mut<Option<JObjectRef>>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:10
+    /// Comment lines; `None` is a blank line.
+    pub comments: Mut<Vec<Option<String>>>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:11
+    pub inline_comments: Mut<Vec<Option<String>>>, // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:12
 }
 impl SectionPathData {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(data: Option<JObjectRef>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:14
-    pub fn get_data(&self) -> Option<JObjectRef> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:20
-    pub fn set_data(&self, data: Option<JObjectRef>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:25
-    pub fn get_comments(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:37
-    pub fn set_comments(&self, comments: Option<Vec<String>>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:51
-    pub fn get_inline_comments(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:63
-    pub fn set_inline_comments(&self, inline_comments: Option<Vec<String>>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:78
+    pub fn new(data: Option<JObjectRef>) -> JRef<Self> {
+        Arc::new_cyclic(|this| SectionPathData {
+            this: this.clone(),
+            data: Mut::new(data),
+            comments: Mut::new(Vec::new()),
+            inline_comments: Mut::new(Vec::new()),
+        })
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:14
+    pub fn get_data(&self) -> Option<JObjectRef> {
+        self.data.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:20
+    pub fn set_data(&self, data: Option<JObjectRef>) {
+        self.data.set(data);
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:25
+    pub fn get_comments(&self) -> Vec<Option<String>> {
+        self.comments.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:37
+    pub fn set_comments(&self, comments: Option<Vec<Option<String>>>) {
+        self.comments.set(comments.unwrap_or_default());
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:51
+    pub fn get_inline_comments(&self) -> Vec<Option<String>> {
+        self.inline_comments.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:63
+    pub fn set_inline_comments(&self, inline_comments: Option<Vec<Option<String>>>) {
+        self.inline_comments.set(inline_comments.unwrap_or_default());
+    } // paper-api/src/main/java/org/bukkit/configuration/SectionPathData.java:78
 }
 crate::jobject!(SectionPathData);

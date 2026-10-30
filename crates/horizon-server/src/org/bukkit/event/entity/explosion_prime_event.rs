@@ -24,19 +24,19 @@ impl std::ops::Deref for ExplosionPrimeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:15
 impl ExplosionPrimeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(explosive: JRef<dyn Explosive>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:29
-    pub fn new_3(entity: JRef<dyn Entity>, radius: f32, fire: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:70
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:80
-    pub fn get_radius(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:39
-    pub fn set_radius(&self, radius: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:48
-    pub fn get_fire(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:57
-    pub fn set_fire(&self, fire: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:66
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:86
+    pub fn new_3(entity: JRef<dyn Entity>, radius: f32, fire: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ExplosionPrimeEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), radius: Mut::new(radius), fire: Mut::new(fire), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:70
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:80
+    pub fn get_radius(&self) -> f32 { self.radius.get() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:39
+    pub fn set_radius(&self, radius: f32) { self.radius.set(radius); } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:48
+    pub fn get_fire(&self) -> bool { self.fire.get() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:57
+    pub fn set_fire(&self, fire: bool) { self.fire.set(fire); } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:66
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ExplosionPrimeEvent.java:86
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

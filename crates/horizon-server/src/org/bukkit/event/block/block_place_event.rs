@@ -45,25 +45,25 @@ impl std::ops::Deref for dyn BlockPlaceEventTrait {
     type Target = BlockPlaceEvent;
     fn deref(&self) -> &BlockPlaceEvent { self.as_block_place_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:20
 impl BlockPlaceEvent {
     pub fn this(&self) -> JRef<dyn BlockPlaceEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockPlaceEventTrait + 'static>(this: &Weak<S>, placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:31
+    pub fn new_base<S: BlockPlaceEventTrait + 'static>(this: &Weak<S>, placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool) -> Self { Self::new_base_7(this, placed_block, replaced_state, placed_against, item_in_hand, the_player, can_build, EquipmentSlot::HAND) } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:31
     pub fn new(placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, placed_block, replaced_state, placed_against, item_in_hand, the_player, can_build)) }
-    pub fn new_base_7<S: BlockPlaceEventTrait + 'static>(this: &Weak<S>, placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool, hand: EquipmentSlot) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:37
+    pub fn new_base_7<S: BlockPlaceEventTrait + 'static>(this: &Weak<S>, placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool, hand: EquipmentSlot) -> Self { BlockPlaceEvent { base: BlockEvent::new_base(this, placed_block), this: this.clone(), placed_against: Mut::new(placed_against), item_in_hand: Mut::new(item_in_hand), player: Mut::new(the_player), replaced_state: Mut::new(replaced_state), can_build: Mut::new(can_build), hand: Mut::new(hand), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:37
     pub fn new_7(placed_block: JRef<dyn Block>, replaced_state: JRef<dyn BlockState>, placed_against: JRef<dyn Block>, item_in_hand: JRef<ItemStack>, the_player: JRef<dyn Player>, can_build: bool, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_7(this, placed_block, replaced_state, placed_against, item_in_hand, the_player, can_build, hand)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:133
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:138
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:143
-    pub fn get_block_against(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:53
-    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:64
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:74
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:133
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:138
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:143
+    pub fn get_block_against(&self) -> JRef<dyn Block> { self.placed_against.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:53
+    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { self.item_in_hand.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:64
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:74
     pub fn get_block_placed(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:85
-    pub fn get_block_replaced_state(&self) -> JRef<dyn BlockState> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:96
-    pub fn can_build(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:110
-    pub fn set_build(&self, can_build: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:120
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:128
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:149
+    pub fn get_block_replaced_state(&self) -> JRef<dyn BlockState> { self.replaced_state.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:96
+    pub fn can_build(&self) -> bool { self.can_build.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:110
+    pub fn set_build(&self, can_build: bool) { self.can_build.set(can_build); } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:120
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:128
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockPlaceEvent.java:149
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

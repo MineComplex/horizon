@@ -24,15 +24,23 @@ impl std::ops::Deref for WorldBorderBoundsChangeFinishEvent {
     type Target = WorldBorderEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:15
 impl WorldBorderBoundsChangeFinishEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, old_size: f64, new_size: f64, duration: f64) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:58
-    pub fn get_old_size(&self) -> f64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:34
-    pub fn get_new_size(&self) -> f64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:43
-    pub fn get_duration(&self) -> f64 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:63
+    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, old_size: f64, new_size: f64, duration: f64) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| WorldBorderBoundsChangeFinishEvent {
+            base: WorldBorderEvent::new_base(this, world, world_border),
+            this: this.clone(),
+            old_size,
+            new_size,
+            duration,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:58
+    pub fn get_old_size(&self) -> f64 { self.old_size } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:34
+    pub fn get_new_size(&self) -> f64 { self.new_size } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:43
+    pub fn get_duration(&self) -> f64 { self.duration } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderBoundsChangeFinishEvent.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

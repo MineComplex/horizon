@@ -24,8 +24,8 @@ use crate::api_prelude::*;
 pub struct EntityDamageByBlockEvent {
     pub base: EntityDamageEvent,
     pub this: Weak<Self>,
-    pub damager: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:23
-    pub damager_state: JRef<dyn BlockState>, // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:24
+    pub damager: Option<JRef<dyn Block>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:23
+    pub damager_state: Option<JRef<dyn BlockState>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:24
 }
 impl std::ops::Deref for EntityDamageByBlockEvent {
     type Target = EntityDamageEvent;
@@ -35,10 +35,10 @@ impl EntityDamageByBlockEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(damager: Option<JRef<dyn Block>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage: f64) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:26
     pub fn new_5(damager: Option<JRef<dyn Block>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:40
-    pub fn new_6(damager: Option<JRef<dyn Block>>, damager_state: Option<JRef<dyn BlockState>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, damage: f64) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:32
-    pub fn new_7(damager: Option<JRef<dyn Block>>, damager_state: Option<JRef<dyn BlockState>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:46
-    pub fn get_damager(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:58
-    pub fn get_damager_block_state(&self) -> Option<JRef<dyn BlockState>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:71
+    pub fn new_6(damager: Option<JRef<dyn Block>>, damager_state: Option<JRef<dyn BlockState>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, damage: f64) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityDamageByBlockEvent { base: EntityDamageEvent::new_base_4(this, damagee, cause, damage_source, damage), this: this.clone(), damager: damager, damager_state: damager_state }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:32
+    pub fn new_7(damager: Option<JRef<dyn Block>>, damager_state: Option<JRef<dyn BlockState>>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityDamageByBlockEvent { base: EntityDamageEvent::new_base_5(this, damagee, cause, damage_source, &modifiers.clone(), &modifier_functions.clone()), this: this.clone(), damager: damager, damager_state: damager_state }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:46
+    pub fn get_damager(&self) -> Option<JRef<dyn Block>> { self.damager.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:58
+    pub fn get_damager_block_state(&self) -> Option<JRef<dyn BlockState>> { self.damager_state.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageByBlockEvent.java:71
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

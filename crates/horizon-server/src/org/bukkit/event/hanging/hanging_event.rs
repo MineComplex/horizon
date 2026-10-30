@@ -26,6 +26,6 @@ impl std::ops::Deref for dyn HangingEventTrait {
 }
 impl HangingEvent {
     pub fn this(&self) -> JRef<dyn HangingEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: HangingEventTrait + 'static>(this: &Weak<S>, painting: JRef<dyn Hanging>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingEvent.java:15
-    pub fn get_entity(&self) -> JRef<dyn Hanging> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingEvent.java:24
+    pub fn new_base<S: HangingEventTrait + 'static>(this: &Weak<S>, painting: JRef<dyn Hanging>) -> Self { HangingEvent { base: Event::new_base(this), this: this.clone(), hanging: Mut::new(painting) } } // paper-api/src/main/java/org/bukkit/event/hanging/HangingEvent.java:15
+    pub fn get_entity(&self) -> JRef<dyn Hanging> { self.hanging.get() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingEvent.java:24
 }

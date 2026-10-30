@@ -28,7 +28,7 @@ impl std::ops::Deref for PrepareSmithingEvent {
 }
 impl PrepareSmithingEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareSmithingEvent.java:15
+    pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PrepareResultEvent::new_base(this, inventory, result), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareSmithingEvent.java:15
     pub fn get_inventory(&self) -> JRef<dyn SmithingInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareSmithingEvent.java:20
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

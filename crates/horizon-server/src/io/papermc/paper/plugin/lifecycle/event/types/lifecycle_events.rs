@@ -12,23 +12,44 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_
 use crate::io::papermc::paper::plugin::lifecycle::event::types::tag_event_type_provider::TagEventTypeProvider;
 use crate::java::lang::Class;
 use crate::org::bukkit::plugin::plugin::Plugin;
+use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type_provider;
 use crate::api_prelude::*;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents (paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:19)
 pub struct LifecycleEvents {
     pub this: Weak<Self>,
 }
-pub static COMMANDS: LazyLock<JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn LifecycleEventOwner>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn Commands>>>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:26
-pub static TAGS: LazyLock<JRef<dyn TagEventTypeProvider>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:32
-pub static DATAPACK_DISCOVERY: LazyLock<JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, JRef<dyn RegistrarEvent<JRef<dyn DatapackRegistrar>>>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:41
+pub static COMMANDS: LazyLock<JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn LifecycleEventOwner>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn Commands>>>>>> = LazyLock::new(|| LifecycleEvents::prioritized::<JRef<dyn LifecycleEventOwner>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn Commands>>>>("commands", Class(std::marker::PhantomData))); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:26
+pub static TAGS: LazyLock<JRef<dyn TagEventTypeProvider>> = LazyLock::new(|| lifecycle_event_type_provider::provider().tag_provider()); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:32
+pub static DATAPACK_DISCOVERY: LazyLock<JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, JRef<dyn RegistrarEvent<JRef<dyn DatapackRegistrar>>>>>> = LazyLock::new(|| LifecycleEvents::bootstrap_prioritized::<JRef<dyn RegistrarEvent<JRef<dyn DatapackRegistrar>>>>("datapack_discovery")); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:41
 impl LifecycleEvents {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:76
-    pub fn plugin<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypeMonitorable<JRef<dyn Plugin>, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:45
-    pub fn plugin_prioritized<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn Plugin>, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:50
-    pub fn bootstrap<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypeMonitorable<JRef<dyn BootstrapContext>, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:55
-    pub fn bootstrap_prioritized<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:60
-    pub fn monitor<O: JGeneric, E: JGeneric, O2: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:65
-    pub fn prioritized<O: JGeneric, E: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:70
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| LifecycleEvents { this: this.clone() })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:76
+    pub fn plugin<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypeMonitorable<JRef<dyn Plugin>, E>> {
+        // Plugin.class
+        Self::monitor::<JRef<dyn Plugin>, E, JRef<dyn Plugin>>(name, Class(std::marker::PhantomData))
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:45
+    pub fn plugin_prioritized<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn Plugin>, E>> {
+        // Plugin.class
+        Self::prioritized::<JRef<dyn Plugin>, E>(name, Class(std::marker::PhantomData))
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:50
+    pub fn bootstrap<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypeMonitorable<JRef<dyn BootstrapContext>, E>> {
+        // BootstrapContext.class
+        Self::monitor::<JRef<dyn BootstrapContext>, E, JRef<dyn BootstrapContext>>(name, Class(std::marker::PhantomData))
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:55
+    pub fn bootstrap_prioritized<E: JGeneric>(name: &str) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, E>> {
+        // BootstrapContext.class
+        Self::prioritized::<JRef<dyn BootstrapContext>, E>(name, Class(std::marker::PhantomData))
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:60
+    pub fn monitor<O: JGeneric, E: JGeneric, O2: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> {
+        // PORT: LifecycleEventTypeProvider.monitor is a generic method (not callable on dyn LifecycleEventTypeProvider yet)
+        lifecycle_event_type_provider::provider().monitor::<O, E>(name, owner_type)
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:65
+    pub fn prioritized<O: JGeneric, E: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> {
+        // PORT: LifecycleEventTypeProvider.prioritized is a generic method (not callable on dyn LifecycleEventTypeProvider yet)
+        lifecycle_event_type_provider::provider().prioritized::<O, E>(name, owner_type)
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:70
 }
 crate::jobject!(LifecycleEvents);

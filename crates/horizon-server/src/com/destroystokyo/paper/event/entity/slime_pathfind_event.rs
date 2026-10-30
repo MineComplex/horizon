@@ -29,16 +29,32 @@ impl std::ops::Deref for dyn SlimePathfindEventTrait {
     type Target = SlimePathfindEvent;
     fn deref(&self) -> &SlimePathfindEvent { self.as_slime_pathfind_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:19
 impl SlimePathfindEvent {
     pub fn this(&self) -> JRef<dyn SlimePathfindEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: SlimePathfindEventTrait + 'static>(this: &Weak<S>, cube_mob: JRef<dyn AbstractCubeMob>) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:23
+    pub fn new_base<S: SlimePathfindEventTrait + 'static>(this: &Weak<S>, cube_mob: JRef<dyn AbstractCubeMob>) -> Self {
+SlimePathfindEvent {
+base: EntityEvent::new_base(this, cube_mob),
+this: this.clone(),
+cancelled: Mut::new(false),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:23
     pub fn new(cube_mob: JRef<dyn AbstractCubeMob>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, cube_mob)) }
-    pub fn get_entity(&self) -> JRef<dyn AbstractCubeMob> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:33
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:38
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:43
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:48
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:53
+    pub fn get_entity(&self) -> JRef<dyn AbstractCubeMob> {
+cast::<dyn AbstractCubeMob, _>(&self.base.get_entity()).expect("AbstractCubeMob")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:33
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:38
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:43
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:48
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimePathfindEvent.java:53
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

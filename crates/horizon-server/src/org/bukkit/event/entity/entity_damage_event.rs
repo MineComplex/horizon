@@ -44,7 +44,7 @@ impl std::ops::Deref for dyn EntityDamageEventTrait {
     type Target = EntityDamageEvent;
     fn deref(&self) -> &EntityDamageEvent { self.as_entity_damage_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:26
 pub static MODIFIERS: LazyLock<Vec<EntityDamageEventDamageModifier>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:28
 pub static ZERO: LazyLock<Function<JObjectRef, f64>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:29
 impl EntityDamageEvent {
@@ -57,9 +57,9 @@ impl EntityDamageEvent {
     pub fn new_4_(damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_4_(this, damagee, cause, modifiers, modifier_functions)) }
     pub fn new_base_5<S: EntityDamageEventTrait + 'static>(this: &Weak<S>, damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:56
     pub fn new_5(damagee: JRef<dyn Entity>, cause: EntityDamageEventDamageCause, damage_source: JRef<dyn DamageSource>, modifiers: &HashMap<EntityDamageEventDamageModifier, f64>, modifier_functions: &HashMap<EntityDamageEventDamageModifier, Function<JObjectRef, f64>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_5(this, damagee, cause, damage_source, modifiers, modifier_functions)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:219
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:224
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:229
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:219
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:224
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:229
     pub fn get_original_damage(&self, type_: EntityDamageEventDamageModifier) -> Result<f64, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:78
     pub fn set_damage(&self, damage: f64) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:163
     pub fn set_damage_2(&self, type_: EntityDamageEventDamageModifier, damage: f64) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:94
@@ -67,9 +67,9 @@ impl EntityDamageEvent {
     pub fn get_damage_1(&self, type_: EntityDamageEventDamageModifier) -> Result<f64, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:109
     pub fn is_applicable(&self, type_: EntityDamageEventDamageModifier) -> Result<bool, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:125
     pub fn get_final_damage(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:146
-    pub fn get_cause(&self) -> EntityDamageEventDamageCause { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:204
-    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:214
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:235
+    pub fn get_cause(&self) -> EntityDamageEventDamageCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:204
+    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { self.damage_source.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:214
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java:235
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

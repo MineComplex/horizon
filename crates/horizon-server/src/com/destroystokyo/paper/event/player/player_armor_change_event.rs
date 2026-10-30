@@ -24,16 +24,41 @@ impl std::ops::Deref for PlayerArmorChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:26
 impl PlayerArmorChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, slot_type: PlayerArmorChangeEventSlotType, old_item: JRef<ItemStack>, new_item: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:32
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:83
-    pub fn get_slot_type(&self) -> PlayerArmorChangeEventSlotType { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:46
-    pub fn get_slot(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:56
-    pub fn get_old_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:70
-    pub fn get_new_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:79
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:88
+    pub fn new(player: JRef<dyn Player>, slot_type: PlayerArmorChangeEventSlotType, old_item: JRef<ItemStack>, new_item: JRef<ItemStack>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerArmorChangeEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+slot_type: slot_type,
+old_item: old_item,
+new_item: new_item,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:32
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:83
+    pub fn get_slot_type(&self) -> PlayerArmorChangeEventSlotType {
+self.slot_type.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:46
+    pub fn get_slot(&self) -> EquipmentSlot {
+match self.slot_type {
+    PlayerArmorChangeEventSlotType::HEAD => EquipmentSlot::HEAD,
+    PlayerArmorChangeEventSlotType::CHEST => EquipmentSlot::CHEST,
+    PlayerArmorChangeEventSlotType::LEGS => EquipmentSlot::LEGS,
+    PlayerArmorChangeEventSlotType::FEET => EquipmentSlot::FEET,
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:56
+    pub fn get_old_item(&self) -> JRef<ItemStack> {
+self.old_item.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:70
+    pub fn get_new_item(&self) -> JRef<ItemStack> {
+self.new_item.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:79
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:88
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -67,9 +92,51 @@ impl PlayerArmorChangeEventSlotType {
     }
     pub fn value_of(name: &str) -> Option<PlayerArmorChangeEventSlotType> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static PlayerArmorChangeEventSlotTypeData { todo!("paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:95") }
-    pub fn get_types(self) -> HashSet<Material> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:114
-    pub fn get_by_material(material: Material) -> Option<PlayerArmorChangeEventSlotType> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:124
-    pub fn is_equipable(material: Material) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:139
+    pub fn data(self) -> &'static PlayerArmorChangeEventSlotTypeData {
+static DATA: LazyLock<[PlayerArmorChangeEventSlotTypeData; 4]> = LazyLock::new(|| {
+    use Material::*;
+    [
+        PlayerArmorChangeEventSlotTypeData {
+            types: HashSet::from([
+                COPPER_HELMET, NETHERITE_HELMET, DIAMOND_HELMET, GOLDEN_HELMET, IRON_HELMET, CHAINMAIL_HELMET,
+                LEATHER_HELMET, CARVED_PUMPKIN, PLAYER_HEAD, SKELETON_SKULL, ZOMBIE_HEAD, CREEPER_HEAD,
+                WITHER_SKELETON_SKULL, TURTLE_HELMET, DRAGON_HEAD, PIGLIN_HEAD,
+            ]),
+        },
+        PlayerArmorChangeEventSlotTypeData {
+            types: HashSet::from([
+                COPPER_CHESTPLATE, NETHERITE_CHESTPLATE, DIAMOND_CHESTPLATE, GOLDEN_CHESTPLATE, IRON_CHESTPLATE,
+                CHAINMAIL_CHESTPLATE, LEATHER_CHESTPLATE, ELYTRA,
+            ]),
+        },
+        PlayerArmorChangeEventSlotTypeData {
+            types: HashSet::from([
+                COPPER_LEGGINGS, NETHERITE_LEGGINGS, DIAMOND_LEGGINGS, GOLDEN_LEGGINGS, IRON_LEGGINGS,
+                CHAINMAIL_LEGGINGS, LEATHER_LEGGINGS,
+            ]),
+        },
+        PlayerArmorChangeEventSlotTypeData {
+            types: HashSet::from([
+                COPPER_BOOTS, NETHERITE_BOOTS, DIAMOND_BOOTS, GOLDEN_BOOTS, IRON_BOOTS, CHAINMAIL_BOOTS, LEATHER_BOOTS,
+            ]),
+        },
+    ]
+});
+&DATA[self.ordinal() as usize]
+}
+    pub fn get_types(self) -> HashSet<Material> {
+self.data().types.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:114
+    pub fn get_by_material(material: Material) -> Option<PlayerArmorChangeEventSlotType> {
+for slot_type in PlayerArmorChangeEventSlotType::VALUES {
+    if slot_type.get_types().contains(&material) {
+        return Some(slot_type);
+    }
+}
+None
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:124
+    pub fn is_equipable(material: Material) -> bool {
+PlayerArmorChangeEventSlotType::get_by_material(material).is_some()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerArmorChangeEvent.java:139
 }
 crate::jobject!(PlayerArmorChangeEventSlotType);

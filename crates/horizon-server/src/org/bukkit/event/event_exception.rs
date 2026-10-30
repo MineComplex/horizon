@@ -13,9 +13,9 @@ pub const SERIAL_VERSION_UID: i64 = 3532808232324183999; // paper-api/src/main/j
 impl EventException {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/EventException.java:19
-    pub fn new_1(throwable: Throwable) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/EventException.java:12
+    pub fn new_1(throwable: Throwable) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EventException { this: this.clone(), cause: throwable }) } // paper-api/src/main/java/org/bukkit/event/EventException.java:12
     pub fn new_1_(message: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/EventException.java:39
     pub fn new_2(cause: Throwable, message: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/EventException.java:29
-    pub fn get_cause(&self) -> Throwable { todo!() } // paper-api/src/main/java/org/bukkit/event/EventException.java:49
+    pub fn get_cause(&self) -> Throwable { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/EventException.java:49
 }
 crate::jobject!(EventException);

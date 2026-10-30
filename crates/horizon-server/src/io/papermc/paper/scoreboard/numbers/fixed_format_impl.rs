@@ -12,14 +12,13 @@ pub struct FixedFormatImpl {
     pub component: Component,
 }
 impl FixedFormatImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:6
     pub fn new_1(component: Component) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:6
     pub fn as_component(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:9
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl FixedFormat for FixedFormatImpl {
-    fn component(&self) -> Component { todo!("abstract FixedFormat.component") }
+    fn component(&self) -> Component { self.component.clone() }
 }
 impl NumberFormat for FixedFormatImpl {
 }

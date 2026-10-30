@@ -24,19 +24,19 @@ impl std::ops::Deref for PlayerSpawnChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:22
 impl PlayerSpawnChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, new_spawn: Option<JRef<Location>>, forced: bool, cause: PlayerSpawnChangeEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:92
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:97
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:102
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:92
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:97
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:102
     pub fn get_new_spawn(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:43
     pub fn set_new_spawn(&self, new_spawn: Option<JRef<Location>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:53
-    pub fn get_cause(&self) -> PlayerSpawnChangeEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:67
-    pub fn is_forced(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:78
-    pub fn set_forced(&self, forced: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:88
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:108
+    pub fn get_cause(&self) -> PlayerSpawnChangeEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:67
+    pub fn is_forced(&self) -> bool { self.forced.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:78
+    pub fn set_forced(&self, forced: bool) { self.forced.set(forced) } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:88
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerSpawnChangeEvent.java:108
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

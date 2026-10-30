@@ -30,12 +30,12 @@ impl std::ops::Deref for PigZapEvent {
 }
 impl PigZapEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(pig: JRef<dyn Pig>, bolt: JRef<dyn LightningStrike>, zombified_piglin: JRef<dyn PigZombie>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn Pig> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:25
+    pub fn new(pig: JRef<dyn Pig>, bolt: JRef<dyn LightningStrike>, zombified_piglin: JRef<dyn PigZombie>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| PigZapEvent { base: EntityZapEvent::new_base(this, pig, bolt, zombified_piglin), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn Pig> { cast::<dyn Pig, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:25
     pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:56
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:61
     pub fn get_lightning(&self) -> JRef<dyn LightningStrike> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:37
-    pub fn get_pig_zombie(&self) -> JRef<dyn PigZombie> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:50
+    pub fn get_pig_zombie(&self) -> JRef<dyn PigZombie> { cast::<dyn PigZombie, _>(&self.base.get_replacement_entity()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PigZapEvent.java:50
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -30,18 +30,18 @@ impl std::ops::Deref for dyn PlayerAnimationEventTrait {
     type Target = PlayerAnimationEvent;
     fn deref(&self) -> &PlayerAnimationEvent { self.as_player_animation_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:19
 impl PlayerAnimationEvent {
     pub fn this(&self) -> JRef<dyn PlayerAnimationEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PlayerAnimationEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:24
     pub fn new(player: JRef<dyn Player>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player)) }
-    pub fn new_base_2<S: PlayerAnimationEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, player_animation_type: PlayerAnimationType) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:30
+    pub fn new_base_2<S: PlayerAnimationEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, player_animation_type: PlayerAnimationType) -> Self { Self { base: PlayerEvent::new_base(this, player), this: this.clone(), animation_type: player_animation_type, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:30
     pub fn new_2(player: JRef<dyn Player>, player_animation_type: PlayerAnimationType) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_2(this, player, player_animation_type)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:46
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:51
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:56
-    pub fn get_animation_type(&self) -> PlayerAnimationType { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:41
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:62
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:46
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:51
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:56
+    pub fn get_animation_type(&self) -> PlayerAnimationType { self.animation_type.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:41
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerAnimationEvent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

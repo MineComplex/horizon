@@ -21,15 +21,15 @@ impl std::ops::Deref for PlayerRespawnEvent {
     type Target = AbstractRespawnEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:21
 impl PlayerRespawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:23
     pub fn new_4(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:29
-    pub fn new_6(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:35
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:52
+    pub fn new_6(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: AbstractRespawnEvent::new_base(this, respawn_player, respawn_location, is_bed_spawn, is_anchor_spawn, missing_respawn_block, respawn_reason), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:35
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:52
     pub fn set_respawn_location(&self, respawn_location: JRef<Location>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:45
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRespawnEvent.java:58
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

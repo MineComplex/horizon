@@ -27,7 +27,12 @@ impl std::ops::Deref for SlimeSwimEvent {
 }
 impl SlimeSwimEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeSwimEvent.java:16
+    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>) -> JRef<Self> {
+Arc::new_cyclic(|this| SlimeSwimEvent {
+base: SlimeWanderEvent::new_base(this, cube_mob),
+this: this.clone(),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeSwimEvent.java:16
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

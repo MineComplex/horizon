@@ -30,10 +30,22 @@ impl std::ops::Deref for EntityKnockbackByEntityEvent {
 }
 impl EntityKnockbackByEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn LivingEntity>, hit_by: JRef<dyn Entity>, cause: EntityKnockbackEventCause, knockback_strength: f32, knockback: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:29
-    pub fn get_knockback_strength(&self) -> f32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:38
-    pub fn get_hit_by(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:48
+    pub fn new(entity: JRef<dyn LivingEntity>, hit_by: JRef<dyn Entity>, cause: EntityKnockbackEventCause, knockback_strength: f32, knockback: JRef<dyn VectorTrait>) -> JRef<Self> {
+Arc::new_cyclic(|this| EntityKnockbackByEntityEvent {
+base: EntityPushedByEntityAttackEvent::new_base(this, entity, cause, hit_by, knockback),
+this: this.clone(),
+knockback_strength: knockback_strength,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> {
+cast::<dyn LivingEntity, _>(&self.base.get_entity()).expect("LivingEntity")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:29
+    pub fn get_knockback_strength(&self) -> f32 {
+self.knockback_strength.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:38
+    pub fn get_hit_by(&self) -> JRef<dyn Entity> {
+self.base.get_pushed_by()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java:48
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

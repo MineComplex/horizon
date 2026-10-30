@@ -20,14 +20,14 @@ impl std::ops::Deref for PlayerLinksSendEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:16
 impl PlayerLinksSendEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(connection: JRef<dyn PlayerConfigurationConnection>, links: JRef<dyn ServerLinks>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:46
-    pub fn get_connection(&self) -> JRef<dyn PlayerCommonConnection> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:31
-    pub fn get_links(&self) -> JRef<dyn ServerLinks> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:41
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:52
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:46
+    pub fn get_connection(&self) -> JRef<dyn PlayerCommonConnection> { self.connection.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:31
+    pub fn get_links(&self) -> JRef<dyn ServerLinks> { self.links.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:41
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLinksSendEvent.java:52
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

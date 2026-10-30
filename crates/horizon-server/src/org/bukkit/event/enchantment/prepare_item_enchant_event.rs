@@ -24,7 +24,7 @@ pub struct PrepareItemEnchantEvent {
     pub enchanter: JRef<dyn Player>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:23
     pub table: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:24
     pub item: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:25
-    pub offers: Mut<Vec<JRef<EnchantmentOffer>>>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:26
+    pub offers: Mut<Option<Vec<JRef<EnchantmentOffer>>>>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:26
     pub bonus: i32, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:27
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:29
 }
@@ -32,21 +32,21 @@ impl std::ops::Deref for PrepareItemEnchantEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:21
 impl PrepareItemEnchantEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(enchanter: JRef<dyn Player>, view: JRef<dyn EnchantmentView>, table: JRef<dyn Block>, item: JRef<ItemStack>, offers: Option<Vec<JRef<EnchantmentOffer>>>, bonus: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:31
-    pub fn get_view(&self) -> JRef<dyn EnchantmentView> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:41
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:114
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:119
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:124
-    pub fn get_enchanter(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:52
-    pub fn get_enchant_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:62
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:72
+    pub fn new(enchanter: JRef<dyn Player>, view: JRef<dyn EnchantmentView>, table: JRef<dyn Block>, item: JRef<ItemStack>, offers: Option<Vec<JRef<EnchantmentOffer>>>, bonus: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| PrepareItemEnchantEvent { base: InventoryEvent::new_base(this, view), this: this.clone(), enchanter: enchanter, table: table, item: item, offers: Mut::new(offers), bonus: bonus, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:31
+    pub fn get_view(&self) -> JRef<dyn EnchantmentView> { cast::<dyn EnchantmentView, _>(&self.base.get_view()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:41
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:114
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:119
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:124
+    pub fn get_enchanter(&self) -> JRef<dyn Player> { self.enchanter.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:52
+    pub fn get_enchant_block(&self) -> JRef<dyn Block> { self.table.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:62
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:72
     pub fn get_exp_level_costs_offered(&self) -> Vec<i32> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:83
-    pub fn get_offers(&self) -> Option<Vec<JRef<EnchantmentOffer>>> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:101
-    pub fn get_enchantment_bonus(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:110
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:130
+    pub fn get_offers(&self) -> Option<Vec<JRef<EnchantmentOffer>>> { self.offers.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:101
+    pub fn get_enchantment_bonus(&self) -> i32 { self.bonus } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:110
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/PrepareItemEnchantEvent.java:130
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

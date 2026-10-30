@@ -7,7 +7,10 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.world.flag.FeatureFlagSetHolder (paper-api/src/main/java/io/papermc/paper/world/flag/FeatureFlagSetHolder.java:13)
 pub trait FeatureFlagSetHolder: Send + Sync + 'static {
-    fn is_enabled(&self, feature_dependant: JRef<dyn FeatureDependant>) -> bool { todo!() } // default, paper-api/src/main/java/io/papermc/paper/world/flag/FeatureFlagSetHolder.java:22
+    fn is_enabled(&self, feature_dependant: JRef<dyn FeatureDependant>) -> bool {
+        let feature_flags = self.get_feature_flags();
+        feature_dependant.required_features().iter().all(|flag| feature_flags.contains(flag))
+    } // default, paper-api/src/main/java/io/papermc/paper/world/flag/FeatureFlagSetHolder.java:22
     fn get_feature_flags(&self) -> HashSet<JRef<dyn FeatureFlag>>; // paper-api/src/main/java/io/papermc/paper/world/flag/FeatureFlagSetHolder.java:31
 }
 impl<F: Fn() -> HashSet<JRef<dyn FeatureFlag>> + Send + Sync + 'static> FeatureFlagSetHolder for F {

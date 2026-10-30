@@ -13,5 +13,10 @@ pub trait LifecycleEventTypeProvider: JObject {
     fn prioritized<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> where Self: Sized; // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:20
     fn tag_provider(&self) -> JRef<dyn TagEventTypeProvider>; // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:22
 }
-pub static INSTANCE: LazyLock<Option<JRef<dyn LifecycleEventTypeProvider>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:12
-pub fn provider() -> JRef<dyn LifecycleEventTypeProvider> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:14
+pub static INSTANCE: LazyLock<Option<JRef<dyn LifecycleEventTypeProvider>>> = LazyLock::new(|| {
+    // ServiceLoader.load(LifecycleEventTypeProvider.class, ...).findFirst(): META-INF/services names LifecycleEventTypeProviderImpl
+    Some(crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type_provider_impl::LifecycleEventTypeProviderImpl::new() as JRef<dyn LifecycleEventTypeProvider>)
+}); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:12
+pub fn provider() -> JRef<dyn LifecycleEventTypeProvider> {
+    INSTANCE.clone().expect("NoSuchElementException: No value present")
+    } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProvider.java:14

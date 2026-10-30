@@ -25,6 +25,6 @@ impl std::ops::Deref for dyn BlockEventTrait {
 }
 impl BlockEvent {
     pub fn this(&self) -> JRef<dyn BlockEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockEvent.java:14
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockEvent.java:23
+    pub fn new_base<S: BlockEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>) -> Self { BlockEvent { base: Event::new_base(this), this: this.clone(), block: Mut::new(block) } } // paper-api/src/main/java/org/bukkit/event/block/BlockEvent.java:14
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockEvent.java:23
 }

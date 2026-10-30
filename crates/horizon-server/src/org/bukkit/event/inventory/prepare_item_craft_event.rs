@@ -24,15 +24,15 @@ impl std::ops::Deref for PrepareItemCraftEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:13
 impl PrepareItemCraftEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(matrix: JRef<dyn CraftingInventory>, view: JRef<dyn InventoryView>, is_repair: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:18
-    pub fn get_inventory(&self) -> JRef<dyn CraftingInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:40
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:56
+    pub fn new(matrix: JRef<dyn CraftingInventory>, view: JRef<dyn InventoryView>, is_repair: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryEvent::new_base(this, view), this: this.clone(), repair: is_repair, matrix: matrix }) } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:18
+    pub fn get_inventory(&self) -> JRef<dyn CraftingInventory> { self.matrix.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:40
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:56
     pub fn get_recipe(&self) -> Option<JRef<dyn Recipe>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:32
-    pub fn is_repair(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:52
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:62
+    pub fn is_repair(&self) -> bool { self.repair } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:52
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareItemCraftEvent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

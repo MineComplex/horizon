@@ -25,19 +25,19 @@ impl std::ops::Deref for PlayerGameModeChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:22
 impl PlayerGameModeChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, new_game_mode: GameMode) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:30
     pub fn new_4(player: JRef<dyn Player>, new_game_mode: GameMode, cause: PlayerGameModeChangeEventCause, cancel_message: Option<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:87
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:92
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:97
-    pub fn get_new_game_mode(&self) -> GameMode { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:49
-    pub fn get_cause(&self) -> PlayerGameModeChangeEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:59
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:87
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:92
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:97
+    pub fn get_new_game_mode(&self) -> GameMode { self.new_game_mode.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:49
+    pub fn get_cause(&self) -> PlayerGameModeChangeEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:59
     pub fn cancel_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:71
     pub fn cancel_message_1(&self, message: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:83
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:103
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerGameModeChangeEvent.java:103
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

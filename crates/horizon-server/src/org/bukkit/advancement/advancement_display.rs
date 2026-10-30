@@ -13,7 +13,7 @@ pub trait AdvancementDisplay: JObject {
     fn should_show_toast(&self) -> bool; // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:45
     fn should_announce_chat(&self) -> bool; // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:52
     fn is_hidden(&self) -> bool; // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:63
-    fn get_x(&self) -> f32 { todo!() } // default, paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:70
-    fn get_y(&self) -> f32 { todo!() } // default, paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:80
+    fn get_x(&self) -> f32 { panic!("UnsupportedOperationException: AdvancementDisplay no longer holds onto the location") } // default, paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:70
+    fn get_y(&self) -> f32 { panic!("UnsupportedOperationException: AdvancementDisplay no longer holds onto the location") } // default, paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:80
     fn get_type(&self) -> AdvancementDisplayType; // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplay.java:90
 }

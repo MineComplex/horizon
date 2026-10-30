@@ -32,9 +32,22 @@ impl std::ops::Deref for dyn PlayerCustomClickEventTrait {
 }
 impl PlayerCustomClickEvent {
     pub fn this(&self) -> JRef<dyn PlayerCustomClickEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerCustomClickEventTrait + 'static>(this: &Weak<S>, identifier: JRef<dyn Key>, common_connection: JRef<dyn PlayerCommonConnection>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:29
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:67
-    pub fn get_identifier(&self) -> JRef<dyn Key> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:40
-    pub fn get_common_connection(&self) -> JRef<dyn PlayerCommonConnection> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:63
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:73
+    pub fn new_base<S: PlayerCustomClickEventTrait + 'static>(this: &Weak<S>, identifier: JRef<dyn Key>, common_connection: JRef<dyn PlayerCommonConnection>) -> Self {
+        PlayerCustomClickEvent {
+            base: Event::new_base(this),
+            this: this.clone(),
+            identifier,
+            common_connection,
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:29
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+        PlayerCustomClickEvent::get_handler_list()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:67
+    pub fn get_identifier(&self) -> JRef<dyn Key> { self.identifier.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:40
+    pub fn get_common_connection(&self) -> JRef<dyn PlayerCommonConnection> { self.common_connection.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:63
+    pub fn get_handler_list() -> JRef<HandlerList> {
+        HOLDER_HANDLER_LIST.clone()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:73
 }
+// ---- local class Holder in PlayerCustomClickEvent.getHandlerList() (PlayerCustomClickEvent.java:74)
+pub static HOLDER_HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:75

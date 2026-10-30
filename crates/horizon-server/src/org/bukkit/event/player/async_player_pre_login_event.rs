@@ -27,7 +27,7 @@ impl std::ops::Deref for AsyncPlayerPreLoginEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:31
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:31
 impl AsyncPlayerPreLoginEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(name: &str, ip_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:42
@@ -36,13 +36,13 @@ impl AsyncPlayerPreLoginEvent {
     pub fn new_5(name: &str, ip_address: std::net::IpAddr, unique_id: Uuid, transferred: bool, profile: JRef<dyn PlayerProfile>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:59
     pub fn new_6(name: &str, ip_address: std::net::IpAddr, raw_address: std::net::IpAddr, unique_id: Uuid, transferred: bool, profile: JRef<dyn PlayerProfile>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:65
     pub fn new_8(name: &str, ip_address: std::net::IpAddr, raw_address: std::net::IpAddr, unique_id: Uuid, transferred: bool, profile: JRef<dyn PlayerProfile>, hostname: &str, player_login_connection: JRef<dyn PlayerLoginConnection>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:71
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:319
-    pub fn get_login_result(&self) -> AsyncPlayerPreLoginEventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:89
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:319
+    pub fn get_login_result(&self) -> AsyncPlayerPreLoginEventResult { self.result.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:89
     pub fn get_result(&self) -> PlayerPreLoginEventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:102
-    pub fn set_login_result(&self, result: AsyncPlayerPreLoginEventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:113
+    pub fn set_login_result(&self, result: AsyncPlayerPreLoginEventResult) { self.result.set(result) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:113
     pub fn set_result(&self, result: PlayerPreLoginEventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:125
-    pub fn kick_message(&self) -> Component { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:135
-    pub fn kick_message_1(&self, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:145
+    pub fn kick_message(&self) -> Component { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:135
+    pub fn kick_message_1(&self, message: Component) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:145
     pub fn disallow(&self, result: AsyncPlayerPreLoginEventResult, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:155
     pub fn disallow_2(&self, result: PlayerPreLoginEventResult, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:169
     pub fn disallow_2_2(&self, result: AsyncPlayerPreLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:213
@@ -51,15 +51,15 @@ impl AsyncPlayerPreLoginEvent {
     pub fn set_kick_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:193
     pub fn allow(&self) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:201
     pub fn get_name(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:239
-    pub fn get_address(&self) -> std::net::IpAddr { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:249
+    pub fn get_address(&self) -> std::net::IpAddr { self.ip_address } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:249
     pub fn get_unique_id(&self) -> Uuid { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:259
-    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:268
-    pub fn set_player_profile(&self, profile: JRef<dyn PlayerProfile>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:277
-    pub fn get_raw_address(&self) -> std::net::IpAddr { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:285
-    pub fn get_hostname(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:296
-    pub fn is_transferred(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:306
-    pub fn get_connection(&self) -> JRef<dyn PlayerLoginConnection> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:314
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:325
+    pub fn get_player_profile(&self) -> JRef<dyn PlayerProfile> { self.profile.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:268
+    pub fn set_player_profile(&self, profile: JRef<dyn PlayerProfile>) { self.profile.set(profile) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:277
+    pub fn get_raw_address(&self) -> std::net::IpAddr { self.raw_address } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:285
+    pub fn get_hostname(&self) -> String { self.hostname.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:296
+    pub fn is_transferred(&self) -> bool { self.transferred } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:306
+    pub fn get_connection(&self) -> JRef<dyn PlayerLoginConnection> { self.player_login_connection.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:314
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:325
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

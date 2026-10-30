@@ -24,19 +24,19 @@ impl std::ops::Deref for EntityRegainHealthEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:14
 impl EntityRegainHealthEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, amount: f64, regain_reason: EntityRegainHealthEventRegainReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:22
-    pub fn new_4(entity: JRef<dyn Entity>, amount: f64, regain_reason: EntityRegainHealthEventRegainReason, is_fast_regen: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:73
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:78
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:83
-    pub fn get_amount(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:40
-    pub fn set_amount(&self, amount: f64) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:49
-    pub fn get_regain_reason(&self) -> EntityRegainHealthEventRegainReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:59
-    pub fn is_fast_regen(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:69
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:89
+    pub fn new(entity: JRef<dyn Entity>, amount: f64, regain_reason: EntityRegainHealthEventRegainReason) -> JRef<Self> { Self::new_4(entity, amount, regain_reason, false) } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:22
+    pub fn new_4(entity: JRef<dyn Entity>, amount: f64, regain_reason: EntityRegainHealthEventRegainReason, is_fast_regen: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityRegainHealthEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), amount: Mut::new(amount), regain_reason: regain_reason, is_fast_regen: is_fast_regen, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:73
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:78
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:83
+    pub fn get_amount(&self) -> f64 { self.amount.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:40
+    pub fn set_amount(&self, amount: f64) { self.amount.set(amount); } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:49
+    pub fn get_regain_reason(&self) -> EntityRegainHealthEventRegainReason { self.regain_reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:59
+    pub fn is_fast_regen(&self) -> bool { self.is_fast_regen } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:69
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRegainHealthEvent.java:89
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

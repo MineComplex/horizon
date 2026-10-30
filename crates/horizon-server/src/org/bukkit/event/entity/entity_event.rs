@@ -28,7 +28,7 @@ impl std::ops::Deref for dyn EntityEventTrait {
 }
 impl EntityEvent {
     pub fn this(&self) -> JRef<dyn EntityEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEvent.java:15
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEvent.java:24
+    pub fn new_base<S: EntityEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>) -> Self { EntityEvent { base: Event::new_base(this), this: this.clone(), entity: Mut::new(entity) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityEvent.java:15
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEvent.java:24
     pub fn get_entity_type(&self) -> EntityType { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEvent.java:34
 }

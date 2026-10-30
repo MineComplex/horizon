@@ -24,17 +24,39 @@ impl std::ops::Deref for EntityPathfindEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:21
 impl EntityPathfindEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, location: JRef<Location>, target_entity: Option<JRef<dyn Entity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:27
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:39
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:66
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:71
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:76
-    pub fn get_target_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:51
-    pub fn get_loc(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:62
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:81
+    pub fn new(entity: JRef<dyn Entity>, location: JRef<Location>, target_entity: Option<JRef<dyn Entity>>) -> JRef<Self> {
+Arc::new_cyclic(|this| EntityPathfindEvent {
+base: EntityEvent::new_base(this, entity),
+this: this.clone(),
+target_entity: target_entity,
+location: location,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:27
+    pub fn get_entity(&self) -> JRef<dyn Entity> {
+self.entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:39
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:66
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:71
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:76
+    pub fn get_target_entity(&self) -> Option<JRef<dyn Entity>> {
+self.target_entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:51
+    pub fn get_loc(&self) -> JRef<Location> {
+Location::clone(&self.location)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:62
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityPathfindEvent.java:81
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

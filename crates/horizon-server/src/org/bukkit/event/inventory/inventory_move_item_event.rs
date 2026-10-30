@@ -35,20 +35,20 @@ impl std::ops::Deref for dyn InventoryMoveItemEventTrait {
     type Target = InventoryMoveItemEvent;
     fn deref(&self) -> &InventoryMoveItemEvent { self.as_inventory_move_item_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:30
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:30
 impl InventoryMoveItemEvent {
     pub fn this(&self) -> JRef<dyn InventoryMoveItemEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: InventoryMoveItemEventTrait + 'static>(this: &Weak<S>, source_inventory: JRef<dyn Inventory>, item_stack: JRef<ItemStack>, destination_inventory: JRef<dyn Inventory>, did_source_initiate: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:39
+    pub fn new_base<S: InventoryMoveItemEventTrait + 'static>(this: &Weak<S>, source_inventory: JRef<dyn Inventory>, item_stack: JRef<ItemStack>, destination_inventory: JRef<dyn Inventory>, did_source_initiate: bool) -> Self { Self { base: Event::new_base(this), this: this.clone(), source_inventory, destination_inventory, item_stack: Mut::new(item_stack), did_source_initiate, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:39
     pub fn new(source_inventory: JRef<dyn Inventory>, item_stack: JRef<ItemStack>, destination_inventory: JRef<dyn Inventory>, did_source_initiate: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, source_inventory, item_stack, destination_inventory, did_source_initiate)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:102
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:107
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:112
-    pub fn get_source(&self) -> JRef<dyn Inventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:53
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:64
-    pub fn set_item(&self, item_stack: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:76
-    pub fn get_destination(&self) -> JRef<dyn Inventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:86
-    pub fn get_initiator(&self) -> JRef<dyn Inventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:97
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:118
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:102
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:107
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:112
+    pub fn get_source(&self) -> JRef<dyn Inventory> { self.source_inventory.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:53
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item_stack.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:64
+    pub fn set_item(&self, item_stack: JRef<ItemStack>) { self.item_stack.set(ItemStack::clone(&item_stack)) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:76
+    pub fn get_destination(&self) -> JRef<dyn Inventory> { self.destination_inventory.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:86
+    pub fn get_initiator(&self) -> JRef<dyn Inventory> { if self.did_source_initiate { self.source_inventory.clone() } else { self.destination_inventory.clone() } } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:97
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryMoveItemEvent.java:118
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

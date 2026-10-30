@@ -29,7 +29,7 @@ impl std::ops::Deref for PrepareGrindstoneEvent {
 }
 impl PrepareGrindstoneEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareGrindstoneEvent.java:15
+    pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: crate::com::destroystokyo::paper::event::inventory::prepare_grindstone_event::PrepareGrindstoneEvent::new_base(this, inventory, result), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareGrindstoneEvent.java:15
     pub fn get_inventory(&self) -> JRef<dyn GrindstoneInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/PrepareGrindstoneEvent.java:20
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

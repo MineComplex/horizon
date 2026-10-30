@@ -5,19 +5,29 @@ use crate::io::papermc::paper::world::damagesource::fall_location_type::FallLoca
 use crate::api_prelude::*;
 
 // ---- record io.papermc.paper.world.damagesource.FallLocationTypeImpl (paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:5)
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FallLocationTypeImpl {
     pub id: String,
 }
 impl FallLocationTypeImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:5
-    pub fn new_1(id: &str) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:5
-    pub fn translation_key(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:8
+    pub fn new(id: &str) -> Self {
+        FallLocationTypeImpl { id: id.to_string() }
+    }
+    /// The record's accessor.
+    pub fn id(&self) -> String {
+        self.id.clone()
+    } // paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:5
+    pub fn translation_key(&self) -> String {
+        // Same as net.minecraft.world.damagesource.FallLocation#languageKey
+        format!("death.fell.accident.{}", self.id)
+    } // paper-api/src/main/java/io/papermc/paper/world/damagesource/FallLocationTypeImpl.java:8
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl FallLocationType for FallLocationTypeImpl {
-    fn id(&self) -> String { todo!("abstract FallLocationType.id") }
+    fn id(&self) -> String { FallLocationTypeImpl::id(self) }
     fn translation_key(&self) -> String { FallLocationTypeImpl::translation_key(self) }
 }
 crate::jobject!(FallLocationTypeImpl: dyn FallLocationType);
+// PORT: adventure's Translatable (translationKey) is a stand-in; FallLocationTypeImpl::translation_key is its body.
+impl crate::net::kyori::adventure::translation::Translatable for FallLocationTypeImpl {}

@@ -18,9 +18,9 @@ use crate::api_prelude::*;
 pub struct ProjectileHitEvent {
     pub base: EntityEvent,
     pub this: Weak<dyn ProjectileHitEventTrait>,
-    pub hit_entity: JRef<dyn Entity>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:20
-    pub hit_block: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:21
-    pub hit_face: BlockFace, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:22
+    pub hit_entity: Option<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:20
+    pub hit_block: Option<JRef<dyn Block>>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:21
+    pub hit_face: Option<BlockFace>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:22
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:24
 }
 impl std::ops::Deref for ProjectileHitEvent {
@@ -37,27 +37,27 @@ impl std::ops::Deref for dyn ProjectileHitEventTrait {
     type Target = ProjectileHitEvent;
     fn deref(&self) -> &ProjectileHitEvent { self.as_projectile_hit_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:18
 impl ProjectileHitEvent {
     pub fn this(&self) -> JRef<dyn ProjectileHitEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:26
+    pub fn new_base<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>) -> Self { Self::new_base_4(this, projectile, None, None, None) } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:26
     pub fn new(projectile: JRef<dyn Projectile>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, projectile)) }
-    pub fn new_base_2<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:32
+    pub fn new_base_2<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>) -> Self { Self::new_base_4(this, projectile, hit_entity, None, None) } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:32
     pub fn new_2(projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_2(this, projectile, hit_entity)) }
-    pub fn new_base_2_<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_block: Option<JRef<dyn Block>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:38
+    pub fn new_base_2_<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_block: Option<JRef<dyn Block>>) -> Self { Self::new_base_4(this, projectile, None, hit_block, None) } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:38
     pub fn new_2_(projectile: JRef<dyn Projectile>, hit_block: Option<JRef<dyn Block>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_2_(this, projectile, hit_block)) }
-    pub fn new_base_3<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:44
+    pub fn new_base_3<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>) -> Self { Self::new_base_4(this, projectile, hit_entity, hit_block, None) } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:44
     pub fn new_3(projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_3(this, projectile, hit_entity, hit_block)) }
-    pub fn new_base_4<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:50
+    pub fn new_base_4<S: ProjectileHitEventTrait + 'static>(this: &Weak<S>, projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>) -> Self { ProjectileHitEvent { base: EntityEvent::new_base(this, projectile), this: this.clone(), hit_entity: hit_entity, hit_block: hit_block, hit_face: hit_face, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:50
     pub fn new_4(projectile: JRef<dyn Projectile>, hit_entity: Option<JRef<dyn Entity>>, hit_block: Option<JRef<dyn Block>>, hit_face: Option<BlockFace>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_4(this, projectile, hit_entity, hit_block, hit_face)) }
-    pub fn get_entity(&self) -> JRef<dyn Projectile> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:58
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:95
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:112
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:117
-    pub fn get_hit_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:69
-    pub fn get_hit_block(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:79
-    pub fn get_hit_block_face(&self) -> Option<BlockFace> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:90
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:123
+    pub fn get_entity(&self) -> JRef<dyn Projectile> { cast::<dyn Projectile, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:58
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:95
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:112
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:117
+    pub fn get_hit_entity(&self) -> Option<JRef<dyn Entity>> { self.hit_entity.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:69
+    pub fn get_hit_block(&self) -> Option<JRef<dyn Block>> { self.hit_block.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:79
+    pub fn get_hit_block_face(&self) -> Option<BlockFace> { self.hit_face.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:90
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ProjectileHitEvent.java:123
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

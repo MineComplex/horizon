@@ -22,9 +22,25 @@ impl std::ops::Deref for MultipleCommandAlias {
 }
 impl MultipleCommandAlias {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, commands: &Vec<JRef<dyn CommandTrait>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:17
-    pub fn execute(&self, sender: JRef<dyn CommandSender>, command_label: &str, args: &Vec<String>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:31
-    pub fn get_commands(&self) -> Vec<JRef<dyn CommandTrait>> { todo!() } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:27
+    pub fn new(name: &str, commands: &Vec<JRef<dyn CommandTrait>>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| MultipleCommandAlias {
+            base: Command::new_base(this, name),
+            this: this.clone(),
+            commands: Mut::new(commands.clone()),
+        })
+    } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:17
+    pub fn execute(&self, sender: JRef<dyn CommandSender>, command_label: &str, args: &Vec<String>) -> bool {
+        let mut result = false;
+
+        for command in self.commands.get() {
+            result |= command.execute(sender.clone(), command_label, args);
+        }
+
+        result
+    } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:31
+    pub fn get_commands(&self) -> Vec<JRef<dyn CommandTrait>> {
+        self.commands.get()
+    } // paper-api/src/main/java/org/bukkit/command/MultipleCommandAlias.java:27
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -52,8 +68,8 @@ impl CommandTrait for MultipleCommandAlias {
     fn set_description(&self, description: &str) -> JRef<dyn CommandTrait> { Command::set_description(self, description) }
     fn set_permission_message(&self, permission_message: Option<String>) -> JRef<dyn CommandTrait> { Command::set_permission_message(self, permission_message) }
     fn set_usage(&self, usage: &str) -> JRef<dyn CommandTrait> { Command::set_usage(self, usage) }
-    fn permission_message(&self) -> Component { Command::permission_message(self) }
-    fn permission_message_1(&self, permission_message: Component) { Command::permission_message_1(self, permission_message) }
+    fn permission_message(&self) -> Option<Component> { Command::permission_message(self) }
+    fn permission_message_1(&self, permission_message: Option<Component>) { Command::permission_message_1(self, permission_message) }
     fn to_string(&self) -> String { Command::to_string(self) }
     fn can_be_overriden(&self) -> bool { Command::can_be_overriden(self) }
 }

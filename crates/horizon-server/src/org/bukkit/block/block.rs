@@ -38,7 +38,7 @@ pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable + 
     fn get_x(&self) -> i32; // paper-api/src/main/java/org/bukkit/block/Block.java:143
     fn get_y(&self) -> i32; // paper-api/src/main/java/org/bukkit/block/Block.java:150
     fn get_z(&self) -> i32; // paper-api/src/main/java/org/bukkit/block/Block.java:157
-    fn get_block_key(&self) -> i64 { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:167
+    fn get_block_key(&self) -> i64 { get_block_key_3(self.get_x(), self.get_y(), self.get_z()) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:167
     fn is_valid_tool(&self, tool: JRef<ItemStack>) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:243
     fn get_location(&self) -> JRef<Location>; // paper-api/src/main/java/org/bukkit/block/Block.java:251
     fn get_location_1(&self, loc: Option<JRef<Location>>) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/block/Block.java:263
@@ -57,7 +57,7 @@ pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable + 
     fn is_block_indirectly_powered(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:411
     fn is_block_face_powered(&self, face: BlockFace) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:419
     fn is_block_face_indirectly_powered(&self, face: BlockFace) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:427
-    fn get_block_power(&self) -> i32 { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:448
+    fn get_block_power(&self) -> i32 { self.get_block_power_1(BlockFace::SELF) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:448
     fn get_block_power_1(&self, face: BlockFace) -> i32; // paper-api/src/main/java/org/bukkit/block/Block.java:436
     fn is_empty(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:460
     fn is_liquid(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:470
@@ -71,9 +71,9 @@ pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable + 
     fn get_piston_move_reaction(&self) -> PistonMoveReaction; // paper-api/src/main/java/org/bukkit/block/Block.java:532
     fn break_naturally(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:541
     fn break_naturally_1(&self, tool: Option<JRef<ItemStack>>) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:550
-    fn break_naturally_1_2(&self, trigger_effect: bool) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:560
+    fn break_naturally_1_2(&self, trigger_effect: bool) -> bool { self.break_naturally_2(trigger_effect, false) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:560
     fn break_naturally_2(&self, trigger_effect: bool, drop_experience: bool) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:571
-    fn break_naturally_2_2(&self, tool: JRef<ItemStack>, trigger_effect: bool) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:582
+    fn break_naturally_2_2(&self, tool: JRef<ItemStack>, trigger_effect: bool) -> bool { self.break_naturally_3(tool, trigger_effect, false) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:582
     fn break_naturally_3(&self, tool: JRef<ItemStack>, trigger_effect: bool, drop_experience: bool) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:595
     fn break_naturally_4(&self, tool: JRef<ItemStack>, trigger_effect: bool, drop_experience: bool, force_effect: bool) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:607
     fn tick(&self); // paper-api/src/main/java/org/bukkit/block/Block.java:618
@@ -92,11 +92,11 @@ pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable + 
     fn can_place(&self, data: JRef<dyn BlockData>) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:779
     fn get_sound_group(&self) -> JRef<dyn BlockSoundGroup>; // paper-api/src/main/java/org/bukkit/block/Block.java:790
     fn get_block_sound_group(&self) -> JRef<dyn SoundGroup>; // paper-api/src/main/java/org/bukkit/block/Block.java:799
-    fn get_destroy_speed(&self, item_stack: JRef<ItemStack>) -> f32 { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:818
-    fn get_destroy_speed_2(&self, item_stack: JRef<ItemStack>, consider_enchants: bool) -> f32 { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Block.java:831
+    fn get_destroy_speed(&self, item_stack: JRef<ItemStack>) -> f32 { self.get_block_data().get_destroy_speed(item_stack) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:818
+    fn get_destroy_speed_2(&self, item_stack: JRef<ItemStack>, consider_enchants: bool) -> f32 { self.get_block_data().get_destroy_speed_2(item_stack, consider_enchants) } // default, paper-api/src/main/java/org/bukkit/block/Block.java:831
     fn is_suffocating(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Block.java:841
 }
-pub fn get_block_key_3(x: i32, y: i32, z: i32) -> i64 { todo!() } // paper-api/src/main/java/org/bukkit/block/Block.java:193
-pub fn get_block_key_x(packed: i64) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/Block.java:205
-pub fn get_block_key_y(packed: i64) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/Block.java:217
-pub fn get_block_key_z(packed: i64) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/Block.java:229
+pub fn get_block_key_3(x: i32, y: i32, z: i32) -> i64 { ((x as i64) & 0x7FFFFFF) | (((z as i64) & 0x7FFFFFF) << 27) | ((y as i64) << 54) } // paper-api/src/main/java/org/bukkit/block/Block.java:193
+pub fn get_block_key_x(packed: i64) -> i32 { ((packed << 37) >> 37) as i32 } // paper-api/src/main/java/org/bukkit/block/Block.java:205
+pub fn get_block_key_y(packed: i64) -> i32 { (packed >> 54) as i32 } // paper-api/src/main/java/org/bukkit/block/Block.java:217
+pub fn get_block_key_z(packed: i64) -> i32 { ((packed << 10) >> 37) as i32 } // paper-api/src/main/java/org/bukkit/block/Block.java:229

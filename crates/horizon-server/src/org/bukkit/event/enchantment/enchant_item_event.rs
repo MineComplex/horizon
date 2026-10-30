@@ -34,24 +34,24 @@ impl std::ops::Deref for EnchantItemEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:23
 impl EnchantItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(enchanter: JRef<dyn Player>, view: JRef<dyn InventoryView>, table: JRef<dyn Block>, item: JRef<ItemStack>, level: i32, enchants: &HashMap<JRef<dyn EnchantmentTrait>, i32>, enchantment_hint: JRef<dyn EnchantmentTrait>, level_hint: i32, button: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:150
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:155
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:160
-    pub fn get_enchanter(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:54
-    pub fn get_enchant_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:64
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:74
-    pub fn set_item(&self, item: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:82
-    pub fn get_exp_level_cost(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:92
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:150
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:155
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:160
+    pub fn get_enchanter(&self) -> JRef<dyn Player> { self.enchanter.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:54
+    pub fn get_enchant_block(&self) -> JRef<dyn Block> { self.table.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:64
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:74
+    pub fn set_item(&self, item: JRef<ItemStack>) { self.item.set(item); } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:82
+    pub fn get_exp_level_cost(&self) -> i32 { self.level.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:92
     pub fn set_exp_level_cost(&self, level: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:102
-    pub fn get_enchants_to_add(&self) -> HashMap<JRef<dyn EnchantmentTrait>, i32> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:115
-    pub fn get_enchantment_hint(&self) -> JRef<dyn EnchantmentTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:126
-    pub fn get_level_hint(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:137
-    pub fn which_button(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:146
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:166
+    pub fn get_enchants_to_add(&self) -> HashMap<JRef<dyn EnchantmentTrait>, i32> { self.enchants.get() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:115
+    pub fn get_enchantment_hint(&self) -> JRef<dyn EnchantmentTrait> { self.enchantment_hint.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:126
+    pub fn get_level_hint(&self) -> i32 { self.level_hint } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:137
+    pub fn which_button(&self) -> i32 { self.button } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:146
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/enchantment/EnchantItemEvent.java:166
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

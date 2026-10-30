@@ -9,7 +9,8 @@ pub struct ConfigurationOptions {
     pub this: Weak<dyn ConfigurationOptionsTrait>,
     pub path_separator: Mut<char>, // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:10
     pub copy_defaults: Mut<bool>, // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:11
-    pub configuration: JRef<dyn Configuration>, // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:12
+    /// Weak: the configuration owns its options (Java's cycle would leak here).
+    pub configuration: Weak<dyn Configuration>, // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:12
 }
 pub trait ConfigurationOptionsTrait: JObject {
     fn as_configuration_options(&self) -> &ConfigurationOptions;
@@ -25,13 +26,33 @@ impl std::ops::Deref for dyn ConfigurationOptionsTrait {
 }
 impl ConfigurationOptions {
     pub fn this(&self) -> JRef<dyn ConfigurationOptionsTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ConfigurationOptionsTrait + 'static>(this: &Weak<S>, configuration: JRef<dyn Configuration>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:14
+    pub fn new_base<S: ConfigurationOptionsTrait + 'static>(this: &Weak<S>, configuration: JRef<dyn Configuration>) -> Self {
+        let this: Weak<dyn ConfigurationOptionsTrait> = this.clone();
+        ConfigurationOptions {
+            this,
+            path_separator: Mut::new('.'),
+            copy_defaults: Mut::new(false),
+            configuration: Arc::downgrade(&configuration),
+        }
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:14
     pub fn new(configuration: JRef<dyn Configuration>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, configuration)) }
-    pub fn configuration(&self) -> JRef<dyn Configuration> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:23
-    pub fn path_separator(&self) -> char { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:37
-    pub fn path_separator_1(&self, value: char) -> JRef<dyn ConfigurationOptionsTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:51
-    pub fn copy_defaults(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:71
-    pub fn copy_defaults_1(&self, value: bool) -> JRef<dyn ConfigurationOptionsTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:90
+    pub fn configuration(&self) -> JRef<dyn Configuration> {
+        self.configuration.upgrade().expect("configuration")
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:23
+    pub fn path_separator(&self) -> char {
+        self.path_separator.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:37
+    pub fn path_separator_1(&self, value: char) -> JRef<dyn ConfigurationOptionsTrait> {
+        self.path_separator.set(value);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:51
+    pub fn copy_defaults(&self) -> bool {
+        self.copy_defaults.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:71
+    pub fn copy_defaults_1(&self, value: bool) -> JRef<dyn ConfigurationOptionsTrait> {
+        self.copy_defaults.set(value);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/configuration/ConfigurationOptions.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

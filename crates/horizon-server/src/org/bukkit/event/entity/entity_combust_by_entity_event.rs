@@ -25,9 +25,9 @@ impl std::ops::Deref for EntityCombustByEntityEvent {
 }
 impl EntityCombustByEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(combuster: JRef<dyn Entity>, combustee: JRef<dyn Entity>, duration: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:14
-    pub fn new_3(combuster: JRef<dyn Entity>, combustee: JRef<dyn Entity>, duration: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:20
-    pub fn get_combuster(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:31
+    pub fn new(combuster: JRef<dyn Entity>, combustee: JRef<dyn Entity>, duration: i32) -> JRef<Self> { Self::new_3(combuster, combustee, duration as f32) } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:14
+    pub fn new_3(combuster: JRef<dyn Entity>, combustee: JRef<dyn Entity>, duration: f32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityCombustByEntityEvent { base: EntityCombustEvent::new_base_2(this, combustee, duration), this: this.clone(), combuster: combuster }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:20
+    pub fn get_combuster(&self) -> JRef<dyn Entity> { self.combuster.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByEntityEvent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

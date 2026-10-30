@@ -21,19 +21,47 @@ impl std::ops::Deref for ThrownEggHatchEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:19
 impl ThrownEggHatchEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(egg: JRef<dyn Egg>, hatching: bool, num_hatches: i8, hatching_type: EntityType) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:26
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:109
-    pub fn get_egg(&self) -> JRef<dyn Egg> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:39
-    pub fn is_hatching(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:49
-    pub fn set_hatching(&self, hatching: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:59
-    pub fn get_hatching_type(&self) -> EntityType { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:68
-    pub fn set_hatching_type(&self, hatch_type: EntityType) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:77
-    pub fn get_num_hatches(&self) -> i8 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:93
-    pub fn set_num_hatches(&self, num_hatches: i8) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:105
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:114
+    pub fn new(egg: JRef<dyn Egg>, hatching: bool, num_hatches: i8, hatching_type: EntityType) -> JRef<Self> {
+Arc::new_cyclic(|this| ThrownEggHatchEvent {
+base: Event::new_base(this),
+this: this.clone(),
+egg: egg,
+hatching: Mut::new(hatching),
+num_hatches: Mut::new(num_hatches),
+hatch_type: Mut::new(hatching_type),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:26
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:109
+    pub fn get_egg(&self) -> JRef<dyn Egg> {
+self.egg.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:39
+    pub fn is_hatching(&self) -> bool {
+self.hatching.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:49
+    pub fn set_hatching(&self, hatching: bool) {
+self.hatching.set(hatching)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:59
+    pub fn get_hatching_type(&self) -> EntityType {
+self.hatch_type.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:68
+    pub fn set_hatching_type(&self, hatch_type: EntityType) {
+assert!(hatch_type.is_spawnable(), "Can't spawn that entity type from an egg!");
+self.hatch_type.set(hatch_type);
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:77
+    pub fn get_num_hatches(&self) -> i8 {
+self.num_hatches.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:93
+    pub fn set_num_hatches(&self, num_hatches: i8) {
+self.num_hatches.set(num_hatches)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:105
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ThrownEggHatchEvent.java:114
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

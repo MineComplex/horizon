@@ -14,20 +14,113 @@ pub struct SpawnRule {
 }
 impl SpawnRule {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(min_block_light: i32, max_block_light: i32, min_sky_light: i32, max_sky_light: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:34
-    pub fn serialize(&self) -> HashMap<String, JObjectRef> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:165
-    pub fn get_min_block_light(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:54
-    pub fn set_min_block_light(&self, min_block_light: i32) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:64
-    pub fn get_max_block_light(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:77
-    pub fn set_max_block_light(&self, max_block_light: i32) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:87
-    pub fn get_min_sky_light(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:98
-    pub fn set_min_sky_light(&self, min_sky_light: i32) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:107
-    pub fn get_max_sky_light(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:119
-    pub fn set_max_sky_light(&self, max_sky_light: i32) { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:128
-    pub fn equals(&self, obj: JObjectRef) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:134
-    pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:144
-    pub fn clone(&self) -> JRef<SpawnRule> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:155
-    pub fn deserialize(args: &HashMap<String, JObjectRef>) -> JRef<SpawnRule> { todo!() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:183
+    pub fn new(min_block_light: i32, max_block_light: i32, min_sky_light: i32, max_sky_light: i32) -> JRef<Self> {
+        assert!(min_block_light <= max_block_light, "minBlockLight must be <= maxBlockLight ({} <= {})", min_block_light, max_block_light);
+        assert!(min_sky_light <= max_sky_light, "minSkyLight must be <= maxSkyLight ({} <= {})", min_sky_light, max_sky_light);
+        assert!(min_block_light >= 0, "minBlockLight must be >= 0 (given {})", min_block_light);
+        assert!(max_block_light >= 0, "maxBlockLight must be >= 0 (given {})", max_block_light);
+        assert!(min_sky_light >= 0, "minSkyLight must be >= 0 (given {})", min_sky_light);
+        assert!(max_sky_light >= 0, "maxSkyLight must be >= 0 (given {})", max_sky_light);
+        Arc::new_cyclic(|this| SpawnRule {
+            this: this.clone(),
+            min_block_light: Mut::new(min_block_light),
+            max_block_light: Mut::new(max_block_light),
+            min_sky_light: Mut::new(min_sky_light),
+            max_sky_light: Mut::new(max_sky_light),
+        })
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:34
+    pub fn serialize(&self) -> HashMap<String, JObjectRef> {
+        // Java: LinkedHashMaps
+        let mut result: HashMap<String, JObjectRef> = HashMap::new();
+        let mut block: HashMap<String, JObjectRef> = HashMap::new();
+        let mut sky: HashMap<String, JObjectRef> = HashMap::new();
+        block.insert("min".to_string(), Arc::new(self.get_min_block_light()));
+        block.insert("max".to_string(), Arc::new(self.get_max_block_light()));
+        sky.insert("min".to_string(), Arc::new(self.get_min_sky_light()));
+        sky.insert("max".to_string(), Arc::new(self.get_max_sky_light()));
+        result.insert("block-light".to_string(), Arc::new(block));
+        result.insert("sky-light".to_string(), Arc::new(sky));
+        result
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:165
+    pub fn get_min_block_light(&self) -> i32 { self.min_block_light.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:54
+    pub fn set_min_block_light(&self, min_block_light: i32) {
+        assert!(min_block_light >= 0, "minBlockLight must be >= 0 (given {})", min_block_light);
+        assert!(min_block_light <= self.max_block_light.get(), "minBlockLight must be <= maxBlockLight ({} <= {})", min_block_light, self.max_block_light.get());
+        self.min_block_light.set(min_block_light);
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:64
+    pub fn get_max_block_light(&self) -> i32 { self.max_block_light.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:77
+    pub fn set_max_block_light(&self, max_block_light: i32) {
+        assert!(max_block_light >= 0, "maxBlockLight must be >= 0 (given {})", max_block_light);
+        self.max_block_light.set(max_block_light);
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:87
+    pub fn get_min_sky_light(&self) -> i32 { self.min_sky_light.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:98
+    pub fn set_min_sky_light(&self, min_sky_light: i32) {
+        assert!(min_sky_light >= 0, "minSkyLight must be >= 0 (given {})", min_sky_light);
+        assert!(min_sky_light <= self.max_sky_light.get(), "minSkyLight must be <= maxSkyLight ({} <= {})", min_sky_light, self.max_sky_light.get());
+        self.min_sky_light.set(min_sky_light);
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:107
+    pub fn get_max_sky_light(&self) -> i32 { self.max_sky_light.get() } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:119
+    pub fn set_max_sky_light(&self, max_sky_light: i32) {
+        assert!(max_sky_light >= 0, "maxSkyLight must be >= 0 (given {})", max_sky_light);
+        self.max_sky_light.set(max_sky_light);
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:128
+    pub fn equals(&self, obj: JObjectRef) -> bool {
+        let Some(other) = cast::<SpawnRule, _>(&obj) else {
+            return false;
+        };
+        self.min_block_light.get() == other.min_block_light.get()
+            && self.max_block_light.get() == other.max_block_light.get()
+            && self.min_sky_light.get() == other.min_sky_light.get()
+            && self.max_sky_light.get() == other.max_sky_light.get()
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:134
+    pub fn hash_code(&self) -> i32 {
+        let mut hash = self.min_block_light.get();
+        hash = (hash << 4) + self.max_block_light.get();
+        hash = (hash << 4) + self.min_sky_light.get();
+        hash = (hash << 4) + self.max_sky_light.get();
+        hash
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:144
+    pub fn clone(&self) -> JRef<SpawnRule> {
+        // Object.clone(): a shallow copy of the fields
+        Arc::new_cyclic(|this| SpawnRule {
+            this: this.clone(),
+            min_block_light: Mut::new(self.min_block_light.get()),
+            max_block_light: Mut::new(self.max_block_light.get()),
+            min_sky_light: Mut::new(self.min_sky_light.get()),
+            max_sky_light: Mut::new(self.max_sky_light.get()),
+        })
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:155
+    pub fn deserialize(args: &HashMap<String, JObjectRef>) -> JRef<SpawnRule> {
+        let mut min_block = 0;
+        let mut max_block = 0;
+        let mut min_sky = 0;
+        let mut max_sky = 0;
+
+        let block = args.get("block-light");
+        let sky = args.get("sky-light");
+
+        // (int) map.get(k): a ClassCastException when the value isn't an Integer
+        let int = |o: Option<&JObjectRef>| -> i32 { *o.and_then(|o| cast::<i32, _>(o)).expect("ClassCastException: not an Integer") };
+        if let Some(block_map) = block.and_then(|b| cast::<HashMap<String, JObjectRef>, _>(b)) {
+            if block_map.contains_key("min") {
+                min_block = int(block_map.get("min"));
+            }
+            if block_map.contains_key("max") {
+                max_block = int(block_map.get("max"));
+            }
+        }
+
+        if let Some(sky_map) = sky.and_then(|s| cast::<HashMap<String, JObjectRef>, _>(s)) {
+            if sky_map.contains_key("min") {
+                min_sky = int(sky_map.get("min"));
+            }
+            if sky_map.contains_key("max") {
+                max_sky = int(sky_map.get("max"));
+            }
+        }
+
+        SpawnRule::new(min_block, max_block, min_sky, max_sky)
+    } // paper-api/src/main/java/org/bukkit/block/spawner/SpawnRule.java:183
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

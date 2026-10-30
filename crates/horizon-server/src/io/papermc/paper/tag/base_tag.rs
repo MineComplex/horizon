@@ -48,12 +48,12 @@ impl<T: JGeneric, C: JGeneric> BaseTag<T, C> {
     pub fn new_base_3<S: BaseTagTrait<T, C> + 'static>(this: &Weak<S>, clazz: Class, key: JRef<NamespacedKey>, values: &Vec<T>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:30
     pub fn new_base_3_<S: BaseTagTrait<T, C> + 'static>(this: &Weak<S>, clazz: Class, key: JRef<NamespacedKey>, values: &Vec<T>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:34
     pub fn new_base_4<S: BaseTagTrait<T, C> + 'static>(this: &Weak<S>, clazz: Class, key: JRef<NamespacedKey>, values: &Vec<T>, global_predicates: &Vec<JRef<dyn Predicate<T>>>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:38
-    pub fn get_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:65
+    pub fn get_key(&self) -> JRef<NamespacedKey> { self.key.clone() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:65
     pub fn get_values(&self) -> HashSet<T> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:71
     pub fn is_tagged(&self, item: T) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:77
     pub fn create_enum_set<E: JGeneric>(&self, enum_class: Class) -> HashSet<E> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:45
     pub fn lock(&self) -> C { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:50
-    pub fn is_locked(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:55
+    pub fn is_locked(&self) -> bool { self.locked.get() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:55
     pub fn check_lock(&self) { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:59
     pub fn add(&self, tags: &Vec<JRef<dyn Tag<T>>>) -> C { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:82
     pub fn add_1(&self, values: &Vec<T>) -> C { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/BaseTag.java:90

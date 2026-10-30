@@ -30,16 +30,16 @@ impl std::ops::Deref for dyn BlockGrowEventTrait {
     type Target = BlockGrowEvent;
     fn deref(&self) -> &BlockGrowEvent { self.as_block_grow_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:27
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:27
 impl BlockGrowEvent {
     pub fn this(&self) -> JRef<dyn BlockGrowEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockGrowEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:32
+    pub fn new_base<S: BlockGrowEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> Self { BlockGrowEvent { base: BlockEvent::new_base(this, block), this: this.clone(), new_state: new_state, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:32
     pub fn new(block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, new_state)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:48
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:53
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:58
-    pub fn get_new_state(&self) -> JRef<dyn BlockState> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:43
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:64
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:48
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:53
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:58
+    pub fn get_new_state(&self) -> JRef<dyn BlockState> { self.new_state.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:43
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockGrowEvent.java:64
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

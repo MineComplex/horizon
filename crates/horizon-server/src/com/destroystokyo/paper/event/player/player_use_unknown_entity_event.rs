@@ -24,16 +24,37 @@ impl std::ops::Deref for PlayerUseUnknownEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:23
 impl PlayerUseUnknownEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity_id: i32, attack: bool, hand: EquipmentSlot, clicked_position: Option<JRef<dyn VectorTrait>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:30
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:77
-    pub fn get_entity_id(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:44
-    pub fn is_attack(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:53
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:62
-    pub fn get_clicked_relative_position(&self) -> Option<JRef<dyn VectorTrait>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:73
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:82
+    pub fn new(player: JRef<dyn Player>, entity_id: i32, attack: bool, hand: EquipmentSlot, clicked_position: Option<JRef<dyn VectorTrait>>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerUseUnknownEntityEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+entity_id: entity_id,
+attack: attack,
+hand: hand,
+clicked_position: clicked_position,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:30
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:77
+    pub fn get_entity_id(&self) -> i32 {
+self.entity_id.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:44
+    pub fn is_attack(&self) -> bool {
+self.attack.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:53
+    pub fn get_hand(&self) -> EquipmentSlot {
+self.hand.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:62
+    pub fn get_clicked_relative_position(&self) -> Option<JRef<dyn VectorTrait>> {
+self.clicked_position.as_ref().map(|clicked_position| VectorTrait::clone(&**clicked_position))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:73
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerUseUnknownEntityEvent.java:82
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

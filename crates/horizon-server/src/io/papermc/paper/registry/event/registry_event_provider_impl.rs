@@ -16,7 +16,6 @@ pub struct RegistryEventProviderImpl<T: JGeneric, B: JGeneric> {
     pub _phantom: std::marker::PhantomData<(T, B,)>,
 }
 impl<T: JGeneric, B: JGeneric> RegistryEventProviderImpl<T, B> {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/event/RegistryEventProviderImpl.java:10
     pub fn new_1(registry_key: JRef<dyn RegistryKey<T>>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/event/RegistryEventProviderImpl.java:10
     pub fn entry_add(&self) -> JRef<dyn RegistryEntryAddEventType<T, B>> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/event/RegistryEventProviderImpl.java:17
     pub fn compose(&self) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, JRef<dyn RegistryComposeEvent<T, B>>>> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/event/RegistryEventProviderImpl.java:22
@@ -27,5 +26,5 @@ impl<T: JGeneric, B: JGeneric> RegistryEventProviderImpl<T, B> {
 impl<T: JGeneric, B: JGeneric> RegistryEventProvider<T, B> for RegistryEventProviderImpl<T, B> {
     fn entry_add(&self) -> JRef<dyn RegistryEntryAddEventType<T, B>> { RegistryEventProviderImpl::entry_add(self) }
     fn compose(&self) -> JRef<dyn LifecycleEventTypePrioritizable<JRef<dyn BootstrapContext>, JRef<dyn RegistryComposeEvent<T, B>>>> { RegistryEventProviderImpl::compose(self) }
-    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { todo!("abstract RegistryEventProvider.registryKey") }
+    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { self.registry_key.clone() }
 }

@@ -9,12 +9,38 @@ use crate::api_prelude::*;
 // ---- class com.destroystokyo.paper.utils.PaperPluginLogger (paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:13)
 pub struct PaperPluginLogger {
     pub this: Weak<Self>,
+    /// java.util.logging.Logger's name (the `super(name, null)` call).
+    pub name: String,
+    /// Whether `super.setParent` ran (Java: `getParent() != null`).
+    pub has_parent: AtomicBool,
 }
 impl PaperPluginLogger {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(meta: JRef<dyn PluginMeta>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:32
-    pub fn get_logger(description: JRef<PluginDescriptionFile>) -> Logger { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:16
-    pub fn get_logger_1(meta: JRef<dyn PluginMeta>) -> Logger { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:21
-    pub fn set_parent(&self, parent: Logger) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:36
+    pub fn new(meta: JRef<dyn PluginMeta>) -> JRef<Self> {
+let name = meta.get_logger_prefix().unwrap_or_else(|| meta.get_name());
+Arc::new_cyclic(|this| PaperPluginLogger { this: this.clone(), name, has_parent: AtomicBool::new(false) })
+} // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:32
+    pub fn get_logger(description: JRef<PluginDescriptionFile>) -> Logger {
+PaperPluginLogger::get_logger_1(description)
+} // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:16
+    pub fn get_logger_1(meta: JRef<dyn PluginMeta>) -> Logger {
+let logger = PaperPluginLogger::new(meta.clone());
+// PORT: java.util.logging: LogManager.getLogManager().addLogger(logger), else
+// LogManager.getLogManager().getLogger(prefix or name); PaperPluginLogger extends Logger.
+let manager = crate::java::util::logging::LogManager::get_log_manager();
+if !manager.add_logger(logger.clone()) {
+    return manager.get_logger(&meta.get_logger_prefix().unwrap_or_else(|| meta.get_name()));
+}
+manager.get_logger(&logger.name)
+} // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:21
+    pub fn set_parent(&self, parent: Logger) {
+// PORT: java.util.logging.Logger parent (getParent/setParent)
+if self.has_parent.load(AtomicOrdering::Relaxed) {
+    log::warn!("[{}] Ignoring attempt to change parent of plugin logger", self.name);
+} else {
+    log::debug!("[{}] Setting plugin logger parent to {:?}", self.name, std::any::type_name_of_val(&parent));
+    self.has_parent.store(true, AtomicOrdering::Relaxed);
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/utils/PaperPluginLogger.java:36
 }
 crate::jobject!(PaperPluginLogger);

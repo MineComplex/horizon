@@ -33,9 +33,9 @@ impl std::ops::Deref for InventoryCreativeEvent {
 }
 impl InventoryCreativeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, new_item: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:18
-    pub fn get_cursor(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:24
-    pub fn set_cursor(&self, item: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:30
+    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, new_item: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryClickEvent::new_base(this, view, type_, slot, ClickType::CREATIVE, InventoryAction::PLACE_ALL), this: this.clone(), item: Mut::new(new_item) }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:18
+    pub fn get_cursor(&self) -> JRef<ItemStack> { self.item.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:24
+    pub fn set_cursor(&self, item: Option<JRef<ItemStack>>) { self.item.set(item.expect("item")) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCreativeEvent.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -29,13 +29,13 @@ impl std::ops::Deref for dyn BlockFormEventTrait {
     type Target = BlockFormEvent;
     fn deref(&self) -> &BlockFormEvent { self.as_block_form_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:29
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:29
 impl BlockFormEvent {
     pub fn this(&self) -> JRef<dyn BlockFormEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockFormEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:31
+    pub fn new_base<S: BlockFormEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> Self { BlockFormEvent { base: BlockGrowEvent::new_base(this, block, new_state), this: this.clone() } } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:31
     pub fn new(block: JRef<dyn Block>, new_state: JRef<dyn BlockState>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, new_state)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:36
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:42
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:36
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockFormEvent.java:42
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

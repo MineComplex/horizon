@@ -28,21 +28,21 @@ impl std::ops::Deref for PlayerFishEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:21
 impl PlayerFishEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, entity: Option<JRef<dyn Entity>>, hook_entity: JRef<dyn FishHook>, state: PlayerFishEventState) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:40
     pub fn new_5(player: JRef<dyn Player>, entity: Option<JRef<dyn Entity>>, hook_entity: JRef<dyn FishHook>, hand: Option<EquipmentSlot>, state: PlayerFishEventState) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:117
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:122
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:127
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:117
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:122
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:127
     pub fn get_caught(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:54
-    pub fn get_hook(&self) -> JRef<dyn FishHook> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:64
+    pub fn get_hook(&self) -> JRef<dyn FishHook> { self.hook_entity.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:64
     pub fn get_hand(&self) -> Option<EquipmentSlot> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:78
-    pub fn get_state(&self) -> PlayerFishEventState { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:88
-    pub fn get_exp_to_drop(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:101
-    pub fn set_exp_to_drop(&self, amount: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:113
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:133
+    pub fn get_state(&self) -> PlayerFishEventState { self.state.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:88
+    pub fn get_exp_to_drop(&self) -> i32 { self.exp.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:101
+    pub fn set_exp_to_drop(&self, amount: i32) { self.exp.set(amount) } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:113
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerFishEvent.java:133
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

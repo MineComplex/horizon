@@ -24,21 +24,21 @@ impl std::ops::Deref for TabCompleteEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:32
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:32
 impl TabCompleteEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(sender: JRef<dyn CommandSender>, buffer: &str, completions: &Vec<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:42
     pub fn new_5(sender: JRef<dyn CommandSender>, buffer: &str, completions: &Vec<String>, is_command: bool, location: Option<JRef<Location>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:47
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:114
-    pub fn set_cancelled(&self, cancelled: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:119
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:124
-    pub fn get_sender(&self) -> JRef<dyn CommandSender> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:61
-    pub fn get_buffer(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:71
-    pub fn get_completions(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:82
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:114
+    pub fn set_cancelled(&self, cancelled: bool) { self.cancelled.set(cancelled) } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:119
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:124
+    pub fn get_sender(&self) -> JRef<dyn CommandSender> { self.sender.clone() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:61
+    pub fn get_buffer(&self) -> String { self.buffer.clone() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:71
+    pub fn get_completions(&self) -> Vec<String> { self.completions.get() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:82
     pub fn set_completions(&self, completions: &Vec<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:94
-    pub fn is_command(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:102
+    pub fn is_command(&self) -> bool { self.is_command } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:102
     pub fn get_location(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:109
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:130
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/TabCompleteEvent.java:130
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

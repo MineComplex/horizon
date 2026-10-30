@@ -23,16 +23,29 @@ impl std::ops::Deref for PrePlayerAttackEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:25
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:25
 impl PrePlayerAttackEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, attacked: JRef<dyn Entity>, will_attack: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:62
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:73
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:82
-    pub fn get_attacked(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:45
-    pub fn will_attack(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:58
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:87
+    pub fn new(player: JRef<dyn Player>, attacked: JRef<dyn Entity>, will_attack: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PrePlayerAttackEntityEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            attacked,
+            will_attack,
+            cancelled: Mut::new(!will_attack),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:32
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:62
+    pub fn set_cancelled(&self, cancel: bool) {
+        if !self.will_attack {
+            return;
+        }
+        self.cancelled.set(cancel);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:82
+    pub fn get_attacked(&self) -> JRef<dyn Entity> { self.attacked.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:45
+    pub fn will_attack(&self) -> bool { self.will_attack } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PrePlayerAttackEntityEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

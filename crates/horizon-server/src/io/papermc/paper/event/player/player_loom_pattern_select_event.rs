@@ -24,17 +24,25 @@ impl std::ops::Deref for PlayerLoomPatternSelectEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:18
 impl PlayerLoomPatternSelectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, loom_inventory: JRef<dyn LoomInventory>, pattern_type: JRef<dyn PatternType>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:59
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:64
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:69
-    pub fn get_loom_inventory(&self) -> JRef<dyn LoomInventory> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:37
-    pub fn get_pattern_type(&self) -> JRef<dyn PatternType> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:46
-    pub fn set_pattern_type(&self, pattern_type: JRef<dyn PatternType>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:55
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:74
+    pub fn new(player: JRef<dyn Player>, loom_inventory: JRef<dyn LoomInventory>, pattern_type: JRef<dyn PatternType>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerLoomPatternSelectEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            loom_inventory,
+            pattern_type: Mut::new(pattern_type),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:25
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:59
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:64
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:69
+    pub fn get_loom_inventory(&self) -> JRef<dyn LoomInventory> { self.loom_inventory.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:37
+    pub fn get_pattern_type(&self) -> JRef<dyn PatternType> { self.pattern_type.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:46
+    pub fn set_pattern_type(&self, pattern_type: JRef<dyn PatternType>) { self.pattern_type.set(pattern_type) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:55
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLoomPatternSelectEvent.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

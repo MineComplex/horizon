@@ -13,5 +13,4 @@ pub mod joptsimple;
 pub mod me;
 pub mod net;
 pub mod org;
-pub mod oshi;
 pub mod su;

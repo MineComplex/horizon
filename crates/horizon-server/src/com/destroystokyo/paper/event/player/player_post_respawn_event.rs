@@ -23,13 +23,24 @@ impl std::ops::Deref for PlayerPostRespawnEvent {
     type Target = AbstractRespawnEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:17
 impl PlayerPostRespawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:19
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:42
-    pub fn get_respawned_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:37
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:47
+    pub fn new(respawn_player: JRef<dyn Player>, respawn_location: JRef<Location>, is_bed_spawn: bool, is_anchor_spawn: bool, missing_respawn_block: bool, respawn_reason: PlayerRespawnEventRespawnReason) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerPostRespawnEvent {
+base: AbstractRespawnEvent::new_base(this, respawn_player, respawn_location, is_bed_spawn, is_anchor_spawn, missing_respawn_block, respawn_reason),
+this: this.clone(),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:19
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:42
+    pub fn get_respawned_location(&self) -> JRef<Location> {
+self.base.get_respawn_location()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:37
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerPostRespawnEvent.java:47
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -15,4 +15,6 @@ pub trait PaperClassLoaderStorage: JObject {
     fn unregister_classloader(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorage.java:76
     fn register_unsafe_plugin(&self, plugin_loader: JRef<dyn ConfiguredPluginClassLoader>) -> bool; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorage.java:90
 }
-pub fn instance() -> JRef<dyn PaperClassLoaderStorage> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorage.java:30
+pub fn instance() -> JRef<dyn PaperClassLoaderStorage> {
+    crate::io::papermc::paper::plugin::provider::classloader::paper_class_loader_storage_access::INSTANCE.clone()
+    } // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorage.java:30

@@ -26,9 +26,9 @@ impl std::ops::Deref for ItemSpawnEvent {
 }
 impl ItemSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(spawnee: JRef<dyn Item>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:19
-    pub fn new_2(spawnee: JRef<dyn Item>, loc: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:13
-    pub fn get_entity(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:24
+    pub fn new(spawnee: JRef<dyn Item>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ItemSpawnEvent { base: EntitySpawnEvent::new_base(this, spawnee), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:19
+    pub fn new_2(spawnee: JRef<dyn Item>, loc: JRef<Location>) -> JRef<Self> { Self::new(spawnee) } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:13
+    pub fn get_entity(&self) -> JRef<dyn Item> { cast::<dyn Item, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ItemSpawnEvent.java:24
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -27,21 +27,53 @@ impl std::ops::Deref for BlockDestroyEvent {
     type Target = BlockExpEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:24
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:24
 impl BlockDestroyEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, new_state: JRef<dyn BlockData>, effect_block: JRef<dyn BlockData>, xp: i32, will_drop: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:33
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:99
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:107
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:112
-    pub fn get_effect_block(&self) -> JRef<dyn BlockData> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:46
-    pub fn set_effect_block(&self, effect_block: JRef<dyn BlockData>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:57
-    pub fn get_new_state(&self) -> JRef<dyn BlockData> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:64
-    pub fn will_drop(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:71
-    pub fn set_will_drop(&self, will_drop: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:78
-    pub fn play_effect(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:85
-    pub fn set_play_effect(&self, play_effect: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:92
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:117
+    pub fn new(block: JRef<dyn Block>, new_state: JRef<dyn BlockData>, effect_block: JRef<dyn BlockData>, xp: i32, will_drop: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| BlockDestroyEvent {
+base: BlockExpEvent::new_base(this, block, xp),
+this: this.clone(),
+new_state: new_state,
+will_drop: Mut::new(will_drop),
+play_effect: Mut::new(true),
+effect_block: Mut::new(effect_block),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:33
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:99
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:107
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:112
+    pub fn get_effect_block(&self) -> JRef<dyn BlockData> {
+self.effect_block.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:46
+    pub fn set_effect_block(&self, effect_block: JRef<dyn BlockData>) {
+self.effect_block.set(BlockData::clone(&*effect_block))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:57
+    pub fn get_new_state(&self) -> JRef<dyn BlockData> {
+BlockData::clone(&*self.new_state)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:64
+    pub fn will_drop(&self) -> bool {
+self.will_drop.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:71
+    pub fn set_will_drop(&self, will_drop: bool) {
+self.will_drop.set(will_drop)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:78
+    pub fn play_effect(&self) -> bool {
+self.play_effect.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:85
+    pub fn set_play_effect(&self, play_effect: bool) {
+self.play_effect.set(play_effect)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:92
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BlockDestroyEvent.java:117
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

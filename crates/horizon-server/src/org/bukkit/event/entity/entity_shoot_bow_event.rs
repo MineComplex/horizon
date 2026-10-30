@@ -18,8 +18,8 @@ use crate::api_prelude::*;
 pub struct EntityShootBowEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub bow: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:21
-    pub consumable: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:22
+    pub bow: Option<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:21
+    pub consumable: Option<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:22
     pub projectile: Mut<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:23
     pub hand: EquipmentSlot, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:24
     pub force: f32, // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:25
@@ -30,28 +30,28 @@ impl std::ops::Deref for EntityShootBowEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:19
 impl EntityShootBowEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(shooter: JRef<dyn LivingEntity>, bow: Option<JRef<ItemStack>>, projectile: JRef<dyn Entity>, force: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:30
-    pub fn new_5(shooter: JRef<dyn LivingEntity>, bow: Option<JRef<ItemStack>>, arrow_item: JRef<ItemStack>, projectile: JRef<dyn Entity>, force: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:36
-    pub fn new_7(shooter: JRef<dyn LivingEntity>, bow: Option<JRef<ItemStack>>, consumable: Option<JRef<ItemStack>>, projectile: JRef<dyn Entity>, hand: EquipmentSlot, force: f32, consume_item: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:42
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:53
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:172
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:177
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:182
-    pub fn get_bow(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:64
-    pub fn get_consumable(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:77
-    pub fn get_projectile(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:87
-    pub fn set_projectile(&self, projectile: JRef<dyn Entity>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:97
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:106
-    pub fn get_force(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:116
-    pub fn set_consume_item(&self, consume_item: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:134
-    pub fn should_consume_item(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:144
+    pub fn new_5(shooter: JRef<dyn LivingEntity>, bow: Option<JRef<ItemStack>>, arrow_item: JRef<ItemStack>, projectile: JRef<dyn Entity>, force: f32) -> JRef<Self> { Self::new_7(shooter, bow, Some(arrow_item), projectile, EquipmentSlot::HAND, force, true) } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:36
+    pub fn new_7(shooter: JRef<dyn LivingEntity>, bow: Option<JRef<ItemStack>>, consumable: Option<JRef<ItemStack>>, projectile: JRef<dyn Entity>, hand: EquipmentSlot, force: f32, consume_item: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityShootBowEvent { base: EntityEvent::new_base(this, shooter), this: this.clone(), bow: bow, consumable: consumable, projectile: Mut::new(projectile), hand: hand, force: force, consume_item: Mut::new(consume_item), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:42
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:53
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:172
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:177
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:182
+    pub fn get_bow(&self) -> Option<JRef<ItemStack>> { self.bow.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:64
+    pub fn get_consumable(&self) -> Option<JRef<ItemStack>> { self.consumable.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:77
+    pub fn get_projectile(&self) -> JRef<dyn Entity> { self.projectile.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:87
+    pub fn set_projectile(&self, projectile: JRef<dyn Entity>) { self.projectile.set(projectile); } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:97
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:106
+    pub fn get_force(&self) -> f32 { self.force } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:116
+    pub fn set_consume_item(&self, consume_item: bool) { self.consume_item.set(consume_item); } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:134
+    pub fn should_consume_item(&self) -> bool { self.consume_item.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:144
     pub fn get_arrow_item(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:151
     pub fn set_consume_arrow(&self, consume_arrow: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:159
     pub fn get_consume_arrow(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:167
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:188
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityShootBowEvent.java:188
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

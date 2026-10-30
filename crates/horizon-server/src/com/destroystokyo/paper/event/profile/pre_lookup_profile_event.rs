@@ -19,18 +19,43 @@ impl std::ops::Deref for PreLookupProfileEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:27
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:27
 impl PreLookupProfileEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:34
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:104
-    pub fn get_name(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:43
-    pub fn get_uuid(&self) -> Option<Uuid> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:54
-    pub fn set_uuid(&self, uuid: Option<Uuid>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:65
-    pub fn get_profile_properties(&self) -> HashSet<ProfileProperty> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:74
-    pub fn set_profile_properties(&self, properties: &mut HashSet<ProfileProperty>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:86
-    pub fn add_profile_properties(&self, properties: &mut HashSet<ProfileProperty>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:99
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:109
+    pub fn new(name: &str) -> JRef<Self> {
+Arc::new_cyclic(|this| PreLookupProfileEvent {
+    base: Event::new_base_1(this, !crate::org::bukkit::bukkit::Bukkit::is_primary_thread()),
+    this: this.clone(),
+    name: name.to_string(),
+    uuid: Mut::new(None),
+    properties: Mut::new(HashSet::new()),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:34
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:104
+    pub fn get_name(&self) -> String {
+self.name.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:43
+    pub fn get_uuid(&self) -> Option<Uuid> {
+self.uuid.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:54
+    pub fn set_uuid(&self, uuid: Option<Uuid>) {
+self.uuid.set(uuid)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:65
+    pub fn get_profile_properties(&self) -> HashSet<ProfileProperty> {
+self.properties.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:74
+    pub fn set_profile_properties(&self, properties: &mut HashSet<ProfileProperty>) {
+self.properties.set(HashSet::new());
+self.properties.borrow_mut().extend(properties.iter().cloned());
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:86
+    pub fn add_profile_properties(&self, properties: &mut HashSet<ProfileProperty>) {
+self.properties.borrow_mut().extend(properties.iter().cloned());
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:99
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/profile/PreLookupProfileEvent.java:109
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -8,7 +8,6 @@ pub mod craft_block_vector;
 pub mod craft_chat_message;
 pub mod craft_difficulty;
 pub mod craft_dimension_util;
-pub mod craft_icon_cache;
 pub mod craft_legacy;
 pub mod craft_location;
 pub mod craft_magic_numbers;

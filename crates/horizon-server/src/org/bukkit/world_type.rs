@@ -17,7 +17,29 @@ pub enum WorldType {
 pub struct WorldTypeData {
     pub name: String,
 }
-pub static BY_NAME: LazyLock<HashMap<String, WorldType>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/WorldType.java:20
+pub static BY_NAME: LazyLock<HashMap<String, WorldType>> = LazyLock::new(|| {
+    let mut by_name = HashMap::new();
+    for type_ in WorldType::VALUES {
+        by_name.insert(type_.data().name.clone(), type_);
+    }
+    by_name
+});
+static WORLD_TYPE_DATA: LazyLock<Vec<WorldTypeData>> = LazyLock::new(|| {
+    WorldType::VALUES
+        .into_iter()
+        .map(|t| WorldTypeData {
+            name: match t {
+                WorldType::NORMAL => "DEFAULT",
+                WorldType::FLAT => "FLAT",
+                WorldType::LARGE_BIOMES => "LARGEBIOMES",
+                WorldType::AMPLIFIED => "AMPLIFIED",
+                WorldType::SINGLE_BIOME_SURFACE => "SINGLE_BIOME_SURFACE",
+                WorldType::DEBUG_ALL_BLOCK_STATES => "DEBUG",
+            }
+            .to_string(),
+        })
+        .collect()
+}); // paper-api/src/main/java/org/bukkit/WorldType.java:20
 impl WorldType {
     pub const VALUES: [WorldType; 6] = [WorldType::NORMAL, WorldType::FLAT, WorldType::LARGE_BIOMES, WorldType::AMPLIFIED, WorldType::SINGLE_BIOME_SURFACE, WorldType::DEBUG_ALL_BLOCK_STATES];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -26,8 +48,10 @@ impl WorldType {
     }
     pub fn value_of(name: &str) -> Option<WorldType> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static WorldTypeData { todo!("paper-api/src/main/java/org/bukkit/WorldType.java:12") }
-    pub fn get_name(self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/WorldType.java:32
-    pub fn get_by_name(name: &str) -> Option<WorldType> { todo!() } // paper-api/src/main/java/org/bukkit/WorldType.java:43
+    pub fn data(self) -> &'static WorldTypeData {
+        &WORLD_TYPE_DATA[self as usize]
+    }
+    pub fn get_name(self) -> String { self.data().name.clone() } // paper-api/src/main/java/org/bukkit/WorldType.java:32
+    pub fn get_by_name(name: &str) -> Option<WorldType> { BY_NAME.get(&name.to_uppercase()).copied() } // paper-api/src/main/java/org/bukkit/WorldType.java:43
 }
 crate::jobject!(WorldType);

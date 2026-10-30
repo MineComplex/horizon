@@ -18,16 +18,54 @@ pub trait PlayerProfile: crate::org::bukkit::profile::player_profile::PlayerProf
     fn set_property(&self, property: ProfileProperty); // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:93
     fn set_properties(&self, properties: &Vec<ProfileProperty>); // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:101
     fn remove_property(&self, property: Option<String>) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:109
-    fn remove_property_1(&self, property: ProfileProperty) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:117
-    fn remove_properties(&self, properties: &Vec<ProfileProperty>) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:127
+    fn remove_property_1(&self, property: ProfileProperty) -> bool {
+self.remove_property(Some(property.get_name()))
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:117
+    fn remove_properties(&self, properties: &Vec<ProfileProperty>) -> bool {
+let mut removed = false;
+for property in properties {
+    if self.remove_property_1(property.clone()) {
+        removed = true;
+    }
+}
+removed
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:127
     fn clear_properties(&self); // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:140
     fn complete_from_cache(&self) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:154
     fn complete_from_cache_1(&self, online_mode: bool) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:163
     fn complete_from_cache_2(&self, lookup_uuid: bool, online_mode: bool) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:173
-    fn complete(&self) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:183
+    fn complete(&self) -> bool {
+self.complete_1(true)
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:183
     fn complete_1(&self, textures: bool) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:198
     fn complete_2(&self, textures: bool, online_mode: bool) -> bool; // paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:210
-    fn has_textures(&self) -> bool { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:248
-    fn as_object_contents(&self) -> ObjectContents { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:260
-    fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) { todo!() } // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:265
+    fn has_textures(&self) -> bool {
+self.has_property(Some("textures".to_string()))
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:248
+    fn as_object_contents(&self) -> ObjectContents {
+// PORT: ObjectContents.playerHead(this) needs `this` as a JRef<dyn SkinSource>; a trait default only has &self.
+ObjectContents::player_head(self)
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:260
+    fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) {
+if self.get_properties().is_empty() {
+    if let Some(id) = self.get_id() {
+        builder.id(Some(id));
+    } else if let Some(name) = self.get_name() {
+        builder.name(Some(name));
+    }
+} else {
+    builder.id(self.get_id()).name(self.get_name()).profile_properties(
+        self.get_properties()
+            .iter()
+            .map(|prop| {
+                crate::net::kyori::adventure::text::object::PlayerHeadObjectContents::property(
+                    &prop.get_name(),
+                    &prop.get_value(),
+                    prop.get_signature(),
+                )
+            })
+            .collect(),
+    );
+}
+} // default, paper-api/src/main/java/com/destroystokyo/paper/profile/PlayerProfile.java:265
 }

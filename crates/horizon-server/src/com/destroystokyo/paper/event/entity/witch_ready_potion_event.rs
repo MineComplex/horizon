@@ -24,17 +24,38 @@ impl std::ops::Deref for WitchReadyPotionEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:15
 impl WitchReadyPotionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(witch: JRef<dyn Witch>, potion: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn Witch> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:47
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:52
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:57
-    pub fn get_potion(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:34
-    pub fn set_potion(&self, potion: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:43
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:62
+    pub fn new(witch: JRef<dyn Witch>, potion: Option<JRef<ItemStack>>) -> JRef<Self> {
+Arc::new_cyclic(|this| WitchReadyPotionEvent {
+base: EntityEvent::new_base(this, witch),
+this: this.clone(),
+potion: Mut::new(potion),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn Witch> {
+cast::<dyn Witch, _>(&self.base.get_entity()).expect("Witch")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:26
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:47
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:52
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:57
+    pub fn get_potion(&self) -> Option<JRef<ItemStack>> {
+self.potion.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:34
+    pub fn set_potion(&self, potion: Option<JRef<ItemStack>>) {
+self.potion.set(potion.map(|potion| ItemStack::clone(&potion)))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:43
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchReadyPotionEvent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -31,10 +31,10 @@ impl std::ops::Deref for dyn InventoryInteractEventTrait {
 }
 impl InventoryInteractEvent {
     pub fn this(&self) -> JRef<dyn InventoryInteractEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: InventoryInteractEventTrait + 'static>(this: &Weak<S>, transaction: JRef<dyn InventoryView>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:17
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:65
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:79
-    pub fn get_who_clicked(&self) -> JRef<dyn HumanEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:27
-    pub fn set_result(&self, new_result: EventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:39
-    pub fn get_result(&self) -> EventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:50
+    pub fn new_base<S: InventoryInteractEventTrait + 'static>(this: &Weak<S>, transaction: JRef<dyn InventoryView>) -> Self { Self { base: InventoryEvent::new_base(this, transaction), this: this.clone(), result: Mut::new(EventResult::DEFAULT) } } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:17
+    pub fn is_cancelled(&self) -> bool { self.this().get_result() == EventResult::DENY } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:65
+    pub fn set_cancelled(&self, cancel: bool) { self.this().set_result(if cancel { EventResult::DENY } else { EventResult::ALLOW }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:79
+    pub fn get_who_clicked(&self) -> JRef<dyn HumanEntity> { self.this().get_view().get_player() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:27
+    pub fn set_result(&self, new_result: EventResult) { self.result.set(new_result) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:39
+    pub fn get_result(&self) -> EventResult { self.result.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryInteractEvent.java:50
 }

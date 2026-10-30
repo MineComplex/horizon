@@ -23,16 +23,35 @@ impl std::ops::Deref for EndermanEscapeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:13
 impl EndermanEscapeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Enderman>, reason: EndermanEscapeEventReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:18
-    pub fn get_entity(&self) -> JRef<dyn Enderman> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:24
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:38
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:50
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:55
-    pub fn get_reason(&self) -> EndermanEscapeEventReason { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:34
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:60
+    pub fn new(entity: JRef<dyn Enderman>, reason: EndermanEscapeEventReason) -> JRef<Self> {
+Arc::new_cyclic(|this| EndermanEscapeEvent {
+base: EntityEvent::new_base(this, entity),
+this: this.clone(),
+reason: reason,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:18
+    pub fn get_entity(&self) -> JRef<dyn Enderman> {
+cast::<dyn Enderman, _>(&self.base.get_entity()).expect("Enderman")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:24
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:38
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:50
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:55
+    pub fn get_reason(&self) -> EndermanEscapeEventReason {
+self.reason.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:34
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EndermanEscapeEvent.java:60
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

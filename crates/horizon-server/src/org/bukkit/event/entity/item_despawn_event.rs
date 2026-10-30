@@ -24,16 +24,16 @@ impl std::ops::Deref for ItemDespawnEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:19
 impl ItemDespawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(despawnee: JRef<dyn Item>, location: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:47
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:52
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:57
+    pub fn new(despawnee: JRef<dyn Item>, location: JRef<Location>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| ItemDespawnEvent { base: EntityEvent::new_base(this, despawnee), this: this.clone(), location: location, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn Item> { cast::<dyn Item, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:31
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:47
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:52
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:57
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:42
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:63
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/ItemDespawnEvent.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

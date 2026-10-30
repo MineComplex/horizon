@@ -33,9 +33,9 @@ pub trait ItemMeta: Cloneable + ConfigurationSerializable + PersistentDataHolder
     fn has_custom_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:52
     fn custom_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:61
     fn custom_name_1(&self, custom_name: Component); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:68
-    fn has_display_name(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:76
-    fn display_name(&self) -> Component { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:89
-    fn display_name_1(&self, display_name: Component) { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:100
+    fn has_display_name(&self) -> bool { self.has_custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:76
+    fn display_name(&self) -> Component { self.custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:89
+    fn display_name_1(&self, display_name: Component) { self.custom_name_1(display_name); } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:100
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:115
     fn get_display_name_component(&self) -> Vec<BaseComponent>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:129
     fn set_display_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:139

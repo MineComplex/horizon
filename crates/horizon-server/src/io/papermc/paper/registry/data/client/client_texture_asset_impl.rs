@@ -12,14 +12,13 @@ pub struct ClientTextureAssetImpl {
     pub texture_path: JRef<dyn Key>,
 }
 impl ClientTextureAssetImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/client/ClientTextureAssetImpl.java:11
     pub fn new_2(identifier: JRef<dyn Key>, texture_path: JRef<dyn Key>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/client/ClientTextureAssetImpl.java:11
     pub fn path_from_identifier(identifier: JRef<dyn Key>) -> JRef<dyn Key> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/client/ClientTextureAssetImpl.java:24
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ClientTextureAsset for ClientTextureAssetImpl {
-    fn identifier(&self) -> JRef<dyn Key> { todo!("abstract ClientTextureAsset.identifier") }
-    fn texture_path(&self) -> JRef<dyn Key> { todo!("abstract ClientTextureAsset.texturePath") }
+    fn identifier(&self) -> JRef<dyn Key> { self.identifier.clone() }
+    fn texture_path(&self) -> JRef<dyn Key> { self.texture_path.clone() }
 }
 crate::jobject!(ClientTextureAssetImpl: dyn ClientTextureAsset);

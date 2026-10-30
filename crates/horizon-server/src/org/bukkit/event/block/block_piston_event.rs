@@ -30,9 +30,9 @@ impl std::ops::Deref for dyn BlockPistonEventTrait {
 }
 impl BlockPistonEvent {
     pub fn this(&self) -> JRef<dyn BlockPistonEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockPistonEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, direction: BlockFace) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:17
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:44
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:49
+    pub fn new_base<S: BlockPistonEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, direction: BlockFace) -> Self { BlockPistonEvent { base: BlockEvent::new_base(this, block), this: this.clone(), direction: direction, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:17
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:44
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:49
     pub fn is_sticky(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:27
-    pub fn get_direction(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:36
+    pub fn get_direction(&self) -> BlockFace { self.direction.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockPistonEvent.java:36
 }

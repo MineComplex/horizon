@@ -35,10 +35,10 @@ impl std::ops::Deref for CraftItemEvent {
 }
 impl CraftItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(recipe: JRef<dyn Recipe>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:17
-    pub fn new_7(recipe: JRef<dyn Recipe>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:23
-    pub fn get_inventory(&self) -> JRef<dyn CraftingInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:29
-    pub fn get_recipe(&self) -> JRef<dyn Recipe> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:38
+    pub fn new(recipe: JRef<dyn Recipe>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryClickEvent::new_base(this, view, type_, slot, click, action), this: this.clone(), recipe: recipe }) } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:17
+    pub fn new_7(recipe: JRef<dyn Recipe>, view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryClickEvent::new_base_6(this, view, type_, slot, click, action, key), this: this.clone(), recipe: recipe }) } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:23
+    pub fn get_inventory(&self) -> JRef<dyn CraftingInventory> { cast::<dyn CraftingInventory, _>(&InventoryEvent::get_inventory(self)).expect("CraftingInventory") } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:29
+    pub fn get_recipe(&self) -> JRef<dyn Recipe> { self.recipe.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/CraftItemEvent.java:38
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

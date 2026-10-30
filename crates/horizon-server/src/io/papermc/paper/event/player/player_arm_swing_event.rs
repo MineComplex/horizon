@@ -26,8 +26,18 @@ impl std::ops::Deref for PlayerArmSwingEvent {
 }
 impl PlayerArmSwingEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, equipment_slot: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerArmSwingEvent.java:15
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerArmSwingEvent.java:26
+    pub fn new(player: JRef<dyn Player>, equipment_slot: EquipmentSlot) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerArmSwingEvent {
+            base: PlayerAnimationEvent::new_base_2(
+                this,
+                player,
+                if equipment_slot == EquipmentSlot::HAND { PlayerAnimationType::ARM_SWING } else { PlayerAnimationType::OFF_ARM_SWING },
+            ),
+            this: this.clone(),
+            equipment_slot,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerArmSwingEvent.java:15
+    pub fn get_hand(&self) -> EquipmentSlot { self.equipment_slot.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerArmSwingEvent.java:26
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

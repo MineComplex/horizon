@@ -19,7 +19,7 @@ use crate::api_prelude::*;
 pub struct SpawnerSpawnEvent {
     pub base: EntitySpawnEvent,
     pub this: Weak<Self>,
-    pub spawner: JRef<dyn CreatureSpawner>, // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:16
+    pub spawner: Option<JRef<dyn CreatureSpawner>>, // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:16
 }
 impl std::ops::Deref for SpawnerSpawnEvent {
     type Target = EntitySpawnEvent;
@@ -27,8 +27,8 @@ impl std::ops::Deref for SpawnerSpawnEvent {
 }
 impl SpawnerSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(spawnee: JRef<dyn Entity>, spawner: Option<JRef<dyn CreatureSpawner>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:18
-    pub fn get_spawner(&self) -> Option<JRef<dyn CreatureSpawner>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:31
+    pub fn new(spawnee: JRef<dyn Entity>, spawner: Option<JRef<dyn CreatureSpawner>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| SpawnerSpawnEvent { base: EntitySpawnEvent::new_base(this, spawnee), this: this.clone(), spawner: spawner }) } // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:18
+    pub fn get_spawner(&self) -> Option<JRef<dyn CreatureSpawner>> { self.spawner.clone() } // paper-api/src/main/java/org/bukkit/event/entity/SpawnerSpawnEvent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

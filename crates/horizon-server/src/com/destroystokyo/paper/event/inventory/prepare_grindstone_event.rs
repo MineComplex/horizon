@@ -35,9 +35,16 @@ impl std::ops::Deref for dyn PrepareGrindstoneEventTrait {
 }
 impl PrepareGrindstoneEvent {
     pub fn this(&self) -> JRef<dyn PrepareGrindstoneEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PrepareGrindstoneEventTrait + 'static>(this: &Weak<S>, inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareGrindstoneEvent.java:20
+    pub fn new_base<S: PrepareGrindstoneEventTrait + 'static>(this: &Weak<S>, inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> Self {
+PrepareGrindstoneEvent {
+base: PrepareResultEvent::new_base(this, inventory, result),
+this: this.clone(),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareGrindstoneEvent.java:20
     pub fn new(inventory: JRef<dyn InventoryView>, result: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, inventory, result)) }
-    pub fn get_inventory(&self) -> JRef<dyn GrindstoneInventory> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareGrindstoneEvent.java:25
+    pub fn get_inventory(&self) -> JRef<dyn GrindstoneInventory> {
+cast::<dyn GrindstoneInventory, _>(&self.base.get_inventory()).expect("GrindstoneInventory")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/inventory/PrepareGrindstoneEvent.java:25
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

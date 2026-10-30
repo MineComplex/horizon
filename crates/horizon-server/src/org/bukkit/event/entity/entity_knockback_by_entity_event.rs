@@ -29,7 +29,7 @@ impl std::ops::Deref for EntityKnockbackByEntityEvent {
 impl EntityKnockbackByEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(entity: JRef<dyn LivingEntity>, source: JRef<dyn Entity>, cause: EntityKnockbackEventKnockbackCause, force: f64, raw_knockback: JRef<dyn VectorTrait>, knockback: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackByEntityEvent.java:21
-    pub fn get_source_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackByEntityEvent.java:33
+    pub fn get_source_entity(&self) -> JRef<dyn Entity> { self.source.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackByEntityEvent.java:33
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -20,13 +20,13 @@ impl std::ops::Deref for EntityRemoveEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:21
 impl EntityRemoveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, cause: EntityRemoveEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:25
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:41
-    pub fn get_cause(&self) -> EntityRemoveEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:36
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:47
+    pub fn new(entity: JRef<dyn Entity>, cause: EntityRemoveEventCause) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityRemoveEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), cause: cause }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:25
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:41
+    pub fn get_cause(&self) -> EntityRemoveEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:36
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityRemoveEvent.java:47
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

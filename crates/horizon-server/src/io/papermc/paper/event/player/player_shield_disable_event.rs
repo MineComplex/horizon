@@ -23,17 +23,28 @@ impl std::ops::Deref for PlayerShieldDisableEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:24
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:24
 impl PlayerShieldDisableEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, damager: JRef<dyn Entity>, cooldown: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:72
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:77
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:82
-    pub fn get_damager(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:43
-    pub fn get_cooldown(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:55
-    pub fn set_cooldown(&self, cooldown: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:67
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:87
+    pub fn new(player: JRef<dyn Player>, damager: JRef<dyn Entity>, cooldown: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerShieldDisableEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            damager,
+            cooldown: Mut::new(cooldown),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:31
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:72
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:77
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:82
+    pub fn get_damager(&self) -> JRef<dyn Entity> { self.damager.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:43
+    pub fn get_cooldown(&self) -> i32 { self.cooldown.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:55
+    pub fn set_cooldown(&self, cooldown: i32) {
+        assert!(cooldown >= 0, "The cooldown has to be equal to or greater than 0!");
+        self.cooldown.set(cooldown);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerShieldDisableEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

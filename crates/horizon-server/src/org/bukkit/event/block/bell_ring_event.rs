@@ -33,17 +33,17 @@ impl std::ops::Deref for dyn BellRingEventTrait {
     type Target = BellRingEvent;
     fn deref(&self) -> &BellRingEvent { self.as_bell_ring_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:17
 impl BellRingEvent {
     pub fn this(&self) -> JRef<dyn BellRingEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: BellRingEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, direction: BlockFace, entity: Option<JRef<dyn Entity>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:24
     pub fn new(block: JRef<dyn Block>, direction: BlockFace, entity: Option<JRef<dyn Entity>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, direction, entity)) }
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:51
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:56
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:61
-    pub fn get_direction(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:36
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:51
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:56
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:61
+    pub fn get_direction(&self) -> BlockFace { self.direction.clone() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:36
     pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:46
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BellRingEvent.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

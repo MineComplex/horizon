@@ -26,17 +26,29 @@ impl std::ops::Deref for WorldBorderCenterChangeEvent {
     type Target = WorldBorderEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:17
 impl WorldBorderCenterChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, old_center: JRef<Location>, new_center: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:24
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:58
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:63
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:68
-    pub fn get_old_center(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:36
-    pub fn get_new_center(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:45
-    pub fn set_new_center(&self, new_center: JRef<Location>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:73
+    pub fn new(world: JRef<dyn World>, world_border: JRef<dyn WorldBorder>, old_center: JRef<Location>, new_center: JRef<Location>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| WorldBorderCenterChangeEvent {
+            base: WorldBorderEvent::new_base(this, world, world_border),
+            this: this.clone(),
+            old_center,
+            new_center: Mut::new(new_center),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:24
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:58
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:63
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:68
+    pub fn get_old_center(&self) -> JRef<Location> {
+        Location::clone(&self.old_center)
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:36
+    pub fn get_new_center(&self) -> JRef<Location> { self.new_center.get() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:45
+    pub fn set_new_center(&self, new_center: JRef<Location>) {
+        self.new_center.set(Location::clone(&new_center));
+    } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/border/WorldBorderCenterChangeEvent.java:73
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

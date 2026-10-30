@@ -25,17 +25,17 @@ impl std::ops::Deref for EntityPickupItemEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:15
 impl EntityPickupItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn LivingEntity>, item: JRef<dyn Item>, remaining: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:22
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:54
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:59
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:64
-    pub fn get_item(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:40
-    pub fn get_remaining(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:50
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:70
+    pub fn new(entity: JRef<dyn LivingEntity>, item: JRef<dyn Item>, remaining: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPickupItemEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), item: item, remaining: remaining, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:22
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:29
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:54
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:59
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:64
+    pub fn get_item(&self) -> JRef<dyn Item> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:40
+    pub fn get_remaining(&self) -> i32 { self.remaining } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:50
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPickupItemEvent.java:70
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

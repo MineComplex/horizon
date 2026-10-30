@@ -26,9 +26,19 @@ impl std::ops::Deref for SlimeChangeDirectionEvent {
 }
 impl SlimeChangeDirectionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>, yaw: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:18
-    pub fn get_new_yaw(&self) -> f32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:29
-    pub fn set_new_yaw(&self, yaw: f32) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:38
+    pub fn new(cube_mob: JRef<dyn AbstractCubeMob>, yaw: f32) -> JRef<Self> {
+Arc::new_cyclic(|this| SlimeChangeDirectionEvent {
+base: SlimePathfindEvent::new_base(this, cube_mob),
+this: this.clone(),
+yaw: Mut::new(yaw),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:18
+    pub fn get_new_yaw(&self) -> f32 {
+self.yaw.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:29
+    pub fn set_new_yaw(&self, yaw: f32) {
+self.yaw.set(yaw)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/SlimeChangeDirectionEvent.java:38
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

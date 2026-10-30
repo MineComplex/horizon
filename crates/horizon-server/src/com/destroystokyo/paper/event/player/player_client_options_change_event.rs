@@ -32,30 +32,102 @@ impl std::ops::Deref for PlayerClientOptionsChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:21
 impl PlayerClientOptionsChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, options: &HashMap<JRef<ClientOption<JObjectRef>>, JObjectRef>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:33
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:120
-    pub fn get_locale(&self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:48
-    pub fn has_locale_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:52
-    pub fn get_view_distance(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:56
-    pub fn has_view_distance_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:60
-    pub fn get_chat_visibility(&self) -> ClientOptionChatVisibility { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:64
-    pub fn has_chat_visibility_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:68
-    pub fn has_chat_colors_enabled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:72
-    pub fn has_chat_colors_enabled_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:76
-    pub fn get_skin_parts(&self) -> JRef<dyn SkinParts> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:80
-    pub fn has_skin_parts_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:84
-    pub fn get_main_hand(&self) -> MainHand { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:88
-    pub fn has_main_hand_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:92
-    pub fn has_text_filtering_enabled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:96
-    pub fn has_text_filtering_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:100
-    pub fn allows_server_listings(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:104
-    pub fn has_allow_server_listings_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:108
-    pub fn get_particle_visibility(&self) -> ClientOptionParticleVisibility { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:112
-    pub fn has_particle_visibility_changed(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:116
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:125
+    pub fn new(player: JRef<dyn Player>, options: &HashMap<JRef<ClientOption<JObjectRef>>, JObjectRef>) -> JRef<Self> {
+let locale: String = option_value(options, &crate::com::destroystokyo::paper::client_option::LOCALE);
+let view_distance: i32 = option_value(options, &crate::com::destroystokyo::paper::client_option::VIEW_DISTANCE);
+let chat_visibility: ClientOptionChatVisibility =
+    option_value(options, &crate::com::destroystokyo::paper::client_option::CHAT_VISIBILITY);
+let chat_colors: bool = option_value(options, &crate::com::destroystokyo::paper::client_option::CHAT_COLORS_ENABLED);
+let skinparts = option_entry(options, &crate::com::destroystokyo::paper::client_option::SKIN_PARTS);
+let skinparts = cast::<dyn SkinParts, _>(&skinparts).expect("SkinParts");
+let main_hand: MainHand = option_value(options, &crate::com::destroystokyo::paper::client_option::MAIN_HAND);
+let allows_server_listings: bool =
+    option_value(options, &crate::com::destroystokyo::paper::client_option::ALLOW_SERVER_LISTINGS);
+let text_filtering_enabled: bool =
+    option_value(options, &crate::com::destroystokyo::paper::client_option::TEXT_FILTERING_ENABLED);
+let particle_visibility: ClientOptionParticleVisibility =
+    option_value(options, &crate::com::destroystokyo::paper::client_option::PARTICLE_VISIBILITY);
+Arc::new_cyclic(|this| PlayerClientOptionsChangeEvent {
+    base: PlayerEvent::new_base(this, player),
+    this: this.clone(),
+    locale,
+    view_distance,
+    chat_visibility,
+    chat_colors,
+    skinparts,
+    main_hand,
+    allows_server_listings,
+    text_filtering_enabled,
+    particle_visibility,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:33
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:120
+    pub fn get_locale(&self) -> String {
+self.locale.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:48
+    pub fn has_locale_changed(&self) -> bool {
+// PORT: Player.getClientOption is a generic method (`where Self: Sized`), not callable on dyn Player yet.
+self.locale != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::LOCALE.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:52
+    pub fn get_view_distance(&self) -> i32 {
+self.view_distance.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:56
+    pub fn has_view_distance_changed(&self) -> bool {
+self.view_distance != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::VIEW_DISTANCE.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:60
+    pub fn get_chat_visibility(&self) -> ClientOptionChatVisibility {
+self.chat_visibility.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:64
+    pub fn has_chat_visibility_changed(&self) -> bool {
+self.chat_visibility != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::CHAT_VISIBILITY.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:68
+    pub fn has_chat_colors_enabled(&self) -> bool {
+self.chat_colors.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:72
+    pub fn has_chat_colors_enabled_changed(&self) -> bool {
+self.chat_colors != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::CHAT_COLORS_ENABLED.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:76
+    pub fn get_skin_parts(&self) -> JRef<dyn SkinParts> {
+self.skinparts.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:80
+    pub fn has_skin_parts_changed(&self) -> bool {
+self.skinparts.get_raw() != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::SKIN_PARTS.clone()).get_raw()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:84
+    pub fn get_main_hand(&self) -> MainHand {
+self.main_hand.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:88
+    pub fn has_main_hand_changed(&self) -> bool {
+self.main_hand != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::MAIN_HAND.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:92
+    pub fn has_text_filtering_enabled(&self) -> bool {
+self.text_filtering_enabled.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:96
+    pub fn has_text_filtering_changed(&self) -> bool {
+self.text_filtering_enabled
+    != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::TEXT_FILTERING_ENABLED.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:100
+    pub fn allows_server_listings(&self) -> bool {
+self.allows_server_listings.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:104
+    pub fn has_allow_server_listings_changed(&self) -> bool {
+self.allows_server_listings
+    != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::ALLOW_SERVER_LISTINGS.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:108
+    pub fn get_particle_visibility(&self) -> ClientOptionParticleVisibility {
+self.particle_visibility.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:112
+    pub fn has_particle_visibility_changed(&self) -> bool {
+self.particle_visibility
+    != self.player.get_client_option(crate::com::destroystokyo::paper::client_option::PARTICLE_VISIBILITY.clone())
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:116
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerClientOptionsChangeEvent.java:125
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -69,3 +141,18 @@ impl EventTrait for PlayerClientOptionsChangeEvent {
     fn get_handlers(&self) -> JRef<HandlerList> { PlayerClientOptionsChangeEvent::get_handlers(self) }
 }
 crate::jobject!(PlayerClientOptionsChangeEvent: dyn PlayerEventTrait, dyn EventTrait);
+/// `options.get(option)`: the map is keyed by the option objects (identity).
+fn option_entry<T: JGeneric>(
+    options: &HashMap<JRef<ClientOption<JObjectRef>>, JObjectRef>,
+    option: &JRef<ClientOption<T>>,
+) -> JObjectRef {
+    options.iter().find(|(k, _)| same(k, option)).map(|(_, v)| v.clone()).expect("client option")
+}
+/// `(T) options.get(option)`.
+fn option_value<T: JGeneric>(
+    options: &HashMap<JRef<ClientOption<JObjectRef>>, JObjectRef>,
+    option: &JRef<ClientOption<T>>,
+) -> T {
+    // PORT: boxed Java values (String, Integer, Boolean) as JObjectRef.
+    option_entry(options, option).as_any().downcast_ref::<T>().cloned().expect("client option type")
+}

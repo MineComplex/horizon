@@ -21,25 +21,25 @@ impl std::ops::Deref for PlayerPreLoginEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:31
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:31
 impl PlayerPreLoginEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(name: &str, ip_address: std::net::IpAddr) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:39
     pub fn new_3(name: &str, ip_address: std::net::IpAddr, unique_id: Uuid) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:45
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:177
-    pub fn get_result(&self) -> PlayerPreLoginEventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:59
-    pub fn set_result(&self, result: PlayerPreLoginEventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:69
-    pub fn kick_message(&self) -> Component { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:78
-    pub fn kick_message_1(&self, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:88
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:177
+    pub fn get_result(&self) -> PlayerPreLoginEventResult { self.result.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:59
+    pub fn set_result(&self, result: PlayerPreLoginEventResult) { self.result.set(result) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:69
+    pub fn kick_message(&self) -> Component { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:78
+    pub fn kick_message_1(&self, message: Component) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:88
     pub fn disallow(&self, result: PlayerPreLoginEventResult, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:98
     pub fn disallow_2(&self, result: PlayerPreLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:141
     pub fn get_kick_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:109
     pub fn set_kick_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:121
     pub fn allow(&self) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:129
-    pub fn get_name(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:152
-    pub fn get_address(&self) -> std::net::IpAddr { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:162
-    pub fn get_unique_id(&self) -> Uuid { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:172
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:183
+    pub fn get_name(&self) -> String { self.name.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:152
+    pub fn get_address(&self) -> std::net::IpAddr { self.ip_address } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:162
+    pub fn get_unique_id(&self) -> Uuid { self.unique_id } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:172
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerPreLoginEvent.java:183
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

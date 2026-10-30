@@ -28,15 +28,15 @@ impl std::ops::Deref for dyn BlockExpEventTrait {
     type Target = BlockExpEvent;
     fn deref(&self) -> &BlockExpEvent { self.as_block_exp_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:13
 impl BlockExpEvent {
     pub fn this(&self) -> JRef<dyn BlockExpEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockExpEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, exp: i32) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:17
+    pub fn new_base<S: BlockExpEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, exp: i32) -> Self { BlockExpEvent { base: BlockEvent::new_base(this, block), this: this.clone(), exp: Mut::new(exp) } } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:17
     pub fn new(block: JRef<dyn Block>, exp: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, exp)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:43
-    pub fn get_exp_to_drop(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:29
-    pub fn set_exp_to_drop(&self, exp: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:39
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:49
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:43
+    pub fn get_exp_to_drop(&self) -> i32 { self.exp.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:29
+    pub fn set_exp_to_drop(&self, exp: i32) { self.exp.set(exp); } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:39
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExpEvent.java:49
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

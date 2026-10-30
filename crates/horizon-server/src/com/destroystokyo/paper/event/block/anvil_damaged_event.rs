@@ -26,19 +26,48 @@ impl std::ops::Deref for AnvilDamagedEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:20
 impl AnvilDamagedEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(inventory: JRef<dyn InventoryView>, block_data: Option<JRef<dyn BlockData>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:25
-    pub fn get_inventory(&self) -> JRef<dyn AnvilInventory> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:76
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:81
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:86
-    pub fn get_damage_state(&self) -> AnvilDamagedEventDamageState { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:41
-    pub fn set_damage_state(&self, damage_state: AnvilDamagedEventDamageState) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:50
-    pub fn is_breaking(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:59
-    pub fn set_breaking(&self, breaking: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:68
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:91
+    pub fn new(inventory: JRef<dyn InventoryView>, block_data: Option<JRef<dyn BlockData>>) -> JRef<Self> {
+Arc::new_cyclic(|this| AnvilDamagedEvent {
+    base: InventoryEvent::new_base(this, inventory),
+    this: this.clone(),
+    damage_state: Mut::new(AnvilDamagedEventDamageState::get_state(block_data)),
+    cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:25
+    pub fn get_inventory(&self) -> JRef<dyn AnvilInventory> {
+cast::<dyn AnvilInventory, _>(&self.base.get_inventory()).expect("AnvilInventory")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:31
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:76
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:81
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:86
+    pub fn get_damage_state(&self) -> AnvilDamagedEventDamageState {
+self.damage_state.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:41
+    pub fn set_damage_state(&self, damage_state: AnvilDamagedEventDamageState) {
+self.damage_state.set(damage_state)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:50
+    pub fn is_breaking(&self) -> bool {
+self.damage_state.get() == AnvilDamagedEventDamageState::BROKEN
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:59
+    pub fn set_breaking(&self, breaking: bool) {
+if breaking {
+    self.damage_state.set(AnvilDamagedEventDamageState::BROKEN);
+} else if self.damage_state.get() == AnvilDamagedEventDamageState::BROKEN {
+    self.damage_state.set(AnvilDamagedEventDamageState::DAMAGED);
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:68
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:91
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -79,9 +108,33 @@ impl AnvilDamagedEventDamageState {
     }
     pub fn value_of(name: &str) -> Option<AnvilDamagedEventDamageState> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static AnvilDamagedEventDamageStateData { todo!("paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:98") }
-    pub fn get_material(self) -> Material { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:115
-    pub fn get_state(block_data: Option<JRef<dyn BlockData>>) -> AnvilDamagedEventDamageState { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:126
-    pub fn get_state_1(material: Option<Material>) -> AnvilDamagedEventDamageState { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:137
+    pub fn data(self) -> &'static AnvilDamagedEventDamageStateData {
+match self {
+    AnvilDamagedEventDamageState::FULL => &AnvilDamagedEventDamageStateData { material: Material::ANVIL },
+    AnvilDamagedEventDamageState::CHIPPED => &AnvilDamagedEventDamageStateData { material: Material::CHIPPED_ANVIL },
+    AnvilDamagedEventDamageState::DAMAGED => &AnvilDamagedEventDamageStateData { material: Material::DAMAGED_ANVIL },
+    AnvilDamagedEventDamageState::BROKEN => &AnvilDamagedEventDamageStateData { material: Material::AIR },
+}
+}
+    pub fn get_material(self) -> Material {
+self.data().material
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:115
+    pub fn get_state(block_data: Option<JRef<dyn BlockData>>) -> AnvilDamagedEventDamageState {
+match block_data {
+    None => AnvilDamagedEventDamageState::BROKEN,
+    Some(block_data) => AnvilDamagedEventDamageState::get_state_1(Some(block_data.get_material())),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:126
+    pub fn get_state_1(material: Option<Material>) -> AnvilDamagedEventDamageState {
+let Some(material) = material else {
+    return AnvilDamagedEventDamageState::BROKEN;
+};
+for state in AnvilDamagedEventDamageState::VALUES {
+    if state.get_material() == material {
+        return state;
+    }
+}
+panic!("IllegalArgumentException: Material is not an anvil state")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/AnvilDamagedEvent.java:137
 }
 crate::jobject!(AnvilDamagedEventDamageState);

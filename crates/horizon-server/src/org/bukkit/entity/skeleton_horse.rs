@@ -10,6 +10,10 @@ pub trait SkeletonHorse: AbstractHorse {
     fn set_trapped(&self, trapped: bool); // paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:25
     fn get_trap_time(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:35
     fn set_trap_time(&self, trap_time: i32); // paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:45
-    fn is_trap(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:50
-    fn set_trap(&self, trap: bool) { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:58
+    fn is_trap(&self) -> bool {
+        self.is_trapped()
+    } // default, paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:50
+    fn set_trap(&self, trap: bool) {
+        self.set_trapped(trap);
+    } // default, paper-api/src/main/java/org/bukkit/entity/SkeletonHorse.java:58
 }

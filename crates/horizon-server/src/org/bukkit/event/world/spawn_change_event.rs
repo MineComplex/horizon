@@ -20,13 +20,13 @@ impl std::ops::Deref for SpawnChangeEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:15
 impl SpawnChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, previous_location: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:19
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:35
+    pub fn new(world: JRef<dyn World>, previous_location: JRef<Location>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: WorldEvent::new_base(this, world), this: this.clone(), previous_location: previous_location }) } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:19
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:35
     pub fn get_previous_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:41
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/SpawnChangeEvent.java:41
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

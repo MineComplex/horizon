@@ -100,6 +100,7 @@ pub struct StatisticData {
     pub type_: StatisticType,
     pub key: JRef<NamespacedKey>,
 }
+static STATISTIC_DATA: LazyLock<Vec<StatisticData>> = LazyLock::new(|| Statistic::VALUES.into_iter().map(Statistic::new_data).collect());
 impl Statistic {
     pub const VALUES: [Statistic; 86] = [Statistic::ANIMALS_BRED, Statistic::AVIATE_ONE_CM, Statistic::BELL_RING, Statistic::BOAT_ONE_CM, Statistic::ARMOR_CLEANED, Statistic::BANNER_CLEANED, Statistic::CLEAN_SHULKER_BOX, Statistic::CLIMB_ONE_CM, Statistic::CROUCH_ONE_CM, Statistic::DAMAGE_ABSORBED, Statistic::DAMAGE_BLOCKED_BY_SHIELD, Statistic::DAMAGE_DEALT, Statistic::DAMAGE_DEALT_ABSORBED, Statistic::DAMAGE_DEALT_RESISTED, Statistic::DAMAGE_RESISTED, Statistic::DAMAGE_TAKEN, Statistic::DEATHS, Statistic::DROP_COUNT, Statistic::CAKE_SLICES_EATEN, Statistic::ITEM_ENCHANTED, Statistic::FALL_ONE_CM, Statistic::CAULDRON_FILLED, Statistic::FISH_CAUGHT, Statistic::FLY_ONE_CM, Statistic::HAPPY_GHAST_ONE_CM, Statistic::HORSE_ONE_CM, Statistic::DISPENSER_INSPECTED, Statistic::DROPPER_INSPECTED, Statistic::HOPPER_INSPECTED, Statistic::INTERACT_WITH_ANVIL, Statistic::BEACON_INTERACTION, Statistic::INTERACT_WITH_BLAST_FURNACE, Statistic::BREWINGSTAND_INTERACTION, Statistic::INTERACT_WITH_CAMPFIRE, Statistic::INTERACT_WITH_CARTOGRAPHY_TABLE, Statistic::CRAFTING_TABLE_INTERACTION, Statistic::FURNACE_INTERACTION, Statistic::INTERACT_WITH_GRINDSTONE, Statistic::INTERACT_WITH_LECTERN, Statistic::INTERACT_WITH_LOOM, Statistic::INTERACT_WITH_SMITHING_TABLE, Statistic::INTERACT_WITH_SMOKER, Statistic::INTERACT_WITH_STONECUTTER, Statistic::JUMP, Statistic::LEAVE_GAME, Statistic::MINECART_ONE_CM, Statistic::MOB_KILLS, Statistic::NAUTILUS_ONE_CM, Statistic::OPEN_BARREL, Statistic::CHEST_OPENED, Statistic::ENDERCHEST_OPENED, Statistic::SHULKER_BOX_OPENED, Statistic::PIG_ONE_CM, Statistic::NOTEBLOCK_PLAYED, Statistic::RECORD_PLAYED, Statistic::PLAY_ONE_MINUTE, Statistic::PLAYER_KILLS, Statistic::FLOWER_POTTED, Statistic::RAID_TRIGGER, Statistic::RAID_WIN, Statistic::SLEEP_IN_BED, Statistic::SLEEP_IN_STRAW_BED, Statistic::SNEAK_TIME, Statistic::SPRINT_ONE_CM, Statistic::STRIDER_ONE_CM, Statistic::SWIM_ONE_CM, Statistic::TALKED_TO_VILLAGER, Statistic::TARGET_HIT, Statistic::TIME_SINCE_DEATH, Statistic::TIME_SINCE_REST, Statistic::TOTAL_WORLD_TIME, Statistic::TRADED_WITH_VILLAGER, Statistic::TRAPPED_CHEST_TRIGGERED, Statistic::NOTEBLOCK_TUNED, Statistic::CAULDRON_USED, Statistic::WALK_ON_WATER_ONE_CM, Statistic::WALK_ONE_CM, Statistic::WALK_UNDER_WATER_ONE_CM, Statistic::BREAK_ITEM, Statistic::CRAFT_ITEM, Statistic::DROP, Statistic::KILL_ENTITY, Statistic::ENTITY_KILLED_BY, Statistic::MINE_BLOCK, Statistic::PICKUP, Statistic::USE_ITEM];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -108,11 +109,28 @@ impl Statistic {
     }
     pub fn value_of(name: &str) -> Option<Statistic> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static StatisticData { todo!("paper-api/src/main/java/org/bukkit/Statistic.java:9") }
-    pub fn get_key(self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/org/bukkit/Statistic.java:150
-    pub fn get_type(self) -> StatisticType { todo!() } // paper-api/src/main/java/org/bukkit/Statistic.java:118
-    pub fn is_substatistic(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/Statistic.java:134
-    pub fn is_block(self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/Statistic.java:146
+    pub fn data(self) -> &'static StatisticData {
+        &STATISTIC_DATA[self as usize]
+    }
+    /// `Statistic(Type type)`; the no-argument constructor passes `Type.UNTYPED`.
+    fn new_data(self) -> StatisticData {
+        let type_ = match self {
+            Statistic::BREAK_ITEM => StatisticType::ITEM,
+            Statistic::CRAFT_ITEM => StatisticType::ITEM,
+            Statistic::DROP => StatisticType::ITEM,
+            Statistic::KILL_ENTITY => StatisticType::ENTITY,
+            Statistic::ENTITY_KILLED_BY => StatisticType::ENTITY,
+            Statistic::MINE_BLOCK => StatisticType::BLOCK,
+            Statistic::PICKUP => StatisticType::ITEM,
+            Statistic::USE_ITEM => StatisticType::ITEM,
+            _ => StatisticType::UNTYPED,
+        };
+        StatisticData { type_, key: NamespacedKey::minecraft(&self.name().to_lowercase()) }
+    }
+    pub fn get_key(self) -> JRef<NamespacedKey> { self.data().key.clone() } // paper-api/src/main/java/org/bukkit/Statistic.java:150
+    pub fn get_type(self) -> StatisticType { self.data().type_ } // paper-api/src/main/java/org/bukkit/Statistic.java:118
+    pub fn is_substatistic(self) -> bool { self.data().type_ != StatisticType::UNTYPED } // paper-api/src/main/java/org/bukkit/Statistic.java:134
+    pub fn is_block(self) -> bool { self.data().type_ == StatisticType::BLOCK } // paper-api/src/main/java/org/bukkit/Statistic.java:146
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

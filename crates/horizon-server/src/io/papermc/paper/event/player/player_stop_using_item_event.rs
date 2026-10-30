@@ -21,14 +21,21 @@ impl std::ops::Deref for PlayerStopUsingItemEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:16
 impl PlayerStopUsingItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, item: JRef<ItemStack>, ticks_held_for: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:45
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:32
-    pub fn get_ticks_held_for(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:41
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:50
+    pub fn new(player: JRef<dyn Player>, item: JRef<ItemStack>, ticks_held_for: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerStopUsingItemEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            item,
+            ticks_held_for,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:45
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:32
+    pub fn get_ticks_held_for(&self) -> i32 { self.ticks_held_for } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:41
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerStopUsingItemEvent.java:50
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

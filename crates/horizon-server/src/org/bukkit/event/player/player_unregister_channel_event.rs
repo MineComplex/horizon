@@ -22,7 +22,7 @@ impl std::ops::Deref for PlayerUnregisterChannelEvent {
 }
 impl PlayerUnregisterChannelEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, channel: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnregisterChannelEvent.java:12
+    pub fn new(player: JRef<dyn Player>, channel: &str) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerChannelEvent::new_base(this, player, channel), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerUnregisterChannelEvent.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

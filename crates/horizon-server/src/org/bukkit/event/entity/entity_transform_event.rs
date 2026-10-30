@@ -34,18 +34,18 @@ impl std::ops::Deref for dyn EntityTransformEventTrait {
     type Target = EntityTransformEvent;
     fn deref(&self) -> &EntityTransformEvent { self.as_entity_transform_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:17
 impl EntityTransformEvent {
     pub fn this(&self) -> JRef<dyn EntityTransformEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: EntityTransformEventTrait + 'static>(this: &Weak<S>, original: JRef<dyn Entity>, transformed_entities: &Vec<JRef<dyn Entity>>, transform_reason: EntityTransformEventTransformReason) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:25
     pub fn new(original: JRef<dyn Entity>, transformed_entities: &Vec<JRef<dyn Entity>>, transform_reason: EntityTransformEventTransformReason) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, original, transformed_entities, transform_reason)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:63
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:68
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:73
-    pub fn get_transformed_entities(&self) -> Vec<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:38
-    pub fn get_transformed_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:50
-    pub fn get_transform_reason(&self) -> EntityTransformEventTransformReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:59
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:78
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:63
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:68
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:73
+    pub fn get_transformed_entities(&self) -> Vec<JRef<dyn Entity>> { self.transformed_entities.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:38
+    pub fn get_transformed_entity(&self) -> JRef<dyn Entity> { self.converted.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:50
+    pub fn get_transform_reason(&self) -> EntityTransformEventTransformReason { self.transform_reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:59
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityTransformEvent.java:78
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

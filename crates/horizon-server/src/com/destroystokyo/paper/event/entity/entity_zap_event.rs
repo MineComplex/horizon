@@ -35,17 +35,36 @@ impl std::ops::Deref for dyn EntityZapEventTrait {
     type Target = EntityZapEvent;
     fn deref(&self) -> &EntityZapEvent { self.as_entity_zap_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:18
 impl EntityZapEvent {
     pub fn this(&self) -> JRef<dyn EntityZapEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityZapEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, bolt: JRef<dyn LightningStrike>, replacement_entity: JRef<dyn Entity>) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:23
+    pub fn new_base<S: EntityZapEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, bolt: JRef<dyn LightningStrike>, replacement_entity: JRef<dyn Entity>) -> Self {
+EntityZapEvent {
+    base: EntityTransformEvent::new_base(this, entity, &vec![replacement_entity], EntityTransformEventTransformReason::LIGHTNING),
+    this: this.clone(),
+    bolt,
+    cancelled: Mut::new(false),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:23
     pub fn new(entity: JRef<dyn Entity>, bolt: JRef<dyn LightningStrike>, replacement_entity: JRef<dyn Entity>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, bolt, replacement_entity)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:47
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:52
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:57
-    pub fn get_bolt(&self) -> JRef<dyn LightningStrike> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:34
-    pub fn get_replacement_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:43
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:62
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:47
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:52
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:57
+    pub fn get_bolt(&self) -> JRef<dyn LightningStrike> {
+self.bolt.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:34
+    pub fn get_replacement_entity(&self) -> JRef<dyn Entity> {
+self.base.get_transformed_entity()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:43
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityZapEvent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

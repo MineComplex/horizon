@@ -7,7 +7,7 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.configuration.Configuration (paper-api/src/main/java/org/bukkit/configuration/Configuration.java:10)
 pub trait Configuration: ConfigurationSection {
-    fn add_defaults(&self, defaults: &HashMap<String, JObjectRef>); // paper-api/src/main/java/org/bukkit/configuration/Configuration.java:38
+    fn add_defaults(&self, defaults: &IndexMap<String, JObjectRef>); // paper-api/src/main/java/org/bukkit/configuration/Configuration.java:38
     fn add_defaults_1(&self, defaults: JRef<dyn Configuration>); // paper-api/src/main/java/org/bukkit/configuration/Configuration.java:55
     fn set_defaults(&self, defaults: JRef<dyn Configuration>); // paper-api/src/main/java/org/bukkit/configuration/Configuration.java:66
     fn get_defaults(&self) -> Option<JRef<dyn Configuration>>; // paper-api/src/main/java/org/bukkit/configuration/Configuration.java:77

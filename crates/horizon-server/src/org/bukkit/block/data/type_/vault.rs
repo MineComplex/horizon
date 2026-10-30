@@ -7,9 +7,9 @@ use crate::api_prelude::*;
 // ---- interface org.bukkit.block.data.type.Vault (paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:11)
 pub trait Vault: Directional {
     fn get_vault_state(&self) -> VaultState; // paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:18
-    fn get_trial_spawner_state(&self) -> VaultState { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:27
+    fn get_trial_spawner_state(&self) -> VaultState { self.get_vault_state() } // default, paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:27
     fn set_vault_state(&self, state: VaultState); // paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:38
-    fn set_trial_spawner_state(&self, state: VaultState) { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:46
+    fn set_trial_spawner_state(&self, state: VaultState) { self.set_vault_state(state) } // default, paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:46
     fn is_ominous(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:56
     fn set_ominous(&self, ominous: bool); // paper-api/src/main/java/org/bukkit/block/data/type/Vault.java:63
 }

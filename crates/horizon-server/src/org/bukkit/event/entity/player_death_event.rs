@@ -28,7 +28,7 @@ pub struct PlayerDeathEvent {
     pub new_level: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:20
     pub new_total_exp: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:21
     pub show_death_messages: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:22
-    pub death_message: Mut<Component>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:23
+    pub death_message: Mut<Option<Component>>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:23
     pub death_screen_message_override: Mut<Component>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:24
     pub do_exp_drop: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:25
     pub keep_level: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:26
@@ -41,36 +41,36 @@ impl std::ops::Deref for PlayerDeathEvent {
 }
 impl PlayerDeathEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, death_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:57
-    pub fn new_6(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:31
-    pub fn new_6_(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, death_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:63
-    pub fn new_7(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:36
-    pub fn new_8(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:69
-    pub fn new_9(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:41
+    pub fn new(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, death_message: Option<String>) -> JRef<Self> { Self::new_6_(player, damage_source, &drops.clone(), dropped_exp, 0, death_message) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:57
+    pub fn new_6(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { Self::new_7(player, damage_source, &drops.clone(), dropped_exp, 0, death_message, show_death_messages) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:31
+    pub fn new_6_(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, death_message: Option<String>) -> JRef<Self> { Self::new_8(player, damage_source, &drops.clone(), dropped_exp, new_exp, 0, 0, death_message) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:63
+    pub fn new_7(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { Self::new_9(player, damage_source, &drops.clone(), dropped_exp, new_exp, 0, 0, death_message, show_death_messages) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:36
+    pub fn new_8(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<String>) -> JRef<Self> { Self::new_9_(player, damage_source, &drops.clone(), dropped_exp, new_exp, new_total_exp, new_level, death_message, true) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:69
+    pub fn new_9(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<Component>, show_death_messages: bool) -> JRef<Self> { Self::new_10(player, damage_source, &drops.clone(), dropped_exp, new_exp, new_total_exp, new_level, death_message, show_death_messages, true) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:41
     pub fn new_9_(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<String>, do_exp_drop: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:75
     pub fn new_10(player: JRef<dyn Player>, damage_source: JRef<dyn DamageSource>, drops: &Vec<JRef<ItemStack>>, dropped_exp: i32, new_exp: i32, new_total_exp: i32, new_level: i32, death_message: Option<Component>, show_death_messages: bool, do_exp_drop: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:46
-    pub fn get_entity(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:87
-    pub fn get_show_death_messages(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:101
-    pub fn set_show_death_messages(&self, display_death_message: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:113
+    pub fn get_entity(&self) -> JRef<dyn Player> { cast::<dyn Player, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:87
+    pub fn get_show_death_messages(&self) -> bool { self.show_death_messages.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:101
+    pub fn set_show_death_messages(&self, display_death_message: bool) { self.show_death_messages.set(display_death_message); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:113
     pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:123
-    pub fn get_new_exp(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:135
-    pub fn set_new_exp(&self, exp: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:147
-    pub fn get_new_level(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:156
-    pub fn set_new_level(&self, level: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:165
-    pub fn get_new_total_exp(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:174
-    pub fn set_new_total_exp(&self, total_exp: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:183
-    pub fn death_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:201
-    pub fn death_message_1(&self, death_message: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:192
+    pub fn get_new_exp(&self) -> i32 { self.new_exp.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:135
+    pub fn set_new_exp(&self, exp: i32) { self.new_exp.set(exp); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:147
+    pub fn get_new_level(&self) -> i32 { self.new_level.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:156
+    pub fn set_new_level(&self, level: i32) { self.new_level.set(level); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:165
+    pub fn get_new_total_exp(&self) -> i32 { self.new_total_exp.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:174
+    pub fn set_new_total_exp(&self, total_exp: i32) { self.new_total_exp.set(total_exp); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:183
+    pub fn death_message(&self) -> Option<Component> { self.death_message.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:201
+    pub fn death_message_1(&self, death_message: Option<Component>) { self.death_message.set(death_message); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:192
     pub fn set_death_message(&self, death_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:211
     pub fn get_death_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:222
     pub fn death_screen_message_override(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:250
     pub fn death_screen_message_override_1(&self, death_screen_message_override: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:238
-    pub fn should_drop_experience(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:257
-    pub fn set_should_drop_experience(&self, do_exp_drop: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:264
-    pub fn get_keep_level(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:275
-    pub fn set_keep_level(&self, keep_level: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:290
-    pub fn set_keep_inventory(&self, keep_inventory: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:303
-    pub fn get_keep_inventory(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:312
+    pub fn should_drop_experience(&self) -> bool { self.do_exp_drop.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:257
+    pub fn set_should_drop_experience(&self, do_exp_drop: bool) { self.do_exp_drop.set(do_exp_drop); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:264
+    pub fn get_keep_level(&self) -> bool { self.keep_level.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:275
+    pub fn set_keep_level(&self, keep_level: bool) { self.keep_level.set(keep_level); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:290
+    pub fn set_keep_inventory(&self, keep_inventory: bool) { self.keep_inventory.set(keep_inventory); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:303
+    pub fn get_keep_inventory(&self) -> bool { self.keep_inventory.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:312
     pub fn get_items_to_keep(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerDeathEvent.java:340
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

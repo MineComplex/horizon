@@ -25,18 +25,43 @@ impl std::ops::Deref for BeaconEffectEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:18
 impl BeaconEffectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(beacon: JRef<dyn Block>, effect: JRef<PotionEffect>, player: JRef<dyn Player>, primary: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:70
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:80
-    pub fn get_effect(&self) -> JRef<PotionEffect> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:39
-    pub fn set_effect(&self, effect: JRef<PotionEffect>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:48
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:57
-    pub fn is_primary(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:66
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:85
+    pub fn new(beacon: JRef<dyn Block>, effect: JRef<PotionEffect>, player: JRef<dyn Player>, primary: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| BeaconEffectEvent {
+base: BlockEvent::new_base(this, beacon),
+this: this.clone(),
+player: player,
+primary: primary,
+effect: Mut::new(effect),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:26
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:70
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:80
+    pub fn get_effect(&self) -> JRef<PotionEffect> {
+self.effect.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:39
+    pub fn set_effect(&self, effect: JRef<PotionEffect>) {
+self.effect.set(effect)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:48
+    pub fn get_player(&self) -> JRef<dyn Player> {
+self.player.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:57
+    pub fn is_primary(&self) -> bool {
+self.primary.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:66
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/block/BeaconEffectEvent.java:85
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

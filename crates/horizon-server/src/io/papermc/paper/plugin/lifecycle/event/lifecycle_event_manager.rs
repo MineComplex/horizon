@@ -9,7 +9,12 @@ use crate::api_prelude::*;
 // ---- interface io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager (paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventManager.java:14)
 pub trait LifecycleEventManager<O: JGeneric>: Send + Sync + 'static {
     fn register_event_handler(&self, handler_configuration: JRef<dyn LifecycleEventHandlerConfiguration<JObjectRef>>); // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventManager.java:49
-    fn register_event_handler_2<E: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<JObjectRef, E, JObjectRef>>, event_handler: JRef<dyn LifecycleEventHandler<JObjectRef>>) where Self: Sized { todo!() } // default, paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventManager.java:36
+    fn register_event_handler_2<E: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<JObjectRef, E, JObjectRef>>, event_handler: JRef<dyn LifecycleEventHandler<JObjectRef>>) where Self: Sized {
+        let configuration = event_type.new_handler(event_handler);
+        self.register_event_handler(
+            cast::<dyn LifecycleEventHandlerConfiguration<JObjectRef>, _>(&configuration).expect("ClassCastException: not a LifecycleEventHandlerConfiguration"),
+        );
+    } // default, paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventManager.java:36
 }
 impl<O: JGeneric, F: Fn(JRef<dyn LifecycleEventHandlerConfiguration<JObjectRef>>) + Send + Sync + 'static> LifecycleEventManager<O> for F {
     fn register_event_handler(&self, handler_configuration: JRef<dyn LifecycleEventHandlerConfiguration<JObjectRef>>) { self(handler_configuration) }

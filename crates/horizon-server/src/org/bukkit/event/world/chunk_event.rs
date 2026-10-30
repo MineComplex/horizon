@@ -27,5 +27,5 @@ impl std::ops::Deref for dyn ChunkEventTrait {
 impl ChunkEvent {
     pub fn this(&self) -> JRef<dyn ChunkEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ChunkEventTrait + 'static>(this: &Weak<S>, chunk: JRef<dyn Chunk>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkEvent.java:13
-    pub fn get_chunk(&self) -> JRef<dyn Chunk> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkEvent.java:23
+    pub fn get_chunk(&self) -> JRef<dyn Chunk> { self.chunk.get() } // paper-api/src/main/java/org/bukkit/event/world/ChunkEvent.java:23
 }

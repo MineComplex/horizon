@@ -23,18 +23,43 @@ impl std::ops::Deref for IllegalPacketEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:18
 impl IllegalPacketEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, type_: Option<String>, kick_message: Option<String>, e: Throwable) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:25
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:60
-    pub fn is_should_kick(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:33
-    pub fn set_should_kick(&self, should_kick: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:37
-    pub fn get_kick_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:41
-    pub fn set_kick_message(&self, kick_message: Option<String>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:46
-    pub fn get_type(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:50
-    pub fn get_exception_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:55
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:65
+    pub fn new(player: JRef<dyn Player>, type_: Option<String>, kick_message: Option<String>, e: Throwable) -> JRef<Self> {
+Arc::new_cyclic(|this| IllegalPacketEvent {
+    base: PlayerEvent::new_base(this, player),
+    this: this.clone(),
+    type_,
+    exception_message: e.get_message(), // PORT: java.lang.Throwable.getMessage()
+    kick_message: Mut::new(kick_message),
+    should_kick: Mut::new(true),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:25
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:60
+    pub fn is_should_kick(&self) -> bool {
+self.should_kick.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:33
+    pub fn set_should_kick(&self, should_kick: bool) {
+self.should_kick.set(should_kick)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:37
+    pub fn get_kick_message(&self) -> Option<String> {
+self.kick_message.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:41
+    pub fn set_kick_message(&self, kick_message: Option<String>) {
+self.kick_message.set(kick_message)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:46
+    pub fn get_type(&self) -> Option<String> {
+self.type_.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:50
+    pub fn get_exception_message(&self) -> Option<String> {
+self.exception_message.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:55
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/IllegalPacketEvent.java:65
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

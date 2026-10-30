@@ -28,8 +28,8 @@ impl std::ops::Deref for EntityBlockFormEvent {
 }
 impl EntityBlockFormEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, block: JRef<dyn Block>, blockstate: JRef<dyn BlockState>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/EntityBlockFormEvent.java:22
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/EntityBlockFormEvent.java:34
+    pub fn new(entity: JRef<dyn Entity>, block: JRef<dyn Block>, blockstate: JRef<dyn BlockState>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityBlockFormEvent { base: BlockFormEvent::new_base(this, block, blockstate), this: this.clone(), entity: entity }) } // paper-api/src/main/java/org/bukkit/event/block/EntityBlockFormEvent.java:22
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/event/block/EntityBlockFormEvent.java:34
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

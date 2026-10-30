@@ -28,8 +28,8 @@ pub trait PotionMeta: ItemMeta {
     fn get_color(&self) -> Option<Color>; // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:149
     fn set_color(&self, color: Option<Color>); // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:158
     fn compute_effective_color(&self) -> Color; // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:167
-    fn get_custom_name(&self) -> Option<String> { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:190
-    fn set_custom_name(&self, name: Option<String>) { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:202
+    fn get_custom_name(&self) -> Option<String> { self.get_custom_potion_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:190
+    fn set_custom_name(&self, name: Option<String>) { self.set_custom_potion_name(name); } // default, paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:202
     fn has_custom_potion_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:212
     fn get_custom_potion_name(&self) -> Option<String>; // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:222
     fn set_custom_potion_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/PotionMeta.java:230

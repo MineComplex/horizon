@@ -12,6 +12,6 @@ pub trait JukeboxPlayableComponent: ConfigurationSerializable {
     fn get_song_key(&self) -> JRef<NamespacedKey>; // paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:30
     fn set_song(&self, song: JRef<dyn JukeboxSong>); // paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:38
     fn set_song_key(&self, song: JRef<NamespacedKey>); // paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:45
-    fn is_show_in_tooltip(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:53
-    fn set_show_in_tooltip(&self, show: bool) { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:65
+    fn is_show_in_tooltip(&self) -> bool { true } // default, paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:53
+    fn set_show_in_tooltip(&self, show: bool) { let _ = show; } // default, paper-api/src/main/java/org/bukkit/inventory/meta/components/JukeboxPlayableComponent.java:65
 }

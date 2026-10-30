@@ -25,7 +25,7 @@ impl std::ops::Deref for dyn PlayerEventTrait {
 }
 impl PlayerEvent {
     pub fn this(&self) -> JRef<dyn PlayerEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:14
-    pub fn new_base_2<S: PlayerEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, async_: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:18
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:28
+    pub fn new_base<S: PlayerEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>) -> Self { Self { base: Event::new_base(this), this: this.clone(), player: Mut::new(player) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:14
+    pub fn new_base_2<S: PlayerEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, async_: bool) -> Self { Self { base: Event::new_base_1(this, async_), this: this.clone(), player: Mut::new(player) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:18
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEvent.java:28
 }

@@ -25,18 +25,46 @@ impl std::ops::Deref for TurtleLayEggEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:17
 impl TurtleLayEggEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(turtle: JRef<dyn Turtle>, location: JRef<Location>, egg_count: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:24
-    pub fn get_entity(&self) -> JRef<dyn Turtle> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:72
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:77
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:82
-    pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:46
-    pub fn get_egg_count(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:55
-    pub fn set_egg_count(&self, egg_count: i32) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:87
+    pub fn new(turtle: JRef<dyn Turtle>, location: JRef<Location>, egg_count: i32) -> JRef<Self> {
+Arc::new_cyclic(|this| TurtleLayEggEvent {
+base: EntityEvent::new_base(this, turtle),
+this: this.clone(),
+location: location,
+egg_count: Mut::new(egg_count),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:24
+    pub fn get_entity(&self) -> JRef<dyn Turtle> {
+cast::<dyn Turtle, _>(&self.base.get_entity()).expect("Turtle")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:36
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:72
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:77
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:82
+    pub fn get_location(&self) -> JRef<Location> {
+Location::clone(&self.location)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:46
+    pub fn get_egg_count(&self) -> i32 {
+self.egg_count.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:55
+    pub fn set_egg_count(&self, egg_count: i32) {
+if egg_count < 1 {
+    self.cancelled.set(true);
+    return;
+}
+self.egg_count.set(egg_count.min(4));
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:64
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/TurtleLayEggEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

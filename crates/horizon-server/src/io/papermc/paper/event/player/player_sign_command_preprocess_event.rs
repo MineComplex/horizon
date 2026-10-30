@@ -28,9 +28,16 @@ impl std::ops::Deref for PlayerSignCommandPreprocessEvent {
 }
 impl PlayerSignCommandPreprocessEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, message: &str, recipients: &HashSet<JRef<dyn Player>>, sign: JRef<dyn Sign>, side: Side) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:23
-    pub fn get_sign(&self) -> JRef<dyn Sign> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:35
-    pub fn get_side(&self) -> Side { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:44
+    pub fn new(player: JRef<dyn Player>, message: &str, recipients: &HashSet<JRef<dyn Player>>, sign: JRef<dyn Sign>, side: Side) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerSignCommandPreprocessEvent {
+            base: PlayerCommandPreprocessEvent::new_base_3(this, player, message, recipients),
+            this: this.clone(),
+            sign,
+            side,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:23
+    pub fn get_sign(&self) -> JRef<dyn Sign> { self.sign.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:35
+    pub fn get_side(&self) -> Side { self.side.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerSignCommandPreprocessEvent.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -36,19 +36,28 @@ impl std::ops::Deref for dyn WorldGameRuleChangeEventTrait {
     type Target = WorldGameRuleChangeEvent;
     fn deref(&self) -> &WorldGameRuleChangeEvent { self.as_world_game_rule_change_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:20
 impl WorldGameRuleChangeEvent {
     pub fn this(&self) -> JRef<dyn WorldGameRuleChangeEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: WorldGameRuleChangeEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, command_sender: Option<JRef<dyn CommandSender>>, game_rule: JRef<dyn GameRuleTrait<JObjectRef>>, value: &str) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:27
+    pub fn new_base<S: WorldGameRuleChangeEventTrait + 'static>(this: &Weak<S>, world: JRef<dyn World>, command_sender: Option<JRef<dyn CommandSender>>, game_rule: JRef<dyn GameRuleTrait<JObjectRef>>, value: &str) -> Self {
+        WorldGameRuleChangeEvent {
+            base: WorldEvent::new_base(this, world),
+            this: this.clone(),
+            command_sender,
+            game_rule,
+            value: Mut::new(value.to_string()),
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:27
     pub fn new(world: JRef<dyn World>, command_sender: Option<JRef<dyn CommandSender>>, game_rule: JRef<dyn GameRuleTrait<JObjectRef>>, value: &str) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, world, command_sender, game_rule, value)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:76
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:81
-    pub fn get_command_sender(&self) -> Option<JRef<dyn CommandSender>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:40
-    pub fn get_game_rule(&self) -> JRef<dyn GameRuleTrait<JObjectRef>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:49
-    pub fn get_value(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:58
-    pub fn set_value(&self, value: &str) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:67
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:86
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:76
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:81
+    pub fn get_command_sender(&self) -> Option<JRef<dyn CommandSender>> { self.command_sender.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:40
+    pub fn get_game_rule(&self) -> JRef<dyn GameRuleTrait<JObjectRef>> { self.game_rule.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:49
+    pub fn get_value(&self) -> String { self.value.get() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:58
+    pub fn set_value(&self, value: &str) { self.value.set(value) } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/WorldGameRuleChangeEvent.java:86
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

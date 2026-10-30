@@ -38,20 +38,20 @@ impl std::ops::Deref for dyn BlockExplodeEventTrait {
     type Target = BlockExplodeEvent;
     fn deref(&self) -> &BlockExplodeEvent { self.as_block_explode_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:24
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:24
 impl BlockExplodeEvent {
     pub fn this(&self) -> JRef<dyn BlockExplodeEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockExplodeEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, block_state: JRef<dyn BlockState>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:33
+    pub fn new_base<S: BlockExplodeEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, block_state: JRef<dyn BlockState>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> Self { BlockExplodeEvent { base: BlockEvent::new_base(this, block), this: this.clone(), block_state: block_state, blocks: Mut::new(blocks.clone()), yield_: Mut::new(yield_), result: result, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:33
     pub fn new(block: JRef<dyn Block>, block_state: JRef<dyn BlockState>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, block_state, blocks, yield_, result)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:91
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:96
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:101
-    pub fn get_explosion_result(&self) -> ExplosionResult { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:47
-    pub fn get_exploded_block_state(&self) -> JRef<dyn BlockState> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:57
-    pub fn block_list(&self) -> Vec<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:68
-    pub fn get_yield(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:78
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:91
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:96
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:101
+    pub fn get_explosion_result(&self) -> ExplosionResult { self.result.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:47
+    pub fn get_exploded_block_state(&self) -> JRef<dyn BlockState> { self.block_state.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:57
+    pub fn block_list(&self) -> Vec<JRef<dyn Block>> { self.blocks.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:68
+    pub fn get_yield(&self) -> f32 { self.yield_.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:78
     pub fn set_yield(&self, yield_: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:87
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:107
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockExplodeEvent.java:107
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

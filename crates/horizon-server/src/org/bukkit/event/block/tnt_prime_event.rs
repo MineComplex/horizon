@@ -28,19 +28,19 @@ impl std::ops::Deref for TNTPrimeEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:20
 impl TNTPrimeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(block: JRef<dyn Block>, entity: Option<JRef<dyn TNTPrimed>>, ignite_cause: TNTPrimeEventPrimeCause, priming_entity: Option<JRef<dyn Entity>>, priming_block: Option<JRef<dyn Block>>, priming_item: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:92
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:97
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:102
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:92
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:97
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:102
     pub fn get_entity(&self) -> Option<JRef<dyn TNTPrimed>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:45
-    pub fn get_cause(&self) -> TNTPrimeEventPrimeCause { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:55
+    pub fn get_cause(&self) -> TNTPrimeEventPrimeCause { self.ignite_cause.clone() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:55
     pub fn get_priming_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:66
     pub fn get_priming_item(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:76
     pub fn get_priming_block(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:87
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:108
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/TNTPrimeEvent.java:108
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -35,14 +35,32 @@ impl std::ops::Deref for dyn AbstractChatEventTrait {
 }
 impl AbstractChatEvent {
     pub fn this(&self) -> JRef<dyn AbstractChatEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: AbstractChatEventTrait + 'static>(this: &Weak<S>, async_: bool, player: JRef<dyn Player>, viewers: &HashSet<JRef<dyn Audience>>, renderer: JRef<dyn ChatRenderer>, message: Component, original_message: Component, signed_message: JRef<dyn SignedMessage>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:113
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:118
-    pub fn viewers(&self) -> HashSet<JRef<dyn Audience>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:48
-    pub fn renderer(&self) -> JRef<dyn ChatRenderer> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:67
-    pub fn renderer_1(&self, renderer: JRef<dyn ChatRenderer>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:58
-    pub fn message(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:77
-    pub fn message_1(&self, message: Component) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:87
-    pub fn original_message(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:98
-    pub fn signed_message(&self) -> JRef<dyn SignedMessage> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:109
+    pub fn new_base<S: AbstractChatEventTrait + 'static>(this: &Weak<S>, async_: bool, player: JRef<dyn Player>, viewers: &HashSet<JRef<dyn Audience>>, renderer: JRef<dyn ChatRenderer>, message: Component, original_message: Component, signed_message: JRef<dyn SignedMessage>) -> Self {
+        AbstractChatEvent {
+            base: PlayerEvent::new_base_2(this, player, async_),
+            this: this.clone(),
+            // PORT: Java shares the caller's Set; the port copies it (viewers() hands out the live copy via `self.viewers`)
+            viewers: Mut::new(viewers.clone()),
+            renderer: Mut::new(renderer),
+            message: Mut::new(message),
+            original_message,
+            signed_message,
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:31
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:113
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:118
+    pub fn viewers(&self) -> HashSet<JRef<dyn Audience>> { self.viewers.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:48
+    pub fn renderer(&self) -> JRef<dyn ChatRenderer> { self.renderer.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:67
+    pub fn renderer_1(&self, renderer: JRef<dyn ChatRenderer>) {
+        // requireNonNull(renderer, "renderer"): a JRef is never null
+        self.renderer.set(renderer);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:58
+    pub fn message(&self) -> Component { self.message.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:77
+    pub fn message_1(&self, message: Component) {
+        // requireNonNull(message, "message"): a Component is never null
+        self.message.set(message);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:87
+    pub fn original_message(&self) -> Component { self.original_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:98
+    pub fn signed_message(&self) -> JRef<dyn SignedMessage> { self.signed_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AbstractChatEvent.java:109
 }

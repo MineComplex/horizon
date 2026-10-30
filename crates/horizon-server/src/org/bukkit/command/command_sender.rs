@@ -6,6 +6,8 @@ use crate::net::kyori::adventure::chat::ChatTypeBound;
 use crate::net::kyori::adventure::chat::SignedMessage;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::minimessage::tag::resolver::TagResolver;
+use crate::net::kyori::adventure::text::minimessage::MiniMessage;
+use crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer;
 use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::permissions::permissible::Permissible;
 use crate::org::bukkit::server::Server;
@@ -15,20 +17,39 @@ use crate::api_prelude::*;
 pub trait CommandSender: Audience + Permissible {
     fn send_message(&self, message: &str); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:23
     fn send_message_1(&self, messages: &Vec<String>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:34
-    fn send_message_1_2(&self, message: Component) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:137
-    fn send_message_1_3(&self, component: BaseComponent) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:195
-    fn send_message_1_4(&self, components: &Vec<BaseComponent>) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:209
+    fn send_message_1_2(&self, message: Component) {
+        self.send_message(&LegacyComponentSerializer::legacy_section().serialize(&message));
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:137
+    fn send_message_1_3(&self, component: BaseComponent) {
+        self.send_message(&component.to_legacy_text());
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:195
+    fn send_message_1_4(&self, components: &Vec<BaseComponent>) {
+        self.send_message(&crate::net::md_5::bungee::api::chat::TextComponent::new_1(components.clone()).to_legacy_text());
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:209
     fn send_message_2(&self, sender: Option<Uuid>, message: &str); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:45
     fn send_message_2_2(&self, sender: Option<Uuid>, messages: &Vec<String>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:56
-    fn send_message_2_3(&self, message: Component, bound_chat_type: ChatTypeBound) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:142
-    fn send_message_2_4(&self, signed_message: JRef<dyn SignedMessage>, bound_chat_type: ChatTypeBound) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:147
+    fn send_message_2_3(&self, message: Component, bound_chat_type: ChatTypeBound) {
+        let _ = bound_chat_type;
+        self.send_message_1_2(message);
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:142
+    fn send_message_2_4(&self, signed_message: JRef<dyn SignedMessage>, bound_chat_type: ChatTypeBound) {
+        let _ = bound_chat_type;
+        self.send_message_1_2(signed_message.unsigned_content().unwrap_or_else(|| Component::text(&signed_message.message())));
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:147
     fn get_server(&self) -> JRef<dyn Server>; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:64
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:72
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait>; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:125
     fn name(&self) -> Component; // paper-api/src/main/java/org/bukkit/command/CommandSender.java:135
-    fn send_rich_message(&self, message: &str) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:160
-    fn send_rich_message_2(&self, message: &str, resolvers: &Vec<TagResolver>) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:173
-    fn send_plain_message(&self, message: &str) { todo!() } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:182
+    fn send_rich_message(&self, message: &str) {
+        // PORT: MiniMessage.deserialize(String, Pointered) takes this sender as its `Pointered` target.
+        self.send_message_1_2(MiniMessage::mini_message().deserialize_2(message, self));
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:160
+    fn send_rich_message_2(&self, message: &str, resolvers: &Vec<TagResolver>) {
+        self.send_message_1_2(MiniMessage::mini_message().deserialize_3(message, self, resolvers));
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:173
+    fn send_plain_message(&self, message: &str) {
+        self.send_message_1_2(Component::text(message));
+    } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:182
 }
 // ---- class org.bukkit.command.CommandSender.Spigot (paper-api/src/main/java/org/bukkit/command/CommandSender.java:76)
 pub struct CommandSenderSpigot {
@@ -47,12 +68,23 @@ impl std::ops::Deref for dyn CommandSenderSpigotTrait {
 }
 impl CommandSenderSpigot {
     pub fn this(&self) -> JRef<dyn CommandSenderSpigotTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: CommandSenderSpigotTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:76
+    pub fn new_base<S: CommandSenderSpigotTrait + 'static>(this: &Weak<S>) -> Self {
+        let this: Weak<dyn CommandSenderSpigotTrait> = this.clone();
+        CommandSenderSpigot { this }
+    } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:76
     pub fn new() -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this)) }
-    pub fn send_message(&self, component: BaseComponent) { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:84
-    pub fn send_message_1(&self, components: &Vec<BaseComponent>) { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:95
-    pub fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:107
-    pub fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:119
+    pub fn send_message(&self, component: BaseComponent) {
+        panic!("java.lang.UnsupportedOperationException: Not supported yet.");
+    } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:84
+    pub fn send_message_1(&self, components: &Vec<BaseComponent>) {
+        panic!("java.lang.UnsupportedOperationException: Not supported yet.");
+    } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:95
+    pub fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) {
+        panic!("java.lang.UnsupportedOperationException: Not supported yet.");
+    } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:107
+    pub fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) {
+        panic!("java.lang.UnsupportedOperationException: Not supported yet.");
+    } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:119
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

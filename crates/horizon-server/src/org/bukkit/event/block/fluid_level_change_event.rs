@@ -22,16 +22,16 @@ impl std::ops::Deref for FluidLevelChangeEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:17
 impl FluidLevelChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(fluid: JRef<dyn Block>, new_data: JRef<dyn BlockData>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:51
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:56
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:61
-    pub fn get_new_data(&self) -> JRef<dyn BlockData> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:33
+    pub fn new(fluid: JRef<dyn Block>, new_data: JRef<dyn BlockData>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| FluidLevelChangeEvent { base: BlockEvent::new_base(this, fluid), this: this.clone(), new_data: Mut::new(new_data), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:51
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:56
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:61
+    pub fn get_new_data(&self) -> JRef<dyn BlockData> { self.new_data.get() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:33
     pub fn set_new_data(&self, new_data: JRef<dyn BlockData>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:44
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/FluidLevelChangeEvent.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

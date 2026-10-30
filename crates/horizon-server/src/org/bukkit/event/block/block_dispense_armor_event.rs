@@ -28,7 +28,7 @@ impl std::ops::Deref for BlockDispenseArmorEvent {
 impl BlockDispenseArmorEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(block: JRef<dyn Block>, dispensed: JRef<ItemStack>, target: JRef<dyn LivingEntity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseArmorEvent.java:21
-    pub fn get_target_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseArmorEvent.java:32
+    pub fn get_target_entity(&self) -> JRef<dyn LivingEntity> { self.target.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDispenseArmorEvent.java:32
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

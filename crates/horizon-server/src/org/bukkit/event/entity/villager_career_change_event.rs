@@ -25,18 +25,18 @@ impl std::ops::Deref for VillagerCareerChangeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:12
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:12
 impl VillagerCareerChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(villager: JRef<dyn Villager>, profession: JRef<dyn VillagerProfession>, reason: VillagerCareerChangeEventChangeReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:19
-    pub fn get_entity(&self) -> JRef<dyn Villager> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:61
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:66
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:71
-    pub fn get_profession(&self) -> JRef<dyn VillagerProfession> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:37
-    pub fn set_profession(&self, profession: JRef<dyn VillagerProfession>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:47
-    pub fn get_reason(&self) -> VillagerCareerChangeEventChangeReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:56
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:77
+    pub fn new(villager: JRef<dyn Villager>, profession: JRef<dyn VillagerProfession>, reason: VillagerCareerChangeEventChangeReason) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| VillagerCareerChangeEvent { base: EntityEvent::new_base(this, villager), this: this.clone(), profession: Mut::new(profession), reason: reason, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:19
+    pub fn get_entity(&self) -> JRef<dyn Villager> { cast::<dyn Villager, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:61
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:66
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:71
+    pub fn get_profession(&self) -> JRef<dyn VillagerProfession> { self.profession.get() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:37
+    pub fn set_profession(&self, profession: JRef<dyn VillagerProfession>) { self.profession.set(profession); } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:47
+    pub fn get_reason(&self) -> VillagerCareerChangeEventChangeReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:56
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/VillagerCareerChangeEvent.java:77
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

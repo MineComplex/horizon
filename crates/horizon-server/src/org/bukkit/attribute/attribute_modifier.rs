@@ -3,9 +3,12 @@
 use crate::prelude::*;
 use crate::org::bukkit::configuration::serialization::configuration_serializable::ConfigurationSerializable;
 use crate::org::bukkit::inventory::equipment_slot::EquipmentSlot;
+use crate::org::bukkit::inventory::equipment_slot_group;
 use crate::org::bukkit::inventory::equipment_slot_group::EquipmentSlotGroup;
 use crate::org::bukkit::keyed::Keyed;
+use crate::org::bukkit::namespaced_key;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
+use crate::org::bukkit::util::number_conversions::NumberConversions;
 use crate::api_prelude::*;
 
 // ---- class org.bukkit.attribute.AttributeModifier (paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:23)
@@ -16,27 +19,118 @@ pub struct AttributeModifier {
     pub operation: AttributeModifierOperation, // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:28
     pub slot: JRef<EquipmentSlotGroup>, // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:29
 }
-pub static UUID_PATTERN: LazyLock<regex::Regex> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:25
+pub static UUID_PATTERN: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").unwrap()); // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:25
 impl AttributeModifier {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:31
-    pub fn new_3(key: JRef<NamespacedKey>, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:52
-    pub fn new_4(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:36
-    pub fn new_4_(key: JRef<NamespacedKey>, amount: f64, operation: AttributeModifierOperation, slot: JRef<EquipmentSlotGroup>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:57
-    pub fn new_5(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation, slot: Option<EquipmentSlot>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:41
-    pub fn new_5_(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation, slot: JRef<EquipmentSlotGroup>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:46
-    pub fn get_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:89
-    pub fn serialize(&self) -> HashMap<String, JObjectRef> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:147
-    pub fn get_unique_id(&self) -> Uuid { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:74
-    pub fn get_name(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:100
-    pub fn get_amount(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:110
-    pub fn get_operation(&self) -> AttributeModifierOperation { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:119
-    pub fn get_slot(&self) -> Option<EquipmentSlot> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:131
-    pub fn get_slot_group(&self) -> JRef<EquipmentSlotGroup> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:142
-    pub fn equals(&self, other: JObjectRef) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:160
-    pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:170
-    pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:180
-    pub fn deserialize(args: &HashMap<String, JObjectRef>) -> JRef<AttributeModifier> { todo!() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:190
+    pub fn new(name: &str, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> {
+        Self::new_4(Uuid::new_v4(), name, amount, operation)
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:31
+    pub fn new_3(key: JRef<NamespacedKey>, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> {
+        Self::new_4_(key, amount, operation, equipment_slot_group::ANY.clone())
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:52
+    pub fn new_4(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation) -> JRef<Self> {
+        Self::new_5(uuid, name, amount, operation, None)
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:36
+    pub fn new_4_(key: JRef<NamespacedKey>, amount: f64, operation: AttributeModifierOperation, slot: JRef<EquipmentSlotGroup>) -> JRef<Self> {
+        // Preconditions.checkArgument(key/operation/slot != null): never null here
+        Arc::new_cyclic(|this| AttributeModifier { this: this.clone(), key, amount, operation, slot })
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:57
+    pub fn new_5(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation, slot: Option<EquipmentSlot>) -> JRef<Self> {
+        Self::new_5_(uuid, name, amount, operation, match slot {
+            None => equipment_slot_group::ANY.clone(),
+            Some(slot) => slot.get_group(),
+        })
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:41
+    pub fn new_5_(uuid: Uuid, name: &str, amount: f64, operation: AttributeModifierOperation, slot: JRef<EquipmentSlotGroup>) -> JRef<Self> {
+        let _ = name; // Java ignores the name since 1.21
+        Self::new_4_(NamespacedKey::from_string(&uuid.to_string()).expect("Key cannot be null"), amount, operation, slot)
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:46
+    pub fn get_key(&self) -> JRef<NamespacedKey> { self.key.clone() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:89
+    pub fn serialize(&self) -> HashMap<String, JObjectRef> {
+        let mut data: HashMap<String, JObjectRef> = HashMap::new();
+        data.insert("key".to_string(), Arc::new(self.key.to_string()));
+        data.insert("operation".to_string(), Arc::new(self.operation.ordinal()));
+        data.insert("amount".to_string(), Arc::new(self.amount));
+        if !same(&self.slot, &*equipment_slot_group::ANY) {
+            data.insert("slot".to_string(), Arc::new(self.slot.to_string()));
+        }
+        data
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:147
+    pub fn get_unique_id(&self) -> Uuid {
+        let namespaced_key = self.get_key();
+        if namespaced_key.get_namespace() == namespaced_key::MINECRAFT {
+            let key = namespaced_key.get_key();
+            if key.len() == 36 && UUID_PATTERN.is_match(&key) {
+                return Uuid::parse_str(&key).expect("IllegalArgumentException: Invalid UUID string");
+            }
+        }
+        // PORT: UUID.nameUUIDFromBytes (an MD5, version 3 UUID without a namespace) needs a shared helper
+        crate::java::util::name_uuid_from_bytes(namespaced_key.to_string().as_bytes())
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:74
+    pub fn get_name(&self) -> String { self.key.get_key() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:100
+    pub fn get_amount(&self) -> f64 { self.amount } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:110
+    pub fn get_operation(&self) -> AttributeModifierOperation { self.operation } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:119
+    pub fn get_slot(&self) -> Option<EquipmentSlot> { if same(&self.slot, &*equipment_slot_group::ANY) { None } else { Some(self.slot.get_example()) } } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:131
+    pub fn get_slot_group(&self) -> JRef<EquipmentSlotGroup> { self.slot.clone() } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:142
+    pub fn equals(&self, other: JObjectRef) -> bool {
+        let Some(mod_) = cast::<AttributeModifier, _>(&other) else {
+            return false;
+        };
+        let slots = same(&self.slot, &mod_.slot);
+        self.key.equals(mod_.key.clone()) && self.amount == mod_.amount && self.operation == mod_.operation && slots
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:160
+    pub fn hash_code(&self) -> i32 {
+        let mut hash: i32 = 5;
+        hash = 17 * hash + self.key.hash_code();
+        let bits = self.amount.to_bits() as i64; // Double.doubleToLongBits
+        hash = 17 * hash + ((bits ^ ((bits as u64) >> 32) as i64) as i32);
+        // Java: the enum's and the slot group's identity hash codes
+        hash = 17 * hash + self.operation.ordinal();
+        hash = 17 * hash + (Arc::as_ptr(&self.slot) as usize as i32);
+        hash
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:170
+    pub fn to_string(&self) -> String {
+        // {:?} prints doubles as Java's String.valueOf does for ordinary values (1.0, 0.5)
+        format!(
+            "AttributeModifier{{key={}, operation={}, amount={:?}, slot={}}}",
+            self.key.to_string(),
+            self.operation.name(),
+            self.amount,
+            self.slot.to_string()
+        )
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:180
+    pub fn deserialize(args: &HashMap<String, JObjectRef>) -> JRef<AttributeModifier> {
+        // (String) args.get(k), args.get(k).toString(): the values are Strings
+        let string = |k: &str| -> Option<String> { args.get(k).and_then(|o| cast::<String, _>(o)).map(|s| (*s).clone()) };
+        let key = if args.contains_key("uuid") {
+            NamespacedKey::from_string(&string("uuid").unwrap_or_default())
+        } else {
+            NamespacedKey::from_string(&string("key").unwrap_or_default())
+        };
+        let key = key.expect("Key cannot be null");
+        if args.contains_key("slot") {
+            let slot_name = string("slot").expect("NullPointerException: slot");
+            let mut slot_group = EquipmentSlotGroup::get_by_name(&slot_name.to_lowercase());
+            if slot_group.is_none() {
+                // Java: slotGroup = ANY, then the slot's group (EquipmentSlot.valueOf never returns null)
+                let slot = EquipmentSlot::value_of(&slot_name.to_uppercase())
+                    .unwrap_or_else(|| panic!("IllegalArgumentException: No enum constant org.bukkit.inventory.EquipmentSlot.{}", slot_name.to_uppercase()));
+                slot_group = Some(slot.get_group());
+            }
+            return AttributeModifier::new_4_(
+                key,
+                NumberConversions::to_double(args.get("amount").cloned()),
+                AttributeModifierOperation::VALUES[NumberConversions::to_int(args.get("operation").cloned()) as usize],
+                slot_group.unwrap(),
+            );
+        }
+        AttributeModifier::new_4_(
+            key,
+            NumberConversions::to_double(args.get("amount").cloned()),
+            AttributeModifierOperation::VALUES[NumberConversions::to_int(args.get("operation").cloned()) as usize],
+            equipment_slot_group::ANY.clone(),
+        )
+    } // paper-api/src/main/java/org/bukkit/attribute/AttributeModifier.java:190
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

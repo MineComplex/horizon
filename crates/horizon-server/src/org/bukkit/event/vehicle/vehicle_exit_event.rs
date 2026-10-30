@@ -23,17 +23,17 @@ impl std::ops::Deref for VehicleExitEvent {
     type Target = VehicleEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:15
 impl VehicleExitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(vehicle: JRef<dyn Vehicle>, exited: JRef<dyn LivingEntity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:29
-    pub fn new_3(vehicle: JRef<dyn Vehicle>, exited: JRef<dyn LivingEntity>, is_cancellable: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:44
+    pub fn new_3(vehicle: JRef<dyn Vehicle>, exited: JRef<dyn LivingEntity>, is_cancellable: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: VehicleEvent::new_base(this, vehicle), this: this.clone(), exited: exited, is_cancellable: is_cancellable, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:44
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:49
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:61
-    pub fn get_exited(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:39
-    pub fn is_cancellable(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:57
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:67
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:61
+    pub fn get_exited(&self) -> JRef<dyn LivingEntity> { self.exited.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:39
+    pub fn is_cancellable(&self) -> bool { self.is_cancellable } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:57
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleExitEvent.java:67
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

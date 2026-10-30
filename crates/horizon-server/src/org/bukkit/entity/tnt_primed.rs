@@ -13,7 +13,9 @@ pub trait TNTPrimed: Explosive {
     fn get_fuse_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:24
     fn get_source(&self) -> Option<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:40
     fn set_source(&self, source: Option<JRef<dyn Entity>>); // paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:55
-    fn get_source_loc(&self) -> JRef<Location> { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:63
+    fn get_source_loc(&self) -> Option<JRef<Location>> {
+        self.get_origin()
+    } // default, paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:63
     fn set_block_data(&self, data: JRef<dyn BlockData>); // paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:77
     fn get_block_data(&self) -> JRef<dyn BlockData>; // paper-api/src/main/java/org/bukkit/entity/TNTPrimed.java:85
 }

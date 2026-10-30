@@ -24,18 +24,18 @@ impl std::ops::Deref for EntityExhaustionEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:16
 impl EntityExhaustionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(human: JRef<dyn HumanEntity>, exhaustion_reason: EntityExhaustionEventExhaustionReason, exhaustion: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:23
-    pub fn get_entity(&self) -> JRef<dyn HumanEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:30
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:68
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:73
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:148
-    pub fn get_exhaustion_reason(&self) -> EntityExhaustionEventExhaustionReason { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:41
-    pub fn get_exhaustion(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:51
-    pub fn set_exhaustion(&self, exhaustion: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:154
+    pub fn new(human: JRef<dyn HumanEntity>, exhaustion_reason: EntityExhaustionEventExhaustionReason, exhaustion: f32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityExhaustionEvent { base: EntityEvent::new_base(this, human), this: this.clone(), exhaustion_reason: exhaustion_reason, exhaustion: Mut::new(exhaustion), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:23
+    pub fn get_entity(&self) -> JRef<dyn HumanEntity> { cast::<dyn HumanEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:30
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:68
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:148
+    pub fn get_exhaustion_reason(&self) -> EntityExhaustionEventExhaustionReason { self.exhaustion_reason.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:41
+    pub fn get_exhaustion(&self) -> f32 { self.exhaustion.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:51
+    pub fn set_exhaustion(&self, exhaustion: f32) { self.exhaustion.set(exhaustion); } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:64
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExhaustionEvent.java:154
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -24,19 +24,19 @@ impl std::ops::Deref for PlayerEggThrowEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:15
 impl PlayerEggThrowEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, egg: JRef<dyn Egg>, hatching: bool, num_hatches: i8, hatching_type: EntityType) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:22
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:108
-    pub fn get_egg(&self) -> JRef<dyn Egg> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:36
-    pub fn is_hatching(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:47
-    pub fn set_hatching(&self, hatching: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:57
-    pub fn get_hatching_type(&self) -> EntityType { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:66
+    pub fn new(player: JRef<dyn Player>, egg: JRef<dyn Egg>, hatching: bool, num_hatches: i8, hatching_type: EntityType) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), egg: egg, hatching: Mut::new(hatching), hatch_type: Mut::new(hatching_type), num_hatches: Mut::new(num_hatches) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:22
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:108
+    pub fn get_egg(&self) -> JRef<dyn Egg> { self.egg.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:36
+    pub fn is_hatching(&self) -> bool { self.hatching.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:47
+    pub fn set_hatching(&self, hatching: bool) { self.hatching.set(hatching) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:57
+    pub fn get_hatching_type(&self) -> EntityType { self.hatch_type.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:66
     pub fn set_hatching_type(&self, hatch_type: EntityType) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:76
-    pub fn get_num_hatches(&self) -> i8 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:92
-    pub fn set_num_hatches(&self, num_hatches: i8) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:104
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:114
+    pub fn get_num_hatches(&self) -> i8 { self.num_hatches.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:92
+    pub fn set_num_hatches(&self, num_hatches: i8) { self.num_hatches.set(num_hatches) } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:104
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerEggThrowEvent.java:114
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

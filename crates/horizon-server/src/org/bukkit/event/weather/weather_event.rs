@@ -25,6 +25,6 @@ impl std::ops::Deref for dyn WeatherEventTrait {
 }
 impl WeatherEvent {
     pub fn this(&self) -> JRef<dyn WeatherEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: WeatherEventTrait + 'static>(this: &Weak<S>, where_: JRef<dyn World>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherEvent.java:14
-    pub fn get_world(&self) -> JRef<dyn World> { todo!() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherEvent.java:23
+    pub fn new_base<S: WeatherEventTrait + 'static>(this: &Weak<S>, where_: JRef<dyn World>) -> Self { Self { base: Event::new_base(this), this: this.clone(), world: Mut::new(where_) } } // paper-api/src/main/java/org/bukkit/event/weather/WeatherEvent.java:14
+    pub fn get_world(&self) -> JRef<dyn World> { self.world.get() } // paper-api/src/main/java/org/bukkit/event/weather/WeatherEvent.java:23
 }

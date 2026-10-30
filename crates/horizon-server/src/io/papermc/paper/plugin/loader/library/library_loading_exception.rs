@@ -5,12 +5,20 @@ use crate::java::lang::Throwable;
 use crate::api_prelude::*;
 
 // ---- class io.papermc.paper.plugin.loader.library.LibraryLoadingException (paper-api/src/main/java/io/papermc/paper/plugin/loader/library/LibraryLoadingException.java:6)
+/// A `RuntimeException`: thrown with `std::panic::panic_any(..)` or returned as a `Throwable`.
 pub struct LibraryLoadingException {
     pub this: Weak<Self>,
+    // java.lang.Throwable's state (RuntimeException(message, cause)).
+    pub message: Option<String>,
+    pub cause: Option<Throwable>,
 }
 impl LibraryLoadingException {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(s: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/LibraryLoadingException.java:8
-    pub fn new_2(s: &str, e: Throwable) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/LibraryLoadingException.java:12
+    pub fn new(s: &str) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| LibraryLoadingException { this: this.clone(), message: Some(s.to_string()), cause: None })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/LibraryLoadingException.java:8
+    pub fn new_2(s: &str, e: Throwable) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| LibraryLoadingException { this: this.clone(), message: Some(s.to_string()), cause: Some(e) })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/LibraryLoadingException.java:12
 }
 crate::jobject!(LibraryLoadingException);

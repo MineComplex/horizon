@@ -26,18 +26,42 @@ impl std::ops::Deref for WitchThrowPotionEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:19
 impl WitchThrowPotionEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(witch: JRef<dyn Witch>, target: JRef<dyn LivingEntity>, potion: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn Witch> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:63
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:68
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:73
-    pub fn get_target(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:40
-    pub fn get_potion(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:47
-    pub fn set_potion(&self, potion: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:56
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:78
+    pub fn new(witch: JRef<dyn Witch>, target: JRef<dyn LivingEntity>, potion: Option<JRef<ItemStack>>) -> JRef<Self> {
+Arc::new_cyclic(|this| WitchThrowPotionEvent {
+base: EntityEvent::new_base(this, witch),
+this: this.clone(),
+target: target,
+potion: Mut::new(potion),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn Witch> {
+cast::<dyn Witch, _>(&self.base.get_entity()).expect("Witch")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:32
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get() || self.potion.borrow().is_none()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:63
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:68
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:73
+    pub fn get_target(&self) -> JRef<dyn LivingEntity> {
+self.target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:40
+    pub fn get_potion(&self) -> Option<JRef<ItemStack>> {
+self.potion.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:47
+    pub fn set_potion(&self, potion: Option<JRef<ItemStack>>) {
+self.potion.set(potion.map(|potion| ItemStack::clone(&potion)))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:56
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/WitchThrowPotionEvent.java:78
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

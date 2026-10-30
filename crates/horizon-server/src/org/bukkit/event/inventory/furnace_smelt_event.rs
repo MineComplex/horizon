@@ -25,8 +25,8 @@ impl std::ops::Deref for FurnaceSmeltEvent {
 }
 impl FurnaceSmeltEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(furnace: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceSmeltEvent.java:16
-    pub fn new_4(furnace: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>, recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceSmeltEvent.java:22
+    pub fn new(furnace: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockCookEvent::new_base(this, furnace, source, result), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceSmeltEvent.java:16
+    pub fn new_4(furnace: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>, recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockCookEvent::new_base_4(this, furnace, source, result, recipe), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceSmeltEvent.java:22
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

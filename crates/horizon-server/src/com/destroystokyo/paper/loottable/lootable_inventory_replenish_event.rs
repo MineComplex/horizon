@@ -22,15 +22,32 @@ impl std::ops::Deref for LootableInventoryReplenishEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:13
 impl LootableInventoryReplenishEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, inventory: JRef<dyn LootableInventory>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:18
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:28
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:33
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:38
-    pub fn get_inventory(&self) -> JRef<dyn LootableInventory> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:24
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:43
+    pub fn new(player: JRef<dyn Player>, inventory: JRef<dyn LootableInventory>) -> JRef<Self> {
+Arc::new_cyclic(|this| LootableInventoryReplenishEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+inventory: inventory,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:18
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:28
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:33
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:38
+    pub fn get_inventory(&self) -> JRef<dyn LootableInventory> {
+self.inventory.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:24
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/loottable/LootableInventoryReplenishEvent.java:43
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

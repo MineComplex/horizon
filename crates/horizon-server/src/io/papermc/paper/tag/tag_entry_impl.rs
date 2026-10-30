@@ -14,12 +14,11 @@ pub struct TagEntryImpl<T: JGeneric> {
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> TagEntryImpl<T> {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/TagEntryImpl.java:7
     pub fn new_3(key: JRef<dyn Key>, is_tag: bool, is_required: bool) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/TagEntryImpl.java:7
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> TagEntry<T> for TagEntryImpl<T> {
-    fn is_tag(&self) -> bool { todo!("abstract TagEntry.isTag") }
-    fn is_required(&self) -> bool { todo!("abstract TagEntry.isRequired") }
+    fn is_tag(&self) -> bool { self.is_tag }
+    fn is_required(&self) -> bool { self.is_required }
 }

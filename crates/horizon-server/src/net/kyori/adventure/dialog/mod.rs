@@ -1,2 +1,2 @@
-pub mod ext_stubs;
-pub use self::ext_stubs::*;
+pub mod dialog_like;
+pub use self::dialog_like::*;

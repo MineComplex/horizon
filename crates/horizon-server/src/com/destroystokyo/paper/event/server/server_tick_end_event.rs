@@ -18,15 +18,33 @@ impl std::ops::Deref for ServerTickEndEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:14
 impl ServerTickEndEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(tick_number: i32, tick_duration: f64, time_remaining: i64) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:20
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:54
-    pub fn get_tick_number(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:30
-    pub fn get_tick_duration(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:37
-    pub fn get_time_remaining(&self) -> i64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:50
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:59
+    pub fn new(tick_number: i32, tick_duration: f64, time_remaining: i64) -> JRef<Self> {
+Arc::new_cyclic(|this| ServerTickEndEvent {
+    base: Event::new_base(this),
+    this: this.clone(),
+    tick_number,
+    tick_duration,
+    time_end: crate::java::util::concurrent::support::nano_time() + time_remaining,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:20
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:54
+    pub fn get_tick_number(&self) -> i32 {
+self.tick_number.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:30
+    pub fn get_tick_duration(&self) -> f64 {
+self.tick_duration.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:37
+    pub fn get_time_remaining(&self) -> i64 {
+self.time_end - crate::java::util::concurrent::support::nano_time()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:50
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickEndEvent.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

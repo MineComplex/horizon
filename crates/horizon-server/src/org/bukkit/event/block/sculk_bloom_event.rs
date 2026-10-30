@@ -21,16 +21,16 @@ impl std::ops::Deref for SculkBloomEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:31
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:31
 impl SculkBloomEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, charge: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:70
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:80
-    pub fn get_charge(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:47
+    pub fn new(block: JRef<dyn Block>, charge: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| SculkBloomEvent { base: BlockEvent::new_base(this, block), this: this.clone(), charge: Mut::new(charge), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:70
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:80
+    pub fn get_charge(&self) -> i32 { self.charge.get() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:47
     pub fn set_charge(&self, charge: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:65
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:86
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/SculkBloomEvent.java:86
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

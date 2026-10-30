@@ -24,16 +24,16 @@ impl std::ops::Deref for EntitySpellCastEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:14
 impl EntitySpellCastEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(spellcaster: JRef<dyn Spellcaster>, spell: SpellcasterSpell) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:20
-    pub fn get_entity(&self) -> JRef<dyn Spellcaster> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:26
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:45
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:50
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:55
-    pub fn get_spell(&self) -> SpellcasterSpell { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:40
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:61
+    pub fn new(spellcaster: JRef<dyn Spellcaster>, spell: SpellcasterSpell) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntitySpellCastEvent { base: EntityEvent::new_base(this, spellcaster), this: this.clone(), spell: spell, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:20
+    pub fn get_entity(&self) -> JRef<dyn Spellcaster> { cast::<dyn Spellcaster, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:26
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:45
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:50
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:55
+    pub fn get_spell(&self) -> SpellcasterSpell { self.spell.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:40
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntitySpellCastEvent.java:61
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

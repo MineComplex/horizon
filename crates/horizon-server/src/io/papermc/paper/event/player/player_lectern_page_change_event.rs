@@ -27,20 +27,31 @@ impl std::ops::Deref for PlayerLecternPageChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:15
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:15
 impl PlayerLecternPageChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, lectern: JRef<dyn Lectern>, book: JRef<ItemStack>, page_change_direction: PlayerLecternPageChangeEventPageChangeDirection, old_page: i32, new_page: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:90
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:95
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:100
-    pub fn get_lectern(&self) -> JRef<dyn Lectern> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:40
-    pub fn get_book(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:49
-    pub fn get_page_change_direction(&self) -> PlayerLecternPageChangeEventPageChangeDirection { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:58
-    pub fn get_old_page(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:67
-    pub fn get_new_page(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:76
-    pub fn set_new_page(&self, new_page: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:86
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:105
+    pub fn new(player: JRef<dyn Player>, lectern: JRef<dyn Lectern>, book: JRef<ItemStack>, page_change_direction: PlayerLecternPageChangeEventPageChangeDirection, old_page: i32, new_page: i32) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerLecternPageChangeEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            lectern,
+            book,
+            page_change_direction,
+            old_page,
+            new_page: Mut::new(new_page),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:25
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:90
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:95
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:100
+    pub fn get_lectern(&self) -> JRef<dyn Lectern> { self.lectern.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:40
+    pub fn get_book(&self) -> JRef<ItemStack> { self.book.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:49
+    pub fn get_page_change_direction(&self) -> PlayerLecternPageChangeEventPageChangeDirection { self.page_change_direction.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:58
+    pub fn get_old_page(&self) -> i32 { self.old_page } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:67
+    pub fn get_new_page(&self) -> i32 { self.new_page.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:76
+    pub fn set_new_page(&self, new_page: i32) { self.new_page.set(new_page) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:86
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerLecternPageChangeEvent.java:105
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

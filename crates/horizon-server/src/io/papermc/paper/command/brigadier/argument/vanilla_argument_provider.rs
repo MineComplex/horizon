@@ -45,9 +45,17 @@ pub trait VanillaArgumentProvider: JObject {
     fn players(&self) -> JRef<dyn ArgumentType<JRef<dyn PlayerSelectorArgumentResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:55
     fn player_profiles(&self) -> JRef<dyn ArgumentType<JRef<dyn PlayerProfileListResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:57
     fn block_position(&self) -> JRef<dyn ArgumentType<JRef<dyn BlockPositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:59
-    fn column_block_position(&self) -> JRef<dyn ArgumentType<JRef<dyn ColumnBlockPositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:61
-    fn fine_position(&self, center_integers: bool) -> JRef<dyn ArgumentType<JRef<dyn FinePositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:63
-    fn column_fine_position(&self, center_integers: bool) -> JRef<dyn ArgumentType<JRef<dyn ColumnFinePositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:65
+    fn column_block_position(
+        &self,
+    ) -> JRef<dyn ArgumentType<JRef<dyn ColumnBlockPositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:61
+    fn fine_position(
+        &self,
+        center_integers: bool,
+    ) -> JRef<dyn ArgumentType<JRef<dyn FinePositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:63
+    fn column_fine_position(
+        &self,
+        center_integers: bool,
+    ) -> JRef<dyn ArgumentType<JRef<dyn ColumnFinePositionResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:65
     fn rotation(&self) -> JRef<dyn ArgumentType<JRef<dyn RotationResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:67
     fn angle(&self) -> JRef<dyn ArgumentType<JRef<dyn AngleResolver>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:69
     fn axes(&self) -> JRef<dyn ArgumentType<JRef<dyn AxisSet>>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:71
@@ -74,8 +82,25 @@ pub trait VanillaArgumentProvider: JObject {
     fn time(&self, min_ticks: i32) -> JRef<dyn ArgumentType<i32>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:114
     fn template_mirror(&self) -> JRef<dyn ArgumentType<Mirror>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:116
     fn template_rotation(&self) -> JRef<dyn ArgumentType<StructureRotation>>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:118
-    fn resource_key<T: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>) -> JRef<dyn ArgumentType<JRef<dyn TypedKey<T>>>> where Self: Sized; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:120
-    fn resource<T: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>) -> JRef<dyn ArgumentType<T>> where Self: Sized; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:122
+    fn resource_key<T: JGeneric>(
+        &self,
+        registry_key: JRef<dyn RegistryKey<T>>,
+    ) -> JRef<dyn ArgumentType<JRef<dyn TypedKey<T>>>>
+    where
+        Self: Sized; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:120
+    fn resource<T: JGeneric>(
+        &self,
+        registry_key: JRef<dyn RegistryKey<T>>,
+    ) -> JRef<dyn ArgumentType<T>>
+    where
+        Self: Sized; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:122
 }
-pub static PROVIDER: LazyLock<Option<JRef<dyn VanillaArgumentProvider>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:43
-pub fn provider() -> JRef<dyn VanillaArgumentProvider> { todo!() } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:45
+pub static PROVIDER: LazyLock<Option<JRef<dyn VanillaArgumentProvider>>> = LazyLock::new(|| {
+    // ServiceLoader.load(VanillaArgumentProvider.class).findFirst(): the server registers VanillaArgumentProviderImpl (META-INF/services)
+    Some(crate::io::papermc::paper::command::brigadier::argument::vanilla_argument_provider_impl::VanillaArgumentProviderImpl::new() as JRef<dyn VanillaArgumentProvider>)
+}); // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:43
+pub fn provider() -> JRef<dyn VanillaArgumentProvider> {
+    PROVIDER
+        .clone()
+        .expect("NoSuchElementException: No value present")
+} // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/VanillaArgumentProvider.java:45

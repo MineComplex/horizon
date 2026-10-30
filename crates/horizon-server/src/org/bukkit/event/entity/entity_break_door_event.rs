@@ -28,8 +28,8 @@ impl std::ops::Deref for EntityBreakDoorEvent {
 }
 impl EntityBreakDoorEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn LivingEntity>, target_block: JRef<dyn Block>, to: JRef<dyn BlockData>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreakDoorEvent.java:16
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreakDoorEvent.java:21
+    pub fn new(entity: JRef<dyn LivingEntity>, target_block: JRef<dyn Block>, to: JRef<dyn BlockData>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityBreakDoorEvent { base: EntityChangeBlockEvent::new_base(this, entity, target_block, to), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreakDoorEvent.java:16
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityBreakDoorEvent.java:21
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

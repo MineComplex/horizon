@@ -21,15 +21,15 @@ impl std::ops::Deref for PlayerToggleFlightEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:14
 impl PlayerToggleFlightEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, is_flying: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:19
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:34
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:39
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:44
-    pub fn is_flying(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:50
+    pub fn new(player: JRef<dyn Player>, is_flying: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), is_flying: is_flying, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:19
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:34
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:39
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:44
+    pub fn is_flying(&self) -> bool { self.is_flying } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerToggleFlightEvent.java:50
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

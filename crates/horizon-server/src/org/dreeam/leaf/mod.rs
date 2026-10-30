@@ -5,6 +5,5 @@ pub mod event;
 pub mod misc;
 pub mod network;
 pub mod orebfuscator;
-pub mod spark;
 pub mod util;
 pub mod world;

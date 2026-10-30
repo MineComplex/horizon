@@ -13,19 +13,24 @@ pub struct ClientOption<T: JGeneric> {
     pub type_: Class, // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:22
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
-pub static SKIN_PARTS: LazyLock<JRef<ClientOption<JRef<dyn SkinParts>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:12
-pub static CHAT_COLORS_ENABLED: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:13
-pub static CHAT_VISIBILITY: LazyLock<JRef<ClientOption<ClientOptionChatVisibility>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:14
-pub static LOCALE: LazyLock<JRef<ClientOption<String>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:15
-pub static MAIN_HAND: LazyLock<JRef<ClientOption<MainHand>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:16
-pub static VIEW_DISTANCE: LazyLock<JRef<ClientOption<i32>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:17
-pub static TEXT_FILTERING_ENABLED: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:18
-pub static ALLOW_SERVER_LISTINGS: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:19
-pub static PARTICLE_VISIBILITY: LazyLock<JRef<ClientOption<ClientOptionParticleVisibility>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:20
+pub static SKIN_PARTS: LazyLock<JRef<ClientOption<JRef<dyn SkinParts>>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:12
+pub static CHAT_COLORS_ENABLED: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:13
+pub static CHAT_VISIBILITY: LazyLock<JRef<ClientOption<ClientOptionChatVisibility>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:14
+pub static LOCALE: LazyLock<JRef<ClientOption<String>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:15
+pub static MAIN_HAND: LazyLock<JRef<ClientOption<MainHand>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:16
+pub static VIEW_DISTANCE: LazyLock<JRef<ClientOption<i32>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:17
+pub static TEXT_FILTERING_ENABLED: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:18
+pub static ALLOW_SERVER_LISTINGS: LazyLock<JRef<ClientOption<bool>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:19
+pub static PARTICLE_VISIBILITY: LazyLock<JRef<ClientOption<ClientOptionParticleVisibility>>> = LazyLock::new(|| ClientOption::new(Class(std::marker::PhantomData))); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:20
 impl<T: JGeneric> ClientOption<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: Class) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:24
-    pub fn get_type(&self) -> Class { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:28
+    pub fn new(type_: Class) -> JRef<Self> {
+// PORT: java.lang.Class<T> tokens (`SkinParts.class`...) are stand-ins.
+Arc::new_cyclic(|this| ClientOption { this: this.clone(), type_, _phantom: std::marker::PhantomData })
+} // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:24
+    pub fn get_type(&self) -> Class {
+self.type_.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:28
 }
 // ---- enum com.destroystokyo.paper.ClientOption.ChatVisibility (paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:32)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -39,7 +44,11 @@ pub enum ClientOptionChatVisibility {
 pub struct ClientOptionChatVisibilityData {
     pub translation_key: String,
 }
-pub static CHAT_VISIBILITY_NAMES: LazyLock<Index<String, ClientOptionChatVisibility>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:46
+pub static CHAT_VISIBILITY_NAMES: LazyLock<Index<String, ClientOptionChatVisibility>> = LazyLock::new(|| // PORT: adventure Index.create(Class, Function)
+Index::create(
+    Class(std::marker::PhantomData),
+    Arc::new(|chat_visibility: ClientOptionChatVisibility| chat_visibility.name().to_lowercase()),
+)); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:46
 impl ClientOptionChatVisibility {
     pub const VALUES: [ClientOptionChatVisibility; 4] = [ClientOptionChatVisibility::FULL, ClientOptionChatVisibility::SYSTEM, ClientOptionChatVisibility::HIDDEN, ClientOptionChatVisibility::UNKNOWN];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -48,8 +57,32 @@ impl ClientOptionChatVisibility {
     }
     pub fn value_of(name: &str) -> Option<ClientOptionChatVisibility> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static ClientOptionChatVisibilityData { todo!("paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:32") }
-    pub fn translation_key(self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:53
+    pub fn data(self) -> &'static ClientOptionChatVisibilityData {
+match self {
+    ClientOptionChatVisibility::FULL => {
+        static D: LazyLock<ClientOptionChatVisibilityData> = LazyLock::new(|| ClientOptionChatVisibilityData { translation_key: "options.chat.visibility.full".to_string() });
+        &D
+    }
+    ClientOptionChatVisibility::SYSTEM => {
+        static D: LazyLock<ClientOptionChatVisibilityData> = LazyLock::new(|| ClientOptionChatVisibilityData { translation_key: "options.chat.visibility.system".to_string() });
+        &D
+    }
+    ClientOptionChatVisibility::HIDDEN => {
+        static D: LazyLock<ClientOptionChatVisibilityData> = LazyLock::new(|| ClientOptionChatVisibilityData { translation_key: "options.chat.visibility.hidden".to_string() });
+        &D
+    }
+    ClientOptionChatVisibility::UNKNOWN => {
+        static D: LazyLock<ClientOptionChatVisibilityData> = LazyLock::new(|| ClientOptionChatVisibilityData { translation_key: "unknown".to_string() });
+        &D
+    }
+}
+}
+    pub fn translation_key(self) -> String {
+if self == ClientOptionChatVisibility::UNKNOWN {
+    panic!("UnsupportedOperationException: {} doesn't have a translation key", self.name());
+}
+self.data().translation_key.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:53
 }
 crate::jobject!(ClientOptionChatVisibility);
 // ---- enum com.destroystokyo.paper.ClientOption.ParticleVisibility (paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:62)
@@ -63,7 +96,11 @@ pub enum ClientOptionParticleVisibility {
 pub struct ClientOptionParticleVisibilityData {
     pub translation_key: String,
 }
-pub static PARTICLE_VISIBILITY_NAMES: LazyLock<Index<String, ClientOptionParticleVisibility>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:69
+pub static PARTICLE_VISIBILITY_NAMES: LazyLock<Index<String, ClientOptionParticleVisibility>> = LazyLock::new(|| // PORT: adventure Index.create(Class, Function)
+Index::create(
+    Class(std::marker::PhantomData),
+    Arc::new(|particle_visibility: ClientOptionParticleVisibility| particle_visibility.name().to_lowercase()),
+)); // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:69
 impl ClientOptionParticleVisibility {
     pub const VALUES: [ClientOptionParticleVisibility; 3] = [ClientOptionParticleVisibility::ALL, ClientOptionParticleVisibility::DECREASED, ClientOptionParticleVisibility::MINIMAL];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -72,7 +109,24 @@ impl ClientOptionParticleVisibility {
     }
     pub fn value_of(name: &str) -> Option<ClientOptionParticleVisibility> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static ClientOptionParticleVisibilityData { todo!("paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:62") }
-    pub fn translation_key(self) -> String { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:76
+    pub fn data(self) -> &'static ClientOptionParticleVisibilityData {
+match self {
+    ClientOptionParticleVisibility::ALL => {
+        static D: LazyLock<ClientOptionParticleVisibilityData> = LazyLock::new(|| ClientOptionParticleVisibilityData { translation_key: "options.particles.all".to_string() });
+        &D
+    }
+    ClientOptionParticleVisibility::DECREASED => {
+        static D: LazyLock<ClientOptionParticleVisibilityData> = LazyLock::new(|| ClientOptionParticleVisibilityData { translation_key: "options.particles.decreased".to_string() });
+        &D
+    }
+    ClientOptionParticleVisibility::MINIMAL => {
+        static D: LazyLock<ClientOptionParticleVisibilityData> = LazyLock::new(|| ClientOptionParticleVisibilityData { translation_key: "options.particles.minimal".to_string() });
+        &D
+    }
+}
+}
+    pub fn translation_key(self) -> String {
+self.data().translation_key.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/ClientOption.java:76
 }
 crate::jobject!(ClientOptionParticleVisibility);

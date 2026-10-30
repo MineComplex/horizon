@@ -36,20 +36,48 @@ impl std::ops::Deref for dyn PreCreatureSpawnEventTrait {
     type Target = PreCreatureSpawnEvent;
     fn deref(&self) -> &PreCreatureSpawnEvent { self.as_pre_creature_spawn_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:25
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:25
 impl PreCreatureSpawnEvent {
     pub fn this(&self) -> JRef<dyn PreCreatureSpawnEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PreCreatureSpawnEventTrait + 'static>(this: &Weak<S>, location: JRef<Location>, type_: EntityType, reason: CreatureSpawnEventSpawnReason) -> Self { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:34
+    pub fn new_base<S: PreCreatureSpawnEventTrait + 'static>(this: &Weak<S>, location: JRef<Location>, type_: EntityType, reason: CreatureSpawnEventSpawnReason) -> Self {
+PreCreatureSpawnEvent {
+base: Event::new_base(this),
+this: this.clone(),
+location: location,
+type_: type_,
+reason: reason,
+should_abort_spawn: Mut::new(false),
+cancelled: Mut::new(false),
+}
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:34
     pub fn new(location: JRef<Location>, type_: EntityType, reason: CreatureSpawnEventSpawnReason) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, location, type_, reason)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:82
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:92
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:97
-    pub fn get_spawn_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:44
-    pub fn get_type(&self) -> EntityType { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:51
-    pub fn get_reason(&self) -> CreatureSpawnEventSpawnReason { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:58
-    pub fn should_abort_spawn(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:65
-    pub fn set_should_abort_spawn(&self, should_abort_spawn: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:75
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:102
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:82
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:92
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:97
+    pub fn get_spawn_location(&self) -> JRef<Location> {
+Location::clone(&self.location)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:44
+    pub fn get_type(&self) -> EntityType {
+self.type_.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:51
+    pub fn get_reason(&self) -> CreatureSpawnEventSpawnReason {
+self.reason.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:58
+    pub fn should_abort_spawn(&self) -> bool {
+self.should_abort_spawn.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:65
+    pub fn set_should_abort_spawn(&self, should_abort_spawn: bool) {
+self.should_abort_spawn.set(should_abort_spawn)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:75
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/PreCreatureSpawnEvent.java:102
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

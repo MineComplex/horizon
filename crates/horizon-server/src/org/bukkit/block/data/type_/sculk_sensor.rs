@@ -7,8 +7,8 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.data.type.SculkSensor (paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:10)
 pub trait SculkSensor: AnaloguePowerable + Waterlogged {
-    fn get_phase(&self) -> SculkSensorPhase { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:18
-    fn set_phase(&self, phase: SculkSensorPhase) { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:30
+    fn get_phase(&self) -> SculkSensorPhase { self.get_sculk_sensor_phase() } // default, paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:18
+    fn set_phase(&self, phase: SculkSensorPhase) { self.set_sculk_sensor_phase(phase) } // default, paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:30
     fn get_sculk_sensor_phase(&self) -> SculkSensorPhase; // paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:40
     fn set_sculk_sensor_phase(&self, phase: SculkSensorPhase); // paper-api/src/main/java/org/bukkit/block/data/type/SculkSensor.java:48
 }

@@ -17,28 +17,28 @@ pub struct BlockIgniteEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
     pub cause: BlockIgniteEventIgniteCause, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:22
-    pub igniting_entity: JRef<dyn Entity>, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:23
-    pub igniting_block: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:24
+    pub igniting_entity: Option<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:23
+    pub igniting_block: Option<JRef<dyn Block>>, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:24
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:26
 }
 impl std::ops::Deref for BlockIgniteEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:20
 impl BlockIgniteEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_entity: Option<JRef<dyn Entity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:28
-    pub fn new_3(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_block: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:33
-    pub fn new_4(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_entity: Option<JRef<dyn Entity>>, igniting_block: Option<JRef<dyn Block>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:38
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:129
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:134
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:139
-    pub fn get_cause(&self) -> BlockIgniteEventIgniteCause { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:51
+    pub fn new(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_entity: Option<JRef<dyn Entity>>) -> JRef<Self> { Self::new_4(block, cause, igniting_entity, None) } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:28
+    pub fn new_3(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_block: JRef<dyn Block>) -> JRef<Self> { Self::new_4(block, cause, None, Some(igniting_block)) } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:33
+    pub fn new_4(block: JRef<dyn Block>, cause: BlockIgniteEventIgniteCause, igniting_entity: Option<JRef<dyn Entity>>, igniting_block: Option<JRef<dyn Block>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockIgniteEvent { base: BlockEvent::new_base(this, block), this: this.clone(), cause: cause, igniting_entity: igniting_entity, igniting_block: igniting_block, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:129
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:134
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:139
+    pub fn get_cause(&self) -> BlockIgniteEventIgniteCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:51
     pub fn get_player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:61
-    pub fn get_igniting_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:75
-    pub fn get_igniting_block(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:85
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:145
+    pub fn get_igniting_entity(&self) -> Option<JRef<dyn Entity>> { self.igniting_entity.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:75
+    pub fn get_igniting_block(&self) -> Option<JRef<dyn Block>> { self.igniting_block.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:85
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockIgniteEvent.java:145
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

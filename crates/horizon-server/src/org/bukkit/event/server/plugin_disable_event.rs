@@ -20,12 +20,12 @@ impl std::ops::Deref for PluginDisableEvent {
     type Target = PluginEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:13
 impl PluginDisableEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(plugin: JRef<dyn Plugin>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:15
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:20
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:26
+    pub fn new(plugin: JRef<dyn Plugin>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PluginEvent::new_base(this, plugin), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:15
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:20
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/PluginDisableEvent.java:26
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

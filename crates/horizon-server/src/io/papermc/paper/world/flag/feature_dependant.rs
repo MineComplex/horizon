@@ -6,5 +6,9 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.world.flag.FeatureDependant (paper-api/src/main/java/io/papermc/paper/world/flag/FeatureDependant.java:15)
 pub trait FeatureDependant: JObject {
-    fn required_features(&self) -> HashSet<JRef<dyn FeatureFlag>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/world/flag/FeatureDependant.java:25
+    fn required_features(&self) -> HashSet<JRef<dyn FeatureFlag>> {
+        // `this` reaches the provider as `&dyn Any` (a default method can't make `&dyn FeatureDependant` of
+        // `&Self`); the provider's instanceof checks are downcasts (EntityType, PotionType are enums).
+        crate::io::papermc::paper::world::flag::feature_flag_provider::provider().required_features(self.as_any())
+    } // default, paper-api/src/main/java/io/papermc/paper/world/flag/FeatureDependant.java:25
 }

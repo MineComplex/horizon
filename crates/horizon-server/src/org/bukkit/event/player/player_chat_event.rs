@@ -23,21 +23,21 @@ impl std::ops::Deref for PlayerChatEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:22
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:22
 impl PlayerChatEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, message: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:30
-    pub fn new_4(player: JRef<dyn Player>, message: &str, format: &str, recipients: &HashSet<JRef<dyn Player>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:38
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:113
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:118
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:123
-    pub fn get_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:51
-    pub fn set_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:61
+    pub fn new_4(player: JRef<dyn Player>, message: &str, format: &str, recipients: &HashSet<JRef<dyn Player>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), recipients: Mut::new(recipients.clone()), message: Mut::new(message.to_string()), format: Mut::new(format.to_string()), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:113
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:118
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:123
+    pub fn get_message(&self) -> String { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:51
+    pub fn set_message(&self, message: &str) { self.message.set(message.to_string()) } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:61
     pub fn set_player(&self, player: JRef<dyn Player>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:71
-    pub fn get_format(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:81
+    pub fn get_format(&self) -> String { self.format.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:81
     pub fn set_format(&self, format: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:91
-    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:108
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:129
+    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { self.recipients.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:108
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChatEvent.java:129
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

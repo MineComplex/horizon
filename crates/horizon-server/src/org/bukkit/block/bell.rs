@@ -8,9 +8,9 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.Bell (paper-api/src/main/java/org/bukkit/block/Bell.java:10)
 pub trait Bell: TileState {
-    fn ring(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:50
-    fn ring_1(&self, entity: Option<JRef<dyn Entity>>) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:29
-    fn ring_1_2(&self, direction: Option<BlockFace>) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:40
+    fn ring(&self) -> bool { self.ring_2(None, None) } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:50
+    fn ring_1(&self, entity: Option<JRef<dyn Entity>>) -> bool { self.ring_2(entity, None) } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:29
+    fn ring_1_2(&self, direction: Option<BlockFace>) -> bool { self.ring_2(None, direction) } // default, paper-api/src/main/java/org/bukkit/block/Bell.java:40
     fn ring_2(&self, entity: Option<JRef<dyn Entity>>, direction: Option<BlockFace>) -> bool; // paper-api/src/main/java/org/bukkit/block/Bell.java:20
     fn is_shaking(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/Bell.java:62
     fn get_shaking_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/block/Bell.java:72

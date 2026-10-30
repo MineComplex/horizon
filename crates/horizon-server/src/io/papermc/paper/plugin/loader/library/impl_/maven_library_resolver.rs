@@ -8,6 +8,7 @@ use crate::org::eclipse::aether::DefaultRepositorySystemSession;
 use crate::org::eclipse::aether::RepositorySystem;
 use crate::org::eclipse::aether::graph::Dependency;
 use crate::org::eclipse::aether::repository::RemoteRepository;
+use crate::io::papermc::paper::plugin::loader::library::library_loading_exception::LibraryLoadingException;
 use crate::api_prelude::*;
 
 // ---- class io.papermc.paper.plugin.loader.library.impl.MavenLibraryResolver (paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:50)
@@ -18,18 +19,115 @@ pub struct MavenLibraryResolver {
     pub repositories: Mut<Vec<RemoteRepository>>, // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:84
     pub dependencies: Mut<Vec<Dependency>>, // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:85
 }
-pub static MAVEN_CENTRAL_DEFAULT_MIRROR: LazyLock<String> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:61
-pub static CUSTOM_MAVEN_CENTRAL_MIRROR_REPO: LazyLock<Option<RemoteRepository>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:63
-pub static MAVEN_CENTRAL_URLS: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:64
-pub static MAVEN_CENTRAL_GOOGLE_MIRROR_URLS: LazyLock<Vec<String>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:71
+pub static MAVEN_CENTRAL_DEFAULT_MIRROR: LazyLock<String> = LazyLock::new(|| MavenLibraryResolver::get_default_maven_central_mirror()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:61
+pub static CUSTOM_MAVEN_CENTRAL_MIRROR_REPO: LazyLock<Option<RemoteRepository>> = LazyLock::new(|| MavenLibraryResolver::get_custom_central_mirror_repo()); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:63
+pub static MAVEN_CENTRAL_URLS: LazyLock<Vec<String>> = LazyLock::new(|| vec![
+    "https://repo1.maven.org/maven2".to_string(),
+    "http://repo1.maven.org/maven2".to_string(),
+    "https://repo.maven.apache.org/maven2".to_string(),
+    "http://repo.maven.apache.org/maven2".to_string(),
+]); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:64
+pub static MAVEN_CENTRAL_GOOGLE_MIRROR_URLS: LazyLock<Vec<String>> = LazyLock::new(|| vec![
+    "https://maven-central.storage-download.googleapis.com/maven2".to_string(),
+    "http://maven-central.storage-download.googleapis.com/maven2".to_string(),
+    "https://maven-central-eu.storage-download.googleapis.com/maven2".to_string(),
+    "http://maven-central-eu.storage-download.googleapis.com/maven2".to_string(),
+    "https://maven-central-asia.storage-download.googleapis.com/maven2".to_string(),
+    "http://maven-central-asia.storage-download.googleapis.com/maven2".to_string(),
+]); // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:71
 impl MavenLibraryResolver {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:95
-    pub fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:171
-    pub fn add_dependency(&self, dependency: Dependency) { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:122
-    pub fn add_repository(&self, remote_repository: RemoteRepository) { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:134
-    pub fn get_default_maven_central_mirror() -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:188
-    pub fn get_custom_central_mirror_repo() -> Option<RemoteRepository> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:200
+    pub fn new() -> JRef<Self> {
+        // PORT: Maven Resolver (org.eclipse.aether, maven-resolver-supplier) is a library port; the calls keep its API
+        use crate::org::eclipse::aether::repository::{LocalRepository, RepositoryPolicy};
+        let locator = crate::org::apache::maven::repository::internal::MavenRepositorySystemUtils::new_service_locator();
+        locator.add_service::<crate::org::eclipse::aether::spi::connector::RepositoryConnectorFactory, crate::org::eclipse::aether::connector::basic::BasicRepositoryConnectorFactory>();
+        locator.add_service::<crate::org::eclipse::aether::spi::connector::transport::TransporterFactory, crate::org::eclipse::aether::transport::http::HttpTransporterFactory>();
+        let repository: RepositorySystem = locator.get_service::<RepositorySystem>();
+        let session: DefaultRepositorySystemSession = crate::org::apache::maven::repository::internal::MavenRepositorySystemUtils::new_session();
+        // PORT: System.getProperties(): Java system properties
+        session.set_system_properties(crate::java::lang::System::get_properties());
+        session.set_checksum_policy(RepositoryPolicy::CHECKSUM_POLICY_FAIL);
+        session.set_local_repository_manager(repository.new_local_repository_manager(&session, LocalRepository::new("libraries")));
+        session.set_transfer_listener(Arc::new(MavenLibraryResolverTransferListener));
+        session.set_read_only();
+        Arc::new_cyclic(|this: &Weak<Self>| MavenLibraryResolver {
+            this: this.clone(),
+            repository,
+            session,
+            repositories: Mut::new(Vec::new()),
+            dependencies: Mut::new(Vec::new()),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:95
+    pub fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), Throwable> {
+        let repos: Vec<RemoteRepository> = self.repository.new_resolution_repositories(&self.session, &self.repositories.get());
+        let result = match self.repository.resolve_dependencies(
+            &self.session,
+            crate::org::eclipse::aether::resolution::DependencyRequest::new(
+                crate::org::eclipse::aether::collection::CollectRequest::new(None, self.dependencies.get(), repos),
+                None,
+            ),
+        ) {
+            Ok(result) => result,
+            Err(ex) => {
+                // throw new LibraryLoadingException("Error resolving libraries", ex)
+                return Err(Throwable::from_panic(Box::new(LibraryLoadingException::new_2("Error resolving libraries", ex))));
+            }
+        };
+        for artifact in result.get_artifact_results() {
+            let file: std::path::PathBuf = artifact.get_artifact().get_file();
+            store.add_library(file);
+        }
+        Ok(())
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:171
+    pub fn add_dependency(&self, dependency: Dependency) {
+        self.dependencies.borrow_mut().push(dependency);
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:122
+    pub fn add_repository(&self, remote_repository: RemoteRepository) {
+        for url in MAVEN_CENTRAL_URLS.iter() {
+            if remote_repository.get_url().starts_with(url.as_str()) {
+                let mirror_repo = CUSTOM_MAVEN_CENTRAL_MIRROR_REPO.clone();
+                if let Some(mirror_repo) = mirror_repo {
+                    self.repositories.borrow_mut().push(mirror_repo);
+                    return;
+                }
+                // Leaf - Better warning message for discouraging Maven Central as CDN
+                log::warn!(
+                    "Use of Maven Central as a CDN is against the Maven Central Terms of Service. Use MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR instead. DO NOT report this to Paper or Leaf! Please contact plugin's support to adapt this change. {}",
+                    format!("java.lang.RuntimeException: Plugin used Maven Central for library resolution ({})", remote_repository.to_string())
+                );
+            }
+        }
+        for url in MAVEN_CENTRAL_GOOGLE_MIRROR_URLS.iter() {
+            if remote_repository.get_url().starts_with(url.as_str()) {
+                let mirror_repo = CUSTOM_MAVEN_CENTRAL_MIRROR_REPO.clone();
+                if let Some(mirror_repo) = mirror_repo {
+                    self.repositories.borrow_mut().push(mirror_repo);
+                    return;
+                }
+            }
+        }
+        self.repositories.borrow_mut().push(remote_repository);
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:134
+    pub fn get_default_maven_central_mirror() -> String {
+        let mut central: Option<String> = std::env::var("PAPER_DEFAULT_CENTRAL_REPOSITORY").ok();
+        if central.is_none() {
+            // PORT: System.getProperty (Java system properties)
+            central = crate::java::lang::System::get_property("org.bukkit.plugin.java.LibraryLoader.centralURL");
+        }
+        if central.is_none() {
+            central = Some("https://maven-central.storage-download.googleapis.com/maven2".to_string());
+        }
+        central.unwrap()
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:188
+    pub fn get_custom_central_mirror_repo() -> Option<RemoteRepository> {
+        // PORT: System.getProperty (Java system properties)
+        let mirror_addr: Option<String> = crate::java::lang::System::get_property("Leaf.library-download-repo");
+        if let Some(mirror_addr) = mirror_addr {
+            return Some(crate::org::eclipse::aether::repository::RemoteRepositoryBuilder::new("central", "default", &mirror_addr).build());
+        }
+        None
+    } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/MavenLibraryResolver.java:200
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -37,3 +135,12 @@ impl ClassPathLibrary for MavenLibraryResolver {
     fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), Throwable> { MavenLibraryResolver::register(self, store) }
 }
 crate::jobject!(MavenLibraryResolver: dyn ClassPathLibrary);
+// ---- anonymous class new AbstractTransferListener() { ... } in MavenLibraryResolver() (MavenLibraryResolver.java:103)
+struct MavenLibraryResolverTransferListener;
+impl crate::org::eclipse::aether::transfer::TransferListener for MavenLibraryResolverTransferListener {
+    // PORT: AbstractTransferListener's other callbacks are no-ops (its defaults)
+    fn transfer_initiated(&self, event: crate::org::eclipse::aether::transfer::TransferEvent) -> Result<(), Throwable> {
+        log::info!("Downloading {}", format!("{}{}", event.get_resource().get_repository_url(), event.get_resource().get_resource_name()));
+        Ok(())
+    }
+}

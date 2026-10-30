@@ -9,17 +9,48 @@ use crate::api_prelude::*;
 pub struct Tick {
     pub milliseconds: i64, // paper-api/src/main/java/io/papermc/paper/util/Tick.java:23
 }
-pub static INSTANCE: LazyLock<Tick> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/util/Tick.java:21
+pub static INSTANCE: LazyLock<Tick> = LazyLock::new(|| Tick::new(crate::net::kyori::adventure::util::ticks::SINGLE_TICK_DURATION_MS)); // PORT: adventure's Ticks (SINGLE_TICK_DURATION_MS = 50) is not ported yet // paper-api/src/main/java/io/papermc/paper/util/Tick.java:21
 impl Tick {
-    pub fn new(length: i64) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:40
-    pub fn tick() -> Tick { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:30
-    pub fn of(ticks: i64) -> std::time::Duration { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:52
-    pub fn from_duration(&self, duration: std::time::Duration) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:64
-    pub fn get_duration(&self) -> std::time::Duration { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:69
-    pub fn is_duration_estimated(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:76
-    pub fn is_date_based(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:81
-    pub fn is_time_based(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:86
-    pub fn add_to<R: JGeneric>(&self, temporal: R, amount: i64) -> R { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:91
-    pub fn between(&self, start: Temporal, end: Temporal) -> i64 { todo!() } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:97
+    pub fn new(length: i64) -> Self {
+        Tick { milliseconds: length }
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:40
+    pub fn tick() -> Tick {
+        *INSTANCE
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:30
+    pub fn of(ticks: i64) -> std::time::Duration {
+        // Duration.of(ticks, INSTANCE): INSTANCE.getDuration().multipliedBy(ticks), exact (ArithmeticException on overflow).
+        // PORT: java.time.Duration is signed; std's is not, so negative tick counts panic.
+        let millis = INSTANCE.milliseconds.checked_mul(ticks).expect("ArithmeticException: long overflow");
+        std::time::Duration::from_millis(u64::try_from(millis).expect("negative Duration"))
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:52
+    pub fn from_duration(&self, duration: std::time::Duration) -> i32 {
+        let millis = i64::try_from(duration.as_millis()).expect("ArithmeticException: long overflow");
+        i32::try_from(millis.div_euclid(self.milliseconds)).expect("ArithmeticException: integer overflow")
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:64
+    pub fn get_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.milliseconds as u64)
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:69
+    pub fn is_duration_estimated(&self) -> bool {
+        false
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:76
+    pub fn is_date_based(&self) -> bool {
+        false
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:81
+    pub fn is_time_based(&self) -> bool {
+        true
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:86
+    pub fn add_to(&self, temporal: Temporal, amount: i64) -> Temporal {
+        // PORT: java.time.Temporal is a stand-in; Temporal.plus(TemporalAmount) and Duration.multipliedBy as their ports will look.
+        temporal.plus(java_duration_of_millis(self.milliseconds).multiplied_by(amount))
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:91
+    pub fn between(&self, start: Temporal, end: Temporal) -> i64 {
+        // PORT: java.time.Temporal.until / ChronoUnit are stand-ins.
+        start.until(&end, crate::java::time::temporal::ChronoUnit::MILLIS) / self.milliseconds
+    } // paper-api/src/main/java/io/papermc/paper/util/Tick.java:97
 }
 crate::jobject!(Tick);
+
+/// `Duration.ofMillis` as java.time's port will provide it. PORT: java.time.Duration (signed) is not ported.
+fn java_duration_of_millis(millis: i64) -> crate::java::time::Duration {
+    crate::java::time::Duration::of_millis(millis)
+}

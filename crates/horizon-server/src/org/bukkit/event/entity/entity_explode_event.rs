@@ -40,20 +40,20 @@ impl std::ops::Deref for dyn EntityExplodeEventTrait {
     type Target = EntityExplodeEvent;
     fn deref(&self) -> &EntityExplodeEvent { self.as_entity_explode_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:20
 impl EntityExplodeEvent {
     pub fn this(&self) -> JRef<dyn EntityExplodeEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityExplodeEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, location: JRef<Location>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:29
+    pub fn new_base<S: EntityExplodeEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn Entity>, location: JRef<Location>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> Self { EntityExplodeEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), location: location, blocks: Mut::new(blocks.clone()), yield_: Mut::new(yield_), result: result, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:29
     pub fn new(entity: JRef<dyn Entity>, location: JRef<Location>, blocks: &Vec<JRef<dyn Block>>, yield_: f32, result: ExplosionResult) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, location, blocks, yield_, result)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:90
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:95
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:100
-    pub fn get_explosion_result(&self) -> ExplosionResult { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:43
-    pub fn block_list(&self) -> Vec<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:54
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:90
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:95
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:100
+    pub fn get_explosion_result(&self) -> ExplosionResult { self.result.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:43
+    pub fn block_list(&self) -> Vec<JRef<dyn Block>> { self.blocks.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:54
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:67
-    pub fn get_yield(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:77
+    pub fn get_yield(&self) -> f32 { self.yield_.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:77
     pub fn set_yield(&self, yield_: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:86
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:106
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityExplodeEvent.java:106
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -13,8 +13,14 @@ pub struct TargetEntityInfo {
 }
 impl TargetEntityInfo {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, hit_vec: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:16
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:26
-    pub fn get_hit_vector(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:36
+    pub fn new(entity: JRef<dyn Entity>, hit_vec: JRef<dyn VectorTrait>) -> JRef<Self> {
+Arc::new_cyclic(|this| TargetEntityInfo { this: this.clone(), entity, hit_vec })
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:16
+    pub fn get_entity(&self) -> JRef<dyn Entity> {
+self.entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:26
+    pub fn get_hit_vector(&self) -> JRef<dyn VectorTrait> {
+self.hit_vec.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/entity/TargetEntityInfo.java:36
 }
 crate::jobject!(TargetEntityInfo);

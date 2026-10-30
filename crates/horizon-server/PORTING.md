@@ -125,8 +125,10 @@ impl EntityTrait for Zombie { fn tick(&self) { Zombie::tick(self) } ... }   // g
 - Logging: `LOGGER.info("x {}", a)` -> `log::info!("x {}", a)` (the `LOGGER` fields are dropped).
 - Streams -> iterator chains; lambdas -> closures (`Arc::new(move |x| ...)` where a `JRef<dyn Fn-trait>` is
   expected); `switch` -> `match`.
-- Bukkit/Paper API calls inside NMS stay: `this.getBukkitEntity()` -> `self.this()` (the NMS entity *is* the
-  API object), `CraftEventFactory.callX(...)` -> `crate::api_impl::event::CraftEventFactory::call_x(...)`,
+- Bukkit/Paper API calls inside NMS stay: `this.getBukkitEntity()` ->
+  `api::<dyn crate::org::bukkit::entity::Entity, _>(&self.this())` (the NMS entity *is* the API object; use
+  the API trait the Java code's static type names, e.g. `dyn crate::org::bukkit::entity::Player` for a
+  `CraftPlayer`), `CraftEventFactory.callX(...)` -> `crate::api_impl::event::CraftEventFactory::call_x(...)`,
   `new PlayerMoveEvent(...)` -> the API event struct, `.callEvent()` as in Java. `CraftX.getHandle()` and
   `CraftX` casts disappear: the value already is the NMS object.
 - Leaf/Paper/Purpur/Gale config reads (`org.dreeam.leaf.config...`, `GlobalConfiguration.get()`,
@@ -183,3 +185,78 @@ buf.write_byte(1); buf.read_int(); buf.readable_bytes();
 If the library port you need doesn't exist yet, write the call in this shape anyway; integration fixes
 the rest. Library port agents: implement every Java API member the Leaf sources use (grep them), with these
 idioms exactly.
+
+## The Bukkit/Paper API
+
+- paper-api is ported as API: interfaces are traits (already in the skeleton), classes (events, `Location`,
+  `ItemStack`, `Vector`, `NamespacedKey`, configuration, `Bukkit`...) are structs with their bodies, enums
+  keep their constants. `Bukkit.getServer()` returns the `JRef<dyn Server>` that `MinecraftServer` implements.
+- CraftBukkit is not ported as wrapper types. Each wrapper's code becomes the impl of its API trait on the
+  NMS type behind `getHandle()`, in the wrapper's own Rust file under `api_impl` (the skeleton marks wrapper
+  types with a comment): `impl crate::org::bukkit::entity::Player for ServerPlayer { .. }` with
+  `getHandle()` -> `self`. A wrapper hierarchy over an NMS hierarchy becomes a blanket impl keyed by the
+  NMS trait: `CraftLivingEntity` -> `impl<T: LivingEntityTrait> crate::org::bukkit::entity::LivingEntity for T`
+  (concrete wrappers like `CraftZombie` -> a plain impl for `Zombie`). Wrapper state (fields of a CraftX)
+  goes into a struct in that file, `CraftPlayerData`, which the NMS type will hold: list those in your report.
+  Wrappers of things NMS has no single object for (`CraftBlock` = level + pos, `CraftItemStack` around an
+  NMS `ItemStack`, block-state snapshots, `CraftInventory` around a `Container`, item metas) stay small
+  structs in `api_impl` holding the NMS values.
+- The casts from NMS objects to API traits (`api::<dyn ..>(..)`) are added to the `jobject!` lines by the
+  integration step, from the impls you write.
+
+## Left out (user's decisions)
+
+- **No data fixing.** The server runs 26.3 worlds only: DFU's datafixers (`com.mojang.datafixers` except
+  `util`: `Pair`, `Either`, `Unit`), `net.minecraft.util.datafix` fixes/schemas, `DataFixers` and Paper's
+  DataConverter (`ca.spottedleaf.dataconverter`) are not ported. Where Java runs data through a fixer
+  (`DataFixTypes.update/updateToCurrentVersion`, `MCDataConverter.convert...`, `ChunkSystemConverters`,
+  `DataFixer` fields and parameters), drop the fixer and pass the data through unchanged.
+  `DataFixTypes` stays as an enum whose updates return their input.
+- **No diagnostics services:** Sentry, spark, oshi (and their Leaf/Pufferfish glue) are gone; drop the calls.
+- **Networking is tokio, not netty.** `ByteBuf` stays (a shared byte buffer with Netty's read/write API, used
+  by `FriendlyByteBuf` and the packet codecs). The transport (`Connection`, `ServerConnectionListener`, frame,
+  compression and cipher codecs, Leaf's packet interceptors) is written on tokio by the network port:
+  `Connection` keeps its public methods (`send`, `send_2`..., `setup_compression`, `set_encryption_key`,
+  `set_listener...`, `tick`, `disconnect`, `is_connected`, `get_remote_address`...), so packet listeners call
+  it as Java does. Elsewhere, `Channel`/`ChannelFuture`/`EventLoop` uses become calls on `Connection`.
+- **No status protocol, Query, RCON, JSON-RPC management, JFR.** Velocity answers server-list pings. The
+  `network.protocol.status` package and `CraftRemoteConsoleCommandSender` are not ported: drop `ServerStatus`
+  fields/updates (MOTD, favicon, player sample) and handle a status handshake intention by closing the
+  connection. API events about list pings stay in the API but are never fired.
+
+## Generic methods of interfaces (decided after the first units)
+
+A generic method of an interface (`<T> void spawnParticle(Particle, Location, int, T data)`,
+`<T extends Entity> T spawn(Location, Class<T>)`, `<T> BanList<T> getBanList(Type)`) is **type-erased** so
+it stays callable on `dyn Trait`: each method type parameter becomes its bound's Rust type, or
+`JObjectRef` when unbounded (`data: Option<JObjectRef>`, `-> JRef<dyn Entity>`, `-> JRef<dyn BanList<JObjectRef>>`);
+callers downcast with `cast` where Java's caller relied on `T`. The skeleton still shows some of these as
+`fn x<T: JGeneric>(..) where Self: Sized`: write implementations and calls in the erased form; the
+integration step rewrites the trait declarations to match.
+
+## Rust libraries instead of Java's (user's decision, supersedes the library rules above where they differ)
+
+Java's own library (the JDK) and every library that has a Rust counterpart are **not ported**: the code
+uses Rust's std and crates directly. `crate::java::*`, `crate::com::google::*`, `crate::org::joml`,
+`crate::it::unimi::*`, Configurate/snakeyaml/configurationmaster, log4j, jline, joptsimple keep only
+**type aliases and re-exports** of the Rust types (so the skeleton's signatures resolve) plus the smallest
+glue Java semantics need — never a re-implementation of the Java class. In method bodies write Rust:
+
+| Java | Rust |
+|---|---|
+| `Thread`, `ExecutorService`, `CompletableFuture`, locks, latches | `std::thread`, rayon/tokio, `futures`, `parking_lot`, `crossbeam` |
+| `java.io` / `java.nio.file` / `Files` | `std::io`, `std::fs`, `std::path` |
+| `ByteBuffer` | `bytes` or `Vec<u8>` |
+| `java.time`, `SimpleDateFormat` | `chrono`, `std::time` |
+| `MessageDigest`, `Cipher`, `KeyPair`, `Deflater/Inflater`, `GZIP*` | `sha1`/`sha2`/`md-5`, `aes`+`cfb8`, `rsa`, `flate2` |
+| `java.util.Random` (outside the game's own `RandomSource`) | `rand` |
+| `Pattern`/`Matcher` | `regex` |
+| Gson `JsonElement`/`JsonObject`/`JsonArray`/`Gson` | `serde_json::Value` / `Map` / `Vec<Value>` / serde |
+| JOML `Vector3f`/`Quaternionf`/`Matrix4f` | `glam::Vec3`/`Quat`/`Mat4` (`*d` -> `DVec3`...) |
+| Guava/fastutil helpers, Caffeine caches | std collections/iterators, `moka` |
+| YAML configs (Configurate, configurationmaster, snakeyaml, Bukkit's YamlConfiguration internals) | `serde_yaml` |
+| log4j/slf4j | `log` |
+| console (jline), options (joptsimple) | `rustyline` (or stdin), `clap` |
+
+Libraries with no Rust equivalent keep being ported: DFU serialization (Codec...), Brigadier, Adventure,
+Spottedleaf's concurrentutil; the network transport is tokio.

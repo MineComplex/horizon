@@ -8,9 +8,15 @@ use crate::api_prelude::*;
 pub struct PaperClassLoaderStorageAccess {
     pub this: Weak<Self>,
 }
-pub static INSTANCE: LazyLock<JRef<dyn PaperClassLoaderStorage>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorageAccess.java:15
+pub static INSTANCE: LazyLock<JRef<dyn PaperClassLoaderStorage>> = LazyLock::new(|| crate::net::kyori::adventure::util::services::service(|| {
+    // META-INF/services/io.papermc.paper.plugin.provider.classloader.PaperClassLoaderStorage
+    Some(crate::io::papermc::paper::plugin::entrypoint::classloader::group::paper_plugin_class_loader_storage::PaperPluginClassLoaderStorage::new() as JRef<dyn PaperClassLoaderStorage>)
+})
+.expect("NoSuchElementException: No value present")); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorageAccess.java:15
 impl PaperClassLoaderStorageAccess {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorageAccess.java:9
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PaperClassLoaderStorageAccess { this: this.clone() })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PaperClassLoaderStorageAccess.java:9
 }
 crate::jobject!(PaperClassLoaderStorageAccess);

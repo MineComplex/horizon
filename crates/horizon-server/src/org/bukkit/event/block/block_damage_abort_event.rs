@@ -22,14 +22,14 @@ impl std::ops::Deref for BlockDamageAbortEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:16
 impl BlockDamageAbortEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, item_in_hand: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:47
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:32
-    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:42
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:53
+    pub fn new(player: JRef<dyn Player>, block: JRef<dyn Block>, item_in_hand: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockDamageAbortEvent { base: BlockEvent::new_base(this, block), this: this.clone(), player: player, itemstack: item_in_hand }) } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:47
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:32
+    pub fn get_item_in_hand(&self) -> JRef<ItemStack> { self.itemstack.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:42
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockDamageAbortEvent.java:53
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

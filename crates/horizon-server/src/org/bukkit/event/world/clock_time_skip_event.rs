@@ -29,18 +29,18 @@ impl std::ops::Deref for dyn ClockTimeSkipEventTrait {
     type Target = ClockTimeSkipEvent;
     fn deref(&self) -> &ClockTimeSkipEvent { self.as_clock_time_skip_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:19
 impl ClockTimeSkipEvent {
     pub fn this(&self) -> JRef<dyn ClockTimeSkipEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ClockTimeSkipEventTrait + 'static>(this: &Weak<S>, skip_reason: ClockTimeSkipEventSkipReason, skip_amount: i64) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:26
+    pub fn new_base<S: ClockTimeSkipEventTrait + 'static>(this: &Weak<S>, skip_reason: ClockTimeSkipEventSkipReason, skip_amount: i64) -> Self { Self { base: Event::new_base(this), this: this.clone(), skip_reason: skip_reason, skip_amount: Mut::new(skip_amount), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:26
     pub fn new(skip_reason: ClockTimeSkipEventSkipReason, skip_amount: i64) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, skip_reason, skip_amount)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:59
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:64
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:69
-    pub fn get_skip_reason(&self) -> ClockTimeSkipEventSkipReason { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:37
-    pub fn get_skip_amount(&self) -> i64 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:46
-    pub fn set_skip_amount(&self, skip_amount: i64) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:55
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:74
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:59
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:64
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:69
+    pub fn get_skip_reason(&self) -> ClockTimeSkipEventSkipReason { self.skip_reason.clone() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:37
+    pub fn get_skip_amount(&self) -> i64 { self.skip_amount.get() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:46
+    pub fn set_skip_amount(&self, skip_amount: i64) { self.skip_amount.set(skip_amount) } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:55
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ClockTimeSkipEvent.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

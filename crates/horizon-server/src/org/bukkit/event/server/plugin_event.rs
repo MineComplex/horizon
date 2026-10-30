@@ -26,6 +26,6 @@ impl std::ops::Deref for dyn PluginEventTrait {
 }
 impl PluginEvent {
     pub fn this(&self) -> JRef<dyn PluginEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PluginEventTrait + 'static>(this: &Weak<S>, plugin: JRef<dyn Plugin>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/server/PluginEvent.java:13
-    pub fn get_plugin(&self) -> JRef<dyn Plugin> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/PluginEvent.java:22
+    pub fn new_base<S: PluginEventTrait + 'static>(this: &Weak<S>, plugin: JRef<dyn Plugin>) -> Self { Self { base: ServerEvent::new_base(this), this: this.clone(), plugin: plugin } } // paper-api/src/main/java/org/bukkit/event/server/PluginEvent.java:13
+    pub fn get_plugin(&self) -> JRef<dyn Plugin> { self.plugin.clone() } // paper-api/src/main/java/org/bukkit/event/server/PluginEvent.java:22
 }

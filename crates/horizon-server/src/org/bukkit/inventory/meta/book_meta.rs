@@ -23,9 +23,9 @@ pub trait BookMeta: WritableBookMeta {
     fn author_1(&self, author: Component) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:208
     fn page(&self, page: i32) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:220
     fn page_2(&self, page: i32, data: Component); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:234
-    fn add_pages(&self); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:242
+    fn add_pages(&self, pages: &Vec<Component>); // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:242
     fn pages(&self) -> Vec<Component>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:251
-    fn pages_0(&self) -> JRef<dyn BookMeta> { todo!() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:268
+    fn pages_0(&self, pages: &Vec<Component>) -> JRef<dyn BookMeta> { self.pages_1(&pages.clone()) } // default, paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:268
     fn pages_1(&self, pages: &Vec<Component>) -> JRef<dyn BookMeta>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:259
     fn spigot(&self) -> JRef<BookMetaSpigot>; // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:355
 }
@@ -52,12 +52,12 @@ pub struct BookMetaSpigot {
 }
 impl BookMetaSpigot {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:275
-    pub fn get_page(&self, page: i32) -> Vec<BaseComponent> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:284
-    pub fn set_page(&self, page: i32, data: Option<Vec<BaseComponent>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:301
-    pub fn get_pages(&self) -> Vec<Vec<BaseComponent>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:312
-    pub fn set_pages(&self, pages: &Vec<Vec<BaseComponent>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:325
-    pub fn set_pages_1(&self, pages: &Vec<Vec<BaseComponent>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:337
-    pub fn add_page(&self, pages: &Vec<Vec<BaseComponent>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:349
+    pub fn new() -> JRef<Self> { Arc::new_cyclic(|this| BookMetaSpigot { this: this.clone() }) } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:275
+    pub fn get_page(&self, page: i32) -> Vec<BaseComponent> { let _ = page; panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:284
+    pub fn set_page(&self, page: i32, data: Option<Vec<BaseComponent>>) { let _ = (page, data); panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:301
+    pub fn get_pages(&self) -> Vec<Vec<BaseComponent>> { panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:312
+    pub fn set_pages(&self, pages: &Vec<Vec<BaseComponent>>) { let _ = pages; panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:325
+    pub fn set_pages_1(&self, pages: &Vec<Vec<BaseComponent>>) { let _ = pages; panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:337
+    pub fn add_page(&self, pages: &Vec<Vec<BaseComponent>>) { let _ = pages; panic!("UnsupportedOperationException: Not supported yet.") } // paper-api/src/main/java/org/bukkit/inventory/meta/BookMeta.java:349
 }
 crate::jobject!(BookMetaSpigot);

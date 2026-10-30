@@ -16,13 +16,25 @@ impl std::ops::Deref for WhitelistToggleEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:16
 impl WhitelistToggleEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(enabled: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:20
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:34
-    pub fn is_enabled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:39
+    pub fn new(enabled: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| WhitelistToggleEvent {
+base: Event::new_base(this),
+this: this.clone(),
+enabled: enabled,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:20
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:34
+    pub fn is_enabled(&self) -> bool {
+self.enabled.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/WhitelistToggleEvent.java:39
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

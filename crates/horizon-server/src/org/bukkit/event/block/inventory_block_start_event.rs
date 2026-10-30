@@ -28,14 +28,14 @@ impl std::ops::Deref for dyn InventoryBlockStartEventTrait {
     type Target = InventoryBlockStartEvent;
     fn deref(&self) -> &InventoryBlockStartEvent { self.as_inventory_block_start_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:20
 impl InventoryBlockStartEvent {
     pub fn this(&self) -> JRef<dyn InventoryBlockStartEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: InventoryBlockStartEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:24
+    pub fn new_base<S: InventoryBlockStartEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>) -> Self { InventoryBlockStartEvent { base: BlockEvent::new_base(this, block), this: this.clone(), source: Mut::new(source) } } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:24
     pub fn new(block: JRef<dyn Block>, source: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, source)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:40
-    pub fn get_source(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:35
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:46
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:40
+    pub fn get_source(&self) -> JRef<ItemStack> { self.source.get() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:35
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/InventoryBlockStartEvent.java:46
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

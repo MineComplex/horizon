@@ -16,7 +16,6 @@ pub mod ping;
 pub mod protocol_codec_builder;
 pub mod protocol_info_builder;
 pub mod simple_unbound_protocol;
-pub mod status;
 pub mod unbound_protocol;
 pub use self::bundle_delimiter_packet::{BundleDelimiterPacket, BundleDelimiterPacketTrait};
 pub use self::bundle_packet::{BundlePacket, BundlePacketTrait};

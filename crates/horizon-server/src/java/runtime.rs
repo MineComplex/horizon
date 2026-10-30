@@ -191,3 +191,9 @@ macro_rules! jobject {
         }
     };
 }
+
+/// The Bukkit/Paper API view of an NMS object (`entity.getBukkitEntity()`, `level.getWorld()`): the NMS
+/// object itself, as the API trait it implements. Panics when the type doesn't implement it.
+pub fn api<T: ?Sized + 'static, S: ?Sized + JObject>(o: &Arc<S>) -> Arc<T> {
+    cast::<T, S>(o).unwrap_or_else(|| panic!("{} does not implement {}", o.class_name(), std::any::type_name::<T>()))
+}

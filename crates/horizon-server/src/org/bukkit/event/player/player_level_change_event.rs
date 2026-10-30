@@ -20,14 +20,14 @@ impl std::ops::Deref for PlayerLevelChangeEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:13
 impl PlayerLevelChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, old_level: i32, new_level: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:18
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:43
-    pub fn get_old_level(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:30
-    pub fn get_new_level(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:39
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:49
+    pub fn new(player: JRef<dyn Player>, old_level: i32, new_level: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), old_level: old_level, new_level: new_level }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:18
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:43
+    pub fn get_old_level(&self) -> i32 { self.old_level } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:30
+    pub fn get_new_level(&self) -> i32 { self.new_level } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:39
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerLevelChangeEvent.java:49
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

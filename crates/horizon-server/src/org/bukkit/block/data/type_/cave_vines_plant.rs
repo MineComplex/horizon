@@ -6,7 +6,7 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.data.type.CaveVinesPlant (paper-api/src/main/java/org/bukkit/block/data/type/CaveVinesPlant.java:8)
 pub trait CaveVinesPlant: BlockData {
-    fn is_berries(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/CaveVinesPlant.java:16
+    fn is_berries(&self) -> bool { self.has_berries() } // default, paper-api/src/main/java/org/bukkit/block/data/type/CaveVinesPlant.java:16
     fn has_berries(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/data/type/CaveVinesPlant.java:26
     fn set_berries(&self, berries: bool); // paper-api/src/main/java/org/bukkit/block/data/type/CaveVinesPlant.java:33
 }

@@ -25,17 +25,17 @@ impl std::ops::Deref for BrewEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:19
 impl BrewEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(brewer: JRef<dyn Block>, contents: JRef<dyn BrewerInventory>, results: &Vec<JRef<ItemStack>>, fuel_level: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:76
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:81
-    pub fn get_contents(&self) -> JRef<dyn BrewerInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:42
-    pub fn get_results(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:57
-    pub fn get_fuel_level(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:67
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:87
+    pub fn new(brewer: JRef<dyn Block>, contents: JRef<dyn BrewerInventory>, results: &Vec<JRef<ItemStack>>, fuel_level: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockEvent::new_base(this, brewer), this: this.clone(), contents: contents, results: Mut::new(results.clone()), fuel_level: fuel_level, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:76
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:81
+    pub fn get_contents(&self) -> JRef<dyn BrewerInventory> { self.contents.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:42
+    pub fn get_results(&self) -> Vec<JRef<ItemStack>> { self.results.get() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:57
+    pub fn get_fuel_level(&self) -> i32 { self.fuel_level } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:67
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/BrewEvent.java:87
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

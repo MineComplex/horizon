@@ -10,5 +10,21 @@ use crate::api_prelude::*;
 pub trait ProxiedCommandSender: CommandSender + ForwardingAudienceSingle {
     fn get_caller(&self) -> JRef<dyn CommandSender>; // paper-api/src/main/java/org/bukkit/command/ProxiedCommandSender.java:17
     fn get_callee(&self) -> JRef<dyn CommandSender>; // paper-api/src/main/java/org/bukkit/command/ProxiedCommandSender.java:25
-    fn audience(&self) -> JRef<dyn Audience> { todo!() } // default, paper-api/src/main/java/org/bukkit/command/ProxiedCommandSender.java:44
+    fn audience(&self) -> JRef<dyn Audience> {
+        self.get_caller()
+    } // default, paper-api/src/main/java/org/bukkit/command/ProxiedCommandSender.java:44
+}
+// PORT: Java's ProxiedCommandSender also overrides CommandSender's default sendMessage(Component),
+// sendMessage(Component, ChatType.Bound) and sendMessage(SignedMessage, ChatType.Bound) with
+// ForwardingAudience.Single's (which forward to audience()). A Rust subtrait cannot override a
+// supertrait's default: implementors forward `send_message_1_2`, `send_message_2_3` and `send_message_2_4`
+// to these.
+pub fn send_message_2_3<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::net::kyori::adventure::text::Component, bound_chat_type: crate::net::kyori::adventure::chat::ChatTypeBound) {
+    this.audience().send_message_2(message, bound_chat_type);
+}
+pub fn send_message_1_2<S: ProxiedCommandSender + ?Sized>(this: &S, message: crate::net::kyori::adventure::text::Component) {
+    this.audience().send_message_1(message);
+}
+pub fn send_message_2_4<S: ProxiedCommandSender + ?Sized>(this: &S, signed_message: JRef<dyn crate::net::kyori::adventure::chat::SignedMessage>, bound_chat_type: crate::net::kyori::adventure::chat::ChatTypeBound) {
+    this.audience().send_message_2_2(signed_message, bound_chat_type);
 }

@@ -32,18 +32,18 @@ impl std::ops::Deref for dyn ServerCommandEventTrait {
     type Target = ServerCommandEvent;
     fn deref(&self) -> &ServerCommandEvent { self.as_server_command_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:45
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:45
 impl ServerCommandEvent {
     pub fn this(&self) -> JRef<dyn ServerCommandEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ServerCommandEventTrait + 'static>(this: &Weak<S>, sender: JRef<dyn CommandSender>, command: &str) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:52
+    pub fn new_base<S: ServerCommandEventTrait + 'static>(this: &Weak<S>, sender: JRef<dyn CommandSender>, command: &str) -> Self { Self { base: ServerEvent::new_base(this), this: this.clone(), sender: sender, command: Mut::new(command.to_string()), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:52
     pub fn new(sender: JRef<dyn CommandSender>, command: &str) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, sender, command)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:88
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:93
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:98
-    pub fn get_sender(&self) -> JRef<dyn CommandSender> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:63
-    pub fn get_command(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:74
-    pub fn set_command(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:84
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:104
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:88
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:93
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:98
+    pub fn get_sender(&self) -> JRef<dyn CommandSender> { self.sender.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:63
+    pub fn get_command(&self) -> String { self.command.get() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:74
+    pub fn set_command(&self, message: &str) { self.command.set(message.to_string()) } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:84
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServerCommandEvent.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

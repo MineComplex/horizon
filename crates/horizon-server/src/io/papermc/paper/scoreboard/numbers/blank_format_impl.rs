@@ -10,7 +10,6 @@ pub struct BlankFormatImpl {
 }
 pub static INSTANCE: LazyLock<BlankFormatImpl> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/BlankFormatImpl.java:4
 impl BlankFormatImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/BlankFormatImpl.java:3
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

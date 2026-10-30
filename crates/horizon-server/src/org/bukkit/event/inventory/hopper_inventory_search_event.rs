@@ -14,7 +14,7 @@ use crate::api_prelude::*;
 pub struct HopperInventorySearchEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
-    pub inventory: Mut<JRef<dyn Inventory>>, // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:19
+    pub inventory: Mut<Option<JRef<dyn Inventory>>>, // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:19
     pub container_type: HopperInventorySearchEventContainerType, // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:20
     pub search_block: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:21
 }
@@ -22,16 +22,16 @@ impl std::ops::Deref for HopperInventorySearchEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:17
 impl HopperInventorySearchEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(inventory: Option<JRef<dyn Inventory>>, container_type: HopperInventorySearchEventContainerType, hopper: JRef<dyn Block>, search_block: JRef<dyn Block>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:39
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:88
-    pub fn set_inventory(&self, inventory: Option<JRef<dyn Inventory>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:53
-    pub fn get_inventory(&self) -> Option<JRef<dyn Inventory>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:63
-    pub fn get_container_type(&self) -> HopperInventorySearchEventContainerType { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:73
-    pub fn get_search_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:83
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:94
+    pub fn new(inventory: Option<JRef<dyn Inventory>>, container_type: HopperInventorySearchEventContainerType, hopper: JRef<dyn Block>, search_block: JRef<dyn Block>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockEvent::new_base(this, hopper), this: this.clone(), inventory: Mut::new(inventory), container_type, search_block }) } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:39
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:88
+    pub fn set_inventory(&self, inventory: Option<JRef<dyn Inventory>>) { self.inventory.set(inventory) } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:53
+    pub fn get_inventory(&self) -> Option<JRef<dyn Inventory>> { self.inventory.get() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:63
+    pub fn get_container_type(&self) -> HopperInventorySearchEventContainerType { self.container_type.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:73
+    pub fn get_search_block(&self) -> JRef<dyn Block> { self.search_block.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:83
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/HopperInventorySearchEvent.java:94
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

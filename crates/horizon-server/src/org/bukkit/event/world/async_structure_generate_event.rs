@@ -30,16 +30,16 @@ impl std::ops::Deref for AsyncStructureGenerateEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:41
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:41
 impl AsyncStructureGenerateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(world: JRef<dyn World>, async_: bool, cause: AsyncStructureGenerateEventCause, structure: JRef<dyn StructureTrait>, bounding_box: JRef<BoundingBox>, chunk_x: i32, chunk_z: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:53
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:215
-    pub fn get_cause(&self) -> AsyncStructureGenerateEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:68
-    pub fn get_structure(&self) -> JRef<dyn StructureTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:78
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:215
+    pub fn get_cause(&self) -> AsyncStructureGenerateEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:68
+    pub fn get_structure(&self) -> JRef<dyn StructureTrait> { self.structure.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:78
     pub fn get_bounding_box(&self) -> JRef<BoundingBox> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:88
-    pub fn get_chunk_x(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:98
-    pub fn get_chunk_z(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:107
+    pub fn get_chunk_x(&self) -> i32 { self.chunk_x } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:98
+    pub fn get_chunk_z(&self) -> i32 { self.chunk_z } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:107
     pub fn get_block_transformer(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn BlockTransformer>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:118
     pub fn set_block_transformer(&self, key: JRef<NamespacedKey>, transformer: JRef<dyn BlockTransformer>) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:130
     pub fn remove_block_transformer(&self, key: JRef<NamespacedKey>) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:141
@@ -50,7 +50,7 @@ impl AsyncStructureGenerateEvent {
     pub fn remove_entity_transformer(&self, key: JRef<NamespacedKey>) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:193
     pub fn clear_entity_transformers(&self) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:201
     pub fn get_entity_transformers(&self) -> HashMap<JRef<NamespacedKey>, JRef<dyn EntityTransformer>> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:210
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:221
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureGenerateEvent.java:221
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -41,7 +41,7 @@ pub trait BlockData: Cloneable {
     fn mirror(&self, mirror: Mirror); // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:260
     fn copy_to(&self, other: JRef<dyn BlockData>); // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:270
     fn create_block_state(&self) -> JRef<dyn BlockState>; // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:278
-    fn get_destroy_speed(&self, item_stack: JRef<ItemStack>) -> f32 { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/BlockData.java:292
+    fn get_destroy_speed(&self, item_stack: JRef<ItemStack>) -> f32 { self.get_destroy_speed_2(item_stack, false) } // default, paper-api/src/main/java/org/bukkit/block/data/BlockData.java:292
     fn get_destroy_speed_2(&self, item_stack: JRef<ItemStack>, consider_enchants: bool) -> f32; // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:307
     fn is_randomly_ticked(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:317
     fn is_replaceable(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/data/BlockData.java:324

@@ -51,15 +51,27 @@ impl ParticleBuilder {
     pub fn location_4(&self, world: JRef<dyn World>, x: f64, y: f64, z: f64) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:296
     pub fn count(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:304
     pub fn count_1(&self, count: i32) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:314
-    pub fn offset_x(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:324
-    pub fn offset_y(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:333
-    pub fn offset_z(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:342
+    pub fn offset_x(&self) -> f64 {
+self.offset_x.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:324
+    pub fn offset_y(&self) -> f64 {
+self.offset_y.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:333
+    pub fn offset_z(&self) -> f64 {
+self.offset_z.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:342
     pub fn offset(&self, offset_x: f64, offset_y: f64, offset_z: f64) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:354
     pub fn extra(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:367
     pub fn extra_1(&self, extra: f64) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:379
-    pub fn speed_x(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:389
-    pub fn speed_y(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:398
-    pub fn speed_z(&self) -> f64 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:407
+    pub fn speed_x(&self) -> f64 {
+self.speed_x.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:389
+    pub fn speed_y(&self) -> f64 {
+self.speed_y.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:398
+    pub fn speed_z(&self) -> f64 {
+self.speed_z.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:407
     pub fn speed(&self, speed: f64) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:417
     pub fn speed_3(&self, speed_x: f64, speed_y: f64, speed_z: f64) -> JRef<ParticleBuilder> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:429
     pub fn data<T: JGeneric>(&self) -> Option<T> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/ParticleBuilder.java:442

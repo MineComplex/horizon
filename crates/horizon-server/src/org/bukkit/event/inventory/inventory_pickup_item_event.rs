@@ -21,16 +21,16 @@ impl std::ops::Deref for InventoryPickupItemEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:16
 impl InventoryPickupItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(inventory: JRef<dyn Inventory>, item: JRef<dyn Item>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:45
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:50
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:55
-    pub fn get_inventory(&self) -> JRef<dyn Inventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:32
-    pub fn get_item(&self) -> JRef<dyn Item> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:40
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:61
+    pub fn new(inventory: JRef<dyn Inventory>, item: JRef<dyn Item>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: Event::new_base(this), this: this.clone(), inventory: inventory, item: item, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:45
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:50
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:55
+    pub fn get_inventory(&self) -> JRef<dyn Inventory> { self.inventory.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:32
+    pub fn get_item(&self) -> JRef<dyn Item> { self.item.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:40
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryPickupItemEvent.java:61
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

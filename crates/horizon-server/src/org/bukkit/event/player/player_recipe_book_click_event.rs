@@ -22,17 +22,17 @@ impl std::ops::Deref for PlayerRecipeBookClickEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:21
 impl PlayerRecipeBookClickEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, recipe: JRef<dyn Recipe>, shift_click: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:27
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:101
-    pub fn get_original_recipe(&self) -> JRef<dyn Recipe> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:42
-    pub fn get_recipe(&self) -> JRef<dyn Recipe> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:54
+    pub fn new(player: JRef<dyn Player>, recipe: JRef<dyn Recipe>, shift_click: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), original_recipe: recipe.clone(), recipe: Mut::new(recipe), shift_click: Mut::new(shift_click) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:27
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:101
+    pub fn get_original_recipe(&self) -> JRef<dyn Recipe> { self.original_recipe.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:42
+    pub fn get_recipe(&self) -> JRef<dyn Recipe> { self.recipe.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:54
     pub fn set_recipe(&self, recipe: JRef<dyn Recipe>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:70
-    pub fn is_shift_click(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:87
-    pub fn set_shift_click(&self, shift_click: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:97
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:107
+    pub fn is_shift_click(&self) -> bool { self.shift_click.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:87
+    pub fn set_shift_click(&self, shift_click: bool) { self.shift_click.set(shift_click) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:97
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeBookClickEvent.java:107
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

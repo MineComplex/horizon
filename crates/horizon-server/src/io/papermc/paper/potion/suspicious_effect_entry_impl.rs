@@ -12,13 +12,14 @@ pub struct SuspiciousEffectEntryImpl {
     pub duration: i32,
 }
 impl SuspiciousEffectEntryImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/SuspiciousEffectEntryImpl.java:7
-    pub fn new_2(effect: JRef<dyn PotionEffectTypeTrait>, duration: i32) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/SuspiciousEffectEntryImpl.java:7
+    pub fn new_2(effect: JRef<dyn PotionEffectTypeTrait>, duration: i32) -> Self {
+        SuspiciousEffectEntryImpl { effect, duration }
+    } // paper-api/src/main/java/io/papermc/paper/potion/SuspiciousEffectEntryImpl.java:7
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SuspiciousEffectEntry for SuspiciousEffectEntryImpl {
-    fn effect(&self) -> JRef<dyn PotionEffectTypeTrait> { todo!("abstract SuspiciousEffectEntry.effect") }
-    fn duration(&self) -> i32 { todo!("abstract SuspiciousEffectEntry.duration") }
+    fn effect(&self) -> JRef<dyn PotionEffectTypeTrait> { self.effect.clone() }
+    fn duration(&self) -> i32 { self.duration }
 }
 crate::jobject!(SuspiciousEffectEntryImpl: dyn SuspiciousEffectEntry);

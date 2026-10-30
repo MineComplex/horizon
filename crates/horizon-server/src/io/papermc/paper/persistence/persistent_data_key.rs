@@ -11,4 +11,7 @@ pub trait PersistentDataKey<C: JGeneric>: JObject {
     fn key(&self) -> JRef<NamespacedKey>; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataKey.java:63
     fn data_type(&self) -> JRef<dyn PersistentDataType<JObjectRef, C>>; // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataKey.java:68
 }
-pub fn of<C: JGeneric>(key: JRef<dyn Key>, type_: JRef<dyn PersistentDataType<JObjectRef, C>>) -> JRef<dyn PersistentDataKey<C>> { todo!() } // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataKey.java:56
+pub fn of<C: JGeneric>(key: JRef<dyn Key>, type_: JRef<dyn PersistentDataType<JObjectRef, C>>) -> JRef<dyn PersistentDataKey<C>> {
+    // PORT: InternalAPIBridge.createPersistentDataKey is a generic method (not callable on dyn InternalAPIBridge yet)
+    crate::io::papermc::paper::internal_api_bridge::get().create_persistent_data_key(key, type_)
+    } // paper-api/src/main/java/io/papermc/paper/persistence/PersistentDataKey.java:56

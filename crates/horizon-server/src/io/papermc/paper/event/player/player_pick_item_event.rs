@@ -36,18 +36,36 @@ impl std::ops::Deref for dyn PlayerPickItemEventTrait {
     type Target = PlayerPickItemEvent;
     fn deref(&self) -> &PlayerPickItemEvent { self.as_player_pick_item_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:26
 impl PlayerPickItemEvent {
     pub fn this(&self) -> JRef<dyn PlayerPickItemEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerPickItemEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, item: JRef<ItemStack>, include_data: bool, target_slot: i32, source_slot: i32) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:106
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:111
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:116
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:50
-    pub fn is_include_data(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:59
-    pub fn get_target_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:68
-    pub fn set_target_slot(&self, target_slot: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:77
-    pub fn get_source_slot(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:90
-    pub fn set_source_slot(&self, source_slot: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:101
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:121
+    pub fn new_base<S: PlayerPickItemEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, item: JRef<ItemStack>, include_data: bool, target_slot: i32, source_slot: i32) -> Self {
+        PlayerPickItemEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            item,
+            include_data,
+            target_slot: Mut::new(target_slot),
+            source_slot: Mut::new(source_slot),
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:106
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:111
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:116
+    pub fn get_item(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.item)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:50
+    pub fn is_include_data(&self) -> bool { self.include_data } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:59
+    pub fn get_target_slot(&self) -> i32 { self.target_slot.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:68
+    pub fn set_target_slot(&self, target_slot: i32) {
+        assert!((0..=8).contains(&target_slot), "Target slot must be in range 0 - 8 (inclusive)");
+        self.target_slot.set(target_slot);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:77
+    pub fn get_source_slot(&self) -> i32 { self.source_slot.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:90
+    pub fn set_source_slot(&self, source_slot: i32) {
+        assert!((-1..=35).contains(&source_slot), "Source slot must be in range of the player's inventory slot, or -1");
+        self.source_slot.set(source_slot);
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:101
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerPickItemEvent.java:121
 }

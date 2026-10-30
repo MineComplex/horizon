@@ -4,6 +4,7 @@ use crate::prelude::*;
 use crate::java::lang::Throwable;
 use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::command::command::Command;
+use crate::org::bukkit::command::command_exception::CommandException;
 use crate::org::bukkit::command::command::CommandTrait;
 use crate::org::bukkit::command::command_executor::CommandExecutor;
 use crate::org::bukkit::command::command_map::CommandMap;
@@ -20,7 +21,7 @@ pub struct PluginCommand {
     pub this: Weak<Self>,
     pub owning_plugin: JRef<dyn Plugin>, // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:19
     pub executor: Mut<JRef<dyn CommandExecutor>>, // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:20
-    pub completer: Mut<JRef<dyn TabCompleter>>, // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:21
+    pub completer: Mut<Option<JRef<dyn TabCompleter>>>, // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:21
 }
 impl std::ops::Deref for PluginCommand {
     type Target = Command;
@@ -28,15 +29,137 @@ impl std::ops::Deref for PluginCommand {
 }
 impl PluginCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, owner: JRef<dyn Plugin>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:23
-    pub fn execute(&self, sender: JRef<dyn CommandSender>, command_label: &str, args: &Vec<String>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:38
-    pub fn get_plugin(&self) -> JRef<dyn Plugin> { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:111
-    pub fn tab_complete(&self, sender: JRef<dyn CommandSender>, alias: &str, args: &Vec<String>) -> Result<Vec<String>, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:134
-    pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:165
-    pub fn set_executor(&self, executor: Option<JRef<dyn CommandExecutor>>) { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:70
-    pub fn get_executor(&self) -> JRef<dyn CommandExecutor> { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:79
-    pub fn set_tab_completer(&self, completer: Option<JRef<dyn TabCompleter>>) { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:92
-    pub fn get_tab_completer(&self) -> Option<JRef<dyn TabCompleter>> { todo!() } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:101
+    pub fn new(name: &str, owner: JRef<dyn Plugin>) -> JRef<Self> {
+        let executor: JRef<dyn CommandExecutor> = owner.clone();
+        let this = Arc::new_cyclic(|this: &Weak<Self>| PluginCommand {
+            base: Command::new_base(this, name),
+            this: this.clone(),
+            executor: Mut::new(executor),
+            owning_plugin: owner,
+            completer: Mut::new(None),
+        });
+        this.usage_message.set(String::new());
+        this
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:23
+    pub fn execute(&self, sender: JRef<dyn CommandSender>, command_label: &str, args: &Vec<String>) -> bool {
+        let success;
+
+        if !self.owning_plugin.is_enabled() {
+            std::panic::panic_any(CommandException::new_1(&format!(
+                "Cannot execute command '{}' in plugin {} - plugin is disabled.",
+                command_label,
+                self.owning_plugin.get_description().get_full_name()
+            )));
+        }
+
+        if !self.this().test_permission(sender.clone()) {
+            return true;
+        }
+
+        let executor = self.executor.get();
+        let this: JRef<dyn CommandTrait> = self.this();
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| executor.on_command(sender.clone(), this.clone(), command_label, args))) {
+            Ok(b) => success = b,
+            Err(ex) => {
+                std::panic::panic_any(CommandException::new_2(
+                    &format!(
+                        "Unhandled exception executing command '{}' in plugin {}",
+                        command_label,
+                        self.owning_plugin.get_description().get_full_name()
+                    ),
+                    // PORT: turning a caught panic payload into a Throwable (Throwable::from_panic).
+                    Throwable::from_panic(ex),
+                ));
+            }
+        }
+
+        let usage_message = self.usage_message.get();
+        if !success && !usage_message.is_empty() {
+            for line in java_split(&usage_message.replace("<command>", command_label), '\n') {
+                sender.send_message(&line);
+            }
+        }
+
+        success
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:38
+    pub fn get_plugin(&self) -> JRef<dyn Plugin> {
+        self.owning_plugin.clone()
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:111
+    pub fn tab_complete(&self, sender: JRef<dyn CommandSender>, alias: &str, args: &Vec<String>) -> Result<Vec<String>, Throwable> {
+        // Preconditions.checkArgument(sender/args/alias != null): never null in Rust.
+        let this: JRef<dyn CommandTrait> = self.this();
+        let completions = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut completions: Option<Vec<String>> = None;
+            if let Some(completer) = self.completer.get() {
+                completions = completer.on_tab_complete(sender.clone(), this.clone(), alias, args);
+            }
+            if completions.is_none() {
+                // PORT: `executor instanceof TabCompleter` needs CommandExecutor to be a JObject (it is a
+                // closure trait); the integration adds a way to ask.
+                if let Some(completer) = cast::<dyn TabCompleter, _>(&self.executor.get()) {
+                    completions = completer.on_tab_complete(sender.clone(), this.clone(), alias, args);
+                }
+            }
+            completions
+        }));
+        let completions = match completions {
+            Ok(c) => c,
+            Err(ex) => {
+                let mut message = String::new();
+                message.push_str("Unhandled exception during tab completion for command '/");
+                message.push_str(alias);
+                message.push(' ');
+                for arg in args {
+                    message.push_str(arg);
+                    message.push(' ');
+                }
+                message.pop();
+                message.push_str("' in plugin ");
+                message.push_str(&self.owning_plugin.get_description().get_full_name());
+                std::panic::panic_any(CommandException::new_2(&message, Throwable::from_panic(ex)));
+            }
+        };
+
+        match completions {
+            None => self.base.tab_complete(sender, alias, args),
+            Some(c) => Ok(c),
+        }
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:134
+    pub fn to_string(&self) -> String {
+        let mut string_builder = self.base.to_string();
+        string_builder.pop();
+        string_builder.push_str(", ");
+        string_builder.push_str(&self.owning_plugin.get_description().get_full_name());
+        string_builder.push(')');
+        string_builder
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:165
+    pub fn set_executor(&self, executor: Option<JRef<dyn CommandExecutor>>) {
+        self.executor.set(match executor {
+            None => self.owning_plugin.clone(),
+            Some(e) => e,
+        });
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:70
+    pub fn get_executor(&self) -> JRef<dyn CommandExecutor> {
+        self.executor.get()
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:79
+    pub fn set_tab_completer(&self, completer: Option<JRef<dyn TabCompleter>>) {
+        self.completer.set(completer);
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:92
+    pub fn get_tab_completer(&self) -> Option<JRef<dyn TabCompleter>> {
+        self.completer.get()
+    } // paper-api/src/main/java/org/bukkit/command/PluginCommand.java:101
+}
+
+/// Java's `String.split` on a single char: trailing empty strings are dropped.
+fn java_split(s: &str, c: char) -> Vec<String> {
+    let mut parts: Vec<String> = s.split(c).map(|p| p.to_string()).collect();
+    while parts.len() > 1 && parts.last().map(|p| p.is_empty()).unwrap_or(false) {
+        parts.pop();
+    }
+    if parts.len() == 1 && parts[0].is_empty() && !s.is_empty() {
+        parts.clear();
+    }
+    parts
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -64,8 +187,8 @@ impl CommandTrait for PluginCommand {
     fn set_description(&self, description: &str) -> JRef<dyn CommandTrait> { Command::set_description(self, description) }
     fn set_permission_message(&self, permission_message: Option<String>) -> JRef<dyn CommandTrait> { Command::set_permission_message(self, permission_message) }
     fn set_usage(&self, usage: &str) -> JRef<dyn CommandTrait> { Command::set_usage(self, usage) }
-    fn permission_message(&self) -> Component { Command::permission_message(self) }
-    fn permission_message_1(&self, permission_message: Component) { Command::permission_message_1(self, permission_message) }
+    fn permission_message(&self) -> Option<Component> { Command::permission_message(self) }
+    fn permission_message_1(&self, permission_message: Option<Component>) { Command::permission_message_1(self, permission_message) }
     fn to_string(&self) -> String { PluginCommand::to_string(self) }
     fn can_be_overriden(&self) -> bool { Command::can_be_overriden(self) }
 }

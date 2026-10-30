@@ -19,7 +19,7 @@ use crate::api_prelude::*;
 pub struct EntityPlaceEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub player: JRef<dyn Player>, // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:25
+    pub player: Option<JRef<dyn Player>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:25
     pub block: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:26
     pub block_face: BlockFace, // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:27
     pub hand: EquipmentSlot, // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:28
@@ -29,19 +29,19 @@ impl std::ops::Deref for EntityPlaceEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:23
 impl EntityPlaceEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:41
-    pub fn new_5(entity: JRef<dyn Entity>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:87
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:92
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:97
-    pub fn get_player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:52
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:62
-    pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:72
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:82
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:103
+    pub fn new(entity: JRef<dyn Entity>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace) -> JRef<Self> { Self::new_5(entity, player, block, block_face, EquipmentSlot::HAND) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:41
+    pub fn new_5(entity: JRef<dyn Entity>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPlaceEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), player: player, block: block, block_face: block_face, hand: hand, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:32
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:87
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:92
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:97
+    pub fn get_player(&self) -> Option<JRef<dyn Player>> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:52
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:62
+    pub fn get_block_face(&self) -> BlockFace { self.block_face.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:72
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:82
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPlaceEvent.java:103
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

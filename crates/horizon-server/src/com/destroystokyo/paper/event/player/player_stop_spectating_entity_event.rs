@@ -22,15 +22,32 @@ impl std::ops::Deref for PlayerStopSpectatingEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:17
 impl PlayerStopSpectatingEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, spectator_target: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:37
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:42
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:47
-    pub fn get_spectator_target(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:33
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:52
+    pub fn new(player: JRef<dyn Player>, spectator_target: JRef<dyn Entity>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerStopSpectatingEntityEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+spectator_target: spectator_target,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:22
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:37
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:42
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:47
+    pub fn get_spectator_target(&self) -> JRef<dyn Entity> {
+self.spectator_target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:33
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerStopSpectatingEntityEvent.java:52
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

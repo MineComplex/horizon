@@ -27,23 +27,60 @@ impl std::ops::Deref for PlayerSetSpawnEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:21
 impl PlayerSetSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, cause: PlayerSetSpawnEventCause, location: Option<JRef<Location>>, forced: bool, notify_player: bool, notification: Option<Component>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:129
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:134
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:139
-    pub fn get_cause(&self) -> PlayerSetSpawnEventCause { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:46
-    pub fn get_location(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:58
-    pub fn set_location(&self, location: Option<JRef<Location>>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:68
-    pub fn is_forced(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:77
-    pub fn set_forced(&self, forced: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:86
-    pub fn will_notify_player(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:96
-    pub fn set_notify_player(&self, notify_player: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:106
-    pub fn get_notification(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:116
-    pub fn set_notification(&self, notification: Option<Component>) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:125
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:144
+    pub fn new(player: JRef<dyn Player>, cause: PlayerSetSpawnEventCause, location: Option<JRef<Location>>, forced: bool, notify_player: bool, notification: Option<Component>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerSetSpawnEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+cause: cause,
+location: Mut::new(location),
+forced: Mut::new(forced),
+notify_player: Mut::new(notify_player),
+notification: Mut::new(notification),
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:31
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:129
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:134
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:139
+    pub fn get_cause(&self) -> PlayerSetSpawnEventCause {
+self.cause.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:46
+    pub fn get_location(&self) -> Option<JRef<Location>> {
+self.location.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:58
+    pub fn set_location(&self, location: Option<JRef<Location>>) {
+self.location.set(location.map(|location| Location::clone(&location)))
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:68
+    pub fn is_forced(&self) -> bool {
+self.forced.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:77
+    pub fn set_forced(&self, forced: bool) {
+self.forced.set(forced)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:86
+    pub fn will_notify_player(&self) -> bool {
+self.notify_player.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:96
+    pub fn set_notify_player(&self, notify_player: bool) {
+self.notify_player.set(notify_player)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:106
+    pub fn get_notification(&self) -> Option<Component> {
+self.notification.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:116
+    pub fn set_notification(&self, notification: Option<Component>) {
+self.notification.set(notification)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:125
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerSetSpawnEvent.java:144
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

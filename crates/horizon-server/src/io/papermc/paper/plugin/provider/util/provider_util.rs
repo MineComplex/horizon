@@ -12,8 +12,21 @@ pub struct ProviderUtil {
 }
 impl ProviderUtil {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:15
-    pub fn load_class<T: JGeneric>(clazz: &str, class_type: Class, loader: ClassLoader) -> T { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:30
-    pub fn load_class_4<T: JGeneric>(clazz: &str, class_type: Class, loader: ClassLoader, on_error: Option<JRef<dyn Runnable>>) -> T { todo!() } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:47
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| ProviderUtil { this: this.clone() })
+    } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:15
+    pub fn load_class<T: JGeneric>(clazz: &str, class_type: Class, loader: ClassLoader) -> T {
+        Self::load_class_4(clazz, class_type, loader, None)
+    } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:30
+    pub fn load_class_4<T: JGeneric>(clazz: &str, class_type: Class, loader: ClassLoader, on_error: Option<JRef<dyn Runnable>>) -> T {
+        // PORT: Java reflection (Class.forName(clazz, true, loader).asSubclass(classType).getDeclaredConstructor()
+        // .newInstance()) has no Rust equivalent: plugins are native Rust and registered by the server. A class
+        // that can't be loaded runs onError and rethrows, as the Java catch block does.
+        let _ = (class_type, loader);
+        if let Some(on_error) = on_error {
+            on_error.run();
+        }
+        panic!("ClassNotFoundException: {}", clazz);
+    } // paper-api/src/main/java/io/papermc/paper/plugin/provider/util/ProviderUtil.java:47
 }
 crate::jobject!(ProviderUtil);

@@ -28,10 +28,10 @@ impl std::ops::Deref for HangingBreakByEntityEvent {
 }
 impl HangingBreakByEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(hanging: JRef<dyn Hanging>, remover: JRef<dyn Entity>, damage_source: JRef<dyn DamageSource>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:18
-    pub fn new_4(hanging: JRef<dyn Hanging>, remover: JRef<dyn Entity>, damage_source: JRef<dyn DamageSource>, cause: HangingBreakEventRemoveCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:23
-    pub fn get_remover(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:35
-    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:44
+    pub fn new(hanging: JRef<dyn Hanging>, remover: JRef<dyn Entity>, damage_source: JRef<dyn DamageSource>) -> JRef<Self> { Self::new_4(hanging, remover, damage_source, HangingBreakEventRemoveCause::ENTITY) } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:18
+    pub fn new_4(hanging: JRef<dyn Hanging>, remover: JRef<dyn Entity>, damage_source: JRef<dyn DamageSource>, cause: HangingBreakEventRemoveCause) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| HangingBreakByEntityEvent { base: HangingBreakEvent::new_base(this, hanging, cause), this: this.clone(), remover: remover, damage_source: damage_source }) } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:23
+    pub fn get_remover(&self) -> JRef<dyn Entity> { self.remover.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:35
+    pub fn get_damage_source(&self) -> JRef<dyn DamageSource> { self.damage_source.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingBreakByEntityEvent.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

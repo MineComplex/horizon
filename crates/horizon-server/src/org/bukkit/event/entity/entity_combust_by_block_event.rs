@@ -18,7 +18,7 @@ use crate::api_prelude::*;
 pub struct EntityCombustByBlockEvent {
     pub base: EntityCombustEvent,
     pub this: Weak<Self>,
-    pub combuster: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:14
+    pub combuster: Option<JRef<dyn Block>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:14
 }
 impl std::ops::Deref for EntityCombustByBlockEvent {
     type Target = EntityCombustEvent;
@@ -26,9 +26,9 @@ impl std::ops::Deref for EntityCombustByBlockEvent {
 }
 impl EntityCombustByBlockEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(combuster: Option<JRef<dyn Block>>, combustee: JRef<dyn Entity>, duration: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:16
-    pub fn new_3(combuster: Option<JRef<dyn Block>>, combustee: JRef<dyn Entity>, duration: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:22
-    pub fn get_combuster(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:35
+    pub fn new(combuster: Option<JRef<dyn Block>>, combustee: JRef<dyn Entity>, duration: i32) -> JRef<Self> { Self::new_3(combuster, combustee, duration as f32) } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:16
+    pub fn new_3(combuster: Option<JRef<dyn Block>>, combustee: JRef<dyn Entity>, duration: f32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityCombustByBlockEvent { base: EntityCombustEvent::new_base_2(this, combustee, duration), this: this.clone(), combuster: combuster }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:22
+    pub fn get_combuster(&self) -> Option<JRef<dyn Block>> { self.combuster.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustByBlockEvent.java:35
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

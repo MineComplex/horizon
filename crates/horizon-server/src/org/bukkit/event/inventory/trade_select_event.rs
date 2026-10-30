@@ -28,16 +28,16 @@ impl std::ops::Deref for TradeSelectEvent {
     type Target = InventoryInteractEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:19
 impl TradeSelectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(transaction: JRef<dyn MerchantView>, new_index: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:23
     pub fn get_inventory(&self) -> JRef<dyn MerchantInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:29
     pub fn get_view(&self) -> JRef<dyn MerchantView> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:45
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:60
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:60
     pub fn get_merchant(&self) -> JRef<dyn Merchant> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:40
-    pub fn get_index(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:56
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:66
+    pub fn get_index(&self) -> i32 { self.index } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:56
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/TradeSelectEvent.java:66
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

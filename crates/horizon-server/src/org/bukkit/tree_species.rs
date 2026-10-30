@@ -17,7 +17,13 @@ pub enum TreeSpecies {
 pub struct TreeSpeciesData {
     pub data: i8,
 }
-pub static BY_DATA: LazyLock<HashMap<i8, TreeSpecies>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/TreeSpecies.java:42
+pub static BY_DATA: LazyLock<HashMap<i8, TreeSpecies>> = LazyLock::new(|| {
+    let mut by_data = HashMap::new();
+    for species in TreeSpecies::VALUES {
+        by_data.insert(species.data().data, species);
+    }
+    by_data
+}); // paper-api/src/main/java/org/bukkit/TreeSpecies.java:42
 impl TreeSpecies {
     pub const VALUES: [TreeSpecies; 6] = [TreeSpecies::GENERIC, TreeSpecies::REDWOOD, TreeSpecies::BIRCH, TreeSpecies::JUNGLE, TreeSpecies::ACACIA, TreeSpecies::DARK_OAK];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -26,8 +32,17 @@ impl TreeSpecies {
     }
     pub fn value_of(name: &str) -> Option<TreeSpecies> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static TreeSpeciesData { todo!("paper-api/src/main/java/org/bukkit/TreeSpecies.java:12") }
-    pub fn get_data(self) -> i8 { todo!() } // paper-api/src/main/java/org/bukkit/TreeSpecies.java:54
-    pub fn get_by_data(data: i8) -> Option<TreeSpecies> { todo!() } // paper-api/src/main/java/org/bukkit/TreeSpecies.java:67
+    pub fn data(self) -> &'static TreeSpeciesData {
+        match self {
+            TreeSpecies::GENERIC => &TreeSpeciesData { data: 0x0 },
+            TreeSpecies::REDWOOD => &TreeSpeciesData { data: 0x1 },
+            TreeSpecies::BIRCH => &TreeSpeciesData { data: 0x2 },
+            TreeSpecies::JUNGLE => &TreeSpeciesData { data: 0x3 },
+            TreeSpecies::ACACIA => &TreeSpeciesData { data: 0x4 },
+            TreeSpecies::DARK_OAK => &TreeSpeciesData { data: 0x5 },
+        }
+    }
+    pub fn get_data(self) -> i8 { self.data().data } // paper-api/src/main/java/org/bukkit/TreeSpecies.java:54
+    pub fn get_by_data(data: i8) -> Option<TreeSpecies> { BY_DATA.get(&data).copied() } // paper-api/src/main/java/org/bukkit/TreeSpecies.java:67
 }
 crate::jobject!(TreeSpecies);

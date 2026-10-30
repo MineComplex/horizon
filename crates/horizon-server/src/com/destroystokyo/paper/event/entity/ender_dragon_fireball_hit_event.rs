@@ -26,17 +26,39 @@ impl std::ops::Deref for EnderDragonFireballHitEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:19
 impl EnderDragonFireballHitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(fireball: JRef<dyn DragonFireball>, targets: &Vec<JRef<dyn LivingEntity>>, area_effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn DragonFireball> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:35
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:56
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:61
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:66
-    pub fn get_targets(&self) -> Vec<JRef<dyn LivingEntity>> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:45
-    pub fn get_area_effect_cloud(&self) -> JRef<dyn AreaEffectCloud> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:52
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:71
+    pub fn new(fireball: JRef<dyn DragonFireball>, targets: &Vec<JRef<dyn LivingEntity>>, area_effect_cloud: JRef<dyn AreaEffectCloud>) -> JRef<Self> {
+Arc::new_cyclic(|this| EnderDragonFireballHitEvent {
+base: EntityEvent::new_base(this, fireball),
+this: this.clone(),
+targets: Mut::new(targets.clone()),
+area_effect_cloud: area_effect_cloud,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn DragonFireball> {
+cast::<dyn DragonFireball, _>(&self.base.get_entity()).expect("DragonFireball")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:35
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:56
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:61
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:66
+    pub fn get_targets(&self) -> Vec<JRef<dyn LivingEntity>> {
+self.targets.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:45
+    pub fn get_area_effect_cloud(&self) -> JRef<dyn AreaEffectCloud> {
+self.area_effect_cloud.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:52
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonFireballHitEvent.java:71
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

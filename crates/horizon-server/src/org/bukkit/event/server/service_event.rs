@@ -26,6 +26,6 @@ impl std::ops::Deref for dyn ServiceEventTrait {
 }
 impl ServiceEvent {
     pub fn this(&self) -> JRef<dyn ServiceEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: ServiceEventTrait + 'static>(this: &Weak<S>, provider: JRef<RegisteredServiceProvider<JObjectRef>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServiceEvent.java:15
-    pub fn get_provider(&self) -> JRef<RegisteredServiceProvider<JObjectRef>> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/ServiceEvent.java:19
+    pub fn new_base<S: ServiceEventTrait + 'static>(this: &Weak<S>, provider: JRef<RegisteredServiceProvider<JObjectRef>>) -> Self { Self { base: ServerEvent::new_base(this), this: this.clone(), provider: provider } } // paper-api/src/main/java/org/bukkit/event/server/ServiceEvent.java:15
+    pub fn get_provider(&self) -> JRef<RegisteredServiceProvider<JObjectRef>> { self.provider.clone() } // paper-api/src/main/java/org/bukkit/event/server/ServiceEvent.java:19
 }

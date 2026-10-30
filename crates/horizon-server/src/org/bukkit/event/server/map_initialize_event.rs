@@ -19,13 +19,13 @@ impl std::ops::Deref for MapInitializeEvent {
     type Target = ServerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:13
 impl MapInitializeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(map_view: JRef<dyn MapView>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:17
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:32
-    pub fn get_map(&self) -> JRef<dyn MapView> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:27
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:38
+    pub fn new(map_view: JRef<dyn MapView>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ServerEvent::new_base(this), this: this.clone(), map_view: map_view }) } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:17
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:32
+    pub fn get_map(&self) -> JRef<dyn MapView> { self.map_view.clone() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:27
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/server/MapInitializeEvent.java:38
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

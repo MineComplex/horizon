@@ -22,12 +22,17 @@ impl std::ops::Deref for AsyncChatCommandDecorateEvent {
     type Target = AsyncChatDecorateEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:14
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:14
 impl AsyncChatCommandDecorateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: Option<JRef<dyn Player>>, original_message: Component) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:16
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:21
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:26
+    pub fn new(player: Option<JRef<dyn Player>>, original_message: Component) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| AsyncChatCommandDecorateEvent {
+            base: AsyncChatDecorateEvent::new_base(this, player, original_message),
+            this: this.clone(),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:16
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:21
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:26
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -25,20 +25,29 @@ impl std::ops::Deref for PlayerNameEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:19
 impl PlayerNameEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, name: Component, persistent: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:89
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:94
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:99
-    pub fn get_name(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:40
-    pub fn set_name(&self, name: Option<Component>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:49
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:58
-    pub fn set_entity(&self, entity: JRef<dyn LivingEntity>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:67
-    pub fn is_persistent(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:76
-    pub fn set_persistent(&self, persistent: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:85
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:104
+    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn LivingEntity>, name: Component, persistent: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerNameEntityEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            entity: Mut::new(entity),
+            name: Mut::new(Some(name)),
+            persistent: Mut::new(persistent),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:89
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:94
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:99
+    pub fn get_name(&self) -> Option<Component> { self.name.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:40
+    pub fn set_name(&self, name: Option<Component>) { self.name.set(name) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:49
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { self.entity.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:58
+    pub fn set_entity(&self, entity: JRef<dyn LivingEntity>) { self.entity.set(entity) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:67
+    pub fn is_persistent(&self) -> bool { self.persistent.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:76
+    pub fn set_persistent(&self, persistent: bool) { self.persistent.set(persistent) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:85
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerNameEntityEvent.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

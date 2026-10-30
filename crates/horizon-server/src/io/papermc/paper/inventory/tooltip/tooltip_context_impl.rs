@@ -11,16 +11,21 @@ pub struct TooltipContextImpl {
     pub is_creative: bool,
 }
 impl TooltipContextImpl {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:5
-    pub fn new_2(is_advanced: bool, is_creative: bool) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:5
-    pub fn as_creative(&self) -> JRef<dyn TooltipContext> { todo!() } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:8
-    pub fn as_advanced(&self) -> JRef<dyn TooltipContext> { todo!() } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:13
+    pub fn new_2(is_advanced: bool, is_creative: bool) -> Self {
+        TooltipContextImpl { is_advanced, is_creative }
+    } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:5
+    pub fn as_creative(&self) -> JRef<dyn TooltipContext> {
+        Arc::new(TooltipContextImpl::new_2(self.is_advanced, true))
+    } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:8
+    pub fn as_advanced(&self) -> JRef<dyn TooltipContext> {
+        Arc::new(TooltipContextImpl::new_2(true, self.is_creative))
+    } // paper-api/src/main/java/io/papermc/paper/inventory/tooltip/TooltipContextImpl.java:13
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl TooltipContext for TooltipContextImpl {
-    fn is_advanced(&self) -> bool { todo!("abstract TooltipContext.isAdvanced") }
-    fn is_creative(&self) -> bool { todo!("abstract TooltipContext.isCreative") }
+    fn is_advanced(&self) -> bool { self.is_advanced }
+    fn is_creative(&self) -> bool { self.is_creative }
     fn as_advanced(&self) -> JRef<dyn TooltipContext> { TooltipContextImpl::as_advanced(self) }
     fn as_creative(&self) -> JRef<dyn TooltipContext> { TooltipContextImpl::as_creative(self) }
 }

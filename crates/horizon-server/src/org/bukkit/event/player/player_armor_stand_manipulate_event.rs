@@ -28,18 +28,18 @@ impl std::ops::Deref for PlayerArmorStandManipulateEvent {
     type Target = PlayerInteractEntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:17
 impl PlayerArmorStandManipulateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, clicked_entity: JRef<dyn ArmorStand>, player_item: JRef<ItemStack>, armor_stand_item: JRef<ItemStack>, slot: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:31
     pub fn new_6(player: JRef<dyn Player>, clicked_entity: JRef<dyn ArmorStand>, player_item: JRef<ItemStack>, armor_stand_item: JRef<ItemStack>, slot: EquipmentSlot, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:23
     pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:86
     pub fn get_right_clicked(&self) -> JRef<dyn ArmorStand> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:92
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:98
-    pub fn get_player_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:47
-    pub fn get_armor_stand_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:65
-    pub fn get_slot(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:75
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:104
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:98
+    pub fn get_player_item(&self) -> JRef<ItemStack> { self.player_item.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:47
+    pub fn get_armor_stand_item(&self) -> JRef<ItemStack> { self.armor_stand_item.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:65
+    pub fn get_slot(&self) -> EquipmentSlot { self.slot.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:75
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerArmorStandManipulateEvent.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

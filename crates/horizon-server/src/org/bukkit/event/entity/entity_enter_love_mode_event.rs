@@ -17,7 +17,7 @@ use crate::api_prelude::*;
 pub struct EntityEnterLoveModeEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub human_entity: JRef<dyn HumanEntity>, // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:21
+    pub human_entity: Option<JRef<dyn HumanEntity>>, // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:21
     pub ticks_in_love: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:22
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:24
 }
@@ -25,18 +25,18 @@ impl std::ops::Deref for EntityEnterLoveModeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:19
 impl EntityEnterLoveModeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(animal_in_love: JRef<dyn Animals>, human_entity: Option<JRef<dyn HumanEntity>>, ticks_in_love: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:26
-    pub fn get_entity(&self) -> JRef<dyn Animals> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:38
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:74
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:79
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:84
-    pub fn get_human_entity(&self) -> Option<JRef<dyn HumanEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:50
-    pub fn get_ticks_in_love(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:60
-    pub fn set_ticks_in_love(&self, ticks_in_love: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:70
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:90
+    pub fn new(animal_in_love: JRef<dyn Animals>, human_entity: Option<JRef<dyn HumanEntity>>, ticks_in_love: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityEnterLoveModeEvent { base: EntityEvent::new_base(this, animal_in_love), this: this.clone(), human_entity: human_entity, ticks_in_love: Mut::new(ticks_in_love), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:26
+    pub fn get_entity(&self) -> JRef<dyn Animals> { cast::<dyn Animals, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:38
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:74
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:79
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:84
+    pub fn get_human_entity(&self) -> Option<JRef<dyn HumanEntity>> { self.human_entity.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:50
+    pub fn get_ticks_in_love(&self) -> i32 { self.ticks_in_love.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:60
+    pub fn set_ticks_in_love(&self, ticks_in_love: i32) { self.ticks_in_love.set(ticks_in_love); } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:70
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityEnterLoveModeEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

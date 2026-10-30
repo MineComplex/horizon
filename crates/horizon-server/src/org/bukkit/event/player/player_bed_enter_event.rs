@@ -26,19 +26,19 @@ impl std::ops::Deref for PlayerBedEnterEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:17
 impl PlayerBedEnterEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, bed: JRef<dyn Block>, bed_enter_result: PlayerBedEnterEventBedEnterResult, enter_action: JRef<dyn BedEnterAction>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:24
     pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:110
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:120
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:125
-    pub fn get_bed(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:37
-    pub fn get_bed_enter_result(&self) -> PlayerBedEnterEventBedEnterResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:49
-    pub fn enter_action(&self) -> JRef<dyn BedEnterAction> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:60
-    pub fn use_bed(&self) -> EventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:73
-    pub fn set_use_bed(&self, use_bed: EventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:93
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:131
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:125
+    pub fn get_bed(&self) -> JRef<dyn Block> { self.bed.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:37
+    pub fn get_bed_enter_result(&self) -> PlayerBedEnterEventBedEnterResult { self.bed_enter_result.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:49
+    pub fn enter_action(&self) -> JRef<dyn BedEnterAction> { self.enter_action.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:60
+    pub fn use_bed(&self) -> EventResult { self.use_bed.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:73
+    pub fn set_use_bed(&self, use_bed: EventResult) { self.use_bed.set(use_bed) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:93
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBedEnterEvent.java:131
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

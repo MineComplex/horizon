@@ -36,20 +36,20 @@ impl std::ops::Deref for dyn AsyncPlayerChatEventTrait {
     type Target = AsyncPlayerChatEvent;
     fn deref(&self) -> &AsyncPlayerChatEvent { self.as_async_player_chat_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:35
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:35
 impl AsyncPlayerChatEvent {
     pub fn this(&self) -> JRef<dyn AsyncPlayerChatEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: AsyncPlayerChatEventTrait + 'static>(this: &Weak<S>, async_: bool, player: JRef<dyn Player>, message: &str, players: &HashSet<JRef<dyn Player>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:43
     pub fn new(async_: bool, player: JRef<dyn Player>, message: &str, players: &HashSet<JRef<dyn Player>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, async_, player, message, players)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:130
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:135
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:140
-    pub fn get_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:56
-    pub fn set_message(&self, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:67
-    pub fn get_format(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:81
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:130
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:135
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:140
+    pub fn get_message(&self) -> String { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:56
+    pub fn set_message(&self, message: &str) { self.message.set(message.to_string()) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:67
+    pub fn get_format(&self) -> String { self.format.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:81
     pub fn set_format(&self, format: &str) -> Result<(), Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:99
-    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:125
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:146
+    pub fn get_recipients(&self) -> HashSet<JRef<dyn Player>> { self.recipients.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:125
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatEvent.java:146
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

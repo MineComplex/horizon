@@ -25,17 +25,26 @@ impl std::ops::Deref for PlayerOpenSignEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:21
 impl PlayerOpenSignEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(editor: JRef<dyn Player>, sign: JRef<dyn Sign>, side: Side, cause: PlayerOpenSignEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:29
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:65
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:70
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:75
-    pub fn get_sign(&self) -> JRef<dyn Sign> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:42
-    pub fn get_side(&self) -> Side { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:52
-    pub fn get_cause(&self) -> PlayerOpenSignEventCause { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:61
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:80
+    pub fn new(editor: JRef<dyn Player>, sign: JRef<dyn Sign>, side: Side, cause: PlayerOpenSignEventCause) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerOpenSignEvent {
+            base: PlayerEvent::new_base(this, editor),
+            this: this.clone(),
+            sign,
+            side,
+            cause,
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:29
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:65
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:70
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:75
+    pub fn get_sign(&self) -> JRef<dyn Sign> { self.sign.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:42
+    pub fn get_side(&self) -> Side { self.side.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:52
+    pub fn get_cause(&self) -> PlayerOpenSignEventCause { self.cause.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:61
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerOpenSignEvent.java:80
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

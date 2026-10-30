@@ -24,25 +24,25 @@ impl std::ops::Deref for PlayerKickEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:18
 impl PlayerKickEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player_kicked: JRef<dyn Player>, kick_reason: &str, leave_message: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:26
     pub fn new_3(player_kicked: JRef<dyn Player>, kick_reason: Component, leave_message: Component) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:35
     pub fn new_4(player_kicked: JRef<dyn Player>, kick_reason: Component, leave_message: Component, cause: PlayerKickEventCause) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:44
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:139
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:144
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:149
-    pub fn reason(&self) -> Component { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:57
-    pub fn reason_1(&self, kick_reason: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:66
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:139
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:144
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:149
+    pub fn reason(&self) -> Component { self.kick_reason.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:57
+    pub fn reason_1(&self, kick_reason: Component) { self.kick_reason.set(kick_reason) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:66
     pub fn get_reason(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:76
     pub fn set_reason(&self, kick_reason: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:87
-    pub fn leave_message(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:97
-    pub fn leave_message_1(&self, leave_message: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:106
+    pub fn leave_message(&self) -> Option<Component> { self.leave_message.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:97
+    pub fn leave_message_1(&self, leave_message: Option<Component>) { self.leave_message.set(leave_message) } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:106
     pub fn get_leave_message(&self) -> Option<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:116
     pub fn set_leave_message(&self, leave_message: Option<String>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:127
-    pub fn get_cause(&self) -> PlayerKickEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:135
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:154
+    pub fn get_cause(&self) -> PlayerKickEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:135
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerKickEvent.java:154
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

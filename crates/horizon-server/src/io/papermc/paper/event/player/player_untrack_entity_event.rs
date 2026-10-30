@@ -20,13 +20,19 @@ impl std::ops::Deref for PlayerUntrackEntityEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:21
 impl PlayerUntrackEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:25
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:44
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:36
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:40
+    pub fn new(player: JRef<dyn Player>, entity: JRef<dyn Entity>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerUntrackEntityEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            entity,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:25
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:44
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:36
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerUntrackEntityEvent.java:40
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

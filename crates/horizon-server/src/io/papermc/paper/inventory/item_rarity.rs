@@ -25,6 +25,6 @@ impl ItemRarity {
     pub fn value_of(name: &str) -> Option<ItemRarity> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
     pub fn data(self) -> &'static ItemRarityData { todo!("paper-api/src/main/java/io/papermc/paper/inventory/ItemRarity.java:10") }
-    pub fn get_color(self) -> TextColor { todo!() } // paper-api/src/main/java/io/papermc/paper/inventory/ItemRarity.java:28
+    pub fn get_color(self) -> TextColor { self.color.clone() } // paper-api/src/main/java/io/papermc/paper/inventory/ItemRarity.java:28
 }
 crate::jobject!(ItemRarity);

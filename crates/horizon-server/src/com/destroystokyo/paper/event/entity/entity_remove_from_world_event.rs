@@ -21,13 +21,25 @@ impl std::ops::Deref for EntityRemoveFromWorldEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:17
 impl EntityRemoveFromWorldEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, world: JRef<dyn World>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:21
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:34
-    pub fn get_world(&self) -> JRef<dyn World> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:30
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:39
+    pub fn new(entity: JRef<dyn Entity>, world: JRef<dyn World>) -> JRef<Self> {
+Arc::new_cyclic(|this| EntityRemoveFromWorldEvent {
+base: EntityEvent::new_base(this, entity),
+this: this.clone(),
+world: world,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:21
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:34
+    pub fn get_world(&self) -> JRef<dyn World> {
+self.world.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:30
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EntityRemoveFromWorldEvent.java:39
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

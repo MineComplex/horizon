@@ -3,3 +3,89 @@
 use crate::prelude::*;
 use crate::api_prelude::*;
 
+// ---- annotation org.bukkit.Warning (paper-api/src/main/java/org/bukkit/Warning.java:19)
+/// The annotation's values, as read from an annotated method, constructor or type.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Warning {
+    pub value: bool,
+    pub reason: String,
+    pub propagate: bool,
+}
+impl Default for Warning {
+    fn default() -> Self {
+        Warning { value: false, reason: String::new(), propagate: true }
+    }
+}
+impl Warning {
+    pub fn value(&self) -> bool {
+        self.value
+    }
+    pub fn reason(&self) -> String {
+        self.reason.clone()
+    }
+    pub fn propagate(&self) -> bool {
+        self.propagate
+    }
+}
+// ---- enum org.bukkit.Warning.WarningState (paper-api/src/main/java/org/bukkit/Warning.java:28)
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum WarningWarningState {
+    ON,
+    OFF,
+    DEFAULT,
+}
+pub static WARNING_STATE_VALUES: LazyLock<IndexMap<String, WarningWarningState>> = LazyLock::new(|| {
+    let mut values = IndexMap::new();
+    values.insert("off".to_string(), WarningWarningState::OFF);
+    values.insert("false".to_string(), WarningWarningState::OFF);
+    values.insert("f".to_string(), WarningWarningState::OFF);
+    values.insert("no".to_string(), WarningWarningState::OFF);
+    values.insert("n".to_string(), WarningWarningState::OFF);
+    values.insert("on".to_string(), WarningWarningState::ON);
+    values.insert("true".to_string(), WarningWarningState::ON);
+    values.insert("t".to_string(), WarningWarningState::ON);
+    values.insert("yes".to_string(), WarningWarningState::ON);
+    values.insert("y".to_string(), WarningWarningState::ON);
+    values.insert("".to_string(), WarningWarningState::DEFAULT);
+    values.insert("d".to_string(), WarningWarningState::DEFAULT);
+    values.insert("default".to_string(), WarningWarningState::DEFAULT);
+    values
+}); // paper-api/src/main/java/org/bukkit/Warning.java:52
+impl WarningWarningState {
+    pub const VALUES: [WarningWarningState; 3] = [WarningWarningState::ON, WarningWarningState::OFF, WarningWarningState::DEFAULT];
+    pub fn ordinal(self) -> i32 {
+        self as i32
+    }
+    pub fn name(self) -> &'static str {
+        match self {
+            WarningWarningState::ON => "ON",
+            WarningWarningState::OFF => "OFF",
+            WarningWarningState::DEFAULT => "DEFAULT",
+        }
+    }
+    pub fn value_of(name: &str) -> Option<WarningWarningState> {
+        Self::VALUES.into_iter().find(|v| v.name() == name)
+    }
+    pub fn print_for(self, warning: Option<&Warning>) -> bool {
+        // Boolean.getBoolean: the system property is "true", ignoring case.
+        // PORT: Java system properties (-D flags) need java.lang.System's port.
+        if crate::java::lang::System::get_property("paper.alwaysPrintWarningState").is_some_and(|v| v.eq_ignore_ascii_case("true")) {
+            return true; // Paper
+        }
+        if self == WarningWarningState::DEFAULT {
+            return warning.is_none_or(|w| w.value());
+        }
+        self == WarningWarningState::ON
+    } // paper-api/src/main/java/org/bukkit/Warning.java:70
+    pub fn value(value: Option<&str>) -> WarningWarningState {
+        let Some(value) = value else {
+            return WarningWarningState::DEFAULT;
+        };
+        let state = WARNING_STATE_VALUES.get(&value.to_lowercase()).copied();
+        let Some(state) = state else {
+            return WarningWarningState::DEFAULT;
+        };
+        state
+    } // paper-api/src/main/java/org/bukkit/Warning.java:87
+}
+crate::jobject!(WarningWarningState);

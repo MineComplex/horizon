@@ -46,13 +46,13 @@ impl PlayerBucketEvent {
     pub fn new_base<S: PlayerBucketEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, block_clicked: JRef<dyn Block>, block_face: BlockFace, bucket: Material, item_in_hand: JRef<ItemStack>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:30
     pub fn new_base_6<S: PlayerBucketEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, block: JRef<dyn Block>, block_clicked: JRef<dyn Block>, block_face: BlockFace, bucket: Material, item_in_hand: JRef<ItemStack>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:36
     pub fn new_base_7<S: PlayerBucketEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, block: JRef<dyn Block>, block_clicked: JRef<dyn Block>, block_face: BlockFace, bucket: Material, item_in_hand: JRef<ItemStack>, hand: EquipmentSlot) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:42
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:126
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:131
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:62
-    pub fn get_block_clicked(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:72
-    pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:82
-    pub fn get_bucket(&self) -> Material { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:92
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:102
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:126
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:131
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:62
+    pub fn get_block_clicked(&self) -> JRef<dyn Block> { self.block_clicked.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:72
+    pub fn get_block_face(&self) -> BlockFace { self.block_face.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:82
+    pub fn get_bucket(&self) -> Material { self.bucket.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:92
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:102
     pub fn get_item_stack(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:112
     pub fn set_item_stack(&self, item_stack: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerBucketEvent.java:122
 }

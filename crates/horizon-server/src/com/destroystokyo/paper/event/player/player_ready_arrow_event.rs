@@ -23,16 +23,36 @@ impl std::ops::Deref for PlayerReadyArrowEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:39
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:39
 impl PlayerReadyArrowEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, bow: JRef<ItemStack>, arrow: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:46
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:71
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:79
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:84
-    pub fn get_bow(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:55
-    pub fn get_arrow(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:62
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:89
+    pub fn new(player: JRef<dyn Player>, bow: JRef<ItemStack>, arrow: JRef<ItemStack>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerReadyArrowEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+bow: bow,
+arrow: arrow,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:46
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:71
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:79
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:84
+    pub fn get_bow(&self) -> JRef<ItemStack> {
+self.bow.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:55
+    pub fn get_arrow(&self) -> JRef<ItemStack> {
+self.arrow.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:62
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerReadyArrowEvent.java:89
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

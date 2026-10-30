@@ -17,23 +17,23 @@ pub struct BlockReceiveGameEvent {
     pub base: BlockEvent,
     pub this: Weak<Self>,
     pub event: JRef<dyn GameEventTrait>, // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:22
-    pub entity: JRef<dyn Entity>, // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:23
+    pub entity: Option<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:23
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:25
 }
 impl std::ops::Deref for BlockReceiveGameEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:20
 impl BlockReceiveGameEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(event: JRef<dyn GameEventTrait>, block: JRef<dyn Block>, entity: Option<JRef<dyn Entity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:27
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:54
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:59
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:64
-    pub fn get_event(&self) -> JRef<dyn GameEventTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:39
-    pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:49
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:70
+    pub fn new(event: JRef<dyn GameEventTrait>, block: JRef<dyn Block>, entity: Option<JRef<dyn Entity>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockReceiveGameEvent { base: BlockEvent::new_base(this, block), this: this.clone(), event: event, entity: entity, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:27
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:54
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:59
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:64
+    pub fn get_event(&self) -> JRef<dyn GameEventTrait> { self.event.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:39
+    pub fn get_entity(&self) -> Option<JRef<dyn Entity>> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:49
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockReceiveGameEvent.java:70
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -25,18 +25,18 @@ impl std::ops::Deref for BlockShearEntityEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:19
 impl BlockShearEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(dispenser: JRef<dyn Block>, sheared: JRef<dyn Entity>, tool: JRef<ItemStack>, drops: &Vec<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:74
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:79
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:84
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:40
+    pub fn new(dispenser: JRef<dyn Block>, sheared: JRef<dyn Entity>, tool: JRef<ItemStack>, drops: &Vec<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BlockShearEntityEvent { base: BlockEvent::new_base(this, dispenser), this: this.clone(), sheared: sheared, tool: tool, drops: Mut::new(drops.clone()), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:74
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:79
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:84
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.sheared.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:40
     pub fn get_tool(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:50
     pub fn get_drops(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:61
     pub fn set_drops(&self, drops: &Vec<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:70
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:90
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockShearEntityEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

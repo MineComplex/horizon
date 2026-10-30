@@ -20,13 +20,13 @@ impl std::ops::Deref for BellResonateEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:16
 impl BellResonateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(bell: JRef<dyn Block>, resonated_entities: &Vec<JRef<dyn LivingEntity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:20
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:43
-    pub fn get_resonated_entities(&self) -> Vec<JRef<dyn LivingEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:38
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:49
+    pub fn new(bell: JRef<dyn Block>, resonated_entities: &Vec<JRef<dyn LivingEntity>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| BellResonateEvent { base: BlockEvent::new_base(this, bell), this: this.clone(), resonated_entities: Mut::new(resonated_entities.clone()) }) } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:20
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:43
+    pub fn get_resonated_entities(&self) -> Vec<JRef<dyn LivingEntity>> { self.resonated_entities.get() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:38
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BellResonateEvent.java:49
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

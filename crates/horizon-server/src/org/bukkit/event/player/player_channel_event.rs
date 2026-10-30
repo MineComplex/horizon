@@ -24,11 +24,11 @@ impl std::ops::Deref for dyn PlayerChannelEventTrait {
     type Target = PlayerChannelEvent;
     fn deref(&self) -> &PlayerChannelEvent { self.as_player_channel_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:13
 impl PlayerChannelEvent {
     pub fn this(&self) -> JRef<dyn PlayerChannelEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerChannelEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, channel: &str) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:17
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:27
-    pub fn get_channel(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:22
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:33
+    pub fn new_base<S: PlayerChannelEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, channel: &str) -> Self { Self { base: PlayerEvent::new_base(this, player), this: this.clone(), channel: channel.to_string() } } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:17
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:27
+    pub fn get_channel(&self) -> String { self.channel.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:22
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerChannelEvent.java:33
 }

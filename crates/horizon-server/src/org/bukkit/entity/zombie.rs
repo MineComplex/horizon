@@ -24,5 +24,7 @@ pub trait Zombie: Monster + Ageable {
     fn stop_drowning(&self); // paper-api/src/main/java/org/bukkit/entity/Zombie.java:132
     fn set_arms_raised(&self, raised: bool); // paper-api/src/main/java/org/bukkit/entity/Zombie.java:140
     fn is_arms_raised(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Zombie.java:149
-    fn supports_breaking_doors(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/entity/Zombie.java:175
+    fn supports_breaking_doors(&self) -> bool {
+        true // All zombies are now capable of breaking doors, see https://bugs.mojang.com/browse/MC-137053
+    } // default, paper-api/src/main/java/org/bukkit/entity/Zombie.java:175
 }

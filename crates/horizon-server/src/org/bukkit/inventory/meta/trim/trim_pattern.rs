@@ -13,23 +13,32 @@ use crate::api_prelude::*;
 pub trait TrimPattern: Keyed + Translatable {
     fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:82
 }
-pub static BOLT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:35
-pub static COAST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:37
-pub static DUNE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:39
-pub static EYE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:41
-pub static FLOW: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:43
-pub static HOST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:45
-pub static RAISER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:47
-pub static RIB: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:49
-pub static SENTRY: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:51
-pub static SHAPER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:53
-pub static SILENCE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:55
-pub static SNOUT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:57
-pub static SPIRE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:59
-pub static TIDE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:61
-pub static VEX: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:63
-pub static WARD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:65
-pub static WAYFINDER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:67
-pub static WILD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:69
-pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:30
-pub fn get_trim_pattern(key: &str) -> JRef<dyn TrimPattern> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:72
+pub static BOLT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("bolt")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:35
+pub static COAST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("coast")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:37
+pub static DUNE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("dune")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:39
+pub static EYE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("eye")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:41
+pub static FLOW: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("flow")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:43
+pub static HOST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("host")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:45
+pub static RAISER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("raiser")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:47
+pub static RIB: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("rib")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:49
+pub static SENTRY: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("sentry")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:51
+pub static SHAPER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("shaper")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:53
+pub static SILENCE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("silence")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:55
+pub static SNOUT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("snout")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:57
+pub static SPIRE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("spire")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:59
+pub static TIDE: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("tide")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:61
+pub static VEX: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("vex")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:63
+pub static WARD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("ward")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:65
+pub static WAYFINDER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("wayfinder")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:67
+pub static WILD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("wild")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:69
+pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern> {
+    crate::io::papermc::paper::registry::data::inlined_registry_builder_provider::instance().create_trim_pattern(value)
+} // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:30
+pub fn get_trim_pattern(key: &str) -> JRef<dyn TrimPattern> {
+    crate::io::papermc::paper::registry::registry_access::registry_access()
+        .get_registry_1(crate::io::papermc::paper::registry::registry_key::TRIM_PATTERN.clone())
+        .get_or_throw(crate::net::kyori::adventure::key::key::key_2(
+            crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+            key,
+        ))
+} // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:72

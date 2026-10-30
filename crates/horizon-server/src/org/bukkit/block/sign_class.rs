@@ -31,7 +31,7 @@ pub trait Sign: TileState + Colorable {
     fn get_allowed_editor(&self) -> Option<JRef<dyn Player>>; // paper-api/src/main/java/org/bukkit/block/Sign.java:190
     fn get_allowed_editor_unique_id(&self) -> Option<Uuid>; // paper-api/src/main/java/org/bukkit/block/Sign.java:199
     fn set_allowed_editor_unique_id(&self, uuid: Option<Uuid>); // paper-api/src/main/java/org/bukkit/block/Sign.java:208
-    fn get_interactable_side_for(&self, entity: JRef<dyn Entity>) -> Side { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Sign.java:216
-    fn get_interactable_side_for_1(&self, position: JRef<dyn Position>) -> Side { todo!() } // default, paper-api/src/main/java/org/bukkit/block/Sign.java:226
+    fn get_interactable_side_for(&self, entity: JRef<dyn Entity>) -> Side { self.get_interactable_side_for_1(entity.get_location()) } // default, paper-api/src/main/java/org/bukkit/block/Sign.java:216
+    fn get_interactable_side_for_1(&self, position: JRef<dyn Position>) -> Side { self.get_interactable_side_for_2(position.x(), position.z()) } // default, paper-api/src/main/java/org/bukkit/block/Sign.java:226
     fn get_interactable_side_for_2(&self, x: f64, z: f64) -> Side; // paper-api/src/main/java/org/bukkit/block/Sign.java:237
 }

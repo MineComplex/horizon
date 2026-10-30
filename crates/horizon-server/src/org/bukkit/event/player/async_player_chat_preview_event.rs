@@ -22,12 +22,12 @@ impl std::ops::Deref for AsyncPlayerChatPreviewEvent {
     type Target = AsyncPlayerChatEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:21
 impl AsyncPlayerChatPreviewEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(async_: bool, player: JRef<dyn Player>, message: &str, players: &HashSet<JRef<dyn Player>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:23
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:28
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:34
+    pub fn new(async_: bool, player: JRef<dyn Player>, message: &str, players: &HashSet<JRef<dyn Player>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: AsyncPlayerChatEvent::new_base(this, async_, player, message, players), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:23
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:28
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerChatPreviewEvent.java:34
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -14,10 +14,18 @@ pub struct TargetBlockInfo {
 }
 impl TargetBlockInfo {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(block: JRef<dyn Block>, block_face: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:17
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:27
-    pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:37
-    pub fn get_relative_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:47
+    pub fn new(block: JRef<dyn Block>, block_face: BlockFace) -> JRef<Self> {
+Arc::new_cyclic(|this| TargetBlockInfo { this: this.clone(), block, block_face })
+} // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:17
+    pub fn get_block(&self) -> JRef<dyn Block> {
+self.block.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:27
+    pub fn get_block_face(&self) -> BlockFace {
+self.block_face.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:37
+    pub fn get_relative_block(&self) -> JRef<dyn Block> {
+self.block.get_relative(self.block_face)
+} // paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:47
 }
 crate::jobject!(TargetBlockInfo);
 // ---- enum com.destroystokyo.paper.block.TargetBlockInfo.FluidMode (paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:55)
@@ -39,6 +47,12 @@ impl TargetBlockInfoFluidMode {
     }
     pub fn value_of(name: &str) -> Option<TargetBlockInfoFluidMode> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static TargetBlockInfoFluidModeData { todo!("paper-api/src/main/java/com/destroystokyo/paper/block/TargetBlockInfo.java:55") }
+    pub fn data(self) -> &'static TargetBlockInfoFluidModeData {
+match self {
+    TargetBlockInfoFluidMode::NEVER => &TargetBlockInfoFluidModeData { bukkit: FluidCollisionMode::NEVER },
+    TargetBlockInfoFluidMode::SOURCE_ONLY => &TargetBlockInfoFluidModeData { bukkit: FluidCollisionMode::SOURCE_ONLY },
+    TargetBlockInfoFluidMode::ALWAYS => &TargetBlockInfoFluidModeData { bukkit: FluidCollisionMode::ALWAYS },
+}
+}
 }
 crate::jobject!(TargetBlockInfoFluidMode);

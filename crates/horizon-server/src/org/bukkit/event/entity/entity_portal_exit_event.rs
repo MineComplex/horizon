@@ -26,15 +26,15 @@ impl std::ops::Deref for EntityPortalExitEvent {
     type Target = EntityTeleportEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:21
 impl EntityPortalExitEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, from: JRef<Location>, to: JRef<Location>, before: JRef<dyn VectorTrait>, after: JRef<dyn VectorTrait>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:26
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:64
+    pub fn new(entity: JRef<dyn Entity>, from: JRef<Location>, to: JRef<Location>, before: JRef<dyn VectorTrait>, after: JRef<dyn VectorTrait>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPortalExitEvent { base: EntityTeleportEvent::new_base(this, entity, from, Some(to)), this: this.clone(), before: before, after: Mut::new(after) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:26
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:64
     pub fn get_before(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:39
     pub fn get_after(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:50
     pub fn set_after(&self, after: JRef<dyn VectorTrait>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:60
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:70
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalExitEvent.java:70
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

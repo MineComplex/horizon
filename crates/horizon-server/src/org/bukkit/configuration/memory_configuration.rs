@@ -6,6 +6,7 @@ use crate::org::bukkit::color::Color;
 use crate::org::bukkit::configuration::configuration::Configuration;
 use crate::org::bukkit::configuration::configuration_options::ConfigurationOptionsTrait;
 use crate::org::bukkit::configuration::configuration_section::ConfigurationSection;
+use crate::org::bukkit::configuration::memory_configuration_options::MemoryConfigurationOptions;
 use crate::org::bukkit::configuration::memory_configuration_options::MemoryConfigurationOptionsTrait;
 use crate::org::bukkit::configuration::memory_section::MemorySection;
 use crate::org::bukkit::configuration::memory_section::MemorySectionTrait;
@@ -19,8 +20,8 @@ use crate::api_prelude::*;
 pub struct MemoryConfiguration {
     pub base: MemorySection,
     pub this: Weak<dyn MemoryConfigurationTrait>,
-    pub defaults: Mut<JRef<dyn Configuration>>, // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:14
-    pub options: Mut<JRef<dyn MemoryConfigurationOptionsTrait>>, // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:15
+    pub defaults: Mut<Option<JRef<dyn Configuration>>>, // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:14
+    pub options: Mut<Option<JRef<dyn MemoryConfigurationOptionsTrait>>>, // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:15
 }
 impl std::ops::Deref for MemoryConfiguration {
     type Target = MemorySection;
@@ -35,17 +36,53 @@ impl std::ops::Deref for dyn MemoryConfigurationTrait {
 }
 impl MemoryConfiguration {
     pub fn this(&self) -> JRef<dyn MemoryConfigurationTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: MemoryConfigurationTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:20
+    pub fn new_base<S: MemoryConfigurationTrait + 'static>(this: &Weak<S>) -> Self {
+        Self::new_base_1(this, None)
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:20
     pub fn new() -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this)) }
-    pub fn new_base_1<S: MemoryConfigurationTrait + 'static>(this: &Weak<S>, defaults: Option<JRef<dyn Configuration>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:29
+    pub fn new_base_1<S: MemoryConfigurationTrait + 'static>(this: &Weak<S>, defaults: Option<JRef<dyn Configuration>>) -> Self {
+        let base = MemorySection::new_base(this);
+        let this: Weak<dyn MemoryConfigurationTrait> = this.clone();
+        MemoryConfiguration { base, this, defaults: Mut::new(defaults), options: Mut::new(None) }
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:29
     pub fn new_1(defaults: Option<JRef<dyn Configuration>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_1(this, defaults)) }
-    pub fn add_default(&self, path: &str, value: Option<JObjectRef>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:33
-    pub fn add_defaults(&self, defaults: &HashMap<String, JObjectRef>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:44
-    pub fn add_defaults_1(&self, defaults: JRef<dyn Configuration>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:53
-    pub fn set_defaults(&self, defaults: JRef<dyn Configuration>) { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:64
-    pub fn get_defaults(&self) -> Option<JRef<dyn Configuration>> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:71
-    pub fn get_parent(&self) -> Option<JRef<dyn ConfigurationSection>> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:77
-    pub fn options(&self) -> JRef<dyn MemoryConfigurationOptionsTrait> { todo!() } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:83
+    pub fn add_default(&self, path: &str, value: Option<JObjectRef>) {
+        if self.defaults.borrow().is_none() {
+            let defaults: JRef<dyn Configuration> = MemoryConfiguration::new();
+            self.defaults.set(Some(defaults));
+        }
+
+        self.defaults.get().unwrap().set(path, value);
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:33
+    pub fn add_defaults(&self, defaults: &IndexMap<String, JObjectRef>) {
+        for (key, value) in defaults {
+            self.this().add_default(key, Some(value.clone()));
+        }
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:44
+    pub fn add_defaults_1(&self, defaults: JRef<dyn Configuration>) {
+        for key in defaults.get_keys(true) {
+            if !defaults.is_configuration_section(&key) {
+                self.this().add_default(&key, defaults.get(&key));
+            }
+        }
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:53
+    pub fn set_defaults(&self, defaults: JRef<dyn Configuration>) {
+        self.defaults.set(Some(defaults));
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:64
+    pub fn get_defaults(&self) -> Option<JRef<dyn Configuration>> {
+        self.defaults.get()
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:71
+    pub fn get_parent(&self) -> Option<JRef<dyn ConfigurationSection>> {
+        None
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:77
+    pub fn options(&self) -> JRef<dyn MemoryConfigurationOptionsTrait> {
+        if self.options.borrow().is_none() {
+            let options: JRef<dyn MemoryConfigurationOptionsTrait> = MemoryConfigurationOptions::new(self.this());
+            self.options.set(Some(options));
+        }
+
+        self.options.get().unwrap()
+    } // paper-api/src/main/java/org/bukkit/configuration/MemoryConfiguration.java:83
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -56,20 +93,20 @@ impl MemorySectionTrait for MemoryConfiguration {
     fn as_memory_section(&self) -> &MemorySection { self }
     fn is_primitive_wrapper(&self, input: Option<JObjectRef>) -> bool { MemorySection::is_primitive_wrapper(self, input) }
     fn get_default(&self, path: &str) -> Option<JObjectRef> { MemorySection::get_default(self, path) }
-    fn map_children_keys(&self, output: &mut HashSet<String>, section: JRef<dyn ConfigurationSection>, deep: bool) { MemorySection::map_children_keys(self, output, section, deep) }
-    fn map_children_values(&self, output: &mut HashMap<String, JObjectRef>, section: JRef<dyn ConfigurationSection>, deep: bool) { MemorySection::map_children_values(self, output, section, deep) }
+    fn map_children_keys(&self, output: &mut IndexSet<String>, section: JRef<dyn ConfigurationSection>, deep: bool) { MemorySection::map_children_keys(self, output, section, deep) }
+    fn map_children_values(&self, output: &mut IndexMap<String, JObjectRef>, section: JRef<dyn ConfigurationSection>, deep: bool) { MemorySection::map_children_values(self, output, section, deep) }
     fn to_string(&self) -> String { MemorySection::to_string(self) }
 }
 impl Configuration for MemoryConfiguration {
-    fn add_defaults(&self, defaults: &HashMap<String, JObjectRef>) { MemoryConfiguration::add_defaults(self, defaults) }
+    fn add_defaults(&self, defaults: &IndexMap<String, JObjectRef>) { MemoryConfiguration::add_defaults(self, defaults) }
     fn add_defaults_1(&self, defaults: JRef<dyn Configuration>) { MemoryConfiguration::add_defaults_1(self, defaults) }
     fn set_defaults(&self, defaults: JRef<dyn Configuration>) { MemoryConfiguration::set_defaults(self, defaults) }
     fn get_defaults(&self) -> Option<JRef<dyn Configuration>> { MemoryConfiguration::get_defaults(self) }
     fn options(&self) -> JRef<dyn ConfigurationOptionsTrait> { MemoryConfiguration::options(self) }
 }
 impl ConfigurationSection for MemoryConfiguration {
-    fn get_keys(&self, deep: bool) -> HashSet<String> { MemorySection::get_keys(self, deep) }
-    fn get_values(&self, deep: bool) -> HashMap<String, JObjectRef> { MemorySection::get_values(self, deep) }
+    fn get_keys(&self, deep: bool) -> IndexSet<String> { MemorySection::get_keys(self, deep) }
+    fn get_values(&self, deep: bool) -> IndexMap<String, JObjectRef> { MemorySection::get_values(self, deep) }
     fn contains(&self, path: &str) -> bool { MemorySection::contains(self, path) }
     fn contains_2(&self, path: &str, ignore_default: bool) -> bool { MemorySection::contains_2(self, path, ignore_default) }
     fn is_set(&self, path: &str) -> bool { MemorySection::is_set(self, path) }
@@ -81,7 +118,7 @@ impl ConfigurationSection for MemoryConfiguration {
     fn get_2(&self, path: &str, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_2(self, path, def) }
     fn set(&self, path: &str, value: Option<JObjectRef>) { MemorySection::set(self, path, value) }
     fn create_section(&self, path: &str) -> JRef<dyn ConfigurationSection> { MemorySection::create_section(self, path) }
-    fn create_section_2(&self, path: &str, map: &HashMap<JObjectRef, JObjectRef>) -> JRef<dyn ConfigurationSection> { MemorySection::create_section_2(self, path, map) }
+    fn create_section_2(&self, path: &str, map: &IndexMap<String, JObjectRef>) -> JRef<dyn ConfigurationSection> { MemorySection::create_section_2(self, path, map) }
     fn get_string(&self, path: &str) -> Option<String> { MemorySection::get_string(self, path) }
     fn get_string_2(&self, path: &str, def: Option<String>) -> Option<String> { MemorySection::get_string_2(self, path, def) }
     fn is_string(&self, path: &str) -> bool { MemorySection::is_string(self, path) }
@@ -109,11 +146,11 @@ impl ConfigurationSection for MemoryConfiguration {
     fn get_byte_list(&self, path: &str) -> Vec<i8> { MemorySection::get_byte_list(self, path) }
     fn get_character_list(&self, path: &str) -> Vec<char> { MemorySection::get_character_list(self, path) }
     fn get_short_list(&self, path: &str) -> Vec<i16> { MemorySection::get_short_list(self, path) }
-    fn get_map_list(&self, path: &str) -> Vec<HashMap<JObjectRef, JObjectRef>> { MemorySection::get_map_list(self, path) }
-    fn get_object<T: JGeneric>(&self, path: &str, clazz: Class) -> Option<T> where Self: Sized { MemorySection::get_object::<T>(self, path, clazz) }
-    fn get_object_3<T: JGeneric>(&self, path: &str, clazz: Class, def: Option<T>) -> Option<T> where Self: Sized { MemorySection::get_object_3::<T>(self, path, clazz, def) }
-    fn get_serializable<T: JGeneric>(&self, path: &str, clazz: Class) -> Option<T> where Self: Sized { MemorySection::get_serializable::<T>(self, path, clazz) }
-    fn get_serializable_3<T: JGeneric>(&self, path: &str, clazz: Class, def: Option<T>) -> Option<T> where Self: Sized { MemorySection::get_serializable_3::<T>(self, path, clazz, def) }
+    fn get_map_list(&self, path: &str) -> Vec<IndexMap<String, JObjectRef>> { MemorySection::get_map_list(self, path) }
+    fn get_object(&self, path: &str, clazz: Class) -> Option<JObjectRef> { MemorySection::get_object(self, path, clazz) }
+    fn get_object_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_object_3(self, path, clazz, def) }
+    fn get_serializable(&self, path: &str, clazz: Class) -> Option<JObjectRef> { MemorySection::get_serializable(self, path, clazz) }
+    fn get_serializable_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_serializable_3(self, path, clazz, def) }
     fn get_vector(&self, path: &str) -> Option<JRef<dyn VectorTrait>> { MemorySection::get_vector(self, path) }
     fn get_vector_2(&self, path: &str, def: Option<JRef<dyn VectorTrait>>) -> Option<JRef<dyn VectorTrait>> { MemorySection::get_vector_2(self, path, def) }
     fn is_vector(&self, path: &str) -> bool { MemorySection::is_vector(self, path) }
@@ -133,9 +170,9 @@ impl ConfigurationSection for MemoryConfiguration {
     fn is_configuration_section(&self, path: &str) -> bool { MemorySection::is_configuration_section(self, path) }
     fn get_default_section(&self) -> Option<JRef<dyn ConfigurationSection>> { MemorySection::get_default_section(self) }
     fn add_default(&self, path: &str, value: Option<JObjectRef>) { MemoryConfiguration::add_default(self, path, value) }
-    fn get_comments(&self, path: &str) -> Vec<String> { MemorySection::get_comments(self, path) }
-    fn get_inline_comments(&self, path: &str) -> Vec<String> { MemorySection::get_inline_comments(self, path) }
-    fn set_comments(&self, path: &str, comments: Option<Vec<String>>) { MemorySection::set_comments(self, path, comments) }
-    fn set_inline_comments(&self, path: &str, comments: Option<Vec<String>>) { MemorySection::set_inline_comments(self, path, comments) }
+    fn get_comments(&self, path: &str) -> Vec<Option<String>> { MemorySection::get_comments(self, path) }
+    fn get_inline_comments(&self, path: &str) -> Vec<Option<String>> { MemorySection::get_inline_comments(self, path) }
+    fn set_comments(&self, path: &str, comments: Option<Vec<Option<String>>>) { MemorySection::set_comments(self, path, comments) }
+    fn set_inline_comments(&self, path: &str, comments: Option<Vec<Option<String>>>) { MemorySection::set_inline_comments(self, path, comments) }
 }
 crate::jobject!(MemoryConfiguration: dyn MemoryConfigurationTrait, dyn MemorySectionTrait, dyn Configuration, dyn ConfigurationSection);

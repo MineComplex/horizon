@@ -23,17 +23,17 @@ impl std::ops::Deref for PlayerRecipeDiscoverEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:16
 impl PlayerRecipeDiscoverEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, recipe: JRef<NamespacedKey>, show_notification: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:56
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:61
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:66
-    pub fn get_recipe(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:34
-    pub fn should_show_notification(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:43
-    pub fn should_show_notification_1(&self, show_notification: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:52
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:71
+    pub fn new(player: JRef<dyn Player>, recipe: JRef<NamespacedKey>, show_notification: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), recipe: recipe, cancelled: Mut::new(false), show_notification: Mut::new(show_notification) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:56
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:61
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:66
+    pub fn get_recipe(&self) -> JRef<NamespacedKey> { self.recipe.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:34
+    pub fn should_show_notification(&self) -> bool { self.show_notification.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:43
+    pub fn should_show_notification_1(&self, show_notification: bool) { self.show_notification.set(show_notification) } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:52
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerRecipeDiscoverEvent.java:71
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

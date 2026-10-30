@@ -33,19 +33,19 @@ impl std::ops::Deref for dyn PlayerInteractEntityEventTrait {
     type Target = PlayerInteractEntityEvent;
     fn deref(&self) -> &PlayerInteractEntityEvent { self.as_player_interact_entity_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:20
 impl PlayerInteractEntityEvent {
     pub fn this(&self) -> JRef<dyn PlayerInteractEntityEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PlayerInteractEntityEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:27
     pub fn new(player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, clicked_entity)) }
-    pub fn new_base_3<S: PlayerInteractEntityEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, hand: EquipmentSlot) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:32
+    pub fn new_base_3<S: PlayerInteractEntityEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, hand: EquipmentSlot) -> Self { Self { base: PlayerEvent::new_base(this, player), this: this.clone(), clicked_entity: Mut::new(clicked_entity), hand: hand, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:32
     pub fn new_3(player: JRef<dyn Player>, clicked_entity: JRef<dyn Entity>, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_3(this, player, clicked_entity, hand)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:59
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:64
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:69
-    pub fn get_right_clicked(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:44
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:75
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:59
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:64
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:69
+    pub fn get_right_clicked(&self) -> JRef<dyn Entity> { self.clicked_entity.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:44
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEntityEvent.java:75
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

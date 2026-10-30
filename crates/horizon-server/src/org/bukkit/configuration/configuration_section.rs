@@ -3,6 +3,7 @@
 use crate::prelude::*;
 use crate::java::lang::Class;
 use crate::net::kyori::adventure::text::Component;
+use crate::net::kyori::adventure::text::minimessage::MiniMessage;
 use crate::net::kyori::adventure::text::serializer::ComponentDecoder;
 use crate::net::kyori::adventure::text::serializer::ComponentEncoder;
 use crate::org::bukkit::color::Color;
@@ -15,8 +16,8 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.configuration.ConfigurationSection (paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:19)
 pub trait ConfigurationSection: JObject {
-    fn get_keys(&self, deep: bool) -> HashSet<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:34
-    fn get_values(&self, deep: bool) -> HashMap<String, JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:51
+    fn get_keys(&self, deep: bool) -> IndexSet<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:34
+    fn get_values(&self, deep: bool) -> IndexMap<String, JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:51
     fn contains(&self, path: &str) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:65
     fn contains_2(&self, path: &str, ignore_default: bool) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:84
     fn is_set(&self, path: &str) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:98
@@ -28,7 +29,7 @@ pub trait ConfigurationSection: JObject {
     fn get_2(&self, path: &str, def: Option<JObjectRef>) -> Option<JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:184
     fn set(&self, path: &str, value: Option<JObjectRef>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:202
     fn create_section(&self, path: &str) -> JRef<dyn ConfigurationSection>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:214
-    fn create_section_2(&self, path: &str, map: &HashMap<JObjectRef, JObjectRef>) -> JRef<dyn ConfigurationSection>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:229
+    fn create_section_2(&self, path: &str, map: &IndexMap<String, JObjectRef>) -> JRef<dyn ConfigurationSection>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:229
     fn get_string(&self, path: &str) -> Option<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:243
     fn get_string_2(&self, path: &str, def: Option<String>) -> Option<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:259
     fn is_string(&self, path: &str) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:274
@@ -56,11 +57,11 @@ pub trait ConfigurationSection: JObject {
     fn get_byte_list(&self, path: &str) -> Vec<i8>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:588
     fn get_character_list(&self, path: &str) -> Vec<char>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:604
     fn get_short_list(&self, path: &str) -> Vec<i16>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:620
-    fn get_map_list(&self, path: &str) -> Vec<HashMap<JObjectRef, JObjectRef>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:636
-    fn get_object<T: JGeneric>(&self, path: &str, clazz: Class) -> Option<T> where Self: Sized; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:658
-    fn get_object_3<T: JGeneric>(&self, path: &str, clazz: Class, def: Option<T>) -> Option<T> where Self: Sized; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:684
-    fn get_serializable<T: JGeneric>(&self, path: &str, clazz: Class) -> Option<T> where Self: Sized; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:701
-    fn get_serializable_3<T: JGeneric>(&self, path: &str, clazz: Class, def: Option<T>) -> Option<T> where Self: Sized; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:719
+    fn get_map_list(&self, path: &str) -> Vec<IndexMap<String, JObjectRef>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:636
+    fn get_object(&self, path: &str, clazz: Class) -> Option<JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:658
+    fn get_object_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:684
+    fn get_serializable(&self, path: &str, clazz: Class) -> Option<JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:701
+    fn get_serializable_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:719
     fn get_vector(&self, path: &str) -> Option<JRef<dyn VectorTrait>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:733
     fn get_vector_2(&self, path: &str, def: Option<JRef<dyn VectorTrait>>) -> Option<JRef<dyn VectorTrait>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:749
     fn is_vector(&self, path: &str) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:764
@@ -80,14 +81,28 @@ pub trait ConfigurationSection: JObject {
     fn is_configuration_section(&self, path: &str) -> bool; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:965
     fn get_default_section(&self) -> Option<JRef<dyn ConfigurationSection>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:977
     fn add_default(&self, path: &str, value: Option<JObjectRef>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:998
-    fn get_comments(&self, path: &str) -> Vec<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1011
-    fn get_inline_comments(&self, path: &str) -> Vec<String>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1025
-    fn set_comments(&self, path: &str, comments: Option<Vec<String>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1043
-    fn set_inline_comments(&self, path: &str, comments: Option<Vec<String>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1060
-    fn get_rich_message(&self, path: &str) -> Component { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1073
-    fn get_rich_message_2(&self, path: &str, fallback: Component) -> Component { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1088
-    fn set_rich_message(&self, path: &str, value: Component) { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1102
-    fn get_component<C: JGeneric>(&self, path: &str, decoder: ComponentDecoder<JObjectRef, C>) -> C where Self: Sized { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1117
-    fn get_component_3<C: JGeneric>(&self, path: &str, decoder: ComponentDecoder<JObjectRef, C>, fallback: Option<C>) -> C where Self: Sized { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1133
-    fn set_component<C: JGeneric>(&self, path: &str, encoder: ComponentEncoder<C, String>, value: Option<C>) where Self: Sized { todo!() } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1150
+    fn get_comments(&self, path: &str) -> Vec<Option<String>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1011
+    fn get_inline_comments(&self, path: &str) -> Vec<Option<String>>; // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1025
+    fn set_comments(&self, path: &str, comments: Option<Vec<Option<String>>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1043
+    fn set_inline_comments(&self, path: &str, comments: Option<Vec<Option<String>>>); // paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1060
+    fn get_rich_message(&self, path: &str) -> Option<Component> {
+        self.get_rich_message_2(path, None)
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1073
+    fn get_rich_message_2(&self, path: &str, fallback: Option<Component>) -> Option<Component> {
+        // PORT: MiniMessage as a ComponentDecoder<String, Component> (Adventure port).
+        self.get_component_3(path, MiniMessage::mini_message().into(), fallback)
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1088
+    fn set_rich_message(&self, path: &str, value: Option<Component>) {
+        self.set_component(path, MiniMessage::mini_message().into(), value);
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1102
+    fn get_component(&self, path: &str, decoder: ComponentDecoder<String, Component>) -> Option<Component> {
+        self.get_component_3(path, decoder, None)
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1117
+    fn get_component_3(&self, path: &str, decoder: ComponentDecoder<String, Component>, fallback: Option<Component>) -> Option<Component> {
+        let value = self.get_string(path);
+        decoder.deserialize_or(value, fallback)
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1133
+    fn set_component(&self, path: &str, encoder: ComponentEncoder<Component, String>, value: Option<Component>) {
+        self.set(path, encoder.serialize_or_null(value).map(|s| -> JObjectRef { Arc::new(s) }));
+    } // default, paper-api/src/main/java/org/bukkit/configuration/ConfigurationSection.java:1150
 }

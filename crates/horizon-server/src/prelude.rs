@@ -1,6 +1,6 @@
 //! What every ported module imports (`use crate::prelude::*;`).
 pub use crate::java::{
-    as_object, cast, instance_of, same, ById, JGeneric, JObject, JObjectRef, JRef, Monitor, Mut,
+    api, as_object, cast, instance_of, same, ById, JGeneric, JObject, JObjectRef, JRef, Monitor, Mut,
 };
 pub use crate::prelude_traits::*;
 pub use indexmap::{IndexMap, IndexSet};

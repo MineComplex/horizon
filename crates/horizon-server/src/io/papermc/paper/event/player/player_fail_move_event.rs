@@ -24,19 +24,33 @@ impl std::ops::Deref for PlayerFailMoveEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:16
 impl PlayerFailMoveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerFailMoveEventFailReason, allowed: bool, log_warning: bool, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:24
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:97
-    pub fn get_fail_reason(&self) -> PlayerFailMoveEventFailReason { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:39
-    pub fn get_from(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:48
-    pub fn get_to(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:57
-    pub fn is_allowed(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:66
-    pub fn set_allowed(&self, allowed: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:75
-    pub fn get_log_warning(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:84
-    pub fn set_log_warning(&self, log_warning: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:93
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:102
+    pub fn new(player: JRef<dyn Player>, fail_reason: PlayerFailMoveEventFailReason, allowed: bool, log_warning: bool, from: JRef<Location>, to: JRef<Location>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerFailMoveEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            fail_reason,
+            allowed: Mut::new(allowed),
+            log_warning: Mut::new(log_warning),
+            from,
+            to,
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:24
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:97
+    pub fn get_fail_reason(&self) -> PlayerFailMoveEventFailReason { self.fail_reason.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:39
+    pub fn get_from(&self) -> JRef<Location> {
+        Location::clone(&self.from)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:48
+    pub fn get_to(&self) -> JRef<Location> {
+        Location::clone(&self.to)
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:57
+    pub fn is_allowed(&self) -> bool { self.allowed.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:66
+    pub fn set_allowed(&self, allowed: bool) { self.allowed.set(allowed) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:75
+    pub fn get_log_warning(&self) -> bool { self.log_warning.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:84
+    pub fn set_log_warning(&self, log_warning: bool) { self.log_warning.set(log_warning) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:93
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFailMoveEvent.java:102
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

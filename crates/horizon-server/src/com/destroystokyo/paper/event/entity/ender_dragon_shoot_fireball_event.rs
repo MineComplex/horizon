@@ -24,16 +24,35 @@ impl std::ops::Deref for EnderDragonShootFireballEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:17
 impl EnderDragonShootFireballEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn EnderDragon>, fireball: JRef<dyn DragonFireball>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:22
-    pub fn get_entity(&self) -> JRef<dyn EnderDragon> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:31
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:43
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:48
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:53
-    pub fn get_fireball(&self) -> JRef<dyn DragonFireball> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:39
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:58
+    pub fn new(entity: JRef<dyn EnderDragon>, fireball: JRef<dyn DragonFireball>) -> JRef<Self> {
+Arc::new_cyclic(|this| EnderDragonShootFireballEvent {
+base: EntityEvent::new_base(this, entity),
+this: this.clone(),
+fireball: fireball,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:22
+    pub fn get_entity(&self) -> JRef<dyn EnderDragon> {
+cast::<dyn EnderDragon, _>(&self.base.get_entity()).expect("EnderDragon")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:31
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:43
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:48
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:53
+    pub fn get_fireball(&self) -> JRef<dyn DragonFireball> {
+self.fireball.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:39
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/EnderDragonShootFireballEvent.java:58
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -14,12 +14,11 @@ pub struct TagKeyImpl<T: JGeneric> {
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> TagKeyImpl<T> {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:8
     pub fn new_2(registry_key: JRef<dyn RegistryKey<T>>, key: JRef<dyn Key>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:8
     pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> TagKey<T> for TagKeyImpl<T> {
-    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { todo!("abstract TagKey.registryKey") }
+    fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { self.registry_key.clone() }
 }

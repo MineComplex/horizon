@@ -32,20 +32,20 @@ impl std::ops::Deref for dyn EntityCombustEventTrait {
     type Target = EntityCombustEvent;
     fn deref(&self) -> &EntityCombustEvent { self.as_entity_combust_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:16
 impl EntityCombustEvent {
     pub fn this(&self) -> JRef<dyn EntityCombustEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EntityCombustEventTrait + 'static>(this: &Weak<S>, combustee: JRef<dyn Entity>, duration: i32) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:22
+    pub fn new_base<S: EntityCombustEventTrait + 'static>(this: &Weak<S>, combustee: JRef<dyn Entity>, duration: i32) -> Self { Self::new_base_2(this, combustee, duration as f32) } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:22
     pub fn new(combustee: JRef<dyn Entity>, duration: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, combustee, duration)) }
-    pub fn new_base_2<S: EntityCombustEventTrait + 'static>(this: &Weak<S>, combustee: JRef<dyn Entity>, duration: f32) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:28
+    pub fn new_base_2<S: EntityCombustEventTrait + 'static>(this: &Weak<S>, combustee: JRef<dyn Entity>, duration: f32) -> Self { EntityCombustEvent { base: EntityEvent::new_base(this, combustee), this: this.clone(), duration: Mut::new(duration), cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:28
     pub fn new_2(combustee: JRef<dyn Entity>, duration: f32) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_2(this, combustee, duration)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:69
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:74
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:79
-    pub fn get_duration(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:38
-    pub fn set_duration(&self, duration: f32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:50
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:69
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:74
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:79
+    pub fn get_duration(&self) -> f32 { self.duration.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:38
+    pub fn set_duration(&self, duration: f32) { self.duration.set(duration); } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:50
     pub fn set_duration_1(&self, duration: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:64
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:85
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityCombustEvent.java:85
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

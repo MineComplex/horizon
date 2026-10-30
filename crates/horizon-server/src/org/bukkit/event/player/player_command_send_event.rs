@@ -19,13 +19,13 @@ impl std::ops::Deref for PlayerCommandSendEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:20
 impl PlayerCommandSendEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, commands: &Vec<String>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:24
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:43
-    pub fn get_commands(&self) -> Vec<String> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:38
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:49
+    pub fn new(player: JRef<dyn Player>, commands: &Vec<String>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), commands: Mut::new(commands.clone()) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:24
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:43
+    pub fn get_commands(&self) -> Vec<String> { self.commands.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:38
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerCommandSendEvent.java:49
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

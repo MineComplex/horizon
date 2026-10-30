@@ -22,15 +22,15 @@ impl std::ops::Deref for ChunkUnloadEvent {
     type Target = ChunkEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:13
 impl ChunkUnloadEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(chunk: JRef<dyn Chunk>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:17
-    pub fn new_2(chunk: JRef<dyn Chunk>, save: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:22
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:46
-    pub fn is_save_chunk(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:33
-    pub fn set_save_chunk(&self, save_chunk: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:42
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:52
+    pub fn new_2(chunk: JRef<dyn Chunk>, save: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: ChunkEvent::new_base(this, chunk), this: this.clone(), save_chunk: Mut::new(save) }) } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:22
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:46
+    pub fn is_save_chunk(&self) -> bool { self.save_chunk.get() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:33
+    pub fn set_save_chunk(&self, save_chunk: bool) { self.save_chunk.set(save_chunk) } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:42
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/ChunkUnloadEvent.java:52
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

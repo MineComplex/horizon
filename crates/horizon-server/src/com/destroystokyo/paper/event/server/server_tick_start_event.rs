@@ -16,13 +16,25 @@ impl std::ops::Deref for ServerTickStartEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:11
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:11
 impl ServerTickStartEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(tick_number: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:15
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:27
-    pub fn get_tick_number(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:23
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:32
+    pub fn new(tick_number: i32) -> JRef<Self> {
+Arc::new_cyclic(|this| ServerTickStartEvent {
+base: Event::new_base(this),
+this: this.clone(),
+tick_number: tick_number,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:15
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:27
+    pub fn get_tick_number(&self) -> i32 {
+self.tick_number.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:23
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/server/ServerTickStartEvent.java:32
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

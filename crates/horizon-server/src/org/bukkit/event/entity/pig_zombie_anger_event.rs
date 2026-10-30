@@ -16,7 +16,7 @@ use crate::api_prelude::*;
 pub struct PigZombieAngerEvent {
     pub base: EntityEvent,
     pub this: Weak<Self>,
-    pub target: JRef<dyn Entity>, // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:20
+    pub target: Option<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:20
     pub new_anger: Mut<i32>, // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:21
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:23
 }
@@ -24,18 +24,18 @@ impl std::ops::Deref for PigZombieAngerEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:18
 impl PigZombieAngerEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(zombified_piglin: JRef<dyn PigZombie>, target: Option<JRef<dyn Entity>>, new_anger: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:25
-    pub fn get_entity(&self) -> JRef<dyn PigZombie> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:62
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:68
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:73
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:78
-    pub fn get_target(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:37
-    pub fn get_new_anger(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:48
-    pub fn set_new_anger(&self, new_anger: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:58
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:84
+    pub fn new(zombified_piglin: JRef<dyn PigZombie>, target: Option<JRef<dyn Entity>>, new_anger: i32) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| PigZombieAngerEvent { base: EntityEvent::new_base(this, zombified_piglin), this: this.clone(), target: target, new_anger: Mut::new(new_anger), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:25
+    pub fn get_entity(&self) -> JRef<dyn PigZombie> { cast::<dyn PigZombie, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:62
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:68
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:78
+    pub fn get_target(&self) -> Option<JRef<dyn Entity>> { self.target.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:37
+    pub fn get_new_anger(&self) -> i32 { self.new_anger.get() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:48
+    pub fn set_new_anger(&self, new_anger: i32) { self.new_anger.set(new_anger); } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PigZombieAngerEvent.java:84
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -24,19 +24,19 @@ impl std::ops::Deref for PlayerLeashEntityEvent {
     type Target = Event;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:17
 impl PlayerLeashEntityEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, leash_holder: JRef<dyn Entity>, leasher: JRef<dyn Player>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:34
-    pub fn new_4(entity: JRef<dyn Entity>, leash_holder: JRef<dyn Entity>, leasher: JRef<dyn Player>, hand: EquipmentSlot) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:80
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:85
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:90
-    pub fn get_leash_holder(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:45
-    pub fn get_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:55
-    pub fn get_player(&self) -> JRef<dyn Player> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:65
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:75
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:96
+    pub fn new(entity: JRef<dyn Entity>, leash_holder: JRef<dyn Entity>, leasher: JRef<dyn Player>) -> JRef<Self> { Self::new_4(entity, leash_holder, leasher, EquipmentSlot::HAND) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:34
+    pub fn new_4(entity: JRef<dyn Entity>, leash_holder: JRef<dyn Entity>, leasher: JRef<dyn Player>, hand: EquipmentSlot) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| PlayerLeashEntityEvent { base: Event::new_base(this), this: this.clone(), leash_holder: leash_holder, entity: entity, player: leasher, hand: hand, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:80
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:85
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:90
+    pub fn get_leash_holder(&self) -> JRef<dyn Entity> { self.leash_holder.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:45
+    pub fn get_entity(&self) -> JRef<dyn Entity> { self.entity.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:55
+    pub fn get_player(&self) -> JRef<dyn Player> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:65
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:75
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/PlayerLeashEntityEvent.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

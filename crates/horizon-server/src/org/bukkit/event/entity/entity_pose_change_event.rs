@@ -21,13 +21,13 @@ impl std::ops::Deref for EntityPoseChangeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:16
 impl EntityPoseChangeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, pose: Pose) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:20
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:36
-    pub fn get_pose(&self) -> Pose { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:31
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:42
+    pub fn new(entity: JRef<dyn Entity>, pose: Pose) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPoseChangeEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), pose: pose }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:20
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:36
+    pub fn get_pose(&self) -> Pose { self.pose.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:31
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPoseChangeEvent.java:42
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

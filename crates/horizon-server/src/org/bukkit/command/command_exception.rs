@@ -5,13 +5,31 @@ use crate::java::lang::Throwable;
 use crate::api_prelude::*;
 
 // ---- class org.bukkit.command.CommandException (paper-api/src/main/java/org/bukkit/command/CommandException.java:6)
+/// A `RuntimeException`: thrown with `std::panic::panic_any(CommandException::new_1(..))`.
 pub struct CommandException {
     pub this: Weak<Self>,
+    // java.lang.Throwable's state (RuntimeException(message, cause)).
+    pub message: Option<String>,
+    pub cause: Option<Throwable>,
 }
 impl CommandException {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandException.java:13
-    pub fn new_1(msg: &str) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandException.java:21
-    pub fn new_2(msg: &str, cause: Throwable) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/command/CommandException.java:25
+    pub fn new() -> JRef<Self> {
+        Arc::new_cyclic(|this| CommandException { this: this.clone(), message: None, cause: None })
+    } // paper-api/src/main/java/org/bukkit/command/CommandException.java:13
+    pub fn new_1(msg: &str) -> JRef<Self> {
+        Arc::new_cyclic(|this| CommandException { this: this.clone(), message: Some(msg.to_string()), cause: None })
+    } // paper-api/src/main/java/org/bukkit/command/CommandException.java:21
+    pub fn new_2(msg: &str, cause: Throwable) -> JRef<Self> {
+        Arc::new_cyclic(|this| CommandException { this: this.clone(), message: Some(msg.to_string()), cause: Some(cause) })
+    } // paper-api/src/main/java/org/bukkit/command/CommandException.java:25
+    /// `Throwable.getMessage()`.
+    pub fn get_message(&self) -> Option<String> {
+        self.message.clone()
+    }
+    /// `Throwable.getCause()`.
+    pub fn get_cause(&self) -> Option<&Throwable> {
+        self.cause.as_ref()
+    }
 }
 crate::jobject!(CommandException);

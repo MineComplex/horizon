@@ -28,23 +28,39 @@ impl std::ops::Deref for StructuresLocateEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:34
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:34
 impl StructuresLocateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, origin: JRef<Location>, structures: &Vec<JRef<dyn StructureTrait>>, radius: i32, find_unexplored: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:44
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:147
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:152
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:157
-    pub fn get_origin(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:58
-    pub fn get_result(&self) -> Option<StructuresLocateEventResult> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:71
-    pub fn set_result(&self, result: Option<StructuresLocateEventResult>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:81
-    pub fn get_structures(&self) -> Vec<JRef<dyn StructureTrait>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:90
-    pub fn set_structures(&self, structures: &Vec<JRef<dyn StructureTrait>>) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:99
-    pub fn get_radius(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:110
-    pub fn set_radius(&self, radius: i32) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:121
-    pub fn should_find_unexplored(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:132
-    pub fn set_find_unexplored(&self, find_unexplored: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:143
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:162
+    pub fn new(world: JRef<dyn World>, origin: JRef<Location>, structures: &Vec<JRef<dyn StructureTrait>>, radius: i32, find_unexplored: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| StructuresLocateEvent {
+            base: WorldEvent::new_base(this, world),
+            this: this.clone(),
+            origin,
+            result: Mut::new(None),
+            structures: Mut::new(structures.clone()),
+            radius: Mut::new(radius),
+            find_unexplored: Mut::new(find_unexplored),
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:44
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:147
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:152
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:157
+    pub fn get_origin(&self) -> JRef<Location> {
+        Location::clone(&self.origin)
+    } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:58
+    pub fn get_result(&self) -> Option<StructuresLocateEventResult> { self.result.get() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:71
+    pub fn set_result(&self, result: Option<StructuresLocateEventResult>) { self.result.set(result) } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:81
+    pub fn get_structures(&self) -> Vec<JRef<dyn StructureTrait>> {
+        // Collections.unmodifiableList(this.structures): a copy
+        self.structures.get()
+    } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:90
+    pub fn set_structures(&self, structures: &Vec<JRef<dyn StructureTrait>>) { self.structures.set(structures) } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:99
+    pub fn get_radius(&self) -> i32 { self.radius.get() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:110
+    pub fn set_radius(&self, radius: i32) { self.radius.set(radius) } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:121
+    pub fn should_find_unexplored(&self) -> bool { self.find_unexplored.get() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:132
+    pub fn set_find_unexplored(&self, find_unexplored: bool) { self.find_unexplored.set(find_unexplored) } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:143
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:162
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -70,8 +86,12 @@ pub struct StructuresLocateEventResult {
     pub structure: JRef<dyn StructureTrait>,
 }
 impl StructuresLocateEventResult {
-    pub fn new() -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:169
-    pub fn new_2(pos: JRef<dyn Position>, structure: JRef<dyn StructureTrait>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:169
-    pub fn position(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:171
+    pub fn new_2(pos: JRef<dyn Position>, structure: JRef<dyn StructureTrait>) -> Self {
+        StructuresLocateEventResult { pos, structure }
+    } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:169
+    pub fn position(&self) -> JRef<Location> {
+        // PORT: Java calls this.pos.toLocation(null); Position.toLocation takes a non-null World in the port
+        panic!("PORT: Position.toLocation(null) needs a nullable World (pos {}, {}, {})", self.pos.x(), self.pos.y(), self.pos.z())
+    } // paper-api/src/main/java/io/papermc/paper/event/world/StructuresLocateEvent.java:171
 }
 crate::jobject!(StructuresLocateEventResult);

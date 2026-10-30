@@ -18,12 +18,12 @@ impl std::ops::Deref for WorldSaveEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:13
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:13
 impl WorldSaveEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:15
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:20
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:26
+    pub fn new(world: JRef<dyn World>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: WorldEvent::new_base(this, world), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:15
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:20
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/WorldSaveEvent.java:26
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

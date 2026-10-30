@@ -21,11 +21,11 @@ impl std::ops::Deref for dyn EventTrait {
 }
 impl Event {
     pub fn this(&self) -> JRef<dyn EventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: EventTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/Event.java:24
-    pub fn new_base_1<S: EventTrait + 'static>(this: &Weak<S>, is_async: bool) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/Event.java:35
+    pub fn new_base<S: EventTrait + 'static>(this: &Weak<S>) -> Self { Self::new_base_1(this, false) } // paper-api/src/main/java/org/bukkit/event/Event.java:24
+    pub fn new_base_1<S: EventTrait + 'static>(this: &Weak<S>, is_async: bool) -> Self { Event { this: this.clone(), is_async: is_async } } // paper-api/src/main/java/org/bukkit/event/Event.java:35
     pub fn call_event(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/Event.java:44
     pub fn get_event_name(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/Event.java:60
-    pub fn is_asynchronous(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/Event.java:89
+    pub fn is_asynchronous(&self) -> bool { self.is_async } // paper-api/src/main/java/org/bukkit/event/Event.java:89
 }
 // ---- enum org.bukkit.event.Event.Result (paper-api/src/main/java/org/bukkit/event/Event.java:93)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

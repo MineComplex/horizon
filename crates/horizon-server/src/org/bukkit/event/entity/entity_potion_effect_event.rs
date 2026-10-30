@@ -30,23 +30,23 @@ impl std::ops::Deref for EntityPotionEffectEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:21
 impl EntityPotionEffectEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(living_entity: JRef<dyn LivingEntity>, old_effect: Option<JRef<PotionEffect>>, new_effect: Option<JRef<PotionEffect>>, entity_source: Option<JRef<dyn Entity>>, cause: EntityPotionEffectEventCause, action: EntityPotionEffectEventAction, override_: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:32
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:43
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:125
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:130
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:135
-    pub fn get_old_effect(&self) -> Option<JRef<PotionEffect>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:54
-    pub fn get_new_effect(&self) -> Option<JRef<PotionEffect>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:64
-    pub fn get_source(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:74
-    pub fn get_cause(&self) -> EntityPotionEffectEventCause { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:83
-    pub fn get_action(&self) -> EntityPotionEffectEventAction { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:92
+    pub fn new(living_entity: JRef<dyn LivingEntity>, old_effect: Option<JRef<PotionEffect>>, new_effect: Option<JRef<PotionEffect>>, entity_source: Option<JRef<dyn Entity>>, cause: EntityPotionEffectEventCause, action: EntityPotionEffectEventAction, override_: bool) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPotionEffectEvent { base: EntityEvent::new_base(this, living_entity), this: this.clone(), old_effect: old_effect, new_effect: new_effect, entity_source: entity_source, cause: cause, action: action, override_: Mut::new(override_), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:32
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.base.get_entity()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:43
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:125
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:130
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:135
+    pub fn get_old_effect(&self) -> Option<JRef<PotionEffect>> { self.old_effect.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:54
+    pub fn get_new_effect(&self) -> Option<JRef<PotionEffect>> { self.new_effect.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:64
+    pub fn get_source(&self) -> Option<JRef<dyn Entity>> { self.entity_source.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:74
+    pub fn get_cause(&self) -> EntityPotionEffectEventCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:83
+    pub fn get_action(&self) -> EntityPotionEffectEventAction { self.action.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:92
     pub fn get_modified_type(&self) -> JRef<dyn PotionEffectTypeTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:101
-    pub fn is_override(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:111
+    pub fn is_override(&self) -> bool { self.override_.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:111
     pub fn set_override(&self, override_: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:121
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:140
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java:140
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

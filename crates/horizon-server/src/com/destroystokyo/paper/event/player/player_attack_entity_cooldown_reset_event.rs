@@ -23,16 +23,36 @@ impl std::ops::Deref for PlayerAttackEntityCooldownResetEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:26
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:26
 impl PlayerAttackEntityCooldownResetEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, attacked_entity: JRef<dyn Entity>, cooled_attack_strength: f32) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:33
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:63
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:73
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:78
-    pub fn get_cooled_attack_strength(&self) -> f32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:45
-    pub fn get_attacked_entity(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:83
+    pub fn new(player: JRef<dyn Player>, attacked_entity: JRef<dyn Entity>, cooled_attack_strength: f32) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerAttackEntityCooldownResetEvent {
+base: PlayerEvent::new_base(this, player),
+this: this.clone(),
+attacked_entity: attacked_entity,
+cooled_attack_strength: cooled_attack_strength,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:33
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:63
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:78
+    pub fn get_cooled_attack_strength(&self) -> f32 {
+self.cooled_attack_strength.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:45
+    pub fn get_attacked_entity(&self) -> JRef<dyn Entity> {
+self.attacked_entity.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerAttackEntityCooldownResetEvent.java:83
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

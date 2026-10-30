@@ -30,8 +30,16 @@ impl std::ops::Deref for PlayerTeleportEndGatewayEvent {
 }
 impl PlayerTeleportEndGatewayEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: JRef<Location>, gateway: JRef<dyn EndGateway>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerTeleportEndGatewayEvent.java:18
-    pub fn get_gateway(&self) -> JRef<dyn EndGateway> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerTeleportEndGatewayEvent.java:29
+    pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: JRef<Location>, gateway: JRef<dyn EndGateway>) -> JRef<Self> {
+Arc::new_cyclic(|this| PlayerTeleportEndGatewayEvent {
+    base: PlayerTeleportEvent::new_base_4(this, player, from, Some(to), PlayerTeleportEventTeleportCause::END_GATEWAY),
+    this: this.clone(),
+    gateway,
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerTeleportEndGatewayEvent.java:18
+    pub fn get_gateway(&self) -> JRef<dyn EndGateway> {
+self.gateway.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/player/PlayerTeleportEndGatewayEvent.java:29
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

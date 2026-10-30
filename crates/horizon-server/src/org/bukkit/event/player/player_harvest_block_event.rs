@@ -26,18 +26,18 @@ impl std::ops::Deref for PlayerHarvestBlockEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:25
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:25
 impl PlayerHarvestBlockEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, harvested_block: JRef<dyn Block>, items_harvested: &Vec<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:41
-    pub fn new_4(player: JRef<dyn Player>, harvested_block: JRef<dyn Block>, hand: EquipmentSlot, items_harvested: &Vec<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:33
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:77
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:82
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:87
-    pub fn get_harvested_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:52
-    pub fn get_hand(&self) -> EquipmentSlot { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:62
-    pub fn get_items_harvested(&self) -> Vec<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:72
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:93
+    pub fn new_4(player: JRef<dyn Player>, harvested_block: JRef<dyn Block>, hand: EquipmentSlot, items_harvested: &Vec<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), harvested_block: harvested_block, hand: hand, items_harvested: Mut::new(items_harvested.clone()), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:33
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:77
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:82
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:87
+    pub fn get_harvested_block(&self) -> JRef<dyn Block> { self.harvested_block.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:52
+    pub fn get_hand(&self) -> EquipmentSlot { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:62
+    pub fn get_items_harvested(&self) -> Vec<JRef<ItemStack>> { self.items_harvested.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:72
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerHarvestBlockEvent.java:93
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

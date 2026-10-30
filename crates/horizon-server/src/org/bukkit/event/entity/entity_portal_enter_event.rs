@@ -25,17 +25,17 @@ impl std::ops::Deref for EntityPortalEnterEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:19
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:19
 impl EntityPortalEnterEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(entity: JRef<dyn Entity>, location: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:26
-    pub fn new_3(entity: JRef<dyn Entity>, location: JRef<Location>, portal_type: PortalType) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:32
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:58
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:63
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:68
+    pub fn new(entity: JRef<dyn Entity>, location: JRef<Location>) -> JRef<Self> { Self::new_3(entity, location, PortalType::CUSTOM) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:26
+    pub fn new_3(entity: JRef<dyn Entity>, location: JRef<Location>, portal_type: PortalType) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| EntityPortalEnterEvent { base: EntityEvent::new_base(this, entity), this: this.clone(), location: location, portal_type: portal_type, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:32
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:58
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:63
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:68
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:44
-    pub fn get_portal_type(&self) -> PortalType { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:74
+    pub fn get_portal_type(&self) -> PortalType { self.portal_type.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityPortalEnterEvent.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

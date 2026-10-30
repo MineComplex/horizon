@@ -27,8 +27,8 @@ impl std::ops::Deref for TrialSpawnerSpawnEvent {
 }
 impl TrialSpawnerSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(spawnee: JRef<dyn Entity>, spawner: JRef<dyn TrialSpawner>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/TrialSpawnerSpawnEvent.java:17
-    pub fn get_trial_spawner(&self) -> JRef<dyn TrialSpawner> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/TrialSpawnerSpawnEvent.java:23
+    pub fn new(spawnee: JRef<dyn Entity>, spawner: JRef<dyn TrialSpawner>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| TrialSpawnerSpawnEvent { base: EntitySpawnEvent::new_base(this, spawnee), this: this.clone(), spawner: spawner }) } // paper-api/src/main/java/org/bukkit/event/entity/TrialSpawnerSpawnEvent.java:17
+    pub fn get_trial_spawner(&self) -> JRef<dyn TrialSpawner> { self.spawner.clone() } // paper-api/src/main/java/org/bukkit/event/entity/TrialSpawnerSpawnEvent.java:23
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

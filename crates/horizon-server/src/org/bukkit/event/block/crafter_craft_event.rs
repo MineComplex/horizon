@@ -24,17 +24,17 @@ impl std::ops::Deref for CrafterCraftEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:16
 impl CrafterCraftEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(crafter: JRef<dyn Block>, recipe: JRef<dyn CraftingRecipeTrait>, result: JRef<ItemStack>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:23
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:59
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:64
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:69
+    pub fn new(crafter: JRef<dyn Block>, recipe: JRef<dyn CraftingRecipeTrait>, result: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| CrafterCraftEvent { base: BlockEvent::new_base(this, crafter), this: this.clone(), recipe: recipe, result: Mut::new(result), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:23
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:59
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:64
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:69
     pub fn get_result(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:35
     pub fn set_result(&self, result: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:45
-    pub fn get_recipe(&self) -> JRef<dyn CraftingRecipeTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:54
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:75
+    pub fn get_recipe(&self) -> JRef<dyn CraftingRecipeTrait> { self.recipe.clone() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:54
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/CrafterCraftEvent.java:75
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

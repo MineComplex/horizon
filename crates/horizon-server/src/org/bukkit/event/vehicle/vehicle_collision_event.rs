@@ -23,10 +23,10 @@ impl std::ops::Deref for dyn VehicleCollisionEventTrait {
     type Target = VehicleCollisionEvent;
     fn deref(&self) -> &VehicleCollisionEvent { self.as_vehicle_collision_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:12
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:12
 impl VehicleCollisionEvent {
     pub fn this(&self) -> JRef<dyn VehicleCollisionEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: VehicleCollisionEventTrait + 'static>(this: &Weak<S>, vehicle: JRef<dyn Vehicle>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:14
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:18
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:24
+    pub fn new_base<S: VehicleCollisionEventTrait + 'static>(this: &Weak<S>, vehicle: JRef<dyn Vehicle>) -> Self { Self { base: VehicleEvent::new_base(this, vehicle), this: this.clone() } } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:14
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:18
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/vehicle/VehicleCollisionEvent.java:24
 }

@@ -12,18 +12,22 @@ pub struct LootContext {
     pub location: JRef<Location>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:18
     pub luck: f32, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:19
     pub looting_modifier: i32, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:20
-    pub looted_entity: JRef<dyn Entity>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:21
-    pub killer: JRef<dyn HumanEntity>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:22
+    pub looted_entity: Option<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:21
+    pub killer: Option<JRef<dyn HumanEntity>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:22
 }
 pub const DEFAULT_LOOT_MODIFIER: i32 = -1; // paper-api/src/main/java/org/bukkit/loot/LootContext.java:16
 impl LootContext {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(location: JRef<Location>, luck: f32, looting_modifier: i32, looted_entity: Option<JRef<dyn Entity>>, killer: Option<JRef<dyn HumanEntity>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:24
-    pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:39
-    pub fn get_luck(&self) -> f32 { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:51
-    pub fn get_looting_modifier(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:67
-    pub fn get_looted_entity(&self) -> Option<JRef<dyn Entity>> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:77
-    pub fn get_killer(&self) -> Option<JRef<dyn HumanEntity>> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:88
+    pub fn new(location: JRef<Location>, luck: f32, looting_modifier: i32, looted_entity: Option<JRef<dyn Entity>>, killer: Option<JRef<dyn HumanEntity>>) -> JRef<Self> {
+        assert!(location.get_world_or_null().is_some(), "LootContext World cannot be null");
+        let location = location.clone();
+        Arc::new_cyclic(|this| LootContext { this: this.clone(), location, luck, looting_modifier, looted_entity, killer })
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:24
+    pub fn get_location(&self) -> JRef<Location> { self.location.clone() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:39
+    pub fn get_luck(&self) -> f32 { self.luck } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:51
+    pub fn get_looting_modifier(&self) -> i32 { self.looting_modifier } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:67
+    pub fn get_looted_entity(&self) -> Option<JRef<dyn Entity>> { self.looted_entity.clone() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:77
+    pub fn get_killer(&self) -> Option<JRef<dyn HumanEntity>> { self.killer.clone() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:88
 }
 crate::jobject!(LootContext);
 // ---- class org.bukkit.loot.LootContext.Builder (paper-api/src/main/java/org/bukkit/loot/LootContext.java:98)
@@ -32,16 +36,40 @@ pub struct LootContextBuilder {
     pub location: JRef<Location>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:100
     pub luck: Mut<f32>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:101
     pub looting_modifier: Mut<i32>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:102
-    pub looted_entity: Mut<JRef<dyn Entity>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:103
-    pub killer: Mut<JRef<dyn HumanEntity>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:104
+    pub looted_entity: Mut<Option<JRef<dyn Entity>>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:103
+    pub killer: Mut<Option<JRef<dyn HumanEntity>>>, // paper-api/src/main/java/org/bukkit/loot/LootContext.java:104
 }
 impl LootContextBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(location: JRef<Location>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:112
-    pub fn luck(&self, luck: f32) -> JRef<LootContextBuilder> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:122
-    pub fn looting_modifier(&self, modifier: i32) -> JRef<LootContextBuilder> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:138
-    pub fn looted_entity(&self, looted_entity: Option<JRef<dyn Entity>>) -> JRef<LootContextBuilder> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:151
-    pub fn killer(&self, killer: Option<JRef<dyn HumanEntity>>) -> JRef<LootContextBuilder> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:165
-    pub fn build(&self) -> JRef<LootContext> { todo!() } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:177
+    pub fn new(location: JRef<Location>) -> JRef<Self> {
+        let location = location.clone();
+        Arc::new_cyclic(|this| LootContextBuilder {
+            this: this.clone(),
+            location,
+            luck: Mut::new(0.0),
+            looting_modifier: Mut::new(DEFAULT_LOOT_MODIFIER),
+            looted_entity: Mut::new(None),
+            killer: Mut::new(None),
+        })
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:112
+    pub fn luck(&self, luck: f32) -> JRef<LootContextBuilder> {
+        self.luck.set(luck);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:122
+    pub fn looting_modifier(&self, modifier: i32) -> JRef<LootContextBuilder> {
+        self.looting_modifier.set(modifier);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:138
+    pub fn looted_entity(&self, looted_entity: Option<JRef<dyn Entity>>) -> JRef<LootContextBuilder> {
+        self.looted_entity.set(looted_entity);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:151
+    pub fn killer(&self, killer: Option<JRef<dyn HumanEntity>>) -> JRef<LootContextBuilder> {
+        self.killer.set(killer);
+        self.this()
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:165
+    pub fn build(&self) -> JRef<LootContext> {
+        LootContext::new(self.location.clone(), self.luck.get(), self.looting_modifier.get(), self.looted_entity.get(), self.killer.get())
+    } // paper-api/src/main/java/org/bukkit/loot/LootContext.java:177
 }
 crate::jobject!(LootContextBuilder);

@@ -19,31 +19,31 @@ use crate::api_prelude::*;
 pub struct HangingPlaceEvent {
     pub base: HangingEvent,
     pub this: Weak<Self>,
-    pub player: JRef<dyn Player>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:22
+    pub player: Option<JRef<dyn Player>>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:22
     pub block: JRef<dyn Block>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:23
     pub block_face: BlockFace, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:24
-    pub hand: EquipmentSlot, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:25
-    pub item_stack: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:26
+    pub hand: Option<EquipmentSlot>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:25
+    pub item_stack: Option<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:26
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:28
 }
 impl std::ops::Deref for HangingPlaceEvent {
     type Target = HangingEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:20
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:20
 impl HangingPlaceEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(hanging: JRef<dyn Hanging>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: Option<EquipmentSlot>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:30
-    pub fn new_6(hanging: JRef<dyn Hanging>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: Option<EquipmentSlot>, item_stack: Option<JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:36
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:97
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:102
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:107
-    pub fn get_player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:51
-    pub fn get_block(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:61
-    pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:71
-    pub fn get_hand(&self) -> Option<EquipmentSlot> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:82
-    pub fn get_item_stack(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:92
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:113
+    pub fn new(hanging: JRef<dyn Hanging>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: Option<EquipmentSlot>) -> JRef<Self> { Self::new_6(hanging, player, block, block_face, hand, None) } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:30
+    pub fn new_6(hanging: JRef<dyn Hanging>, player: Option<JRef<dyn Player>>, block: JRef<dyn Block>, block_face: BlockFace, hand: Option<EquipmentSlot>, item_stack: Option<JRef<ItemStack>>) -> JRef<Self> { Arc::new_cyclic(|this: &Weak<Self>| HangingPlaceEvent { base: HangingEvent::new_base(this, hanging), this: this.clone(), player: player, block: block, block_face: block_face, hand: hand, item_stack: item_stack, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:36
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:97
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:102
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:107
+    pub fn get_player(&self) -> Option<JRef<dyn Player>> { self.player.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:51
+    pub fn get_block(&self) -> JRef<dyn Block> { self.block.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:61
+    pub fn get_block_face(&self) -> BlockFace { self.block_face.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:71
+    pub fn get_hand(&self) -> Option<EquipmentSlot> { self.hand.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:82
+    pub fn get_item_stack(&self) -> Option<JRef<ItemStack>> { self.item_stack.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:92
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/hanging/HangingPlaceEvent.java:113
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

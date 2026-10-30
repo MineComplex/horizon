@@ -33,20 +33,28 @@ pub trait UnsafeValues: JObject {
     fn modify_item_stack(&self, item: JRef<ItemStack>, components: &str) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:48
     fn check_supported(&self, pdf: JRef<PluginDescriptionFile>) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:50
     fn process_class(&self, pdf: JRef<PluginDescriptionFile>, path: &str, clazz: &Vec<i8>) -> Vec<i8>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:52
-    fn load_advancement(&self, key: JRef<NamespacedKey>, advancement: &str) -> Option<JRef<dyn Advancement>> { todo!() } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:67
+    fn load_advancement(&self, key: JRef<NamespacedKey>, advancement: &str) -> Option<JRef<dyn Advancement>> {
+        self.load_advancement_3(key, advancement, true)
+    } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:67
     fn load_advancement_3(&self, key: JRef<dyn Key>, advancement: &str, persist: bool) -> Option<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:85
     fn load_advancements(&self, advancements: &HashMap<JRef<dyn Key>, String>, persist: bool) -> Vec<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:102
     fn remove_advancement(&self, key: JRef<NamespacedKey>) -> bool; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:115
     fn get_internal_potion_data(&self, key: JRef<NamespacedKey>) -> JRef<dyn PotionTypeInternalPotionData>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:123
     fn get(&self, element_class: Class, value: &str) -> String; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:127
     fn get_2<B: JGeneric>(&self, registry: JRef<dyn RegistryKey<B>>, key: JRef<NamespacedKey>) -> Option<B> where Self: Sized; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:130
-    fn is_supported_api_version(&self, api_version: &str) -> bool; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:134
+    fn is_supported_api_version(&self, api_version: Option<&str>) -> bool; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:134
     fn serialize_item_as_json(&self, item_stack: JRef<ItemStack>) -> JsonObject; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:156
     fn deserialize_item_from_json(&self, data: JsonObject) -> Result<JRef<ItemStack>, Throwable>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:172
-    fn serialize_entity(&self, entity: JRef<dyn Entity>) -> Vec<i8> { todo!() } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:184
+    fn serialize_entity(&self, entity: JRef<dyn Entity>) -> Vec<i8> {
+        self.serialize_entity_2(entity, &Vec::new())
+    } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:184
     fn serialize_entity_2(&self, entity: JRef<dyn Entity>, serialization_flags: &Vec<EntitySerializationFlag>) -> Vec<i8>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:198
-    fn deserialize_entity(&self, data: &Vec<i8>, world: JRef<dyn World>) -> JRef<dyn Entity> { todo!() } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:213
-    fn deserialize_entity_3(&self, data: &Vec<i8>, world: JRef<dyn World>, preserve_uuid: bool) -> JRef<dyn Entity> { todo!() } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:231
+    fn deserialize_entity(&self, data: &Vec<i8>, world: JRef<dyn World>) -> JRef<dyn Entity> {
+        self.deserialize_entity_3(data, world, false)
+    } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:213
+    fn deserialize_entity_3(&self, data: &Vec<i8>, world: JRef<dyn World>, preserve_uuid: bool) -> JRef<dyn Entity> {
+        self.deserialize_entity_4(data, world, preserve_uuid, false)
+    } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:231
     fn deserialize_entity_4(&self, data: &Vec<i8>, world: JRef<dyn World>, preserve_uuid: bool, preserve_passengers: bool) -> JRef<dyn Entity>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:248
     fn next_entity_id(&self, world: JRef<dyn World>) -> i32; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:255
     fn get_main_level_name(&self) -> String; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:260
@@ -54,4 +62,6 @@ pub trait UnsafeValues: JObject {
     fn deserialize_stack(&self, args: &HashMap<String, JObjectRef>) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:270
     fn deserialize_item_hover(&self, item_hover: HoverEventShowItem) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:278
 }
-pub fn is_legacy_plugin(plugin: JRef<dyn Plugin>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/UnsafeValues.java:137
+pub fn is_legacy_plugin(plugin: JRef<dyn Plugin>) -> bool {
+    !crate::org::bukkit::bukkit::Bukkit::get_unsafe().is_supported_api_version(plugin.get_description().get_api_version().as_deref())
+} // paper-api/src/main/java/org/bukkit/UnsafeValues.java:137

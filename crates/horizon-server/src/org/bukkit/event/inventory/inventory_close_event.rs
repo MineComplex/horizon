@@ -21,15 +21,15 @@ impl std::ops::Deref for InventoryCloseEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:32
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:32
 impl InventoryCloseEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(transaction: JRef<dyn InventoryView>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:36
-    pub fn new_2(transaction: JRef<dyn InventoryView>, reason: InventoryCloseEventReason) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:41
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:62
-    pub fn get_player(&self) -> JRef<dyn HumanEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:52
-    pub fn get_reason(&self) -> InventoryCloseEventReason { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:57
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:68
+    pub fn new(transaction: JRef<dyn InventoryView>) -> JRef<Self> { Self::new_2(transaction, InventoryCloseEventReason::UNKNOWN) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:36
+    pub fn new_2(transaction: JRef<dyn InventoryView>, reason: InventoryCloseEventReason) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryEvent::new_base(this, transaction), this: this.clone(), reason: reason }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:41
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:62
+    pub fn get_player(&self) -> JRef<dyn HumanEntity> { self.transaction.get().get_player() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:52
+    pub fn get_reason(&self) -> InventoryCloseEventReason { self.reason.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:57
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryCloseEvent.java:68
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

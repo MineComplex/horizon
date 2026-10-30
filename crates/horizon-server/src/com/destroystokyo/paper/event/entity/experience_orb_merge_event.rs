@@ -24,16 +24,36 @@ impl std::ops::Deref for ExperienceOrbMergeEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:39
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:39
 impl ExperienceOrbMergeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(merge_target: JRef<dyn ExperienceOrb>, merge_source: JRef<dyn ExperienceOrb>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:46
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:67
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:75
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:80
-    pub fn get_merge_target(&self) -> JRef<dyn ExperienceOrb> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:56
-    pub fn get_merge_source(&self) -> JRef<dyn ExperienceOrb> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:63
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:85
+    pub fn new(merge_target: JRef<dyn ExperienceOrb>, merge_source: JRef<dyn ExperienceOrb>) -> JRef<Self> {
+Arc::new_cyclic(|this| ExperienceOrbMergeEvent {
+base: EntityEvent::new_base(this, merge_target.clone()),
+this: this.clone(),
+merge_target: merge_target.clone(),
+merge_source: merge_source,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:46
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:67
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:75
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:80
+    pub fn get_merge_target(&self) -> JRef<dyn ExperienceOrb> {
+self.merge_target.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:56
+    pub fn get_merge_source(&self) -> JRef<dyn ExperienceOrb> {
+self.merge_source.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:63
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ExperienceOrbMergeEvent.java:85
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -35,19 +35,28 @@ impl std::ops::Deref for dyn AsyncChatDecorateEventTrait {
     type Target = AsyncChatDecorateEvent;
     fn deref(&self) -> &AsyncChatDecorateEvent { self.as_async_chat_decorate_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:25
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:25
 impl AsyncChatDecorateEvent {
     pub fn this(&self) -> JRef<dyn AsyncChatDecorateEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: AsyncChatDecorateEventTrait + 'static>(this: &Weak<S>, player: Option<JRef<dyn Player>>, original_message: Component) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:33
+    pub fn new_base<S: AsyncChatDecorateEventTrait + 'static>(this: &Weak<S>, player: Option<JRef<dyn Player>>, original_message: Component) -> Self {
+        AsyncChatDecorateEvent {
+            base: ServerEvent::new_base_1(this, true),
+            this: this.clone(),
+            player,
+            original_message: original_message.clone(),
+            result: Mut::new(original_message),
+            cancelled: Mut::new(false),
+        }
+    } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:33
     pub fn new(player: Option<JRef<dyn Player>>, original_message: Component) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, original_message)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:82
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:92
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:97
-    pub fn player(&self) -> Option<JRef<dyn Player>> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:49
-    pub fn original_message(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:58
-    pub fn result(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:69
-    pub fn result_1(&self, result: Component) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:78
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:102
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:82
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:92
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:97
+    pub fn player(&self) -> Option<JRef<dyn Player>> { self.player.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:49
+    pub fn original_message(&self) -> Component { self.original_message.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:58
+    pub fn result(&self) -> Component { self.result.get() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:69
+    pub fn result_1(&self, result: Component) { self.result.set(result) } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:78
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatDecorateEvent.java:102
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

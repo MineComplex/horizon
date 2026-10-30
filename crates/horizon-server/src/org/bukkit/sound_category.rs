@@ -26,6 +26,20 @@ impl SoundCategory {
         match self {SoundCategory::MASTER => "MASTER", SoundCategory::MUSIC => "MUSIC", SoundCategory::RECORDS => "RECORDS", SoundCategory::WEATHER => "WEATHER", SoundCategory::BLOCKS => "BLOCKS", SoundCategory::HOSTILE => "HOSTILE", SoundCategory::NEUTRAL => "NEUTRAL", SoundCategory::PLAYERS => "PLAYERS", SoundCategory::AMBIENT => "AMBIENT", SoundCategory::VOICE => "VOICE", SoundCategory::UI => "UI", }
     }
     pub fn value_of(name: &str) -> Option<SoundCategory> { Self::VALUES.into_iter().find(|v| v.name() == name) }
-    pub fn sound_source(self) -> SoundSource { todo!() } // paper-api/src/main/java/org/bukkit/SoundCategory.java:26
+    pub fn sound_source(self) -> SoundSource {
+        match self {
+            SoundCategory::MASTER => SoundSource::MASTER,
+            SoundCategory::MUSIC => SoundSource::MUSIC,
+            SoundCategory::RECORDS => SoundSource::RECORD,
+            SoundCategory::WEATHER => SoundSource::WEATHER,
+            SoundCategory::BLOCKS => SoundSource::BLOCK,
+            SoundCategory::HOSTILE => SoundSource::HOSTILE,
+            SoundCategory::NEUTRAL => SoundSource::NEUTRAL,
+            SoundCategory::PLAYERS => SoundSource::PLAYER,
+            SoundCategory::AMBIENT => SoundSource::AMBIENT,
+            SoundCategory::VOICE => SoundSource::VOICE,
+            SoundCategory::UI => SoundSource::UI,
+        }
+    } // paper-api/src/main/java/org/bukkit/SoundCategory.java:26
 }
 crate::jobject!(SoundCategory);

@@ -6,8 +6,8 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.data.type.CreakingHeart (paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:11)
 pub trait CreakingHeart: Orientable {
-    fn is_active(&self) -> bool { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:19
-    fn set_active(&self, active: bool) { todo!() } // default, paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:30
+    fn is_active(&self) -> bool { self.get_creaking_heart_state() != CreakingHeartState::UPROOTED } // default, paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:19
+    fn set_active(&self, active: bool) { self.set_creaking_heart_state(if active { CreakingHeartState::AWAKE } else { CreakingHeartState::UPROOTED }) } // default, paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:30
     fn get_creaking_heart_state(&self) -> CreakingHeartState; // paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:40
     fn set_creaking_heart_state(&self, state: CreakingHeartState); // paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:48
     fn is_natural(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/data/type/CreakingHeart.java:55

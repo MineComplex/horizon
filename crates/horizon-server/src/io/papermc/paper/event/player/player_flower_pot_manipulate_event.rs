@@ -25,17 +25,26 @@ impl std::ops::Deref for PlayerFlowerPotManipulateEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:18
 impl PlayerFlowerPotManipulateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, flowerpot: JRef<dyn Block>, item: JRef<ItemStack>, placing: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:26
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:62
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:67
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:72
-    pub fn get_flowerpot(&self) -> JRef<dyn Block> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:39
-    pub fn get_item(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:49
-    pub fn is_placing(&self) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:58
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:77
+    pub fn new(player: JRef<dyn Player>, flowerpot: JRef<dyn Block>, item: JRef<ItemStack>, placing: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerFlowerPotManipulateEvent {
+            base: PlayerEvent::new_base(this, player),
+            this: this.clone(),
+            flowerpot,
+            item,
+            placing,
+            cancelled: Mut::new(false),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:26
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:62
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:67
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:72
+    pub fn get_flowerpot(&self) -> JRef<dyn Block> { self.flowerpot.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:39
+    pub fn get_item(&self) -> JRef<ItemStack> { self.item.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:49
+    pub fn is_placing(&self) -> bool { self.placing } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerFlowerPotManipulateEvent.java:77
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

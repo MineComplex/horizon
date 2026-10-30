@@ -20,15 +20,15 @@ impl std::ops::Deref for PlayerResourcePackStatusEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:18
 impl PlayerResourcePackStatusEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, id: Uuid, resource_pack_status: PlayerResourcePackStatusEventStatus) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:23
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:59
-    pub fn get_id(&self) -> Uuid { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:35
-    pub fn get_status(&self) -> PlayerResourcePackStatusEventStatus { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:45
+    pub fn new(player: JRef<dyn Player>, id: Uuid, resource_pack_status: PlayerResourcePackStatusEventStatus) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: PlayerEvent::new_base(this, player), this: this.clone(), id: id, status: resource_pack_status }) } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:23
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:59
+    pub fn get_id(&self) -> Uuid { self.id } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:35
+    pub fn get_status(&self) -> PlayerResourcePackStatusEventStatus { self.status.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:45
     pub fn get_hash(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:53
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:65
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerResourcePackStatusEvent.java:65
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

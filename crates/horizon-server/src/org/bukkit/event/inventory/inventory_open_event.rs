@@ -17,24 +17,24 @@ use crate::api_prelude::*;
 pub struct InventoryOpenEvent {
     pub base: InventoryEvent,
     pub this: Weak<Self>,
-    pub title_override: Mut<Component>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:19
+    pub title_override: Mut<Option<Component>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:19
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:20
 }
 impl std::ops::Deref for InventoryOpenEvent {
     type Target = InventoryEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:17
 impl InventoryOpenEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(transaction: JRef<dyn InventoryView>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:22
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:68
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:79
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:84
-    pub fn get_player(&self) -> JRef<dyn HumanEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:32
-    pub fn title_override(&self) -> Option<Component> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:43
-    pub fn title_override_1(&self, title_override: Option<Component>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:58
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:90
+    pub fn new(transaction: JRef<dyn InventoryView>) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryEvent::new_base(this, transaction), this: this.clone(), title_override: Mut::new(None), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:22
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:68
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:79
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:84
+    pub fn get_player(&self) -> JRef<dyn HumanEntity> { self.transaction.get().get_player() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:32
+    pub fn title_override(&self) -> Option<Component> { self.title_override.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:43
+    pub fn title_override_1(&self, title_override: Option<Component>) { self.title_override.set(title_override) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:58
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryOpenEvent.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

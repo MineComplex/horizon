@@ -23,16 +23,35 @@ impl std::ops::Deref for ProjectileCollideEvent {
     type Target = EntityEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:24
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:24
 impl ProjectileCollideEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(projectile: JRef<dyn Projectile>, collided_with: JRef<dyn Entity>) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:30
-    pub fn get_entity(&self) -> JRef<dyn Projectile> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:41
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:56
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:61
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:71
-    pub fn get_collided_with(&self) -> JRef<dyn Entity> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:51
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:66
+    pub fn new(projectile: JRef<dyn Projectile>, collided_with: JRef<dyn Entity>) -> JRef<Self> {
+Arc::new_cyclic(|this| ProjectileCollideEvent {
+base: EntityEvent::new_base(this, projectile),
+this: this.clone(),
+collided_with: collided_with,
+cancelled: Mut::new(false),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:30
+    pub fn get_entity(&self) -> JRef<dyn Projectile> {
+cast::<dyn Projectile, _>(&self.base.get_entity()).expect("Projectile")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:41
+    pub fn is_cancelled(&self) -> bool {
+self.cancelled.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:56
+    pub fn set_cancelled(&self, cancel: bool) {
+self.cancelled.set(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:61
+    pub fn get_handlers(&self) -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:71
+    pub fn get_collided_with(&self) -> JRef<dyn Entity> {
+self.collided_with.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:51
+    pub fn get_handler_list() -> JRef<HandlerList> {
+HANDLER_LIST.clone()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/ProjectileCollideEvent.java:66
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -25,21 +25,21 @@ impl std::ops::Deref for FurnaceBurnEvent {
     type Target = BlockEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:18
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:18
 impl FurnaceBurnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(furnace: JRef<dyn Block>, fuel: JRef<ItemStack>, burn_time: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:27
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:98
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:103
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:108
-    pub fn get_fuel(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:39
-    pub fn get_burn_time(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:49
-    pub fn set_burn_time(&self, burn_time: i32) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:58
-    pub fn is_burning(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:67
-    pub fn set_burning(&self, burning: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:76
-    pub fn will_consume_fuel(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:85
-    pub fn set_consume_fuel(&self, consume_fuel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:94
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:114
+    pub fn new(furnace: JRef<dyn Block>, fuel: JRef<ItemStack>, burn_time: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: BlockEvent::new_base(this, furnace), this: this.clone(), fuel: fuel, burn_time: Mut::new(burn_time), burning: Mut::new(true), consume_fuel: Mut::new(true), cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:27
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:98
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:103
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:108
+    pub fn get_fuel(&self) -> JRef<ItemStack> { self.fuel.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:39
+    pub fn get_burn_time(&self) -> i32 { self.burn_time.get() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:49
+    pub fn set_burn_time(&self, burn_time: i32) { self.burn_time.set(burn_time.clamp(i16::MIN as i32, i16::MAX as i32)) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:58
+    pub fn is_burning(&self) -> bool { self.burning.get() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:67
+    pub fn set_burning(&self, burning: bool) { self.burning.set(burning) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:76
+    pub fn will_consume_fuel(&self) -> bool { self.consume_fuel.get() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:85
+    pub fn set_consume_fuel(&self, consume_fuel: bool) { self.consume_fuel.set(consume_fuel) } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:94
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/FurnaceBurnEvent.java:114
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -33,8 +33,8 @@ impl std::ops::Deref for SmithItemEvent {
 }
 impl SmithItemEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/SmithItemEvent.java:13
-    pub fn new_6(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/SmithItemEvent.java:18
+    pub fn new(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryClickEvent::new_base(this, view, type_, slot, click, action), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/SmithItemEvent.java:13
+    pub fn new_6(view: JRef<dyn InventoryView>, type_: InventoryTypeSlotType, slot: i32, click: ClickType, action: InventoryAction, key: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: InventoryClickEvent::new_base_6(this, view, type_, slot, click, action, key), this: this.clone() }) } // paper-api/src/main/java/org/bukkit/event/inventory/SmithItemEvent.java:18
     pub fn get_inventory(&self) -> JRef<dyn SmithingInventory> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/SmithItemEvent.java:23
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

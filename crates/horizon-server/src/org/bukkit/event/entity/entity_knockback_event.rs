@@ -39,21 +39,21 @@ impl std::ops::Deref for dyn EntityKnockbackEventTrait {
     type Target = EntityKnockbackEvent;
     fn deref(&self) -> &EntityKnockbackEvent { self.as_entity_knockback_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:23
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:23
 impl EntityKnockbackEvent {
     pub fn this(&self) -> JRef<dyn EntityKnockbackEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: EntityKnockbackEventTrait + 'static>(this: &Weak<S>, entity: JRef<dyn LivingEntity>, cause: EntityKnockbackEventKnockbackCause, force: f64, raw_knockback: JRef<dyn VectorTrait>, knockback: JRef<dyn VectorTrait>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:32
     pub fn new(entity: JRef<dyn LivingEntity>, cause: EntityKnockbackEventKnockbackCause, force: f64, raw_knockback: JRef<dyn VectorTrait>, knockback: JRef<dyn VectorTrait>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, entity, cause, force, raw_knockback, knockback)) }
-    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:42
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:112
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:117
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:122
-    pub fn get_cause(&self) -> EntityKnockbackEventKnockbackCause { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:53
-    pub fn get_force(&self) -> f64 { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:67
+    pub fn get_entity(&self) -> JRef<dyn LivingEntity> { cast::<dyn LivingEntity, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:42
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:112
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:117
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:122
+    pub fn get_cause(&self) -> EntityKnockbackEventKnockbackCause { self.cause.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:53
+    pub fn get_force(&self) -> f64 { self.force } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:67
     pub fn get_knockback(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:79
     pub fn get_final_knockback(&self) -> JRef<dyn VectorTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:95
     pub fn set_final_knockback(&self, knockback: JRef<dyn VectorTrait>) { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:105
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:128
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/entity/EntityKnockbackEvent.java:128
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

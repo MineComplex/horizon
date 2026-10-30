@@ -4,12 +4,21 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::bootstrap::bootstrap_context::BootstrapContext;
 use crate::io::papermc::paper::plugin::bootstrap::plugin_provider_context::PluginProviderContext;
 use crate::org::bukkit::plugin::java::java_plugin::JavaPluginTrait;
+use crate::io::papermc::paper::plugin::provider::util::provider_util::ProviderUtil;
+use crate::java::lang::{Class, ClassLoader};
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.plugin.bootstrap.PluginBootstrap (paper-api/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrap.java:18)
 pub trait PluginBootstrap: Send + Sync + 'static {
     fn bootstrap(&self, context: JRef<dyn BootstrapContext>); // paper-api/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrap.java:28
-    fn create_plugin(&self, context: JRef<dyn PluginProviderContext>) -> JRef<dyn JavaPluginTrait> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrap.java:38
+    fn create_plugin(&self, context: JRef<dyn PluginProviderContext>) -> JRef<dyn JavaPluginTrait> {
+        // this.getClass().getClassLoader(): PORT: no class loaders, plugins are native Rust
+        ProviderUtil::load_class(
+            &context.get_configuration().get_main_class(),
+            Class(std::marker::PhantomData),
+            ClassLoader(std::marker::PhantomData),
+        )
+    } // default, paper-api/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrap.java:38
 }
 impl<F: Fn(JRef<dyn BootstrapContext>) + Send + Sync + 'static> PluginBootstrap for F {
     fn bootstrap(&self, context: JRef<dyn BootstrapContext>) { self(context) }

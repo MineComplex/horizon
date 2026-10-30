@@ -36,7 +36,7 @@ impl std::ops::Deref for PlayerInteractEvent {
     type Target = PlayerEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:33
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:33
 impl PlayerInteractEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>, action: Action, item: Option<JRef<ItemStack>>, clicked_block: Option<JRef<dyn Block>>, clicked_face: BlockFace) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:44
@@ -44,23 +44,23 @@ impl PlayerInteractEvent {
     pub fn new_7(player: JRef<dyn Player>, action: Action, item: Option<JRef<ItemStack>>, clicked_block: Option<JRef<dyn Block>>, clicked_face: BlockFace, hand: Option<EquipmentSlot>, clicked_position: Option<JRef<dyn VectorTrait>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:54
     pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:89
     pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:102
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:266
-    pub fn get_action(&self) -> Action { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:73
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:266
+    pub fn get_action(&self) -> Action { self.action.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:73
     pub fn get_item(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:113
     pub fn get_material(&self) -> Material { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:124
     pub fn has_block(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:138
     pub fn has_item(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:147
     pub fn is_block_in_hand(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:157
     pub fn get_clicked_block(&self) -> Option<JRef<dyn Block>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:170
-    pub fn get_block_face(&self) -> BlockFace { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:180
+    pub fn get_block_face(&self) -> BlockFace { self.block_face.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:180
     pub fn get_hand(&self) -> Option<EquipmentSlot> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:191
     pub fn get_clicked_position(&self) -> Option<JRef<dyn VectorTrait>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:205
     pub fn get_interaction_point(&self) -> Option<JRef<Location>> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:219
-    pub fn use_interacted_block(&self) -> EventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:234
-    pub fn set_use_interacted_block(&self, use_interacted_block: EventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:242
-    pub fn use_item_in_hand(&self) -> EventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:254
-    pub fn set_use_item_in_hand(&self, use_item_in_hand: EventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:262
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:272
+    pub fn use_interacted_block(&self) -> EventResult { self.use_clicked_block.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:234
+    pub fn set_use_interacted_block(&self, use_interacted_block: EventResult) { self.use_clicked_block.set(use_interacted_block) } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:242
+    pub fn use_item_in_hand(&self) -> EventResult { self.use_item_in_hand.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:254
+    pub fn set_use_item_in_hand(&self, use_item_in_hand: EventResult) { self.use_item_in_hand.set(use_item_in_hand) } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:262
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerInteractEvent.java:272
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

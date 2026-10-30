@@ -13,5 +13,9 @@ pub trait CombatEntry: JObject {
     fn get_fall_location_type(&self) -> Option<JRef<dyn FallLocationType>>; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:37
     fn get_fall_distance(&self) -> f32; // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:44
 }
-pub fn combat_entry(entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, damage: f32) -> JRef<dyn CombatEntry> { todo!() } // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:57
-pub fn combat_entry_4(damage_source: JRef<dyn DamageSource>, damage: f32, fall_location_type: Option<JRef<dyn FallLocationType>>, fall_distance: f32) -> JRef<dyn CombatEntry> { todo!() } // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:72
+pub fn combat_entry(entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn DamageSource>, damage: f32) -> JRef<dyn CombatEntry> {
+    crate::io::papermc::paper::internal_api_bridge::get().create_combat_entry(entity, damage_source, damage)
+} // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:57
+pub fn combat_entry_4(damage_source: JRef<dyn DamageSource>, damage: f32, fall_location_type: Option<JRef<dyn FallLocationType>>, fall_distance: f32) -> JRef<dyn CombatEntry> {
+    crate::io::papermc::paper::internal_api_bridge::get().create_combat_entry_4(damage_source, damage, fall_location_type, fall_distance)
+} // paper-api/src/main/java/io/papermc/paper/world/damagesource/CombatEntry.java:72

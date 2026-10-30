@@ -26,14 +26,34 @@ impl std::ops::Deref for CreeperIgniteEvent {
 }
 impl CreeperIgniteEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(creeper: JRef<dyn Creeper>, ignited: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:22
-    pub fn get_entity(&self) -> JRef<dyn Creeper> { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:28
-    pub fn get_fuse_time(&self) -> i32 { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:41
-    pub fn set_fuse_time(&self, ticks: i32) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:46
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:51
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:56
-    pub fn is_ignited(&self) -> bool { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:33
-    pub fn set_ignited(&self, ignited: bool) { todo!() } // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:37
+    pub fn new(creeper: JRef<dyn Creeper>, ignited: bool) -> JRef<Self> {
+Arc::new_cyclic(|this| CreeperIgniteEvent {
+    base: EntityIgniteEvent::new_base(this, creeper.clone(), creeper.get_max_fuse_ticks()),
+    this: this.clone(),
+    ignited: Mut::new(ignited),
+})
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:22
+    pub fn get_entity(&self) -> JRef<dyn Creeper> {
+cast::<dyn Creeper, _>(&self.base.get_entity()).expect("Creeper")
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:28
+    pub fn get_fuse_time(&self) -> i32 {
+self.get_entity().get_max_fuse_ticks()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:41
+    pub fn set_fuse_time(&self, ticks: i32) {
+self.get_entity().set_max_fuse_ticks(ticks)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:46
+    pub fn is_cancelled(&self) -> bool {
+self.base.is_cancelled()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:51
+    pub fn set_cancelled(&self, cancel: bool) {
+self.base.set_cancelled(cancel)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:56
+    pub fn is_ignited(&self) -> bool {
+self.ignited.get()
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:33
+    pub fn set_ignited(&self, ignited: bool) {
+self.ignited.set(ignited)
+} // paper-api/src/main/java/com/destroystokyo/paper/event/entity/CreeperIgniteEvent.java:37
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

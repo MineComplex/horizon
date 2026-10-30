@@ -25,25 +25,29 @@ pub struct InventoryDragEvent {
     pub added_items: Mut<HashMap<i32, JRef<ItemStack>>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:60
     pub container_slots: Mut<HashSet<i32>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:61
     pub old_cursor: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:62
-    pub new_cursor: Mut<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:63
+    pub new_cursor: Mut<Option<JRef<ItemStack>>>, // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:63
 }
 impl std::ops::Deref for InventoryDragEvent {
     type Target = InventoryInteractEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:57
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:57
 impl InventoryDragEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(view: JRef<dyn InventoryView>, new_cursor: Option<JRef<ItemStack>>, old_cursor: JRef<ItemStack>, right: bool, slots: &HashMap<i32, JRef<ItemStack>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:65
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:160
-    pub fn get_type(&self) -> DragType { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:89
-    pub fn get_cursor(&self) -> Option<JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:100
-    pub fn set_cursor(&self, new_cursor: Option<JRef<ItemStack>>) { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:114
-    pub fn get_old_cursor(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:124
-    pub fn get_new_items(&self) -> HashMap<i32, JRef<ItemStack>> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:134
-    pub fn get_raw_slots(&self) -> HashSet<i32> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:144
-    pub fn get_inventory_slots(&self) -> HashSet<i32> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:155
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:166
+    pub fn new(view: JRef<dyn InventoryView>, new_cursor: Option<JRef<ItemStack>>, old_cursor: JRef<ItemStack>, right: bool, slots: &HashMap<i32, JRef<ItemStack>>) -> JRef<Self> { let mut b = HashSet::new();
+        for slot in slots.keys() {
+            b.insert(view.convert_slot(*slot));
+        }
+        Arc::new_cyclic(|this| Self { base: InventoryInteractEvent::new_base(this, view), this: this.clone(), type_: if right { DragType::SINGLE } else { DragType::EVEN }, added_items: Mut::new(slots.clone()), container_slots: Mut::new(b), old_cursor, new_cursor: Mut::new(new_cursor) }) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:65
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:160
+    pub fn get_type(&self) -> DragType { self.type_.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:89
+    pub fn get_cursor(&self) -> Option<JRef<ItemStack>> { self.new_cursor.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:100
+    pub fn set_cursor(&self, new_cursor: Option<JRef<ItemStack>>) { self.new_cursor.set(new_cursor) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:114
+    pub fn get_old_cursor(&self) -> JRef<ItemStack> { ItemStack::clone(&self.old_cursor) } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:124
+    pub fn get_new_items(&self) -> HashMap<i32, JRef<ItemStack>> { self.added_items.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:134
+    pub fn get_raw_slots(&self) -> HashSet<i32> { self.added_items.borrow().keys().copied().collect() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:144
+    pub fn get_inventory_slots(&self) -> HashSet<i32> { self.container_slots.get() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:155
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/inventory/InventoryDragEvent.java:166
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

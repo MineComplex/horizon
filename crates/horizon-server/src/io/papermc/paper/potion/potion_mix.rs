@@ -18,15 +18,55 @@ pub struct PotionMix {
 }
 impl PotionMix {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: JRef<NamespacedKey>, result: JRef<ItemStack>, input: JRef<dyn RecipeChoice>, ingredient: JRef<dyn RecipeChoice>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:35
-    pub fn get_key(&self) -> JRef<NamespacedKey> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:56
-    pub fn create_predicate_choice(stack_predicate: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn RecipeChoice> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:50
-    pub fn get_result(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:66
-    pub fn get_input(&self) -> JRef<dyn RecipeChoice> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:75
-    pub fn get_ingredient(&self) -> JRef<dyn RecipeChoice> { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:84
-    pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:88
-    pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:97
-    pub fn hash_code(&self) -> i32 { todo!() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:105
+    pub fn new(key: JRef<NamespacedKey>, result: JRef<ItemStack>, input: JRef<dyn RecipeChoice>, ingredient: JRef<dyn RecipeChoice>) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PotionMix {
+            this: this.clone(),
+            key,
+            result: ItemStack::clone(&result),
+            input: RecipeChoice::clone(&*input),
+            ingredient: RecipeChoice::clone(&*ingredient),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:35
+    pub fn get_key(&self) -> JRef<NamespacedKey> { self.key.clone() } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:56
+    pub fn create_predicate_choice(stack_predicate: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn RecipeChoice> {
+        crate::org::bukkit::inventory::recipe_choice::predicate_choice(stack_predicate, crate::org::bukkit::inventory::item_type::STONE.create_item_stack())
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:50
+    pub fn get_result(&self) -> JRef<ItemStack> {
+        ItemStack::clone(&self.result)
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:66
+    pub fn get_input(&self) -> JRef<dyn RecipeChoice> {
+        RecipeChoice::clone(&*self.input)
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:75
+    pub fn get_ingredient(&self) -> JRef<dyn RecipeChoice> {
+        RecipeChoice::clone(&*self.ingredient)
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:84
+    pub fn to_string(&self) -> String {
+        // PORT: RecipeChoice.toString() (Object.toString on an API trait object)
+        format!("PotionMix{{result={}, base={}, addition={}}}", self.result.to_string(), self.input.to_string(), self.ingredient.to_string())
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:88
+    pub fn equals(&self, o: JObjectRef) -> bool {
+        if same(&self.this(), &o) {
+            return true;
+        }
+        let Some(potion_mix) = cast::<PotionMix, _>(&o) else {
+            return false;
+        };
+        // PORT: RecipeChoice.equals (Object.equals on an API trait object)
+        self.key.equals(potion_mix.key.clone())
+            && self.result.equals(potion_mix.result.clone())
+            && self.input.equals(potion_mix.input.clone() as JObjectRef)
+            && self.ingredient.equals(potion_mix.ingredient.clone() as JObjectRef)
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:97
+    pub fn hash_code(&self) -> i32 {
+        // Objects.hash(this.key, this.result, this.input, this.ingredient)
+        // PORT: RecipeChoice.hashCode (Object.hashCode on an API trait object)
+        let mut result: i32 = 1;
+        result = 31 * result + self.key.hash_code();
+        result = 31 * result + self.result.hash_code();
+        result = 31 * result + self.input.hash_code();
+        result = 31 * result + self.ingredient.hash_code();
+        result
+    } // paper-api/src/main/java/io/papermc/paper/potion/PotionMix.java:105
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

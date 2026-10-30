@@ -35,20 +35,20 @@ impl std::ops::Deref for dyn PlayerTeleportEventTrait {
     type Target = PlayerTeleportEvent;
     fn deref(&self) -> &PlayerTeleportEvent { self.as_player_teleport_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:21
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:21
 impl PlayerTeleportEvent {
     pub fn this(&self) -> JRef<dyn PlayerTeleportEventTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PlayerTeleportEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:26
     pub fn new(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, player, from, to)) }
     pub fn new_base_4<S: PlayerTeleportEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:32
     pub fn new_4(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_4(this, player, from, to, cause)) }
-    pub fn new_base_5<S: PlayerTeleportEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause, teleport_flags: &HashSet<TeleportFlagRelative>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:38
+    pub fn new_base_5<S: PlayerTeleportEventTrait + 'static>(this: &Weak<S>, player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause, teleport_flags: &HashSet<TeleportFlagRelative>) -> Self { Self { base: PlayerMoveEvent::new_base(this, player, from, to), this: this.clone(), teleport_flags: Mut::new(teleport_flags.clone()), cause: Mut::new(cause) } } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:38
     pub fn new_5(player: JRef<dyn Player>, from: JRef<Location>, to: Option<JRef<Location>>, cause: PlayerTeleportEventTeleportCause, teleport_flags: &HashSet<TeleportFlagRelative>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_5(this, player, from, to, cause, teleport_flags)) }
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:78
-    pub fn get_cause(&self) -> PlayerTeleportEventTeleportCause { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:50
-    pub fn get_relative_teleportation_flags(&self) -> HashSet<TeleportFlagRelative> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:61
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:78
+    pub fn get_cause(&self) -> PlayerTeleportEventTeleportCause { self.cause.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:50
+    pub fn get_relative_teleportation_flags(&self) -> HashSet<TeleportFlagRelative> { self.teleport_flags.get() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:61
     pub fn will_dismount_player(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:72
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:84
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/player/PlayerTeleportEvent.java:84
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

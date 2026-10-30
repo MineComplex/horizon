@@ -27,9 +27,9 @@ impl std::ops::Deref for SheepDyeWoolEvent {
 }
 impl SheepDyeWoolEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(sheep: JRef<dyn Sheep>, color: DyeColor) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepDyeWoolEvent.java:16
+    pub fn new(sheep: JRef<dyn Sheep>, color: DyeColor) -> JRef<Self> { Self::new_3(sheep, color, None) } // paper-api/src/main/java/org/bukkit/event/entity/SheepDyeWoolEvent.java:16
     pub fn new_3(sheep: JRef<dyn Sheep>, color: DyeColor, player: Option<JRef<dyn Player>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepDyeWoolEvent.java:22
-    pub fn get_entity(&self) -> JRef<dyn Sheep> { todo!() } // paper-api/src/main/java/org/bukkit/event/entity/SheepDyeWoolEvent.java:27
+    pub fn get_entity(&self) -> JRef<dyn Sheep> { cast::<dyn Sheep, _>(&self.entity.get()).expect("ClassCastException") } // paper-api/src/main/java/org/bukkit/event/entity/SheepDyeWoolEvent.java:27
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

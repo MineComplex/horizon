@@ -26,9 +26,18 @@ impl std::ops::Deref for PlayerTradeEvent {
 }
 impl PlayerTradeEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: JRef<dyn Player>, villager: JRef<dyn AbstractVillager>, trade: JRef<MerchantRecipe>, reward_exp: bool, increase_trade_uses: bool) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:15
-    pub fn get_merchant(&self) -> JRef<dyn AbstractVillager> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:20
-    pub fn get_villager(&self) -> JRef<dyn AbstractVillager> { todo!() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:31
+    pub fn new(player: JRef<dyn Player>, villager: JRef<dyn AbstractVillager>, trade: JRef<MerchantRecipe>, reward_exp: bool, increase_trade_uses: bool) -> JRef<Self> {
+        Arc::new_cyclic(|this: &Weak<Self>| PlayerTradeEvent {
+            base: PlayerPurchaseEvent::new_base(this, player, villager, trade, reward_exp, increase_trade_uses),
+            this: this.clone(),
+        })
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:15
+    pub fn get_merchant(&self) -> JRef<dyn AbstractVillager> {
+        cast::<dyn AbstractVillager, _>(&self.base.get_merchant()).expect("ClassCastException: not an AbstractVillager")
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:20
+    pub fn get_villager(&self) -> JRef<dyn AbstractVillager> {
+        self.get_merchant()
+    } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerTradeEvent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -23,7 +23,16 @@ impl AdvancementDisplayType {
     }
     pub fn value_of(name: &str) -> Option<AdvancementDisplayType> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
-    pub fn data(self) -> &'static AdvancementDisplayTypeData { todo!("paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplayType.java:13") }
-    pub fn get_color(self) -> ChatColor { todo!() } // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplayType.java:39
+    pub fn data(self) -> &'static AdvancementDisplayTypeData {
+        static TASK: AdvancementDisplayTypeData = AdvancementDisplayTypeData { color: ChatColor::GREEN };
+        static CHALLENGE: AdvancementDisplayTypeData = AdvancementDisplayTypeData { color: ChatColor::DARK_PURPLE };
+        static GOAL: AdvancementDisplayTypeData = AdvancementDisplayTypeData { color: ChatColor::GREEN };
+        match self {
+            AdvancementDisplayType::TASK => &TASK,
+            AdvancementDisplayType::CHALLENGE => &CHALLENGE,
+            AdvancementDisplayType::GOAL => &GOAL,
+        }
+    }
+    pub fn get_color(self) -> ChatColor { self.data().color } // paper-api/src/main/java/org/bukkit/advancement/AdvancementDisplayType.java:39
 }
 crate::jobject!(AdvancementDisplayType);

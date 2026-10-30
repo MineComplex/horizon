@@ -18,7 +18,7 @@ pub struct BlockCookEvent {
     pub this: Weak<dyn BlockCookEventTrait>,
     pub source: JRef<ItemStack>, // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:19
     pub result: Mut<JRef<ItemStack>>, // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:20
-    pub recipe: JRef<dyn CookingRecipeTrait<JObjectRef>>, // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:21
+    pub recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>, // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:21
     pub cancelled: Mut<bool>, // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:23
 }
 impl std::ops::Deref for BlockCookEvent {
@@ -36,21 +36,21 @@ impl std::ops::Deref for dyn BlockCookEventTrait {
     type Target = BlockCookEvent;
     fn deref(&self) -> &BlockCookEvent { self.as_block_cook_event() }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:17
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:17
 impl BlockCookEvent {
     pub fn this(&self) -> JRef<dyn BlockCookEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockCookEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:25
+    pub fn new_base<S: BlockCookEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>) -> Self { Self::new_base_4(this, block, source, result, None) } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:25
     pub fn new(block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, block, source, result)) }
-    pub fn new_base_4<S: BlockCookEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>, recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>) -> Self { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:31
+    pub fn new_base_4<S: BlockCookEventTrait + 'static>(this: &Weak<S>, block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>, recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>) -> Self { BlockCookEvent { base: BlockEvent::new_base(this, block), this: this.clone(), source: source, result: Mut::new(result), recipe: recipe, cancelled: Mut::new(false) } } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:31
     pub fn new_4(block: JRef<dyn Block>, source: JRef<ItemStack>, result: JRef<ItemStack>, recipe: Option<JRef<dyn CookingRecipeTrait<JObjectRef>>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base_4(this, block, source, result, recipe)) }
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:78
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:83
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:88
-    pub fn get_source(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:44
-    pub fn get_result(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:54
-    pub fn set_result(&self, result: JRef<ItemStack>) { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:64
-    pub fn get_recipe(&self) -> Option<JRef<dyn CookingRecipeTrait<JObjectRef>>> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:73
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:94
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:78
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel); } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:83
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:88
+    pub fn get_source(&self) -> JRef<ItemStack> { self.source.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:44
+    pub fn get_result(&self) -> JRef<ItemStack> { self.result.get() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:54
+    pub fn set_result(&self, result: JRef<ItemStack>) { self.result.set(result); } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:64
+    pub fn get_recipe(&self) -> Option<JRef<dyn CookingRecipeTrait<JObjectRef>>> { self.recipe.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:73
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/block/BlockCookEvent.java:94
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

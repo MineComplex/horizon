@@ -26,18 +26,18 @@ impl std::ops::Deref for AsyncStructureSpawnEvent {
     type Target = WorldEvent;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:16
+pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(HandlerList::new); // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:16
 impl AsyncStructureSpawnEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(world: JRef<dyn World>, structure: JRef<dyn StructureTrait>, bounding_box: JRef<BoundingBox>, chunk_x: i32, chunk_z: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:25
-    pub fn is_cancelled(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:78
-    pub fn set_cancelled(&self, cancel: bool) { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:83
-    pub fn get_handlers(&self) -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:88
-    pub fn get_structure(&self) -> JRef<dyn StructureTrait> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:39
+    pub fn new(world: JRef<dyn World>, structure: JRef<dyn StructureTrait>, bounding_box: JRef<BoundingBox>, chunk_x: i32, chunk_z: i32) -> JRef<Self> { Arc::new_cyclic(|this| Self { base: WorldEvent::new_base_2(this, world, true), this: this.clone(), structure: structure, bounding_box: bounding_box, chunk_x: chunk_x, chunk_z: chunk_z, cancelled: Mut::new(false) }) } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:25
+    pub fn is_cancelled(&self) -> bool { self.cancelled.get() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:78
+    pub fn set_cancelled(&self, cancel: bool) { self.cancelled.set(cancel) } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:83
+    pub fn get_handlers(&self) -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:88
+    pub fn get_structure(&self) -> JRef<dyn StructureTrait> { self.structure.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:39
     pub fn get_bounding_box(&self) -> JRef<BoundingBox> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:49
-    pub fn get_chunk_x(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:62
-    pub fn get_chunk_z(&self) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:74
-    pub fn get_handler_list() -> JRef<HandlerList> { todo!() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:94
+    pub fn get_chunk_x(&self) -> i32 { self.chunk_x } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:62
+    pub fn get_chunk_z(&self) -> i32 { self.chunk_z } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:74
+    pub fn get_handler_list() -> JRef<HandlerList> { HANDLER_LIST.clone() } // paper-api/src/main/java/org/bukkit/event/world/AsyncStructureSpawnEvent.java:94
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
