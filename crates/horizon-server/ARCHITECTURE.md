@@ -94,7 +94,11 @@ Velocity modern forwarding); Minecraft's registry-free command argument types; 2
 in JSON and network NBT (`azalea/chat/codec.rs`); the tick thread and tokio network runtime
 (`server/runtime.rs`); registries and the configuration state (`registry/`, `network/configuration.rs`);
 level storage, region I/O workers and `LevelChunk` (`world/`); the join's play packets and Moonrise's
-chunk-sending rules (`network/play/`).
+chunk-sending rules (`network/play/`); the world generator's foundations (`worldgen/`: noise, the density
+program as one arena of closed `enum` nodes per level instead of an `Arc<dyn>` tree, the worldgen
+registries from the jar, the proto chunk), bit-equal to 26.3's `RandomState` samplers on 774,162 values
+(`LeafDensityOracle.java`) and as fast as Horizon's `Arc<dyn>` tree on chunk volumes, ~9% faster on
+single points (`density_program_speed`, 2026-10-31).
 
 **A client gets into the world (2026-10-30).** Startup loads the registries (one `Arc`), opens
 `level-name` with its `session.lock` and `level.dat` (a missing world is not created: generation is

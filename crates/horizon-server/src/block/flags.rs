@@ -275,7 +275,7 @@ impl BlockStateData {
             random_ticking_fluids,
             ..Default::default()
         };
-        for rec in records.chunks_exact(RECORD) {
+        for rec in records.as_chunks::<RECORD>().0 {
             let word = |i: usize| u32::from_le_bytes(rec[i..i + 4].try_into().unwrap());
             let shape = |i: usize| {
                 let index = word(i);

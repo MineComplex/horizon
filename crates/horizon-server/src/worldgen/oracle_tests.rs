@@ -168,3 +168,68 @@ fn density_matches_java() {
         mismatches.len()
     );
 }
+
+/// The bench workload both density implementations run (this program and Horizon's `Arc<dyn>`
+/// sampler tree, `crates/horizon-world`): the overworld's `final_density` over 256 chunks as
+/// noise-cell corner volumes (5x49x5, steps 4/8/4, a fresh cached context per chunk, as a chunk's
+/// fill does), then every router field at 4,096 points with an uncached context. Prints the
+/// best of five runs and a checksum of the values' bits, which must equal the other side's.
+///
+/// ```sh
+/// HORIZON_VANILLA_JAR=<26.3 jar> cargo test -p horizon-server --release density_program_speed \
+///     -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "a benchmark; needs the 26.3 jar"]
+fn density_program_speed() {
+    use std::time::{Duration, Instant};
+    let data = load_jar_data().expect("HORIZON_VANILLA_JAR is not set");
+    let settings = data.noise_settings("minecraft:overworld").unwrap();
+    let density = data.compile_level(settings, 12345).unwrap();
+    let program = &density.program;
+    let final_density = density.router(RouterField::FinalDensity);
+    let mut best = (Duration::MAX, Duration::MAX);
+    let mut sums = (0u64, 0u64);
+    for _ in 0..5 {
+        let start = Instant::now();
+        let mut sum = 0u64;
+        let mut out = vec![0.0; 5 * 49 * 5];
+        for cz in 0..16 {
+            for cx in 0..16 {
+                let volume =
+                    DensityVolume::new([5, 49, 5], [cx * 16, -64, cz * 16], [4, 8, 4]).unwrap();
+                let mut context = DensityContext::cached();
+                program.fill(&mut context, final_density, &mut out, volume);
+                sum = out
+                    .iter()
+                    .fold(sum, |s, v| s.wrapping_add(u64::from(v.to_bits())));
+            }
+        }
+        let volumes = start.elapsed();
+        let start = Instant::now();
+        let mut points = 0u64;
+        let mut context = DensityContext::uncached();
+        for i in 0..4096i32 {
+            let position = [
+                i.wrapping_mul(7919) % 30_000,
+                (i % 384) - 64,
+                i.wrapping_mul(104_729) % 30_000,
+            ];
+            for field in RouterField::ALL {
+                let value = program.sample(&mut context, density.router(field), position);
+                points = points.wrapping_add(u64::from(value.to_bits()));
+            }
+        }
+        let scalar = start.elapsed();
+        best = (best.0.min(volumes), best.1.min(scalar));
+        sums = (sum, points);
+    }
+    eprintln!(
+        "program: volumes {:?} ({:?}/chunk), points {:?}; checksums {:x} {:x}",
+        best.0,
+        best.0 / 256,
+        best.1,
+        sums.0,
+        sums.1
+    );
+}

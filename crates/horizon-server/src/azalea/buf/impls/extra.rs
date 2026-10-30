@@ -137,7 +137,6 @@ impl_for_list_type!(Box<[T]>);
 // counters on the heap) and we'd like to avoid that. for us it's typically
 // better to do `Arc<Box<[T]>>`.
 
-
 impl AzBuf for String {
     fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
         read_utf_with_len(buf, MAX_STRING_LENGTH).map(Into::into)

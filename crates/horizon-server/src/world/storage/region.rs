@@ -2,11 +2,11 @@
 //! as vanilla's `RegionFile` makes them (a file opened with `open_writable`).
 //! Exports never overwrite a file: use a separate directory for offline
 //! edits and copied .mcc data.
+use crate::core::position::ChunkPos;
 use crate::{
     nbt::{self, Limits, NamedTag},
     world::storage::compression::{Compression, invalid},
 };
-use crate::core::position::ChunkPos;
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Seek, SeekFrom, Write},

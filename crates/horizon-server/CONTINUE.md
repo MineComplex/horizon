@@ -1,8 +1,8 @@
 # Continue the Leaf 26.3 → Rust port (prompt for Claude Code)
 
 Paste this file (or point Claude Code at it) to continue the work. WP1 of the world generator (noise,
-density program, worldgen data, proto-chunk) landed in `70afcbbe8` but is **not fully verified yet**
-(see section 4.A step 0); check `git log` first.
+density program, worldgen data, proto-chunk) landed in `70afcbbe8` and was verified on 2026-10-31
+(section 4.A step 0: bit-exact against the real 26.3 classes, benchmarked); check `git log` first.
 
 ---
 
@@ -57,7 +57,7 @@ patches, because Leaf itself can't be built here):
 | Chunks: paletted containers (Moonrise save form), sections, 26.3 chunk NBT, `LevelChunk` + heightmaps | `src/world/chunk/`, `src/world/level_chunk.rs` |
 | World storage: `session.lock`, `level.dat`, region I/O workers (LZ4 default) | `src/world/{level_storage,chunk_io}.rs` |
 | Join path: levels, players, player files (`players/data/<uuid>.dat`) | `src/server/{level,player,player_data}.rs` |
-| World generator WP1 (`70afcbbe8`, unit tests only — see 4.A step 0): noise, density program, worldgen data, proto-chunk | `src/worldgen/` |
+| World generator WP1 (`70afcbbe8`): noise, density program, worldgen data, proto-chunk. `LeafDensityOracle` on the real 26.3 jar (sha256 `a362163e…8ae6`), all 7 noise settings x 2 seeds, every router/aquifer root and every noise: 52,520 values, 2,502 cached values, 719,140 volume values, all bit-equal | `src/worldgen/` |
 
 Known stand-ins (documented in the code): chunks held by a per-player refcount instead of Moonrise
 tickets; no movement checks; default game rules/world border/clocks; only the overworld; no block
@@ -108,13 +108,13 @@ message default is hard-coded); comments admins add to YAML files are dropped on
 ## 4. Next steps, in order
 
 ### A. World generator — see `docs/worldgen-plan.md`
-0. **Finish verifying WP1 first** (`src/worldgen/`, commit `70afcbbe8`). Its agent was stopped after
-   its own unit tests passed: `cargo test -p horizon-server` and `cargo clippy -p horizon-server
-   --all-targets` have not been run on the branch since it was merged, and the bit-exact check against
-   Java has not run. Run both, then the density oracle
-   `mods/horizon/src/test/java/dev/horizonlab/leafserver/LeafDensityOracle.java` on the real 26.3 jar and
-   its `#[ignore]` Rust test (see the oracle's header for the env var), fix any difference, and measure
-   the density program against a plain copy of Horizon's `Arc<dyn>` graph, as WP1 asked.
+0. ~~Finish verifying WP1~~ — **done 2026-10-31**: `cargo test -p horizon-server` 274 passed (+2 ignored),
+   clippy zero warnings (fixed one new `chunks_exact_to_as_chunks` lint of clippy 1.99), the density oracle
+   bit-equal (see section 1). Speed (`density_program_speed`, an ignored test; the same workload on a
+   temporary copy of Horizon's `Arc<dyn DensitySampler>` tree gave the same checksums): overworld
+   `final_density` cell-corner volumes 572 µs/chunk on both (equal within 0.3%); 4,096 points x 8 router
+   fields, uncached: 365 ms vs 401 ms (the program ~9% faster). Apple Silicon, release, best of 5, 3 runs.
+   So the enum program stays; no `Box<dyn>` fallback is needed.
 1. In parallel: **WP2** biomes, climate, terrain fill, aquifer; **WP4** features, placement, trees (split
    4a/4b if two agents); **WP5** structures (templates from the jar, Spigot's structure salts, structure
    start NBT). Each copies Horizon's code from `crates/horizon-world/src/worldgen/` (drop Horizon's

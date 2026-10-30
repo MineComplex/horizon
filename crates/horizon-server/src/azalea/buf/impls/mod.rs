@@ -1,10 +1,7 @@
 mod extra;
 mod primitives;
 
-use std::{
-
-    io::{self, Cursor, Write},
-};
+use std::io::{self, Cursor, Write};
 
 use thiserror::Error;
 
