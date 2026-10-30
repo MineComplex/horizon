@@ -7,5 +7,6 @@ pub mod azalea;
 pub mod command;
 pub mod core;
 pub mod nbt;
+pub mod server;
 pub mod util;
 pub mod world;

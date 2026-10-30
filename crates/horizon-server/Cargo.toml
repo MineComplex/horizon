@@ -33,5 +33,10 @@ cfb8 = "0.8.1"
 sha1 = "0.11.0-rc.5"
 sha2 = "0.11.0-rc.5"
 md-5 = "0.10.6"
+# server.properties / eula.txt: the format is read by java-properties (checked against the JDK in
+# server/properties_file.rs); encoding_rs is the decoder it takes; jiff gives the local date header.
+java-properties = "2.0.0"
+encoding_rs = "0.8.42"
+jiff = "0.2.38"
 num-bigint = "0.4.6"
 
