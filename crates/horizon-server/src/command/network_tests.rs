@@ -230,4 +230,61 @@ fn parser_ids_follow_the_registry() {
         assert_eq!(ARGUMENT_PARSERS[id as usize], name);
     }
     assert_eq!(ARGUMENT_PARSERS[61], "minecraft:uuid");
+    for (id, name) in [
+        (parser_id::BLOCK_POS, "minecraft:block_pos"),
+        (parser_id::COLUMN_POS, "minecraft:column_pos"),
+        (parser_id::VEC3, "minecraft:vec3"),
+        (parser_id::VEC2, "minecraft:vec2"),
+        (parser_id::TEAM_COLOR, "minecraft:team_color"),
+        (parser_id::OPERATION, "minecraft:operation"),
+        (parser_id::ANGLE, "minecraft:angle"),
+        (parser_id::ROTATION, "minecraft:rotation"),
+        (parser_id::SWIZZLE, "minecraft:swizzle"),
+        (parser_id::INT_RANGE, "minecraft:int_range"),
+        (parser_id::FLOAT_RANGE, "minecraft:float_range"),
+        (parser_id::TIME, "minecraft:time"),
+        (parser_id::UUID, "minecraft:uuid"),
+    ] {
+        assert_eq!(ARGUMENT_PARSERS[id as usize], name);
+    }
+}
+
+/// Minecraft's types: their parser ids and `time`'s minimum. Two `vec3` nodes made apart are not
+/// equal (Java compares the type instances), so `t pos` and `u pos` get one entry each.
+#[test]
+fn minecraft_types() {
+    let mut tree = CommandTree::new();
+    tree.register(
+        literal("t").then(
+            argument("pos", ArgumentType::vec3())
+                .executes(Run(1))
+                .then(argument("r", ArgumentType::Rotation).executes(Run(1))),
+        ),
+    );
+    tree.register(literal("u").then(argument("pos", ArgumentType::vec3()).executes(Run(1))));
+    tree.register(
+        literal("w")
+            .then(argument("d", ArgumentType::Time { min: 5 }).executes(Run(1)))
+            .then(argument("e", ArgumentType::time()).executes(Run(1))),
+    );
+    let mut m = literal("m");
+    for (name, ty) in [
+        ("a", ArgumentType::BlockPos),
+        ("b", ArgumentType::ColumnPos),
+        ("c", ArgumentType::vec2()),
+        ("d", ArgumentType::Angle),
+        ("e", ArgumentType::Swizzle),
+        ("f", ArgumentType::IntRange),
+        ("g", ArgumentType::FloatRange),
+        ("h", ArgumentType::Uuid),
+        ("i", ArgumentType::Operation),
+        ("j", ArgumentType::TeamColor),
+    ] {
+        m = m.then(argument(name, ty));
+    }
+    tree.register(m);
+    let bytes = "1400040102030401010501740101060175010207080177010a090a0b0c0d0e0f101112016d06011303706f\
+        730a060003706f730a060001642b00000005060001652b0000000002000161080200016209020001630b0200016\
+        41c020001652002000166270200016728020001683d020001691a0200016a10060001721d00";
+    check(&tree, bytes, bytes);
 }

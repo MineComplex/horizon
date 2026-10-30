@@ -71,6 +71,19 @@ pub mod parser_id {
     pub const INTEGER: i32 = 3;
     pub const LONG: i32 = 4;
     pub const STRING: i32 = 5;
+    pub const BLOCK_POS: i32 = 8;
+    pub const COLUMN_POS: i32 = 9;
+    pub const VEC3: i32 = 10;
+    pub const VEC2: i32 = 11;
+    pub const TEAM_COLOR: i32 = 16;
+    pub const OPERATION: i32 = 26;
+    pub const ANGLE: i32 = 28;
+    pub const ROTATION: i32 = 29;
+    pub const SWIZZLE: i32 = 32;
+    pub const INT_RANGE: i32 = 39;
+    pub const FLOAT_RANGE: i32 = 40;
+    pub const TIME: i32 = 43;
+    pub const UUID: i32 = 61;
 }
 
 /// `ArgumentUtils.createNumberFlags`.
@@ -78,7 +91,9 @@ const NUMBER_FLAG_MIN: u8 = 1;
 const NUMBER_FLAG_MAX: u8 = 2;
 
 /// Writes the parser id and its properties (`ArgumentTypeInfo.serializeToNetwork`): number bounds only
-/// when not the type's default, a string's kind as its ordinal.
+/// when not the type's default, a string's kind as its ordinal, `time`'s minimum as an `int`. The
+/// other Minecraft types are `SingletonArgumentInfo`s with no properties (`vec3` and `vec2` lose
+/// `center_correct`: the client makes the default `vec3()`/`vec2()`).
 fn write_argument_type(ty: &ArgumentType, buf: &mut impl Write) -> io::Result<()> {
     fn bounds<T: AzBuf>(
         buf: &mut impl Write,
@@ -123,6 +138,22 @@ fn write_argument_type(ty: &ArgumentType, buf: &mut impl Write) -> io::Result<()
             };
             i32::azalea_write_var(&ordinal, buf)
         }
+        ArgumentType::Time { min } => {
+            parser_id::TIME.azalea_write_var(buf)?;
+            min.azalea_write(buf)
+        }
+        ArgumentType::BlockPos => parser_id::BLOCK_POS.azalea_write_var(buf),
+        ArgumentType::ColumnPos => parser_id::COLUMN_POS.azalea_write_var(buf),
+        ArgumentType::Vec3 { .. } => parser_id::VEC3.azalea_write_var(buf),
+        ArgumentType::Vec2 { .. } => parser_id::VEC2.azalea_write_var(buf),
+        ArgumentType::Rotation => parser_id::ROTATION.azalea_write_var(buf),
+        ArgumentType::Angle => parser_id::ANGLE.azalea_write_var(buf),
+        ArgumentType::Swizzle => parser_id::SWIZZLE.azalea_write_var(buf),
+        ArgumentType::IntRange => parser_id::INT_RANGE.azalea_write_var(buf),
+        ArgumentType::FloatRange => parser_id::FLOAT_RANGE.azalea_write_var(buf),
+        ArgumentType::Uuid => parser_id::UUID.azalea_write_var(buf),
+        ArgumentType::Operation => parser_id::OPERATION.azalea_write_var(buf),
+        ArgumentType::TeamColor => parser_id::TEAM_COLOR.azalea_write_var(buf),
     }
 }
 
@@ -166,6 +197,21 @@ fn read_argument_type(buf: &mut Cursor<&[u8]>) -> Result<ArgumentType, BufReadEr
             2 => StringKind::GreedyPhrase,
             id => return Err(BufReadError::UnexpectedEnumVariant { id }),
         }),
+        parser_id::TIME => ArgumentType::Time {
+            min: i32::azalea_read(buf)?,
+        },
+        parser_id::BLOCK_POS => ArgumentType::BlockPos,
+        parser_id::COLUMN_POS => ArgumentType::ColumnPos,
+        parser_id::VEC3 => ArgumentType::vec3(),
+        parser_id::VEC2 => ArgumentType::vec2(),
+        parser_id::ROTATION => ArgumentType::Rotation,
+        parser_id::ANGLE => ArgumentType::Angle,
+        parser_id::SWIZZLE => ArgumentType::Swizzle,
+        parser_id::INT_RANGE => ArgumentType::IntRange,
+        parser_id::FLOAT_RANGE => ArgumentType::FloatRange,
+        parser_id::UUID => ArgumentType::Uuid,
+        parser_id::OPERATION => ArgumentType::Operation,
+        parser_id::TEAM_COLOR => ArgumentType::TeamColor,
         id => {
             let name = usize::try_from(id)
                 .ok()
@@ -438,7 +484,9 @@ enum KindKey<'t> {
 }
 
 /// `ArgumentType.equals`: Brigadier's types compare their bounds with `==` (so `-0.0` equals `0.0`).
-/// Minecraft's types mostly keep `Object.equals` (identity) and will need a key per instance.
+/// Minecraft's types keep `Object.equals` (identity), and vanilla makes a new instance for each
+/// node, so their key is the server node that holds them: copies of one node are equal, two nodes
+/// never are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum TypeKey {
     Bool,
@@ -447,9 +495,11 @@ enum TypeKey {
     Float(u32, u32),
     Double(u64, u64),
     String(StringKind),
+    Instance(NodeId),
 }
 
-fn kind_key(kind: &NodeKind) -> KindKey<'_> {
+/// The key of the server node `id`, whose kind is `kind`.
+fn kind_key(kind: &NodeKind, id: NodeId) -> KindKey<'_> {
     let f = |v: f32| if v == 0.0 { 0 } else { v.to_bits() };
     let d = |v: f64| if v == 0.0 { 0 } else { v.to_bits() };
     match kind {
@@ -464,6 +514,7 @@ fn kind_key(kind: &NodeKind) -> KindKey<'_> {
                 ArgumentType::Float { min, max } => TypeKey::Float(f(min), f(max)),
                 ArgumentType::Double { min, max } => TypeKey::Double(d(min), d(max)),
                 ArgumentType::String(kind) => TypeKey::String(kind),
+                _ => TypeKey::Instance(id),
             },
         ),
     }
@@ -495,7 +546,8 @@ impl<'t, K: Copy + Eq + Hash> Classes<'t, K> {
         let mut of = vec![0; tree.nodes().len()];
         for (i, node) in tree.nodes().iter().enumerate().rev() {
             let children = node.children().iter().map(|c| of[c.index()]).collect();
-            of[i] = self.intern(kind_key(node.kind()), node.command(), children);
+            let id = NodeId::from_index(i);
+            of[i] = self.intern(kind_key(node.kind(), id), node.command(), children);
         }
         of
     }
@@ -648,7 +700,7 @@ impl<'t, K: Copy + Eq + Hash> PlayerCommands<'t, K> {
                         Origin::Flattened { alias, .. } => {
                             KindKey::Literal(tree.node(alias).name())
                         }
-                        _ => kind_key(tree.node(origin.behaviour()).kind()),
+                        _ => kind_key(tree.node(origin.behaviour()).kind(), origin.behaviour()),
                     };
                     let command = tree.node(origin.behaviour()).command();
                     let children = node.children.iter().map(|&c| class[c as usize]).collect();

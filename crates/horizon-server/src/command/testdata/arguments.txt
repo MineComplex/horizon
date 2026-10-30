@@ -1,0 +1,748 @@
+P block_pos || err 0 argument.pos.missing.int []
+P block_pos | | err 1 argument.pos.missing.int []
+P block_pos |1 2 3| ok 5 world 1.0 2.0 3.0
+P block_pos |1 2 3 4| ok 5 world 1.0 2.0 3.0
+P block_pos |~ ~ ~| ok 5 world ~0.0 ~0.0 ~0.0
+P block_pos |~1 ~-2 ~.5| ok 10 world ~1.0 ~-2.0 ~0.5
+P block_pos |^ ^ ^| ok 5 local 0.0 0.0 0.0
+P block_pos |^1 ^ ^-5| ok 8 local 1.0 0.0 -5.0
+P block_pos |^1.5 ^-.5 ^2| ok 12 local 1.5 -0.5 2.0
+P block_pos |^1 ^2| err 0 argument.pos3d.incomplete []
+P block_pos |^1 2 3| err 0 argument.pos.mixed []
+P block_pos |1 ^2 3| err 2 argument.pos.mixed []
+P block_pos |1 2 ^| err 4 argument.pos.mixed []
+P block_pos |1 2| err 0 argument.pos3d.incomplete []
+P block_pos |1| err 0 argument.pos3d.incomplete []
+P block_pos |1.5 2 3| err 0 parsing.int.invalid [1.5]
+P block_pos |1 2.5 3| err 2 parsing.int.invalid [2.5]
+P block_pos |1 2 -3| ok 6 world 1.0 2.0 -3.0
+P block_pos |~0.5 ~1 ~-5| ok 11 world ~0.5 ~1.0 ~-5.0
+P block_pos |0.1 -0.5 .9| err 0 parsing.int.invalid [0.1]
+P block_pos |1 2 3x| ok 5 world 1.0 2.0 3.0
+P block_pos |a| err 0 parsing.int.expected []
+P block_pos |1 a 3| err 2 parsing.int.expected []
+P block_pos |1  2 3| ok 4 world 1.0 0.0 2.0
+P block_pos |~~ ~| err 1 parsing.double.expected []
+P block_pos |1- 2 3| err 0 parsing.int.invalid [1-]
+P block_pos |^| err 0 argument.pos3d.incomplete []
+P block_pos |^ ^| err 0 argument.pos3d.incomplete []
+P block_pos |^a ^ ^| err 1 parsing.double.expected []
+P block_pos |^1 ^ a| err 0 argument.pos.mixed []
+P block_pos |^ ^ | err 4 argument.pos.missing.double []
+P block_pos |~ ~| err 0 argument.pos3d.incomplete []
+P block_pos |~1| err 0 argument.pos3d.incomplete []
+P block_pos |1 2 .| err 4 parsing.int.invalid [.]
+P block_pos |-5 ..| err 3 parsing.int.invalid [..]
+P block_pos |2147483648 0 0| err 0 parsing.int.invalid [2147483648]
+P block_pos |1 2 ~| ok 5 world 1.0 2.0 ~0.0
+P block_pos |1 2 3 | ok 5 world 1.0 2.0 3.0
+P block_pos |~ | err 2 argument.pos.missing.int []
+P block_pos |~1.5 ~ 2| ok 8 world ~1.5 ~0.0 2.0
+P block_pos |5 -3| err 0 argument.pos3d.incomplete []
+P block_pos |-0.0 0 0| err 0 parsing.int.invalid [-0.0]
+P column_pos || err 0 argument.pos2d.incomplete []
+P column_pos | | err 1 argument.pos.missing.int []
+P column_pos |1 2 3| ok 3 world 1.0 ~0.0 2.0
+P column_pos |1 2 3 4| ok 3 world 1.0 ~0.0 2.0
+P column_pos |~ ~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P column_pos |~1 ~-2 ~.5| ok 6 world ~1.0 ~0.0 ~-2.0
+P column_pos |^ ^ ^| err 0 argument.pos.mixed []
+P column_pos |^1 ^ ^-5| err 0 argument.pos.mixed []
+P column_pos |^1.5 ^-.5 ^2| err 0 argument.pos.mixed []
+P column_pos |^1 ^2| err 0 argument.pos.mixed []
+P column_pos |^1 2 3| err 0 argument.pos.mixed []
+P column_pos |1 ^2 3| err 2 argument.pos.mixed []
+P column_pos |1 2 ^| ok 3 world 1.0 ~0.0 2.0
+P column_pos |1 2| ok 3 world 1.0 ~0.0 2.0
+P column_pos |1| err 0 argument.pos2d.incomplete []
+P column_pos |1.5 2 3| err 0 parsing.int.invalid [1.5]
+P column_pos |1 2.5 3| err 2 parsing.int.invalid [2.5]
+P column_pos |1 2 -3| ok 3 world 1.0 ~0.0 2.0
+P column_pos |~0.5 ~1 ~-5| ok 7 world ~0.5 ~0.0 ~1.0
+P column_pos |0.1 -0.5 .9| err 0 parsing.int.invalid [0.1]
+P column_pos |1 2 3x| ok 3 world 1.0 ~0.0 2.0
+P column_pos |a| err 0 parsing.int.expected []
+P column_pos |1 a 3| err 2 parsing.int.expected []
+P column_pos |1  2 3| ok 2 world 1.0 ~0.0 0.0
+P column_pos |~~ ~| err 1 parsing.double.expected []
+P column_pos |1- 2 3| err 0 parsing.int.invalid [1-]
+P column_pos |^| err 0 argument.pos.mixed []
+P column_pos |^ ^| err 0 argument.pos.mixed []
+P column_pos |^a ^ ^| err 0 argument.pos.mixed []
+P column_pos |^1 ^ a| err 0 argument.pos.mixed []
+P column_pos |^ ^ | err 0 argument.pos.mixed []
+P column_pos |~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P column_pos |~1| err 0 argument.pos2d.incomplete []
+P column_pos |1 2 .| ok 3 world 1.0 ~0.0 2.0
+P column_pos |-5 ..| err 3 parsing.int.invalid [..]
+P column_pos |2147483648 0 0| err 0 parsing.int.invalid [2147483648]
+P column_pos |1 2 ~| ok 3 world 1.0 ~0.0 2.0
+P column_pos |1 2 3 | ok 3 world 1.0 ~0.0 2.0
+P column_pos |~ | err 2 argument.pos.missing.int []
+P column_pos |~1.5 ~ 2| ok 6 world ~1.5 ~0.0 ~0.0
+P column_pos |5 -3| ok 4 world 5.0 ~0.0 -3.0
+P column_pos |-0.0 0 0| err 0 parsing.int.invalid [-0.0]
+P vec3 || err 0 argument.pos.missing.double []
+P vec3 | | err 1 argument.pos.missing.double []
+P vec3 |1 2 3| ok 5 world 1.5 2.0 3.5
+P vec3 |1 2 3 4| ok 5 world 1.5 2.0 3.5
+P vec3 |~ ~ ~| ok 5 world ~0.0 ~0.0 ~0.0
+P vec3 |~1 ~-2 ~.5| ok 10 world ~1.0 ~-2.0 ~0.5
+P vec3 |^ ^ ^| ok 5 local 0.0 0.0 0.0
+P vec3 |^1 ^ ^-5| ok 8 local 1.0 0.0 -5.0
+P vec3 |^1.5 ^-.5 ^2| ok 12 local 1.5 -0.5 2.0
+P vec3 |^1 ^2| err 0 argument.pos3d.incomplete []
+P vec3 |^1 2 3| err 0 argument.pos.mixed []
+P vec3 |1 ^2 3| err 2 argument.pos.mixed []
+P vec3 |1 2 ^| err 4 argument.pos.mixed []
+P vec3 |1 2| err 0 argument.pos3d.incomplete []
+P vec3 |1| err 0 argument.pos3d.incomplete []
+P vec3 |1.5 2 3| ok 7 world 1.5 2.0 3.5
+P vec3 |1 2.5 3| ok 7 world 1.5 2.5 3.5
+P vec3 |1 2 -3| ok 6 world 1.5 2.0 -2.5
+P vec3 |~0.5 ~1 ~-5| ok 11 world ~0.5 ~1.0 ~-5.0
+P vec3 |0.1 -0.5 .9| ok 11 world 0.1 -0.5 0.9
+P vec3 |1 2 3x| ok 5 world 1.5 2.0 3.5
+P vec3 |a| err 0 parsing.double.expected []
+P vec3 |1 a 3| err 2 parsing.double.expected []
+P vec3 |1  2 3| ok 4 world 1.5 0.0 2.5
+P vec3 |~~ ~| err 1 parsing.double.expected []
+P vec3 |1- 2 3| err 0 parsing.double.invalid [1-]
+P vec3 |^| err 0 argument.pos3d.incomplete []
+P vec3 |^ ^| err 0 argument.pos3d.incomplete []
+P vec3 |^a ^ ^| err 1 parsing.double.expected []
+P vec3 |^1 ^ a| err 0 argument.pos.mixed []
+P vec3 |^ ^ | err 4 argument.pos.missing.double []
+P vec3 |~ ~| err 0 argument.pos3d.incomplete []
+P vec3 |~1| err 0 argument.pos3d.incomplete []
+P vec3 |1 2 .| err 4 parsing.double.invalid [.]
+P vec3 |-5 ..| err 3 parsing.double.invalid [..]
+P vec3 |2147483648 0 0| ok 14 world 2.1474836485E9 0.0 0.5
+P vec3 |1 2 ~| ok 5 world 1.5 2.0 ~0.0
+P vec3 |1 2 3 | ok 5 world 1.5 2.0 3.5
+P vec3 |~ | err 2 argument.pos.missing.double []
+P vec3 |~1.5 ~ 2| ok 8 world ~1.5 ~0.0 2.5
+P vec3 |5 -3| err 0 argument.pos3d.incomplete []
+P vec3 |-0.0 0 0| ok 8 world -0.0 0.0 0.5
+P vec3_nocenter || err 0 argument.pos.missing.double []
+P vec3_nocenter | | err 1 argument.pos.missing.double []
+P vec3_nocenter |1 2 3| ok 5 world 1.0 2.0 3.0
+P vec3_nocenter |1 2 3 4| ok 5 world 1.0 2.0 3.0
+P vec3_nocenter |~ ~ ~| ok 5 world ~0.0 ~0.0 ~0.0
+P vec3_nocenter |~1 ~-2 ~.5| ok 10 world ~1.0 ~-2.0 ~0.5
+P vec3_nocenter |^ ^ ^| ok 5 local 0.0 0.0 0.0
+P vec3_nocenter |^1 ^ ^-5| ok 8 local 1.0 0.0 -5.0
+P vec3_nocenter |^1.5 ^-.5 ^2| ok 12 local 1.5 -0.5 2.0
+P vec3_nocenter |^1 ^2| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |^1 2 3| err 0 argument.pos.mixed []
+P vec3_nocenter |1 ^2 3| err 2 argument.pos.mixed []
+P vec3_nocenter |1 2 ^| err 4 argument.pos.mixed []
+P vec3_nocenter |1 2| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |1| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |1.5 2 3| ok 7 world 1.5 2.0 3.0
+P vec3_nocenter |1 2.5 3| ok 7 world 1.0 2.5 3.0
+P vec3_nocenter |1 2 -3| ok 6 world 1.0 2.0 -3.0
+P vec3_nocenter |~0.5 ~1 ~-5| ok 11 world ~0.5 ~1.0 ~-5.0
+P vec3_nocenter |0.1 -0.5 .9| ok 11 world 0.1 -0.5 0.9
+P vec3_nocenter |1 2 3x| ok 5 world 1.0 2.0 3.0
+P vec3_nocenter |a| err 0 parsing.double.expected []
+P vec3_nocenter |1 a 3| err 2 parsing.double.expected []
+P vec3_nocenter |1  2 3| ok 4 world 1.0 0.0 2.0
+P vec3_nocenter |~~ ~| err 1 parsing.double.expected []
+P vec3_nocenter |1- 2 3| err 0 parsing.double.invalid [1-]
+P vec3_nocenter |^| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |^ ^| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |^a ^ ^| err 1 parsing.double.expected []
+P vec3_nocenter |^1 ^ a| err 0 argument.pos.mixed []
+P vec3_nocenter |^ ^ | err 4 argument.pos.missing.double []
+P vec3_nocenter |~ ~| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |~1| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |1 2 .| err 4 parsing.double.invalid [.]
+P vec3_nocenter |-5 ..| err 3 parsing.double.invalid [..]
+P vec3_nocenter |2147483648 0 0| ok 14 world 2.147483648E9 0.0 0.0
+P vec3_nocenter |1 2 ~| ok 5 world 1.0 2.0 ~0.0
+P vec3_nocenter |1 2 3 | ok 5 world 1.0 2.0 3.0
+P vec3_nocenter |~ | err 2 argument.pos.missing.double []
+P vec3_nocenter |~1.5 ~ 2| ok 8 world ~1.5 ~0.0 2.0
+P vec3_nocenter |5 -3| err 0 argument.pos3d.incomplete []
+P vec3_nocenter |-0.0 0 0| ok 8 world -0.0 0.0 0.0
+P vec2 || err 0 argument.pos2d.incomplete []
+P vec2 | | err 1 argument.pos.missing.double []
+P vec2 |1 2 3| ok 3 world 1.5 ~0.0 2.5
+P vec2 |1 2 3 4| ok 3 world 1.5 ~0.0 2.5
+P vec2 |~ ~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P vec2 |~1 ~-2 ~.5| ok 6 world ~1.0 ~0.0 ~-2.0
+P vec2 |^ ^ ^| err 0 argument.pos.mixed []
+P vec2 |^1 ^ ^-5| err 0 argument.pos.mixed []
+P vec2 |^1.5 ^-.5 ^2| err 0 argument.pos.mixed []
+P vec2 |^1 ^2| err 0 argument.pos.mixed []
+P vec2 |^1 2 3| err 0 argument.pos.mixed []
+P vec2 |1 ^2 3| err 2 argument.pos.mixed []
+P vec2 |1 2 ^| ok 3 world 1.5 ~0.0 2.5
+P vec2 |1 2| ok 3 world 1.5 ~0.0 2.5
+P vec2 |1| err 0 argument.pos2d.incomplete []
+P vec2 |1.5 2 3| ok 5 world 1.5 ~0.0 2.5
+P vec2 |1 2.5 3| ok 5 world 1.5 ~0.0 2.5
+P vec2 |1 2 -3| ok 3 world 1.5 ~0.0 2.5
+P vec2 |~0.5 ~1 ~-5| ok 7 world ~0.5 ~0.0 ~1.0
+P vec2 |0.1 -0.5 .9| ok 8 world 0.1 ~0.0 -0.5
+P vec2 |1 2 3x| ok 3 world 1.5 ~0.0 2.5
+P vec2 |a| err 0 parsing.double.expected []
+P vec2 |1 a 3| err 2 parsing.double.expected []
+P vec2 |1  2 3| ok 2 world 1.5 ~0.0 0.5
+P vec2 |~~ ~| err 1 parsing.double.expected []
+P vec2 |1- 2 3| err 0 parsing.double.invalid [1-]
+P vec2 |^| err 0 argument.pos.mixed []
+P vec2 |^ ^| err 0 argument.pos.mixed []
+P vec2 |^a ^ ^| err 0 argument.pos.mixed []
+P vec2 |^1 ^ a| err 0 argument.pos.mixed []
+P vec2 |^ ^ | err 0 argument.pos.mixed []
+P vec2 |~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P vec2 |~1| err 0 argument.pos2d.incomplete []
+P vec2 |1 2 .| ok 3 world 1.5 ~0.0 2.5
+P vec2 |-5 ..| err 3 parsing.double.invalid [..]
+P vec2 |2147483648 0 0| ok 12 world 2.1474836485E9 ~0.0 0.5
+P vec2 |1 2 ~| ok 3 world 1.5 ~0.0 2.5
+P vec2 |1 2 3 | ok 3 world 1.5 ~0.0 2.5
+P vec2 |~ | err 2 argument.pos.missing.double []
+P vec2 |~1.5 ~ 2| ok 6 world ~1.5 ~0.0 ~0.0
+P vec2 |5 -3| ok 4 world 5.5 ~0.0 -2.5
+P vec2 |-0.0 0 0| ok 6 world -0.0 ~0.0 0.5
+P vec2_nocenter || err 0 argument.pos2d.incomplete []
+P vec2_nocenter | | err 1 argument.pos.missing.double []
+P vec2_nocenter |1 2 3| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |1 2 3 4| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |~ ~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P vec2_nocenter |~1 ~-2 ~.5| ok 6 world ~1.0 ~0.0 ~-2.0
+P vec2_nocenter |^ ^ ^| err 0 argument.pos.mixed []
+P vec2_nocenter |^1 ^ ^-5| err 0 argument.pos.mixed []
+P vec2_nocenter |^1.5 ^-.5 ^2| err 0 argument.pos.mixed []
+P vec2_nocenter |^1 ^2| err 0 argument.pos.mixed []
+P vec2_nocenter |^1 2 3| err 0 argument.pos.mixed []
+P vec2_nocenter |1 ^2 3| err 2 argument.pos.mixed []
+P vec2_nocenter |1 2 ^| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |1 2| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |1| err 0 argument.pos2d.incomplete []
+P vec2_nocenter |1.5 2 3| ok 5 world 1.5 ~0.0 2.0
+P vec2_nocenter |1 2.5 3| ok 5 world 1.0 ~0.0 2.5
+P vec2_nocenter |1 2 -3| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |~0.5 ~1 ~-5| ok 7 world ~0.5 ~0.0 ~1.0
+P vec2_nocenter |0.1 -0.5 .9| ok 8 world 0.1 ~0.0 -0.5
+P vec2_nocenter |1 2 3x| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |a| err 0 parsing.double.expected []
+P vec2_nocenter |1 a 3| err 2 parsing.double.expected []
+P vec2_nocenter |1  2 3| ok 2 world 1.0 ~0.0 0.0
+P vec2_nocenter |~~ ~| err 1 parsing.double.expected []
+P vec2_nocenter |1- 2 3| err 0 parsing.double.invalid [1-]
+P vec2_nocenter |^| err 0 argument.pos.mixed []
+P vec2_nocenter |^ ^| err 0 argument.pos.mixed []
+P vec2_nocenter |^a ^ ^| err 0 argument.pos.mixed []
+P vec2_nocenter |^1 ^ a| err 0 argument.pos.mixed []
+P vec2_nocenter |^ ^ | err 0 argument.pos.mixed []
+P vec2_nocenter |~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P vec2_nocenter |~1| err 0 argument.pos2d.incomplete []
+P vec2_nocenter |1 2 .| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |-5 ..| err 3 parsing.double.invalid [..]
+P vec2_nocenter |2147483648 0 0| ok 12 world 2.147483648E9 ~0.0 0.0
+P vec2_nocenter |1 2 ~| ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |1 2 3 | ok 3 world 1.0 ~0.0 2.0
+P vec2_nocenter |~ | err 2 argument.pos.missing.double []
+P vec2_nocenter |~1.5 ~ 2| ok 6 world ~1.5 ~0.0 ~0.0
+P vec2_nocenter |5 -3| ok 4 world 5.0 ~0.0 -3.0
+P vec2_nocenter |-0.0 0 0| ok 6 world -0.0 ~0.0 0.0
+P rotation || err 0 argument.rotation.incomplete []
+P rotation | | err 1 argument.pos.missing.double []
+P rotation |1 2 3| ok 3 world 2.0 1.0 ~0.0
+P rotation |1 2 3 4| ok 3 world 2.0 1.0 ~0.0
+P rotation |~ ~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P rotation |~1 ~-2 ~.5| ok 6 world ~-2.0 ~1.0 ~0.0
+P rotation |^ ^ ^| err 0 argument.pos.mixed []
+P rotation |^1 ^ ^-5| err 0 argument.pos.mixed []
+P rotation |^1.5 ^-.5 ^2| err 0 argument.pos.mixed []
+P rotation |^1 ^2| err 0 argument.pos.mixed []
+P rotation |^1 2 3| err 0 argument.pos.mixed []
+P rotation |1 ^2 3| err 2 argument.pos.mixed []
+P rotation |1 2 ^| ok 3 world 2.0 1.0 ~0.0
+P rotation |1 2| ok 3 world 2.0 1.0 ~0.0
+P rotation |1| err 0 argument.rotation.incomplete []
+P rotation |1.5 2 3| ok 5 world 2.0 1.5 ~0.0
+P rotation |1 2.5 3| ok 5 world 2.5 1.0 ~0.0
+P rotation |1 2 -3| ok 3 world 2.0 1.0 ~0.0
+P rotation |~0.5 ~1 ~-5| ok 7 world ~1.0 ~0.5 ~0.0
+P rotation |0.1 -0.5 .9| ok 8 world -0.5 0.1 ~0.0
+P rotation |1 2 3x| ok 3 world 2.0 1.0 ~0.0
+P rotation |a| err 0 parsing.double.expected []
+P rotation |1 a 3| err 2 parsing.double.expected []
+P rotation |1  2 3| ok 2 world 0.0 1.0 ~0.0
+P rotation |~~ ~| err 1 parsing.double.expected []
+P rotation |1- 2 3| err 0 parsing.double.invalid [1-]
+P rotation |^| err 0 argument.pos.mixed []
+P rotation |^ ^| err 0 argument.pos.mixed []
+P rotation |^a ^ ^| err 0 argument.pos.mixed []
+P rotation |^1 ^ a| err 0 argument.pos.mixed []
+P rotation |^ ^ | err 0 argument.pos.mixed []
+P rotation |~ ~| ok 3 world ~0.0 ~0.0 ~0.0
+P rotation |~1| err 0 argument.rotation.incomplete []
+P rotation |1 2 .| ok 3 world 2.0 1.0 ~0.0
+P rotation |-5 ..| err 3 parsing.double.invalid [..]
+P rotation |2147483648 0 0| ok 12 world 0.0 2.147483648E9 ~0.0
+P rotation |1 2 ~| ok 3 world 2.0 1.0 ~0.0
+P rotation |1 2 3 | ok 3 world 2.0 1.0 ~0.0
+P rotation |~ | err 2 argument.pos.missing.double []
+P rotation |~1.5 ~ 2| ok 6 world ~0.0 ~1.5 ~0.0
+P rotation |5 -3| ok 4 world -3.0 5.0 ~0.0
+P rotation |-0.0 0 0| ok 6 world 0.0 -0.0 ~0.0
+P int_range || err 0 argument.range.empty []
+P int_range | | err 0 argument.range.empty []
+P int_range |1| ok 1 range 1 1
+P int_range |-5| ok 2 range -5 -5
+P int_range |0..5| ok 4 range 0 5
+P int_range |..100| ok 5 range _ 100
+P int_range |-100..| ok 6 range -100 _
+P int_range |5..1| err 0 argument.range.swapped []
+P int_range |..| err 0 argument.range.empty []
+P int_range |1..2..3| ok 4 range 1 2
+P int_range |.5..1| err 0 parsing.int.invalid [.5]
+P int_range |1.5..2.25| err 0 parsing.int.invalid [1.5]
+P int_range |-.5| err 0 parsing.int.invalid [-.5]
+P int_range |0..-0| ok 5 range 0 0
+P int_range |-0..0| ok 5 range 0 0
+P int_range |1.2| err 0 parsing.int.invalid [1.2]
+P int_range |a..1| err 0 argument.range.empty []
+P int_range |1..a| ok 3 range 1 _
+P int_range |1..2 3| ok 4 range 1 2
+P int_range |2147483648| err 0 parsing.int.invalid [2147483648]
+P int_range |-2147483648..2147483647| ok 23 range -2147483648 2147483647
+P int_range |1-2| err 0 parsing.int.invalid [1-2]
+P int_range |1 2| ok 1 range 1 1
+P int_range |-| err 0 parsing.int.invalid [-]
+P int_range |1...2| err 0 parsing.int.invalid [.2]
+P int_range |1.| err 0 parsing.int.invalid [1.]
+P int_range |1.e5| err 0 parsing.int.invalid [1.]
+P float_range || err 0 argument.range.empty []
+P float_range | | err 0 argument.range.empty []
+P float_range |1| ok 1 range 1.0 1.0
+P float_range |-5| ok 2 range -5.0 -5.0
+P float_range |0..5| ok 4 range 0.0 5.0
+P float_range |..100| ok 5 range _ 100.0
+P float_range |-100..| ok 6 range -100.0 _
+P float_range |5..1| err 0 argument.range.swapped []
+P float_range |..| err 0 argument.range.empty []
+P float_range |1..2..3| ok 4 range 1.0 2.0
+P float_range |.5..1| ok 5 range 0.5 1.0
+P float_range |1.5..2.25| ok 9 range 1.5 2.25
+P float_range |-.5| ok 3 range -0.5 -0.5
+P float_range |0..-0| err 0 argument.range.swapped []
+P float_range |-0..0| ok 5 range -0.0 0.0
+P float_range |1.2| ok 3 range 1.2 1.2
+P float_range |a..1| err 0 argument.range.empty []
+P float_range |1..a| ok 3 range 1.0 _
+P float_range |1..2 3| ok 4 range 1.0 2.0
+P float_range |2147483648| ok 10 range 2.147483648E9 2.147483648E9
+P float_range |-2147483648..2147483647| ok 23 range -2.147483648E9 2.147483647E9
+P float_range |1-2| err 0 parsing.double.invalid [1-2]
+P float_range |1 2| ok 1 range 1.0 1.0
+P float_range |-| err 0 parsing.double.invalid [-]
+P float_range |1...2| err 0 argument.range.swapped []
+P float_range |1.| ok 2 range 1.0 1.0
+P float_range |1.e5| ok 2 range 1.0 1.0
+P time || err 0 parsing.float.expected []
+P time |0d| ok 2 Integer 0
+P time |1.5s| ok 4 Integer 30
+P time |3t| ok 2 Integer 3
+P time |3| ok 1 Integer 3
+P time |2x| err 2 argument.time.invalid_unit []
+P time |-1| err 2 argument.time.tick_count_too_low [0, -1]
+P time |-1t| err 3 argument.time.tick_count_too_low [0, -1]
+P time |0.024t| ok 6 Integer 0
+P time |0.025t| ok 6 Integer 0
+P time |1.5d| ok 4 Integer 36000
+P time |4.9| ok 3 Integer 5
+P time |4.5| ok 3 Integer 5
+P time |-4.5| err 4 argument.time.tick_count_too_low [0, -4]
+P time |x| err 0 parsing.float.expected []
+P time |2147483647d| ok 11 Integer 2147483647
+P time |-1e9| err 4 argument.time.invalid_unit []
+P time |100000000000000000000000000000000000000000d| ok 43 Integer 2147483647
+P time |5 s| ok 1 Integer 5
+P time |2.5s | ok 4 Integer 50
+P time |0.49999997| ok 10 Integer 0
+P time5 || err 0 parsing.float.expected []
+P time5 |0d| err 2 argument.time.tick_count_too_low [5, 0]
+P time5 |1.5s| ok 4 Integer 30
+P time5 |3t| err 2 argument.time.tick_count_too_low [5, 3]
+P time5 |3| err 1 argument.time.tick_count_too_low [5, 3]
+P time5 |2x| err 2 argument.time.invalid_unit []
+P time5 |-1| err 2 argument.time.tick_count_too_low [5, -1]
+P time5 |-1t| err 3 argument.time.tick_count_too_low [5, -1]
+P time5 |0.024t| err 6 argument.time.tick_count_too_low [5, 0]
+P time5 |0.025t| err 6 argument.time.tick_count_too_low [5, 0]
+P time5 |1.5d| ok 4 Integer 36000
+P time5 |4.9| ok 3 Integer 5
+P time5 |4.5| ok 3 Integer 5
+P time5 |-4.5| err 4 argument.time.tick_count_too_low [5, -4]
+P time5 |x| err 0 parsing.float.expected []
+P time5 |2147483647d| ok 11 Integer 2147483647
+P time5 |-1e9| err 4 argument.time.invalid_unit []
+P time5 |100000000000000000000000000000000000000000d| ok 43 Integer 2147483647
+P time5 |5 s| ok 1 Integer 5
+P time5 |2.5s | ok 4 Integer 50
+P time5 |0.49999997| err 10 argument.time.tick_count_too_low [5, 0]
+P uuid || err 0 argument.uuid.invalid []
+P uuid |dd12be42-52a9-4a91-a8a1-11c01849e498| ok 36 UUID dd12be42-52a9-4a91-a8a1-11c01849e498
+P uuid |1-1-1-1-1| ok 9 UUID 00000001-0001-0001-0001-000000000001
+P uuid |1-1-1-1| err 0 argument.uuid.invalid []
+P uuid |1-1-1-1-1-1| err 0 argument.uuid.invalid []
+P uuid |DD12BE42-52A9-4A91-A8A1-11C01849E498x| ok 36 UUID dd12be42-52a9-4a91-a8a1-11c01849e498
+P uuid |7fffffffffffffff-1-1-1-1| ok 24 UUID ffffffff-0001-0001-0001-000000000001
+P uuid |8000000000000000-1-1-1-1| err 0 argument.uuid.invalid []
+P uuid |1-1-1-1-1234567890123| ok 21 UUID 00000001-0001-0001-0001-234567890123
+P uuid |-1-1-1-1| err 0 argument.uuid.invalid []
+P uuid |1--1-1-1| err 0 argument.uuid.invalid []
+P uuid |123456789-1-1-1-1z| ok 17 UUID 23456789-0001-0001-0001-000000000001
+P uuid |0000000000000000000001-1-1-1-1| ok 30 UUID 00000001-0001-0001-0001-000000000001
+P uuid |00000000000000000000000001-1-1-1-1| ok 34 UUID 00000001-0001-0001-0001-000000000001
+P uuid |ffffffff-ffff-ffff-ffff-ffffffffffff| ok 36 UUID ffffffff-ffff-ffff-ffff-ffffffffffff
+P uuid |dd12be42-52a9-4a91-a8a1-11c0-849e498| err 0 argument.uuid.invalid []
+P uuid |g| err 0 argument.uuid.invalid []
+P uuid |abc| err 0 argument.uuid.invalid []
+P angle || err 0 argument.angle.incomplete []
+P angle | | ok 0 angle 0.0 false
+P angle |0| ok 1 angle 0.0 false
+P angle |~| ok 1 angle 0.0 true
+P angle |~-5| ok 3 angle -5.0 true
+P angle |1.5 2| ok 3 angle 1.5 false
+P angle |~ ~| ok 1 angle 0.0 true
+P angle |^1| err 0 parsing.float.expected []
+P angle |a| err 0 parsing.float.expected []
+P angle |1-| err 0 parsing.float.invalid [1-]
+P angle |-5 ..| ok 2 angle -5.0 false
+P angle |1000000000000000000000000000000000000000| err 40 argument.angle.invalid []
+P angle |~1000000000000000000000000000000000000000| err 41 argument.angle.invalid []
+P angle |-.5| ok 3 angle -0.5 false
+P angle |~~| err 1 parsing.float.expected []
+P swizzle || ok 0 swizzle []
+P swizzle | | ok 0 swizzle []
+P swizzle |x| ok 1 swizzle [x]
+P swizzle |xyz| ok 3 swizzle [x, y, z]
+P swizzle |xzx| err 3 arguments.swizzle.invalid []
+P swizzle |zy| ok 2 swizzle [y, z]
+P swizzle |xa| err 2 arguments.swizzle.invalid []
+P swizzle |yxz 1| ok 3 swizzle [x, y, z]
+P swizzle |X| err 1 arguments.swizzle.invalid []
+P swizzle |1| err 1 arguments.swizzle.invalid []
+P operation || err 0 arguments.operation.invalid []
+P operation | | err -1 arguments.operation.invalid []
+P operation |=| ok 1 operation
+P operation |+=| ok 2 operation
+P operation |-=| ok 2 operation
+P operation |*=| ok 2 operation
+P operation |/=| ok 2 operation
+P operation |%=| ok 2 operation
+P operation |<| ok 1 operation
+P operation |>| ok 1 operation
+P operation |><| ok 2 operation
+P operation |<>| err -1 arguments.operation.invalid []
+P operation |== 1| err -1 arguments.operation.invalid []
+P operation |= 1| ok 1 operation
+P operation |x| err -1 arguments.operation.invalid []
+P team_color || err 0 argument.color.invalid []
+P team_color |red| ok 3 color red
+P team_color |dark_blue| ok 9 color dark_blue
+P team_color |Red| err 3 argument.color.invalid [Red]
+P team_color |reset| err 5 argument.color.invalid [reset]
+P team_color |white x| ok 5 color white
+P team_color |light_purple| ok 12 color light_purple
+P team_color |gray-| err 5 argument.color.invalid [gray-]
+P team_color |x| err 1 argument.color.invalid [x]
+S block_pos || 0,0 [0,0 ~] [0,0 ~ ~] [0,0 ~ ~ ~]
+S block_pos |1| 0,1 [0,1 1 ~] [0,1 1 ~ ~]
+S block_pos |1 | 0,2 [0,2 1 ~] [0,2 1 ~ ~]
+S block_pos |1 2| 0,3 [0,3 1 2 ~]
+S block_pos |1 2 | 0,4 [0,4 1 2 ~]
+S block_pos |1 2 3| 0,0
+S block_pos |^| 0,1 [0,1 ^ ^] [0,1 ^ ^ ^]
+S block_pos |^ | 0,2 [0,2 ^ ^] [0,2 ^ ^ ^]
+S block_pos |^1 ^| 0,4 [0,4 ^1 ^ ^]
+S block_pos |^ ^ ^| 0,0
+S block_pos |~| 0,1 [0,1 ~ ~] [0,1 ~ ~ ~]
+S block_pos |~ ~| 0,3 [0,3 ~ ~ ~]
+S block_pos | | 0,0
+S block_pos |1  | 0,0
+S block_pos |a| 0,0
+S block_pos |1 a| 0,0
+S block_pos |1.5| 0,0
+S block_pos |~1 2| 0,4 [0,4 ~1 2 ~]
+S block_pos |^1 2| 0,0
+S column_pos || 0,0 [0,0 ~] [0,0 ~ ~]
+S column_pos |1| 0,1 [0,1 1 ~]
+S column_pos |1 | 0,2 [0,2 1 ~]
+S column_pos |1 2| 0,0
+S column_pos |1 2 | 0,0
+S column_pos |1 2 3| 0,0
+S column_pos |^| 0,0
+S column_pos |^ | 0,0
+S column_pos |^1 ^| 0,0
+S column_pos |^ ^ ^| 0,0
+S column_pos |~| 0,1 [0,1 ~ ~]
+S column_pos |~ ~| 0,0
+S column_pos | | 0,0
+S column_pos |1  | 0,0
+S column_pos |a| 0,0
+S column_pos |1 a| 0,0
+S column_pos |1.5| 0,0
+S column_pos |~1 2| 0,0
+S column_pos |^1 2| 0,0
+S vec3 || 0,0 [0,0 ~] [0,0 ~ ~] [0,0 ~ ~ ~]
+S vec3 |1| 0,1 [0,1 1 ~] [0,1 1 ~ ~]
+S vec3 |1 | 0,2 [0,2 1 ~] [0,2 1 ~ ~]
+S vec3 |1 2| 0,3 [0,3 1 2 ~]
+S vec3 |1 2 | 0,4 [0,4 1 2 ~]
+S vec3 |1 2 3| 0,0
+S vec3 |^| 0,1 [0,1 ^ ^] [0,1 ^ ^ ^]
+S vec3 |^ | 0,2 [0,2 ^ ^] [0,2 ^ ^ ^]
+S vec3 |^1 ^| 0,4 [0,4 ^1 ^ ^]
+S vec3 |^ ^ ^| 0,0
+S vec3 |~| 0,1 [0,1 ~ ~] [0,1 ~ ~ ~]
+S vec3 |~ ~| 0,3 [0,3 ~ ~ ~]
+S vec3 | | 0,0
+S vec3 |1  | 0,0
+S vec3 |a| 0,0
+S vec3 |1 a| 0,0
+S vec3 |1.5| 0,3 [0,3 1.5 ~] [0,3 1.5 ~ ~]
+S vec3 |~1 2| 0,4 [0,4 ~1 2 ~]
+S vec3 |^1 2| 0,0
+S vec3_nocenter || 0,0 [0,0 ~] [0,0 ~ ~] [0,0 ~ ~ ~]
+S vec3_nocenter |1| 0,1 [0,1 1 ~] [0,1 1 ~ ~]
+S vec3_nocenter |1 | 0,2 [0,2 1 ~] [0,2 1 ~ ~]
+S vec3_nocenter |1 2| 0,3 [0,3 1 2 ~]
+S vec3_nocenter |1 2 | 0,4 [0,4 1 2 ~]
+S vec3_nocenter |1 2 3| 0,0
+S vec3_nocenter |^| 0,1 [0,1 ^ ^] [0,1 ^ ^ ^]
+S vec3_nocenter |^ | 0,2 [0,2 ^ ^] [0,2 ^ ^ ^]
+S vec3_nocenter |^1 ^| 0,4 [0,4 ^1 ^ ^]
+S vec3_nocenter |^ ^ ^| 0,0
+S vec3_nocenter |~| 0,1 [0,1 ~ ~] [0,1 ~ ~ ~]
+S vec3_nocenter |~ ~| 0,3 [0,3 ~ ~ ~]
+S vec3_nocenter | | 0,0
+S vec3_nocenter |1  | 0,0
+S vec3_nocenter |a| 0,0
+S vec3_nocenter |1 a| 0,0
+S vec3_nocenter |1.5| 0,3 [0,3 1.5 ~] [0,3 1.5 ~ ~]
+S vec3_nocenter |~1 2| 0,4 [0,4 ~1 2 ~]
+S vec3_nocenter |^1 2| 0,0
+S vec2 || 0,0 [0,0 ~] [0,0 ~ ~]
+S vec2 |1| 0,1 [0,1 1 ~]
+S vec2 |1 | 0,2 [0,2 1 ~]
+S vec2 |1 2| 0,0
+S vec2 |1 2 | 0,0
+S vec2 |1 2 3| 0,0
+S vec2 |^| 0,0
+S vec2 |^ | 0,0
+S vec2 |^1 ^| 0,0
+S vec2 |^ ^ ^| 0,0
+S vec2 |~| 0,1 [0,1 ~ ~]
+S vec2 |~ ~| 0,0
+S vec2 | | 0,0
+S vec2 |1  | 0,0
+S vec2 |a| 0,0
+S vec2 |1 a| 0,0
+S vec2 |1.5| 0,3 [0,3 1.5 ~]
+S vec2 |~1 2| 0,0
+S vec2 |^1 2| 0,0
+S vec2_nocenter || 0,0 [0,0 ~] [0,0 ~ ~]
+S vec2_nocenter |1| 0,1 [0,1 1 ~]
+S vec2_nocenter |1 | 0,2 [0,2 1 ~]
+S vec2_nocenter |1 2| 0,0
+S vec2_nocenter |1 2 | 0,0
+S vec2_nocenter |1 2 3| 0,0
+S vec2_nocenter |^| 0,0
+S vec2_nocenter |^ | 0,0
+S vec2_nocenter |^1 ^| 0,0
+S vec2_nocenter |^ ^ ^| 0,0
+S vec2_nocenter |~| 0,1 [0,1 ~ ~]
+S vec2_nocenter |~ ~| 0,0
+S vec2_nocenter | | 0,0
+S vec2_nocenter |1  | 0,0
+S vec2_nocenter |a| 0,0
+S vec2_nocenter |1 a| 0,0
+S vec2_nocenter |1.5| 0,3 [0,3 1.5 ~]
+S vec2_nocenter |~1 2| 0,0
+S vec2_nocenter |^1 2| 0,0
+S rotation || 0,0
+S rotation |1| 0,0
+S rotation |1 | 0,0
+S rotation |1 2| 0,0
+S rotation |1 2 | 0,0
+S rotation |1 2 3| 0,0
+S rotation |^| 0,0
+S rotation |^ | 0,0
+S rotation |^1 ^| 0,0
+S rotation |^ ^ ^| 0,0
+S rotation |~| 0,0
+S rotation |~ ~| 0,0
+S rotation | | 0,0
+S rotation |1  | 0,0
+S rotation |a| 0,0
+S rotation |1 a| 0,0
+S rotation |1.5| 0,0
+S rotation |~1 2| 0,0
+S rotation |^1 2| 0,0
+S time || 0,0
+S time |1| 1,1 [1,1 d] [1,1 s] [1,1 t]
+S time |1.5| 3,3 [3,3 d] [3,3 s] [3,3 t]
+S time |1.5s| 0,0
+S time |1d| 0,0
+S time |1 | 0,0
+S time |-| 0,0
+S time |x| 0,0
+S time |1S| 1,2 [1,2 s]
+S time |1x| 0,0
+S operation || 0,0 [0,0 %=] [0,0 *=] [0,0 +=] [0,0 -=] [0,0 /=] [0,0 <] [0,0 =] [0,0 >] [0,0 ><]
+S operation |<| 0,0
+S operation |=| 0,1 [0,1 /=]
+S operation |+| 0,1 [0,1 +=]
+S operation |x| 0,0
+S operation |><| 0,0
+S team_color || 0,0 [0,0 aqua] [0,0 black] [0,0 blue] [0,0 dark_aqua] [0,0 dark_blue] [0,0 dark_gray] [0,0 dark_green] [0,0 dark_purple] [0,0 dark_red] [0,0 gold] [0,0 gray] [0,0 green] [0,0 light_purple] [0,0 red] [0,0 white] [0,0 yellow]
+S team_color |r| 0,1 [0,1 dark_red] [0,1 red]
+S team_color |dark| 0,4 [0,4 dark_aqua] [0,4 dark_blue] [0,4 dark_gray] [0,4 dark_green] [0,4 dark_purple] [0,4 dark_red]
+S team_color |d| 0,1 [0,1 dark_aqua] [0,1 dark_blue] [0,1 dark_gray] [0,1 dark_green] [0,1 dark_purple] [0,1 dark_red]
+S team_color |b| 0,1 [0,1 black] [0,1 blue] [0,1 dark_blue]
+S team_color |_b| 0,0
+S team_color |purple| 0,6 [0,6 dark_purple] [0,6 light_purple]
+S team_color |DARK_| 0,5 [0,5 dark_aqua] [0,5 dark_blue] [0,5 dark_gray] [0,5 dark_green] [0,5 dark_purple] [0,5 dark_red]
+S team_color |x| 0,0
+S angle || 0,0
+S int_range || 0,0
+S rotation || 0,0
+S angle |1| 0,0
+S int_range |1| 0,0
+S rotation |1| 0,0
+S angle |x| 0,0
+S int_range |x| 0,0
+S rotation |x| 0,0
+L 0.0 0.0 1.0 0.0 0.0 4025000000000000 4050000000000000 c002000000000000
+L 0.0 0.0 1.0 30.0 45.0 4023c67a16000000 404fc000e8400000 c00519e858000000
+L 0.0 0.0 1.0 -90.0 180.0 4025000000000000 4050400000000000 c00a000000000000
+L 0.0 0.0 1.0 12.5 -73.25 4026dea764000000 404fe44d69200000 c007bfd0a8000000
+L 0.0 0.0 1.0 90.0 0.0 4025000000000000 404f800000000000 c00a000000000000
+L 0.0 0.0 1.0 0.0 360.0 4025000c90fdb000 4050000000000000 c002000000000000
+L 1.0 2.0 3.0 0.0 0.0 4027000000000000 4050800000000000 bfcffffffffffff0
+L 1.0 2.0 3.0 30.0 45.0 402153602486e87c 40500eda3be00000 3f557e90dd0f7000
+L 1.0 2.0 3.0 -90.0 180.0 4023000000000000 4050c00000000000 bff4000000000002
+L 1.0 2.0 3.0 12.5 -73.25 402c03c6c413a7a9 4050536b14adc681 c009e8ffe6496838
+L 1.0 2.0 3.0 90.0 0.0 4027000000000000 404e800000000000 bff4000000000001
+L 1.0 2.0 3.0 0.0 360.0 40270025b2f91000 4050800000000000 bfd001921fb5fff8
+L -1.5 0.25 10.0 0.0 0.0 4022000000000001 4050100000000000 401b000000000000
+L -1.5 0.25 10.0 30.0 45.0 4009d1e50fd68d1c 404d9bbf4a600000 3ffe6ba4b3ad1a38
+L -1.5 0.25 10.0 -90.0 180.0 4028000000000000 4052800000000000 c008000000000003
+L -1.5 0.25 10.0 12.5 -73.25 403377e140a14241 404f0a43d906ac7d 3ff03ed218dc38a8
+L -1.5 0.25 10.0 90.0 0.0 4022000000000000 404b000000000000 c008000000000000
+L -1.5 0.25 10.0 0.0 360.0 4022007da9e8e000 4050100000000000 401b0025b2f91000
+L 0.0 1.0 0.0 0.0 0.0 4025000000000000 4050400000000000 c00a000000000000
+L 0.0 1.0 0.0 30.0 45.0 40244af5eb000000 4050376c6fc00000 c0072bd7ac000000
+L 0.0 1.0 0.0 -90.0 180.0 4025000000000000 4050000000000000 c002000000000000
+L 0.0 1.0 0.0 12.5 -73.25 40256a22eb800000 40503e7b7b800000 c009803cb4000000
+L 0.0 1.0 0.0 90.0 0.0 4025000000000000 4050000000000000 c002000000000000
+L 0.0 1.0 0.0 0.0 360.0 4025000000000000 4050400000000000 c00a000000000000
+W 0 0
+W 43340000 c3340000
+W c3340000 c3340000
+W 433e8000 c3298000
+W c4071000 4333c000
+W 43b3feb8 bc240000
+W 4e6e6b28 c2a00000
+W 80000000 80000000
+W c3348000 43338000
+W 4333fd71 4333fd71
+O = 7 2 2 2
+O = -7 2 2 2
+O = 7 -2 -2 -2
+O = -7 -2 -2 -2
+O = -2147483648 -1 -1 -1
+O = 2147483647 1 1 1
+O = 5 0 0 0
+O = -2147483648 3 3 3
+O = 6 3 3 3
+O = -6 3 3 3
+O += 7 2 9 2
+O += -7 2 -5 2
+O += 7 -2 5 -2
+O += -7 -2 -9 -2
+O += -2147483648 -1 2147483647 -1
+O += 2147483647 1 -2147483648 1
+O += 5 0 5 0
+O += -2147483648 3 -2147483645 3
+O += 6 3 9 3
+O += -6 3 -3 3
+O -= 7 2 5 2
+O -= -7 2 -9 2
+O -= 7 -2 9 -2
+O -= -7 -2 -5 -2
+O -= -2147483648 -1 -2147483647 -1
+O -= 2147483647 1 2147483646 1
+O -= 5 0 5 0
+O -= -2147483648 3 2147483645 3
+O -= 6 3 3 3
+O -= -6 3 -9 3
+O *= 7 2 14 2
+O *= -7 2 -14 2
+O *= 7 -2 -14 -2
+O *= -7 -2 14 -2
+O *= -2147483648 -1 -2147483648 -1
+O *= 2147483647 1 2147483647 1
+O *= 5 0 0 0
+O *= -2147483648 3 -2147483648 3
+O *= 6 3 18 3
+O *= -6 3 -18 3
+O /= 7 2 3 2
+O /= -7 2 -4 2
+O /= 7 -2 -4 -2
+O /= -7 -2 3 -2
+O /= -2147483648 -1 -2147483648 -1
+O /= 2147483647 1 2147483647 1
+O /= 5 0 err -1 arguments.operation.div0 []
+O /= -2147483648 3 -715827883 3
+O /= 6 3 2 3
+O /= -6 3 -2 3
+O %= 7 2 1 2
+O %= -7 2 1 2
+O %= 7 -2 -1 -2
+O %= -7 -2 -1 -2
+O %= -2147483648 -1 0 -1
+O %= 2147483647 1 0 1
+O %= 5 0 err -1 arguments.operation.div0 []
+O %= -2147483648 3 1 3
+O %= 6 3 0 3
+O %= -6 3 0 3
+O < 7 2 2 2
+O < -7 2 -7 2
+O < 7 -2 -2 -2
+O < -7 -2 -7 -2
+O < -2147483648 -1 -2147483648 -1
+O < 2147483647 1 1 1
+O < 5 0 0 0
+O < -2147483648 3 -2147483648 3
+O < 6 3 3 3
+O < -6 3 -6 3
+O > 7 2 7 2
+O > -7 2 2 2
+O > 7 -2 7 -2
+O > -7 -2 -2 -2
+O > -2147483648 -1 -1 -1
+O > 2147483647 1 2147483647 1
+O > 5 0 5 0
+O > -2147483648 3 3 3
+O > 6 3 6 3
+O > -6 3 3 3
+O >< 7 2 2 7
+O >< -7 2 2 -7
+O >< 7 -2 -2 7
+O >< -7 -2 -2 -7
+O >< -2147483648 -1 -1 -2147483648
+O >< 2147483647 1 1 2147483647
+O >< 5 0 0 5
+O >< -2147483648 3 3 -2147483648
+O >< 6 3 3 6
+O >< -6 3 3 -6

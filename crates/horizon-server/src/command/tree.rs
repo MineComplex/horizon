@@ -1,9 +1,11 @@
 //! The command tree, parsing, suggestions and usage text (`CommandDispatcher`, `CommandNode`,
 //! `CommandContextBuilder`, `ContextChain`).
 
+use uuid::Uuid;
+
 use super::{
-    ArgumentType, ArgumentValue, CommandError, StringRange, StringReader, Suggestions,
-    SuggestionsBuilder,
+    Angle, ArgumentType, ArgumentValue, CommandError, Coordinates, DoubleRange, IntRange,
+    ScoreOperation, StringRange, StringReader, Suggestions, SuggestionsBuilder, Swizzle, TeamColor,
 };
 
 /// A node of a [`CommandTree`]. Ids are indexes; nodes are never removed, so an id stays valid for the
@@ -16,6 +18,11 @@ impl NodeId {
 
     pub fn index(self) -> usize {
         self.0 as usize
+    }
+
+    /// The id of the node at `index` of [`CommandTree::nodes`].
+    pub(super) fn from_index(index: usize) -> Self {
+        Self(index as u32)
     }
 }
 
@@ -893,6 +900,70 @@ impl<'a, K: Copy> CommandContext<'a, K> {
     pub fn string(&self, name: &str) -> Option<&str> {
         match self.argument(name)? {
             ArgumentValue::String(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// A `block_pos`, `column_pos`, `vec3`, `vec2` or `rotation` argument, unresolved
+    /// (`Vec3Argument.getCoordinates`); [`Coordinates`] resolves it against a source.
+    pub fn coordinates(&self, name: &str) -> Option<Coordinates> {
+        match self.argument(name)? {
+            ArgumentValue::Coordinates(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    /// An `angle` argument; [`Angle::resolve`] gives the degrees.
+    pub fn angle(&self, name: &str) -> Option<Angle> {
+        match self.argument(name)? {
+            ArgumentValue::Angle(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn swizzle(&self, name: &str) -> Option<Swizzle> {
+        match self.argument(name)? {
+            ArgumentValue::Swizzle(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn int_range(&self, name: &str) -> Option<IntRange> {
+        match self.argument(name)? {
+            ArgumentValue::IntRange(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn float_range(&self, name: &str) -> Option<DoubleRange> {
+        match self.argument(name)? {
+            ArgumentValue::FloatRange(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    /// A `time` argument, in ticks (stored as an integer, as vanilla does).
+    pub fn time(&self, name: &str) -> Option<i32> {
+        self.integer(name)
+    }
+
+    pub fn uuid(&self, name: &str) -> Option<Uuid> {
+        match self.argument(name)? {
+            ArgumentValue::Uuid(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn operation(&self, name: &str) -> Option<ScoreOperation> {
+        match self.argument(name)? {
+            ArgumentValue::Operation(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn team_color(&self, name: &str) -> Option<TeamColor> {
+        match self.argument(name)? {
+            ArgumentValue::TeamColor(v) => Some(*v),
             _ => None,
         }
     }

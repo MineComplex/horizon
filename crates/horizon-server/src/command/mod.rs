@@ -25,13 +25,16 @@
 //! ambiguity search.
 
 mod argument;
+mod coordinates;
 mod error;
 pub mod network;
 mod reader;
 mod suggestion;
 mod tree;
+mod values;
 
 pub use argument::{ArgumentType, ArgumentValue, StringKind};
+pub use coordinates::{CommandOrigin, Coordinates, WorldCoordinate, local_position};
 pub use error::CommandError;
 pub use reader::StringReader;
 pub use suggestion::{Suggestion, Suggestions, SuggestionsBuilder, compare_strings_ignore_case};
@@ -39,6 +42,7 @@ pub use tree::{
     CommandContext, CommandTree, ContextChain, Node, NodeBuilder, NodeId, NodeKind, ParseResults,
     ParsedArgument, ParsedNode, argument, literal,
 };
+pub use values::{Angle, DoubleRange, IntRange, ScoreOperation, Swizzle, TeamColor, wrap_degrees};
 
 /// A range of the input, in bytes (`StringRange`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

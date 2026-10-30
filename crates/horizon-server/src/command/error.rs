@@ -186,6 +186,35 @@ impl CommandError {
     pub fn dispatcher_parse_exception(message: &str) -> Self {
         Self::new("command.exception", vec![message.into_arg()])
     }
+
+    // Minecraft's argument types.
+    pub fn pos_missing_double() -> Self {
+        Self::new("argument.pos.missing.double", Vec::new())
+    }
+    pub fn pos_missing_int() -> Self {
+        Self::new("argument.pos.missing.int", Vec::new())
+    }
+    pub fn pos_mixed() -> Self {
+        Self::new("argument.pos.mixed", Vec::new())
+    }
+    pub fn pos3d_incomplete() -> Self {
+        Self::new("argument.pos3d.incomplete", Vec::new())
+    }
+    pub fn pos2d_incomplete() -> Self {
+        Self::new("argument.pos2d.incomplete", Vec::new())
+    }
+    pub fn rotation_incomplete() -> Self {
+        Self::new("argument.rotation.incomplete", Vec::new())
+    }
+    pub fn time_tick_count_too_low(ticks: i32, min: i32) -> Self {
+        Self::new(
+            "argument.time.tick_count_too_low",
+            vec![min.into_arg(), ticks.into_arg()],
+        )
+    }
+    pub fn color_invalid(name: &str) -> Self {
+        Self::new("argument.color.invalid", vec![name.into_arg()])
+    }
 }
 
 /// `getMessage`: the translated message, then ` at position N: <context>` when it has a position.
