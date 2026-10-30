@@ -1,4 +1,4 @@
-//! The `.properties` files the server keeps (`server.properties`, `eula.txt`), as `Settings.loadFromFile`
+//! The `.properties` files the server keeps (`server.properties`), as `Settings.loadFromFile`
 //! and `Properties.store` handle them.
 //!
 //! Reading uses the `java-properties` crate, which parses the format as the JDK's `Properties.load`

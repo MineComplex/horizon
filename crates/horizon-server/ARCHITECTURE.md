@@ -66,7 +66,7 @@ for unique file names). Unused crates after these changes (`compact_str`, `parki
 Done (each checked against Java 25 running the real 26.3 classes, with Paper's/Leaf's changes applied
 from their patches): the command tree and its packet (`command`, `command/network.rs`);
 `.properties` files and Leaf's `server.properties` (`server/properties_file.rs`,
-`server/server_properties.rs`; Leaf deletes the EULA check, so there is no `eula.txt`); `/tick` and the
+`server/server_properties.rs`; no EULA check and no `eula.txt`: Leaf deletes it, and the user decided to keep it out); `/tick` and the
 tick loop's timing with Paper's TPS/MSPT (`server/tick_rate.rs`, `server/tick_loop.rs`); paletted
 containers with Moonrise's save form (`world/chunk`); the block state table read from the data
 generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`), and each state's cached
