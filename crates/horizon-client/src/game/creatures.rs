@@ -535,6 +535,45 @@ impl crate::game::Game<'_> {
             passenger: self.riding.is_some(),
         })
     }
+    /// The `mobs` command without the server: the mobs within `radius` as
+    /// this client has them (what the server sent of them; no AI here).
+    pub(super) fn control_mobs(&self, radius: f64) -> serde_json::Value {
+        let center = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
+        let list: Vec<serde_json::Value> = self
+            .mobs
+            .iter()
+            .filter(|m| m.distance_sqr(center) <= radius * radius)
+            .map(|m| {
+                let mut state = serde_json::json!({
+                    "id": m.id,
+                    "kind": m.kind.id,
+                    "pos": [m.position.x, m.position.y, m.position.z],
+                    "health": m.health,
+                    "baby": m.is_baby(),
+                    "target": m.ai.target.map(|t| format!("{t:?}")),
+                    "held": m.extra.main_hand.as_deref(),
+                    "mount": m.extra.mount,
+                    "rider": m.extra.rider,
+                    "saddled": m.extra.saddled,
+                    "on_ground": m.on_ground,
+                    "variant": m.extra.variant,
+                    "color": m.extra.color,
+                    "sheared": m.extra.sheared,
+                    "burning": m.fire_ticks > 0,
+                    "size": m.extra.size,
+                    "leash": m.extra.leash.map(|h| format!("{h:?}")),
+                    "tame": m.extra.tame,
+                    "sitting": m.extra.sitting,
+                    "chested": m.extra.chested,
+                    "passenger": m.extra.passenger,
+                });
+                state["guardian_beam"] =
+                    serde_json::json!(horizon_client::mobs::guardian::beam(m, 0.0));
+                state
+            })
+            .collect();
+        serde_json::json!({ "count": self.mobs.len(), "near": list })
+    }
     pub(super) fn mob_world_base<'s>(&'s self, others: &'s [Seen]) -> MobWorld<'s> {
         let (rain, thunder) = self.world.weather.levels(1.0);
         // Level.canHaveWeather: only the overworld's rain and thunder levels

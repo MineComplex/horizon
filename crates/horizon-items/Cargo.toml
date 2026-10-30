@@ -9,7 +9,7 @@ description = "Blocks and items as the client knows them: block facts, item stac
 [dependencies]
 horizon-client-core = { path = "../horizon-client-core" }
 horizon-core = { path = "../horizon-core" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["raw_value"] }
 

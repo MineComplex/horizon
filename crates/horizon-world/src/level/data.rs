@@ -1114,6 +1114,7 @@ fn build_with_gameplay<G: GameplayStateSource>(
         liquid_blocks,
         dynamic,
         occlusion_cache: Default::default(),
+        #[cfg(feature = "generation")]
         growth: Default::default(),
     })
 }

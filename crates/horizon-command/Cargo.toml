@@ -9,7 +9,7 @@ description = "Commands (Brigadier): the vanilla command tree, argument types, s
 [dependencies]
 horizon-client-core = { path = "../horizon-client-core" }
 horizon-protocol = { path = "../horizon-protocol" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 
 [lints]
 workspace = true

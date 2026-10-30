@@ -219,6 +219,54 @@ pub fn family(s: Species) -> Family {
         _ => Family::Generic,
     }
 }
+/// What a mob's constructor sets that a client sees or reads before the
+/// server's entity data arrives: the parts of [`register`] that are not AI
+/// (no goals, controls, brains or server timers). [`Mob::new_seen`] runs it;
+/// a server's mobs get it from `register` itself, in its own order.
+pub fn seen_state(m: &mut Mob) {
+    use Species as S;
+    if super::raider::is_raider(m.species()) {
+        m.extra.raider = Some(Box::default());
+    }
+    match m.species() {
+        S::Squid | S::GlowSquid => {
+            let speed = 1.0 / (m.random.next_float() + 1.0) * 0.2;
+            m.anim.v[aquatic::TENTACLE_SPEED] = speed;
+        }
+        S::Axolotl => m.air = super::axolotl::MAX_AIR,
+        S::Dolphin => m.air = 4800,
+        S::Bat => m.extra.flag = true,
+        S::Bee => m.extra.bee = Some(Box::default()),
+        S::Warden => m.extra.warden = Some(Box::default()),
+        S::Guardian | S::ElderGuardian => {
+            let t = m.random.next_float();
+            m.anim.v[super::guardian::TAIL] = t;
+            m.anim.vo[super::guardian::TAIL] = t;
+        }
+        S::Shulker => {
+            m.no_gravity = true;
+            m.yaw = 0.0;
+            m.body_yaw = 0.0;
+            m.previous_body_yaw = 0.0;
+            if m.extra.color == 0 && m.extra.variant == 0 {
+                m.extra.color = super::shulker::NO_COLOR;
+            }
+        }
+        S::Vex => {
+            m.no_gravity = true;
+            m.extra.main_hand = Some("minecraft:iron_sword".into());
+        }
+        S::Wolf | S::Cat => m.extra.color = super::tame::RED,
+        S::Villager if m.extra.variant3 == 0 => m.extra.variant3 = 1,
+        S::Slime | S::MagmaCube => super::cube::set_size(m, 1),
+        S::SulfurCube => {
+            m.extra.vector[0] = f64::from(180.0 * m.yaw / std::f32::consts::PI);
+            super::sulfur_cube::set_size(m, 1, false);
+            m.health = m.attrs.max_health;
+        }
+        _ => {}
+    }
+}
 pub fn register(m: &mut Mob) {
     // Raider subclasses call super.registerGoals() first.
     super::raider::register(m);

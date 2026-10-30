@@ -566,6 +566,7 @@ pub struct Behaviours {
     /// Uncached (position- or block-entity-dependent) collision shapes.
     dynamic: HashMap<BlockStateId, crate::dynamic_support::DynamicSupport>,
     occlusion_cache: Mutex<HashMap<(i32, i32, u8), bool>>,
+    #[cfg(feature = "generation")]
     growth: growth::Growth,
 }
 

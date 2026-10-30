@@ -21,7 +21,7 @@ const TENTACLE_MOVEMENT: usize = 0;
 pub const TENTACLE_ANGLE: usize = 1;
 const X_BODY_ROT: usize = 2;
 const Z_BODY_ROT: usize = 3;
-const TENTACLE_SPEED: usize = 4;
+pub(super) const TENTACLE_SPEED: usize = 4;
 const ROTATE_SPEED: usize = 5;
 
 /// `Squid.spawnInk`: the squirt sound and 30 ink particles shot from under

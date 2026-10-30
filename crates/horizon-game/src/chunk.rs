@@ -166,7 +166,7 @@ pub struct Chunk {
     pub structure_refs: Vec<(Arc<str>, (i32, i32))>,
     /// The starts generation made in this chunk (`structures.starts`), saved
     /// with the state their placement has reached by then.
-    pub structure_starts: Vec<Arc<horizon_world::worldgen::structure::start::StructureStart>>,
+    pub structure_starts: Vec<Arc<dyn horizon_world::structure_save::SavedStructureStart>>,
 }
 impl Chunk {
     pub fn empty(x: i32, z: i32) -> Self {

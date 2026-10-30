@@ -9,7 +9,7 @@ description = "The dedicated server's vanilla files: server.properties, eula.txt
 [dependencies]
 horizon-core = { path = "../horizon-core" }
 horizon-protocol = { path = "../horizon-protocol" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 log = "0.4"
 
 [lints]

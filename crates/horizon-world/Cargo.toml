@@ -6,6 +6,14 @@ license.workspace = true
 rust-version.workspace = true
 description = "Horizon vanilla world data, NBT, regions and chunk storage"
 
+[features]
+default = ["generation"]
+# Growth that places generation's features on a live level (saplings, bone
+# meal on grass and mushrooms, nether fungi, jigsaw-placing items). A server
+# grows them; a client, which generates nothing, builds without it and never
+# links generation's features.
+generation = []
+
 [dependencies]
 libm = "=0.2.16"
 serde_json = { version = "1.0.151", features = ["raw_value"] }

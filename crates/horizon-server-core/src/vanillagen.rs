@@ -225,7 +225,11 @@ impl VanillaTerrain {
             .into_iter()
             .map(|(id, start, _, _)| (Arc::from(id), (start.x, start.z)))
             .collect();
-        out.structure_starts = chunk.own_starts();
+        out.structure_starts = chunk
+            .own_starts()
+            .into_iter()
+            .map(|s| s as Arc<dyn horizon_world::structure_save::SavedStructureStart>)
+            .collect();
         let mut values = Box::new([0u32; 4096]);
         for si in 0..SECTIONS as i32 {
             let base = MIN_Y + si * 16;

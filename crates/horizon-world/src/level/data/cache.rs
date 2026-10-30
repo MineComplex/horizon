@@ -689,6 +689,7 @@ impl Snapshot {
             liquid_blocks,
             dynamic,
             occlusion_cache: Default::default(),
+            #[cfg(feature = "generation")]
             growth: Default::default(),
         })
     }

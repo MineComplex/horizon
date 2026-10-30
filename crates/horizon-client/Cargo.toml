@@ -19,7 +19,7 @@ horizon-game = { path = "../horizon-game" }
 # The server thread ahead of the workers (MinecraftServer.spin's Thread.setPriority).
 horizon-threads = { path = "../horizon-threads" }
 horizon-hdr = { path = "../horizon-hdr" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 horizon-protocol = { path = "../horizon-protocol" }
 # Shader packs: reading them and turning their GLSL into naga modules.
 horizon-shaders = { path = "../horizon-shaders" }

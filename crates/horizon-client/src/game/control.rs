@@ -474,7 +474,12 @@ impl Game<'_> {
             "mobs" => {
                 self.require_world()?;
                 let radius: f64 = words.get(1).map_or(Ok(64.0), |r| r.parse())?;
-                Ok(Some(self.server_reply(&format!("mobs {radius}"))?))
+                // The server's own view (goals, paths) when this client has
+                // its control endpoint, else what the client was sent.
+                if let Some(reply) = self.ask_server(&format!("mobs {radius}")) {
+                    return Ok(Some(reply?));
+                }
+                Ok(Some(self.control_mobs(radius)))
             }
             "hurtlog" => {
                 self.require_world()?;

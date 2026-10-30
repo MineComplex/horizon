@@ -111,6 +111,7 @@ pub mod server_player_combat;
 pub mod server_player_damage;
 pub mod stored_consume;
 pub mod stored_effect_attributes;
+pub mod structure_save;
 pub mod suffocation;
 pub mod swimming;
 pub mod synced_floats;

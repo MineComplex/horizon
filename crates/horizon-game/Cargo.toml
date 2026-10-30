@@ -11,7 +11,7 @@ horizon-client-core = { path = "../horizon-client-core" }
 horizon-command = { path = "../horizon-command" }
 horizon-core = { path = "../horizon-core" }
 horizon-threads = { path = "../horizon-threads" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 # Blocks and items below gameplay (re-exported: `horizon_game::items`...).
 horizon-items = { path = "../horizon-items" }
 horizon-assets = { path = "../horizon-assets" }

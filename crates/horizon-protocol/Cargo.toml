@@ -8,7 +8,7 @@ description = "Horizon's Minecraft Java Edition 26.3 network protocol (version 7
 
 [dependencies]
 horizon-core = { path = "../horizon-core" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
 serde_json = "1.0.151"
 # The shared secret and RSA padding (OS randomness) and the server hash.

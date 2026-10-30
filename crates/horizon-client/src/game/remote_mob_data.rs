@@ -467,7 +467,7 @@ mod tests {
     fn mob(kind: &str) -> Option<Mob> {
         let types = horizon_client::mobs::MobTypes::load(&root()).ok()?;
         let t = std::sync::Arc::new(types.types.get(kind)?.clone());
-        let mut m = Mob::new(1, t, horizon_core::geometry::Vec3::ZERO, 0.0);
+        let mut m = Mob::new_seen(1, t, horizon_core::geometry::Vec3::ZERO, 0.0);
         client_defaults(&mut m);
         Some(m)
     }
@@ -552,7 +552,7 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
         let position = Vec3::new(1.0, 2.25, 3.0);
         let velocity = Vec3::new(0.2, 0.3, 0.4);
-        let mut m = Mob::new(
+        let mut m = Mob::new_seen(
             1,
             Arc::new(types.types.remove("minecraft:bat").unwrap()),
             position,

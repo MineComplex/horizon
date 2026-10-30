@@ -3269,7 +3269,7 @@ impl crate::game::Game<'_> {
             });
         }
         if let Some(t) = mob_type {
-            let mut mob = Mob::new(id as u32, t, at, head);
+            let mut mob = Mob::new_seen(id as u32, t, at, head);
             super::remote_mob_data::client_defaults(&mut mob);
             (mob.yaw, mob.previous_yaw) = (yaw, yaw);
             (mob.head_pitch, mob.previous_head_pitch) = (pitch, pitch);

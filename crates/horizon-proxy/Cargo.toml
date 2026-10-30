@@ -8,7 +8,7 @@ description = "Horizon's proxy: MineComplex's Velocity fork in Rust (26.3 only, 
 
 [dependencies]
 horizon-protocol = { path = "../horizon-protocol" }
-horizon-world = { path = "../horizon-world" }
+horizon-world = { path = "../horizon-world", default-features = false }
 # Modern forwarding's HMAC-SHA256 (both already in the lockfile).
 hmac = "0.12"
 sha2 = "0.10"

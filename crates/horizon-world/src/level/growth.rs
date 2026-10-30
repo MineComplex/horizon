@@ -4,22 +4,33 @@
 use super::{Behaviours, LevelAccess, LevelEvent, Sim, feature_world::LevelFeatureWorld, flags};
 use crate::{registry::BlockStateId, worldgen::live::LiveFeatures};
 use horizon_core::{position::BlockPos, random::RandomSource};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
+#[cfg(feature = "generation")]
+use std::sync::OnceLock;
 
 /// Runtime extensions of [`Behaviours`] that depend on the worldgen bundle.
+#[cfg(feature = "generation")]
 #[derive(Default)]
 pub struct Growth {
+    #[cfg(feature = "generation")]
     features: OnceLock<Arc<LiveFeatures>>,
 }
 
 impl Behaviours {
     /// Install the live feature registry used by sapling growth and bone meal.
     /// Without it, saplings report [`LevelEvent::GrowTree`] instead of growing.
+    #[cfg(feature = "generation")]
     pub fn set_live_features(&self, features: Arc<LiveFeatures>) -> bool {
         self.growth.features.set(features).is_ok()
     }
+    #[cfg(feature = "generation")]
     pub fn live_features(&self) -> Option<&Arc<LiveFeatures>> {
         self.growth.features.get()
+    }
+    /// Without the `generation` feature nothing grows from features.
+    #[cfg(not(feature = "generation"))]
+    pub fn live_features(&self) -> Option<&Arc<LiveFeatures>> {
+        None
     }
     /// `JigsawPlacement.generateJigsaw`: `assemble` builds the pieces (from
     /// the generation context's own random), then each piece is placed into

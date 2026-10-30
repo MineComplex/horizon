@@ -1869,7 +1869,25 @@ impl<'a> Teams<'a> {
     }
 }
 impl Mob {
+    /// A mob as a server makes it: its body ([`Mob::new_seen`]), then its AI
+    /// (`Mob.registerGoals`, the move and look controls, the navigation).
     pub fn new(id: u32, kind: Arc<MobType>, position: Vec3, yaw: f32) -> Self {
+        let mut mob = Self::body(id, kind, position, yaw);
+        // The PathNavigation constructor: the base follow range.
+        mob.ai.nav.max_visited_nodes = (mob.kind.follow_range * 16.0).floor() as i32;
+        ai::register(&mut mob);
+        mob
+    }
+    /// A mob as a client sees it: the body, data and animations, with what
+    /// its constructor sets that a client sees ([`ai::seen_state`]), and no
+    /// AI (the server runs the mob; a client draws what it is sent).
+    pub fn new_seen(id: u32, kind: Arc<MobType>, position: Vec3, yaw: f32) -> Self {
+        let mut mob = Self::body(id, kind, position, yaw);
+        ai::seen_state(&mut mob);
+        mob
+    }
+    /// The body of a mob, before its constructor's own state and its AI.
+    fn body(id: u32, kind: Arc<MobType>, position: Vec3, yaw: f32) -> Self {
         let mut random = LegacyRandom::new(
             i64::from(id).wrapping_mul(0x5DEE_CE66D)
                 ^ (position.x.to_bits() as i64)
@@ -1966,9 +1984,6 @@ impl Mob {
                 | Species::Fox
                 | Species::Panda
         );
-        // The PathNavigation constructor: the base follow range.
-        mob.ai.nav.max_visited_nodes = (mob.kind.follow_range * 16.0).floor() as i32;
-        ai::register(&mut mob);
         mob
     }
     /// `Mob.canPickUpLoot`, with the overrides: an allay that holds

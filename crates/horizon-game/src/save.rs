@@ -1207,11 +1207,11 @@ pub fn encode_with(
             .structure_starts
             .iter()
             .filter_map(|start| match start.save() {
-                Some(tag) => Some((start.name.as_str().into(), tag)),
+                Some(tag) => Some((start.name().into(), tag)),
                 None => {
                     log::warn!(
                         "Horizon: structure start {} not saved: one of its pieces cannot be",
-                        start.name
+                        start.name()
                     );
                     None
                 }

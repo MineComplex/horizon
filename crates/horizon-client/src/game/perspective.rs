@@ -480,7 +480,7 @@ impl crate::game::Game<'_> {
             let Some(kind) = self.res.player_type().clone() else {
                 return;
             };
-            self.player_model = Some(Mob::new(0, kind, p.position, self.yaw));
+            self.player_model = Some(Mob::new_seen(0, kind, p.position, self.yaw));
         }
         let crouching = p.pose == Pose::Crouching;
         let (position, flying) = (p.position, p.flying || p.fall_flying);
@@ -786,7 +786,7 @@ mod preview_tests {
         let root = std::path::PathBuf::from(
             std::env::var_os("HORIZON_TEST_RESOURCES").expect("HORIZON_TEST_RESOURCES"),
         );
-        let mut m = Mob::new(1, player_type(&root).unwrap(), Vec3::ZERO, 0.0);
+        let mut m = Mob::new_seen(1, player_type(&root).unwrap(), Vec3::ZERO, 0.0);
         for (id, expected) in [("minecraft:player", 0.9375), ("minecraft:zombie", 1.0)] {
             Arc::make_mut(&mut m.kind).id = id.into();
             let transform =
