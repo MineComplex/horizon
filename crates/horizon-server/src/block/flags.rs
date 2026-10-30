@@ -124,6 +124,10 @@ pub struct BlockStateData {
     shapes: Vec<VoxelShape>,
     fluid_names: Vec<Box<str>>,
     instrument_names: Vec<Box<str>>,
+    /// Bit `i` set: fluid `i` is `minecraft:empty` (`FluidState.isEmpty`).
+    empty_fluids: u8,
+    /// Bit `i` set: fluid `i` ticks randomly (`Fluid.isRandomlyTicking`: only `LavaFluid` does).
+    random_ticking_fluids: u8,
 }
 
 /// Where the prepare tool writes the file, relative to the server directory.
@@ -253,10 +257,22 @@ impl BlockStateData {
         if !r.bytes.is_empty() {
             return Err(format_error("trailing bytes"));
         }
+        let fluid_mask = |pred: fn(&str) -> bool| {
+            fluid_names
+                .iter()
+                .enumerate()
+                .filter(|(i, name)| *i < 8 && pred(name))
+                .fold(0u8, |mask, (i, _)| mask | 1 << i)
+        };
+        let empty_fluids = fluid_mask(|name| name == "minecraft:empty");
+        let random_ticking_fluids =
+            fluid_mask(|name| name == "minecraft:lava" || name == "minecraft:flowing_lava");
         let mut data = BlockStateData {
             shapes,
             fluid_names,
             instrument_names,
+            empty_fluids,
+            random_ticking_fluids,
             ..Default::default()
         };
         for rec in records.chunks_exact(RECORD) {
@@ -396,5 +412,33 @@ impl std::fmt::Debug for BlockStateData {
         f.debug_struct("BlockStateData")
             .field("shapes", &self.shape_count())
             .finish_non_exhaustive()
+    }
+}
+
+/// What chunk sections count (`LevelChunkSection.recalcBlockCounts`, Moonrise's special-colliding
+/// count): air, random ticking, a fluid, a randomly ticking fluid (lava), special colliding.
+impl crate::world::chunk::SectionFlags for BlockStateData {
+    #[inline]
+    fn section_flags(&self, state: BlockState) -> crate::world::chunk::StateFlags {
+        use crate::world::chunk::StateFlags;
+        let flags = self.flags(state);
+        let fluid = 1u8 << (Self::at(&self.fluid, state) & 7);
+        let mut out = 0;
+        if flags & FLAG_AIR != 0 {
+            out |= StateFlags::AIR;
+        }
+        if flags & FLAG_RANDOMLY_TICKING != 0 {
+            out |= StateFlags::RANDOMLY_TICKING;
+        }
+        if self.empty_fluids & fluid == 0 {
+            out |= StateFlags::HAS_FLUID;
+        }
+        if self.random_ticking_fluids & fluid != 0 {
+            out |= StateFlags::FLUID_RANDOMLY_TICKING;
+        }
+        if flags & FLAG_SPECIAL_COLLIDING != 0 {
+            out |= StateFlags::SPECIAL_COLLIDING;
+        }
+        StateFlags(out)
     }
 }

@@ -99,6 +99,19 @@ pub(crate) fn synthetic(count: u32) -> Vec<u8> {
     out
 }
 
+/// The flags chunk sections count with, from the synthetic file: air; stone; a waterlogged slab
+/// (water); flowing water. No lava there, so nothing ticks as a fluid.
+#[test]
+fn section_flags_from_the_table() {
+    use crate::world::chunk::{SectionFlags, StateFlags};
+    let data = BlockStateData::from_bytes(&synthetic(4), 4).unwrap();
+    let flags = |id| data.section_flags(BlockState(id)).0;
+    assert_eq!(flags(0), StateFlags::AIR);
+    assert_eq!(flags(1), 0);
+    assert_eq!(flags(2), StateFlags::HAS_FLUID);
+    assert_eq!(flags(3), StateFlags::HAS_FLUID);
+}
+
 #[test]
 fn synthetic_round_trip() {
     let data = BlockStateData::from_bytes(&synthetic(4), 4).unwrap();
@@ -274,6 +287,18 @@ fn real_26_3_state_data() {
     assert_eq!(flowing("3"), ("minecraft:flowing_water".into(), 5, false));
     assert_eq!(flowing("9"), ("minecraft:flowing_water".into(), 8, true));
     assert_eq!(d.light_emission(plain("minecraft:lava")), 15);
+    {
+        use crate::world::chunk::{SectionFlags, StateFlags};
+        let lava = d.section_flags(plain("minecraft:lava"));
+        assert!(lava.has(StateFlags::HAS_FLUID) && lava.has(StateFlags::FLUID_RANDOMLY_TICKING));
+        let water = d.section_flags(plain("minecraft:water"));
+        assert!(water.has(StateFlags::HAS_FLUID) && !water.has(StateFlags::FLUID_RANDOMLY_TICKING));
+        assert!(
+            d.section_flags(plain("minecraft:grass_block"))
+                .has(StateFlags::RANDOMLY_TICKING)
+        );
+        assert_eq!(d.section_flags(plain("minecraft:stone")), StateFlags(0));
+    }
     let logged = d.fluid(state("minecraft:oak_stairs", &[("waterlogged", "true")]));
     assert_eq!(d.fluid_name(logged.fluid), "minecraft:water");
 
