@@ -42,7 +42,7 @@ joins the overworld of an existing world and receives its chunks (checked with t
 world made by vanilla 26.3: 25 chunks, player file saved, clean `stop`).
 
 Ported and checked against the real 26.3 classes on Java 25 (Paper/Leaf changes applied from their
-patches, because Leaf itself can't be built here):
+patches):
 
 | Area | Modules |
 |---|---|
@@ -84,10 +84,6 @@ message default is hard-coded); comments admins add to YAML files are dropped on
 - **Prepare step** (data the server reads at run time, never committed):
   `python3 tools/leaf_server_reports.py --jar <server jar> [--libraries <dir>] --server-dir <dir> --java <java 25>`
   writes `<dir>/cache/vanilla-26.3/reports/` and `block_states.bin`.
-- **Known environment problems**: Maven Central answers this kind of container with HTTP 429, so
-  Leaf's `applyAllPatches` fails at its dependency download (Paper's patches were applied before it
-  failed). Pointing Gradle at Google's Maven Central mirror needs the user's permission (a global init
-  script was refused once). GitHub over curl returns 403, but `git` works.
 
 ## 3. How to work
 

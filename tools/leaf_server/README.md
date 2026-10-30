@@ -56,6 +56,5 @@ gets a line in `setup_reference.sh` and a row above.
 - Vanilla alone, decompiled: Vineflower 1.11.1 on the server jar into a scratch folder, never into a repo
   (`crates/horizon-server/CONTINUE.md` §2).
 
-The oracles run only the vanilla jar, not a built Leaf (Leaf's build has failed on Maven Central's rate
-limit in containers), so Paper/Leaf/Moonrise behaviour that is not in the vanilla jar is checked against
-these sources and marked as derived from them.
+The oracles run only the vanilla jar, not a built Leaf, so Paper/Leaf/Moonrise behaviour that is not in
+the vanilla jar is checked against these sources and marked as derived from them.

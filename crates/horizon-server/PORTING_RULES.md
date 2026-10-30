@@ -188,6 +188,35 @@ replacements; determine which existing implementations can be reused; create an 
 begin replacing Java-specific architecture with native Rust implementations; preserve existing functionality
 throughout migration. Do not blindly delete existing code. Do not perform an uncontrolled full-project rewrite.
 Keep the project buildable at each reasonable migration milestone.
+Maximum Reuse of Existing Rust Crates and Implementations
+CRITICAL: Do not reinvent functionality that already exists in the Rust ecosystem.
+The Horizon project must reuse existing, proven Rust implementations wherever possible instead of mechanically porting Java code or rewriting functionality from scratch.
+
+### 15 Search Before Implementing
+
+Before implementing or porting any component:
+Search the existing Horizon workspace for equivalent functionality.
+Inspect currently installed Cargo dependencies.
+Search crates.io, docs.rs and relevant open-source Rust repositories.
+Identify existing implementations that provide the required functionality.
+Compare their behavior with the original Leaf 26.3 implementation.
+Prefer reusing existing implementations when compatibility can be verified.
+Write custom code only for functionality that is genuinely Minecraft-specific or not adequately covered by existing crates.
+Never implement functionality from scratch without first checking whether a suitable Rust implementation already exists.
+
+### 16 Avoid Duplicate Implementations
+
+Horizon must not contain multiple independent implementations of the same functionality without a justified reason.
+Examples:
+Multiple VarInt implementations.
+Multiple NBT parsers.
+Multiple packet buffer abstractions.
+Multiple UUID implementations.
+Multiple compression wrappers.
+Multiple Minecraft coordinate representations.
+Multiple block-state registries.
+Prefer a single well-defined implementation per responsibility.
+Refactor callers to use shared native Rust components
 
 ## Final Instructions
 
@@ -199,3 +228,5 @@ plugins. We are NOT deciding the native plugin architecture yet.
 **REPLACE JAVA DEPENDENCIES, DO NOT REIMPLEMENT THE JAVA ECOSYSTEM.**
 **USE RUST OWNERSHIP, NOT JAVA REFERENCE SEMANTICS.**
 **PRIORITIZE CORRECTNESS, MEMORY SAFETY, PERFORMANCE AND MAINTAINABILITY.**
+**REUSE VERIFIED RUST CODE FIRST. ADAPT WHEN NECESSARY. IMPLEMENT FROM SCRATCH ONLY WHEN JUSTIFIED.**
+**HORIZON MUST BE A NATIVE RUST MINECRAFT SERVER, NOT A COLLECTION OF REWRITTEN JAVA LIBRARIES**

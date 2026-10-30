@@ -45,6 +45,6 @@ Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops/ba
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
-- Leaf/Paper can't be built here: Paper/Leaf/Moonrise-only behaviour is derived from sources.
+- Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
 - Stand-ins: no movement checks; default game rules/world border/clocks; only the overworld; no block
   entities in chunk packets; no ops/whitelist/bans; `bukkit.yml` not read; YAML comments dropped on save.
