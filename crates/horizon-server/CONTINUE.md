@@ -1,7 +1,8 @@
 # Continue the Leaf 26.3 → Rust port (prompt for Claude Code)
 
-Paste this file (or point Claude Code at it) to continue the work. It assumes WP1 of the world
-generator (noise, density program, worldgen data, proto-chunk) has landed; check `git log` first.
+Paste this file (or point Claude Code at it) to continue the work. WP1 of the world generator (noise,
+density program, worldgen data, proto-chunk) landed in `70afcbbe8` but is **not fully verified yet**
+(see section 4.A step 0); check `git log` first.
 
 ---
 
@@ -56,7 +57,7 @@ patches, because Leaf itself can't be built here):
 | Chunks: paletted containers (Moonrise save form), sections, 26.3 chunk NBT, `LevelChunk` + heightmaps | `src/world/chunk/`, `src/world/level_chunk.rs` |
 | World storage: `session.lock`, `level.dat`, region I/O workers (LZ4 default) | `src/world/{level_storage,chunk_io}.rs` |
 | Join path: levels, players, player files (`players/data/<uuid>.dat`) | `src/server/{level,player,player_data}.rs` |
-| World generator WP1 (if merged): noise, density program, worldgen data, proto-chunk | `src/worldgen/` |
+| World generator WP1 (`70afcbbe8`, unit tests only — see 4.A step 0): noise, density program, worldgen data, proto-chunk | `src/worldgen/` |
 
 Known stand-ins (documented in the code): chunks held by a per-player refcount instead of Moonrise
 tickets; no movement checks; default game rules/world border/clocks; only the overworld; no block
@@ -106,7 +107,14 @@ message default is hard-coded); comments admins add to YAML files are dropped on
 
 ## 4. Next steps, in order
 
-### A. World generator (after WP1) — see `docs/worldgen-plan.md`
+### A. World generator — see `docs/worldgen-plan.md`
+0. **Finish verifying WP1 first** (`src/worldgen/`, commit `70afcbbe8`). Its agent was stopped after
+   its own unit tests passed: `cargo test -p horizon-server` and `cargo clippy -p horizon-server
+   --all-targets` have not been run on the branch since it was merged, and the bit-exact check against
+   Java has not run. Run both, then the density oracle
+   `mods/horizon/src/test/java/dev/horizonlab/leafserver/LeafDensityOracle.java` on the real 26.3 jar and
+   its `#[ignore]` Rust test (see the oracle's header for the env var), fix any difference, and measure
+   the density program against a plain copy of Horizon's `Arc<dyn>` graph, as WP1 asked.
 1. In parallel: **WP2** biomes, climate, terrain fill, aquifer; **WP4** features, placement, trees (split
    4a/4b if two agents); **WP5** structures (templates from the jar, Spigot's structure salts, structure
    start NBT). Each copies Horizon's code from `crates/horizon-world/src/worldgen/` (drop Horizon's
