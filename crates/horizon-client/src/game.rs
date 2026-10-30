@@ -172,7 +172,7 @@ use horizon_client::{
     mouse::{LookOptions, MouseLook, Rotation},
     particles::Particle,
     render_assets::RenderAssets,
-    save::{Level, SaveDir},
+    save::Level,
     settings::Settings,
     sprint::Keys,
     streaming::{Streaming, WorkerContext},
@@ -1357,7 +1357,6 @@ struct Game<'a> {
     /// What ends the game with an error; kept as it is, so main can tell a debug crash.
     error: Option<Box<dyn std::error::Error>>,
     message: Option<(String, Instant)>,
-    save: Arc<SaveDir>,
     level: Level,
     /// The sounds the game decided to play (seeds, the players' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
@@ -8072,11 +8071,6 @@ impl<'a> Game<'a> {
         );
         streaming.paused = true;
         let level = Level::default();
-        let save = Arc::new(SaveDir::new(
-            std::env::current_dir()?
-                .join("saves")
-                .join(".horizon-title"),
-        ));
         let prepared = prepared
             .map(Ok)
             .unwrap_or_else(|| GameCpuResources::load(&root))?;
@@ -8154,7 +8148,6 @@ impl<'a> Game<'a> {
             ticks: 0,
             error: None,
             message: None,
-            save,
             level,
             sounds: horizon_client::sound_out::SoundOut::new(
                 horizon_client::sound_engine::unique_seed(),

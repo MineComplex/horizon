@@ -20,7 +20,6 @@ use horizon_client::{
     mobs::{Mob, MobType, Who},
     motion::{MotionWorld, PlayerMotion},
     net::{Event, Session},
-    save::SaveDir,
     sprint::Keys,
     streaming::{ChunkGenerator, Proto, Streaming},
     tab_list::SPECTATOR,
@@ -356,9 +355,6 @@ impl Game<'_> {
         streaming.radius = self.settings.render_distance;
         self.streaming = streaming;
         self.world = World::new(self.res.facts().air, 0);
-        self.save = Arc::new(SaveDir::new(
-            std::env::temp_dir().join("horizon-remote-unused"),
-        ));
         self.inventory = vec![None; 36];
         self.armor = [None, None, None, None];
         self.craft_grid = vec![None; 9];

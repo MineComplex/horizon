@@ -1,7 +1,6 @@
-//! The End: End portal frames filled with eyes of ender, End portal and End
-//! gateway travel, the obsidian arrival platform, the exit portal and the End
-//! sky. The dragon fight itself lives in game/dragon.rs: the podium is
-//! inactive until the dragon dies.
+//! The End as the client shows it: the eyes of ender the server sends, the
+//! End flash and sky, end crystals and the dimension's environment. Portals,
+//! the platform and the fight are the server's; the dragon is game/dragon.rs.
 use super::{Dim, Game};
 use horizon_client::{
     environment::Environment,

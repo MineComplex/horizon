@@ -1,7 +1,6 @@
-//! Monster spawners in the game: `SpawnerBlockEntity.serverTick` and
-//! `clientTick` for every spawner (`mobs::spawner`), the mobs they add, a
-//! spawn egg used on one (`SpawnEggItem.useOn`), their events and the mob
-//! spinning inside (`SpawnerRenderer`).
+//! Monster spawners as the client shows them: the mob spinning inside
+//! (`SpawnerRenderer`) and the burst and poof particles of their events.
+//! Spawning is the server's.
 use super::Game;
 use horizon_client::{
     containers::BlockEntity,
