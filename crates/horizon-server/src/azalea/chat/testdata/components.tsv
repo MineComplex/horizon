@@ -1,0 +1,67 @@
+json	"Hello"	"Hello"	08000548656c6c6f
+json	""	""	080000
+json	["a",{"text":"b","color":"blue"},"c"]	{"text":"a","extra":[{"text":"b","color":"blue"},"c"]}	0a09000565787472610a00000002080005636f6c6f720004626c75650800047465787400016200080000000163000800047465787400016100
+json	[{"text":"a"},"b"]	{"text":"a","extra":["b"]}	0a090005657874726108000000010001620800047465787400016100
+json	{"text":"Hi","bold":true,"italic":false,"underlined":true,"strikethrough":true,"obfuscated":false,"insertion":"ins","font":"uniform"}	{"text":"Hi","bold":true,"italic":false,"underlined":true,"strikethrough":true,"obfuscated":false,"insertion":"ins","font":"minecraft:uniform"}	0a01000a756e6465726c696e656401080009696e73657274696f6e0003696e730800047465787400024869010004626f6c640101000d737472696b657468726f756768010100066974616c69630001000a6f62667573636174656400080004666f6e7400116d696e6563726166743a756e69666f726d00
+json	{"text":"c","color":"red","shadow_color":-16777216}	{"text":"c","color":"red","shadow_color":-16777216}	0a080005636f6c6f72000372656403000c736861646f775f636f6c6f72ff0000000800047465787400016300
+json	{"text":"c","color":"#12aB34","shadow_color":[1.0,0.5,0.0,0.25]}	{"text":"c","color":"#12AB34","shadow_color":1073708800}	0a080005636f6c6f7200072331324142333403000c736861646f775f636f6c6f723fff7f000800047465787400016300
+json	{"text":"s","shadow_color":4294967295}	{"text":"s","shadow_color":-1}	0a03000c736861646f775f636f6c6f72ffffffff0800047465787400017300
+json	{"text":"x","color":"#+12"}	{"text":"x","color":"#000012"}	0a080005636f6c6f720007233030303031320800047465787400017800
+json	{"text":"c","color":"Red"}	ERR	
+json	{"text":"x","color":"#1000000"}	ERR	
+json	{"translate":"chat.type.text","with":["Steve",3,2.5,true,{"text":"x","color":"gold"},{"text":"plain"}],"fallback":"<%s> %s"}	{"translate":"chat.type.text","fallback":"<%s> %s","with":["Steve",3,2.5,true,{"text":"x","color":"gold"},"plain"]}	0a090004776974680a000000060800000005537465766500010000030005000040200000000100000100080005636f6c6f720004676f6c6408000474657874000178000800000005706c61696e0008000866616c6c6261636b00073c25733e2025730800097472616e736c617465000e636861742e747970652e7465787400
+json	{"translate":"a.b","with":[]}	{"translate":"a.b"}	0a0800097472616e736c6174650003612e6200
+json	{"translate":"a.b","with":[1,300,70000,5000000000,1.5,0.1,1.0,-1,false]}	{"translate":"a.b","with":[1,300,70000,5000000000,1.5,0.1,1,-1,false]}	0a090004776974680a000000090100000100020000012c000300000001117000040000000000012a05f200000500003fc00000000600003fb999999999999a000100000100010000ff0001000000000800097472616e736c6174650003612e6200
+json	{"translate":"k","fallback":5}	{"translate":"k"}	0a0800097472616e736c61746500016b00
+json	{"translate":"k","with":[{"text":"a","bold":true},[1]]}	ERR	
+json	{"text":"a","extra":["b",{"text":"c","color":"blue","extra":[{"translate":"d"}]}]}	{"text":"a","extra":["b",{"text":"c","extra":[{"translate":"d"}],"color":"blue"}]}	0a09000565787472610a0000000208000000016200080005636f6c6f720004626c756509000565787472610a000000010800097472616e736c6174650001640008000474657874000163000800047465787400016100
+json	{"text":"a","extra":[]}	ERR	
+json	{"text":"x","extra":"y"}	ERR	
+json	{"text":"u","click_event":{"action":"open_url","url":"https://example.com/x?y=1"}}	{"text":"u","click_event":{"url":"https://example.com/x?y=1","action":"open_url"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e00086f70656e5f75726c08000375726c001968747470733a2f2f6578616d706c652e636f6d2f783f793d31000800047465787400017500
+json	{"text":"u","click_event":{"action":"open_url","url":"file:///etc"}}	ERR	
+json	{"text":"u","click_event":{"action":"run_command","command":"/say hi"}}	{"text":"u","click_event":{"command":"/say hi","action":"run_command"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e000b72756e5f636f6d6d616e64080007636f6d6d616e6400072f736179206869000800047465787400017500
+json	{"text":"u","click_event":{"action":"suggest_command","command":"/tp "}}	{"text":"u","click_event":{"command":"/tp ","action":"suggest_command"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e000f737567676573745f636f6d6d616e64080007636f6d6d616e6400042f747020000800047465787400017500
+json	{"text":"u","click_event":{"action":"change_page","page":3}}	{"text":"u","click_event":{"page":3,"action":"change_page"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e000b6368616e67655f706167650300047061676500000003000800047465787400017500
+json	{"text":"u","click_event":{"action":"change_page","page":0}}	ERR	
+json	{"text":"u","click_event":{"action":"copy_to_clipboard","value":"copied"}}	{"text":"u","click_event":{"value":"copied","action":"copy_to_clipboard"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e0011636f70795f746f5f636c6970626f61726408000576616c75650006636f70696564000800047465787400017500
+json	{"text":"u","click_event":{"action":"custom","id":"foo:bar","payload":{"a":1,"b":"s","c":[1,2]}}}	{"text":"u","click_event":{"id":"foo:bar","payload":{"a":1,"b":"s","c":[1,2]},"action":"custom"}}	0a0a000b636c69636b5f6576656e740a00077061796c6f6164010001610108000162000173090001630100000002010200080006616374696f6e0006637573746f6d08000269640007666f6f3a626172000800047465787400017500
+json	{"text":"u","click_event":{"action":"custom","id":"bar","payload":[1.5,2,true]}}	{"text":"u","click_event":{"id":"minecraft:bar","payload":[1.5,2,1],"action":"custom"}}	0a0a000b636c69636b5f6576656e740900077061796c6f61640a000000030500003fc000000001000002000100000100080006616374696f6e0006637573746f6d0800026964000d6d696e6563726166743a626172000800047465787400017500
+json	{"text":"u","click_event":{"action":"open_file","path":"x"}}	ERR	
+json	{"text":"u","click_event":{"action":"run_command","command":"/say §c"}}	ERR	
+json	{"text":"h","hover_event":{"action":"show_text","value":{"text":"tip","italic":true}}}	{"text":"h","hover_event":{"value":{"text":"tip","italic":true},"action":"show_text"}}	0a080004746578740001680a000b686f7665725f6576656e74080006616374696f6e000973686f775f746578740a000576616c75650800047465787400037469700100066974616c696301000000
+json	{"text":"h","hover_event":{"action":"show_text","value":"tip"}}	{"text":"h","hover_event":{"value":"tip","action":"show_text"}}	0a080004746578740001680a000b686f7665725f6576656e74080006616374696f6e000973686f775f7465787408000576616c756500037469700000
+json	{"text":"h","hover_event":{"action":"show_entity","id":"pig","uuid":[1,2,3,4],"name":"Bob"}}	{"text":"h","hover_event":{"id":"minecraft:pig","uuid":[1,2,3,4],"name":"Bob","action":"show_entity"}}	0a080004746578740001680a000b686f7665725f6576656e740800046e616d650003426f62080006616374696f6e000b73686f775f656e746974790800026964000d6d696e6563726166743a7069670b00047575696400000004000000010000000200000003000000040000
+json	{"text":"h","hover_event":{"action":"show_entity","id":"minecraft:pig","uuid":"00000001-0002-0003-0004-000000000005"}}	{"text":"h","hover_event":{"id":"minecraft:pig","uuid":[1,131075,262144,5],"action":"show_entity"}}	0a080004746578740001680a000b686f7665725f6576656e74080006616374696f6e000b73686f775f656e746974790800026964000d6d696e6563726166743a7069670b00047575696400000004000000010002000300040000000000050000
+json	{"text":"h","hover_event":{"action":"show_item","id":"minecraft:diamond","count":2}}	{"text":"h","hover_event":{"id":"minecraft:diamond","count":2,"action":"show_item"}}	0a080004746578740001680a000b686f7665725f6576656e74030005636f756e7400000002080006616374696f6e000973686f775f6974656d080002696400116d696e6563726166743a6469616d6f6e640000
+json	{"text":"h","hover_event":{"action":"show_item","id":"diamond"}}	{"text":"h","hover_event":{"id":"minecraft:diamond","action":"show_item"}}	0a080004746578740001680a000b686f7665725f6576656e74080006616374696f6e000973686f775f6974656d080002696400116d696e6563726166743a6469616d6f6e640000
+json	{"text":"h","hover_event":{"action":"show_item","id":"minecraft:stone","count":100}}	ERR	
+json	{"score":{"name":"Steve","objective":"obj"}}	{"score":{"name":"Steve","objective":"obj"}}	0a0a000573636f72650800046e616d65000553746576650800096f626a65637469766500036f626a0000
+json	{"score":{"name":"@p","objective":"obj"},"color":"red"}	{"score":{"name":"@p","objective":"obj"},"color":"red"}	0a0a000573636f72650800046e616d65000240700800096f626a65637469766500036f626a00080005636f6c6f72000372656400
+json	{"selector":"@a[limit=1]","separator":{"text":", ","color":"gray"}}	{"selector":"@a[limit=1]","separator":{"text":", ","color":"gray"}}	0a08000873656c6563746f72000b40615b6c696d69743d315d0a0009736570617261746f72080005636f6c6f720004677261790800047465787400022c200000
+json	{"keybind":"key.jump"}	{"keybind":"key.jump"}	0a0800076b657962696e6400086b65792e6a756d7000
+json	{"nbt":"Health","entity":"@s","interpret":true}	{"nbt":"Health","interpret":true,"entity":"@s"}	0a0800036e627400064865616c7468010009696e7465727072657401080006656e746974790002407300
+json	{"nbt":"Items[0]","block":"~ ~1 ~","separator":"|"}	{"nbt":"Items[0]","separator":"|","block":"~ ~1 ~"}	0a0800036e627400084974656d735b305d080005626c6f636b00067e207e31207e080009736570617261746f7200017c00
+json	{"nbt":"foo.bar","storage":"foo","plain":true,"interpret":"x"}	{"nbt":"foo.bar","plain":true,"storage":"minecraft:foo"}	0a0800036e62740007666f6f2e626172010005706c61696e0108000773746f72616765000d6d696e6563726166743a666f6f00
+json	{"nbt":"a","storage":"minecraft:x","entity":"@s","source":"storage"}	{"nbt":"a","storage":"minecraft:x"}	0a0800036e627400016108000773746f72616765000b6d696e6563726166743a7800
+json	{"nbt":"a","entity":"@s","interpret":true,"plain":true}	ERR	
+json	{"type":"text","text":"typed"}	"typed"	0800057479706564
+json	{"type":"keybind","text":"x"}	ERR	
+json	{"text":"t","translate":"k","bold":null,"unknown":1}	"t"	08000174
+json	{"text":5}	ERR	
+json	{"text":"x","bold":"yes"}	ERR	
+json	{"text":"x","bold":1}	ERR	
+json	{"text":"x","font":"Bad Font"}	ERR	
+json	[]	ERR	
+snbt	"plain"	"plain"	080005706c61696e
+snbt	{text:"x",bold:256}	{"text":"x","bold":true}	0a08000474657874000178010004626f6c640100
+snbt	{text:"x",italic:0.5d,underlined:0b}	{"text":"x","italic":true,"underlined":false}	0a01000a756e6465726c696e656400080004746578740001780100066974616c69630100
+snbt	{text:"x",shadow_color:1.9d}	{"text":"x","shadow_color":1}	0a03000c736861646f775f636f6c6f72000000010800047465787400017800
+snbt	{text:"x",shadow_color:[1.0f,1.0f,1.0f,1.0f]}	{"text":"x","shadow_color":-1}	0a03000c736861646f775f636f6c6f72ffffffff0800047465787400017800
+snbt	{translate:"k",with:[1,2]}	{"translate":"k","with":[1,2]}	0a09000477697468030000000200000001000000020800097472616e736c61746500016b00
+snbt	{translate:"k",with:["a",{text:"b",bold:1b},{text:"c"},2L]}	{"translate":"k","with":["a",{"text":"b","bold":true},"c",2]}	0a090004776974680a000000040800000001610008000474657874000162010004626f6c640100080000000163000400000000000000000002000800097472616e736c61746500016b00
+snbt	["a",{text:"b"}]	{"text":"a","extra":["b"]}	0a090005657874726108000000010001620800047465787400016100
+snbt	{text:"a",extra:[["b","c"]]}	{"text":"a","extra":[{"text":"b","extra":["c"]}]}	0a09000565787472610a000000010900056578747261080000000100016308000474657874000162000800047465787400016100
+snbt	{text:"a",extra:[I;1,2]}	ERR	
+snbt	5	ERR	
+snbt	{text:"x",click_event:{action:"change_page",page:2b}}	{"text":"x","click_event":{"page":2,"action":"change_page"}}	0a0a000b636c69636b5f6576656e74080006616374696f6e000b6368616e67655f706167650300047061676500000002000800047465787400017800
+snbt	{text:"x",hover_event:{action:"show_entity",id:"pig",uuid:[I;1,2,3,4]}}	{"text":"x","hover_event":{"id":"minecraft:pig","uuid":[1,2,3,4],"action":"show_entity"}}	0a080004746578740001780a000b686f7665725f6576656e74080006616374696f6e000b73686f775f656e746974790800026964000d6d696e6563726166743a7069670b00047575696400000004000000010000000200000003000000040000

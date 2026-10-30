@@ -1,30 +1,29 @@
-#[cfg(all(feature = "azalea-buf", feature = "simdnbt"))]
-use std::io::{self, Cursor, Write};
 use std::{
     fmt::{self, Display},
     sync::LazyLock,
 };
 
-#[cfg(all(feature = "azalea-buf", feature = "simdnbt"))]
-use crate::azalea::buf::{AzBuf, BufReadError};
-use serde::{Deserialize, Deserializer, Serialize, de};
-
 use crate::azalea::{
     chat::{
         base_component::BaseComponent,
+        contents::{KeybindComponent, NbtComponent, ScoreComponent, SelectorComponent},
         style::{ChatFormatting, Style},
         text_component::TextComponent,
-        translatable_component::{PrimitiveOrComponent, TranslatableComponent},
+        translatable_component::TranslatableComponent,
     },
     language::{self, Language},
 };
 
-/// A chat component, basically anything you can see in chat.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(untagged)]
+/// A chat component (`Component`): its contents, siblings and style. JSON goes through serde and
+/// NBT through [`FormattedText::to_nbt`]/[`FormattedText::from_nbt`] (`chat::codec`).
+#[derive(Clone, Debug, PartialEq)]
 pub enum FormattedText {
     Text(TextComponent),
     Translatable(TranslatableComponent),
+    Keybind(KeybindComponent),
+    Score(ScoreComponent),
+    Selector(SelectorComponent),
+    Nbt(NbtComponent),
 }
 
 pub static DEFAULT_STYLE: LazyLock<Style> = LazyLock::new(|| Style {
@@ -38,6 +37,10 @@ impl FormattedText {
         match self {
             Self::Text(c) => &mut c.base,
             Self::Translatable(c) => &mut c.base,
+            Self::Keybind(c) => &mut c.base,
+            Self::Score(c) => &mut c.base,
+            Self::Selector(c) => &mut c.base,
+            Self::Nbt(c) => &mut c.base,
         }
     }
 
@@ -45,32 +48,26 @@ impl FormattedText {
         match self {
             Self::Text(c) => &c.base,
             Self::Translatable(c) => &c.base,
+            Self::Keybind(c) => &c.base,
+            Self::Score(c) => &c.base,
+            Self::Selector(c) => &c.base,
+            Self::Nbt(c) => &c.base,
         }
     }
 
     /// Add a component as a sibling of this one
-    fn append(&mut self, sibling: FormattedText) {
+    pub fn append(&mut self, sibling: FormattedText) {
         self.get_base_mut().siblings.push(sibling);
     }
 
-    /// Get the "separator" component from the json
-    fn parse_separator(
-        json: &serde_json::Value,
-    ) -> Result<Option<FormattedText>, serde_json::Error> {
-        if let Some(separator) = json.get("separator") {
-            return Ok(Some(FormattedText::deserialize(separator)?));
-        }
-        Ok(None)
-    }
-
-    #[cfg(feature = "simdnbt")]
-    fn parse_separator_nbt(nbt: &simdnbt::borrow::NbtCompound) -> Option<FormattedText> {
-        use simdnbt::FromNbtTag;
-
-        if let Some(separator) = nbt.get("separator") {
-            FormattedText::from_nbt_tag(separator)
-        } else {
-            None
+    /// The literal's text when this is a plain literal with no siblings and no style, which is
+    /// written as a bare string (`Component.tryCollapseToString`).
+    pub fn try_collapse_to_string(&self) -> Option<&str> {
+        match self {
+            Self::Text(c) if c.base.siblings.is_empty() && *c.base.style == Style::default() => {
+                Some(&c.text)
+            }
+            _ => None,
         }
     }
 
@@ -192,6 +189,8 @@ impl FormattedText {
                     append_text(&c.key);
                 }
             },
+            Self::Keybind(c) => append_text(&c.keybind),
+            Self::Score(_) | Self::Selector(_) | Self::Nbt(_) => {}
         };
 
         for sibling in &self.get_base().siblings {
@@ -215,8 +214,14 @@ impl FormattedText {
 
     pub(crate) fn write_plain(&self, out: &mut String, language: &Language) {
         match self {
-            FormattedText::Text(c) => c.write_plain(out, language),
-            FormattedText::Translatable(c) => c.write_plain(out, language),
+            FormattedText::Text(c) => return c.write_plain(out, language),
+            FormattedText::Translatable(c) => return c.write_plain(out, language),
+            // The server's `KeybindResolver` shows the name itself.
+            FormattedText::Keybind(c) => out.push_str(&c.keybind),
+            FormattedText::Score(_) | FormattedText::Selector(_) | FormattedText::Nbt(_) => {}
+        }
+        for sibling in &self.get_base().siblings {
+            sibling.write_plain(out, language);
         }
     }
 
@@ -305,383 +310,6 @@ impl IntoIterator for FormattedText {
     }
 }
 
-impl<'de> Deserialize<'de> for FormattedText {
-    fn deserialize<D>(de: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let json: serde_json::Value = serde::Deserialize::deserialize(de)?;
-
-        // we create a component that we might add siblings to
-        let mut component: FormattedText;
-
-        // if it's primitive, make it a text component
-        if !json.is_array() && !json.is_object() {
-            return Ok(FormattedText::Text(TextComponent::new(
-                json.as_str().unwrap_or("").to_owned(),
-            )));
-        }
-        // if it's an object, do things with { text } and stuff
-        else if json.is_object() {
-            if let Some(text) = json.get("text") {
-                let text = text.as_str().unwrap_or("").to_owned();
-                component = FormattedText::Text(TextComponent::new(text));
-            } else if let Some(translate) = json.get("translate") {
-                let translate = translate
-                    .as_str()
-                    .ok_or_else(|| de::Error::custom("\"translate\" must be a string"))?
-                    .into();
-                let fallback = if let Some(fallback) = json.get("fallback") {
-                    Some(
-                        fallback
-                            .as_str()
-                            .ok_or_else(|| de::Error::custom("\"fallback\" must be a string"))?
-                            .to_owned(),
-                    )
-                } else {
-                    None
-                };
-                if let Some(with) = json.get("with") {
-                    let with_array = with
-                        .as_array()
-                        .ok_or_else(|| de::Error::custom("\"with\" must be an array"))?
-                        .iter()
-                        .map(|item| {
-                            PrimitiveOrComponent::deserialize(item).map_err(de::Error::custom)
-                        })
-                        .collect::<Result<Vec<PrimitiveOrComponent>, _>>()?;
-
-                    component = FormattedText::Translatable(TranslatableComponent::with_fallback(
-                        translate, fallback, with_array,
-                    ));
-                } else {
-                    // if it doesn't have a "with", just have the with_array be empty
-                    component = FormattedText::Translatable(TranslatableComponent::with_fallback(
-                        translate,
-                        fallback,
-                        Vec::new(),
-                    ));
-                }
-            } else if let Some(score) = json.get("score") {
-                // object = GsonHelper.getAsJsonObject(jsonObject, "score");
-                if score.get("name").is_none() || score.get("objective").is_none() {
-                    return Err(de::Error::missing_field(
-                        "A score component needs at least a name and an objective",
-                    ));
-                }
-                // TODO
-                return Err(de::Error::custom(
-                    "score text components aren't yet supported",
-                ));
-            } else if json.get("selector").is_some() {
-                return Err(de::Error::custom(
-                    "selector text components aren't yet supported",
-                ));
-            } else if json.get("keybind").is_some() {
-                return Err(de::Error::custom(
-                    "keybind text components aren't yet supported",
-                ));
-            } else if json.get("object").is_some() {
-                return Err(de::Error::custom(
-                    "object text components aren't yet supported",
-                ));
-            } else {
-                let Some(_nbt) = json.get("nbt") else {
-                    return Err(de::Error::custom(
-                        format!("Don't know how to turn {json} into a FormattedText").as_str(),
-                    ));
-                };
-                let _separator =
-                    FormattedText::parse_separator(&json).map_err(de::Error::custom)?;
-
-                let _interpret = match json.get("interpret") {
-                    Some(v) => v.as_bool().ok_or(Some(false)).unwrap(),
-                    None => false,
-                };
-                if let Some(_block) = json.get("block") {}
-                return Err(de::Error::custom(
-                    "nbt text components aren't yet supported",
-                ));
-            }
-            if let Some(extra) = json.get("extra") {
-                let Some(extra) = extra.as_array() else {
-                    return Err(de::Error::custom("Extra isn't an array"));
-                };
-                if extra.is_empty() {
-                    return Err(de::Error::custom("Unexpected empty array of components"));
-                }
-                for extra_component in extra {
-                    let sibling =
-                        FormattedText::deserialize(extra_component).map_err(de::Error::custom)?;
-                    component.append(sibling);
-                }
-            }
-
-            let style = Style::deserialize(&json);
-            *component.get_base_mut().style = style;
-
-            return Ok(component);
-        }
-        // ok so it's not an object, if it's an array deserialize every item
-        else if !json.is_array() {
-            return Err(de::Error::custom(
-                format!("Don't know how to turn {json} into a FormattedText").as_str(),
-            ));
-        }
-        let json_array = json.as_array().unwrap();
-        if json_array.is_empty() {
-            return Ok(FormattedText::default());
-        }
-        // the first item in the array is the one that we're gonna return, the others
-        // are siblings
-        let mut component =
-            FormattedText::deserialize(&json_array[0]).map_err(de::Error::custom)?;
-        for i in 1..json_array.len() {
-            component.append(
-                FormattedText::deserialize(json_array.get(i).unwrap())
-                    .map_err(de::Error::custom)?,
-            );
-        }
-        Ok(component)
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::Serialize for FormattedText {
-    fn to_compound(self) -> simdnbt::owned::NbtCompound {
-        match self {
-            FormattedText::Text(c) => c.to_compound(),
-            FormattedText::Translatable(c) => c.to_compound(),
-        }
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::FromNbtTag for FormattedText {
-    fn from_nbt_tag(tag: simdnbt::borrow::NbtTag) -> Option<Self> {
-        // if it's a string, return a text component with that string
-        if let Some(string) = tag.string() {
-            Some(FormattedText::from_nbt_string(string))
-        }
-        // if it's a compound, make it do things with { text } and stuff
-        // simdnbt::borrow::NbtTag::Compound(compound) => {
-        else if let Some(compound) = tag.compound() {
-            FormattedText::from_nbt_compound(compound)
-        }
-        // ok so it's not a compound, if it's a list deserialize every item
-        else if let Some(list) = tag.list() {
-            FormattedText::from_nbt_list(list)
-        } else {
-            Some(FormattedText::Text(TextComponent::new("".to_owned())))
-        }
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl FormattedText {
-    fn from_nbt_string(s: &simdnbt::Mutf8Str) -> Self {
-        FormattedText::from(s)
-    }
-    fn from_nbt_list(list: simdnbt::borrow::NbtList) -> Option<FormattedText> {
-        use tracing::debug;
-
-        let mut component;
-        if let Some(compounds) = list.compounds() {
-            component = FormattedText::from_nbt_compound(compounds.first()?)?;
-            for compound in compounds.into_iter().skip(1) {
-                component.append(FormattedText::from_nbt_compound(compound)?);
-            }
-        } else if let Some(strings) = list.strings() {
-            component = FormattedText::from(*(strings.first()?));
-            for &string in strings.iter().skip(1) {
-                component.append(FormattedText::from(string));
-            }
-        } else {
-            debug!("couldn't parse {list:?} as FormattedText");
-            return None;
-        }
-        Some(component)
-    }
-
-    pub fn from_nbt_compound(compound: simdnbt::borrow::NbtCompound) -> Option<Self> {
-        use simdnbt::{Deserialize, FromNbtTag};
-        use tracing::{trace, warn};
-
-        let mut component: FormattedText;
-
-        if let Some(text) = compound.get("text") {
-            let text = text.string().unwrap_or_default().to_string();
-            component = FormattedText::Text(TextComponent::new(text));
-        } else if let Some(translate) = compound.get("translate") {
-            let translate = translate.string()?.into();
-            if let Some(with) = compound.get("with") {
-                let mut with_array = Vec::new();
-                let with_list = with.list()?;
-                if with_list.empty() {
-                } else if let Some(with) = with_list.strings() {
-                    for item in with {
-                        with_array.push(PrimitiveOrComponent::String(item.to_string()));
-                    }
-                } else if let Some(with) = with_list.ints() {
-                    for item in with {
-                        with_array.push(PrimitiveOrComponent::Integer(item));
-                    }
-                } else if let Some(with) = with_list.compounds() {
-                    for item in with {
-                        // if it's a string component with no styling and no siblings,
-                        // just add a string to
-                        // with_array otherwise add the
-                        // component to the array
-                        if let Some(primitive) = item.get("") {
-                            // minecraft does this sometimes, for example
-                            // for the /give system messages
-                            if let Some(b) = primitive.byte() {
-                                // interpreted as boolean
-                                with_array.push(PrimitiveOrComponent::Boolean(b != 0));
-                            } else if let Some(s) = primitive.short() {
-                                with_array.push(PrimitiveOrComponent::Short(s));
-                            } else if let Some(i) = primitive.int() {
-                                with_array.push(PrimitiveOrComponent::Integer(i));
-                            } else if let Some(l) = primitive.long() {
-                                with_array.push(PrimitiveOrComponent::Long(l));
-                            } else if let Some(f) = primitive.float() {
-                                with_array.push(PrimitiveOrComponent::Float(f));
-                            } else if let Some(d) = primitive.double() {
-                                with_array.push(PrimitiveOrComponent::Double(d));
-                            } else if let Some(s) = primitive.string() {
-                                with_array.push(PrimitiveOrComponent::String(s.to_string()));
-                            } else {
-                                warn!(
-                                    "couldn't parse {item:?} as FormattedText because it has a disallowed primitive"
-                                );
-                                with_array.push(PrimitiveOrComponent::String("?".to_owned()));
-                            }
-                        } else if let Some(c) = FormattedText::from_nbt_compound(item) {
-                            if let FormattedText::Text(text_component) = c
-                                && text_component.base.siblings.is_empty()
-                                && text_component.base.style.is_empty()
-                            {
-                                with_array.push(PrimitiveOrComponent::String(text_component.text));
-                                continue;
-                            }
-                            with_array.push(PrimitiveOrComponent::FormattedText(
-                                FormattedText::from_nbt_compound(item)?,
-                            ));
-                        } else {
-                            warn!("couldn't parse {item:?} as FormattedText");
-                            with_array.push(PrimitiveOrComponent::String("?".to_owned()));
-                        }
-                    }
-                } else {
-                    warn!(
-                        "couldn't parse {with:?} as FormattedText because it's not a list of compounds"
-                    );
-                    return None;
-                }
-                component =
-                    FormattedText::Translatable(TranslatableComponent::new(translate, with_array));
-            } else {
-                // if it doesn't have a "with", just have the with_array be empty
-                component =
-                    FormattedText::Translatable(TranslatableComponent::new(translate, Vec::new()));
-            }
-        } else if let Some(score) = compound.compound("score") {
-            if score.get("name").is_none() || score.get("objective").is_none() {
-                trace!("A score component needs at least a name and an objective");
-                return None;
-            }
-            // TODO: implement these
-            return None;
-        } else if compound.get("selector").is_some() {
-            trace!("selector text components aren't supported");
-            return None;
-        } else if compound.get("keybind").is_some() {
-            trace!("keybind text components aren't supported");
-            return None;
-        } else if compound.get("object").is_some() {
-            trace!("object text components aren't supported");
-            return None;
-        } else if let Some(tag) = compound.get("") {
-            return FormattedText::from_nbt_tag(tag);
-        } else {
-            let _nbt = compound.get("nbt")?;
-            let _separator = FormattedText::parse_separator_nbt(&compound)?;
-
-            let _interpret = match compound.get("interpret") {
-                Some(v) => v.byte().unwrap_or_default() != 0,
-                None => false,
-            };
-            if let Some(_block) = compound.get("block") {}
-            trace!("nbt text components aren't yet supported");
-            return None;
-        }
-        if let Some(extra) = compound.get("extra") {
-            // if it's an array, deserialize every item
-            if let Some(items) = extra.list() {
-                if let Some(items) = items.compounds() {
-                    for item in items {
-                        component.append(FormattedText::from_nbt_compound(item)?);
-                    }
-                } else if let Some(items) = items.strings() {
-                    for item in items {
-                        component.append(FormattedText::from_nbt_string(item));
-                    }
-                } else if let Some(items) = items.lists() {
-                    for item in items {
-                        component.append(FormattedText::from_nbt_list(item)?);
-                    }
-                } else {
-                    warn!(
-                        "couldn't parse {items:?} as FormattedText because it's not a list of compounds or strings"
-                    );
-                }
-            } else {
-                component.append(FormattedText::from_nbt_tag(extra)?);
-            }
-        }
-
-        let base_style = Style::from_compound(compound).ok()?;
-        let new_style = &mut component.get_base_mut().style;
-        **new_style = new_style.merged_with(&base_style);
-
-        Some(component)
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl From<&simdnbt::Mutf8Str> for FormattedText {
-    fn from(s: &simdnbt::Mutf8Str) -> Self {
-        FormattedText::Text(TextComponent::new(s.to_string()))
-    }
-}
-
-#[cfg(all(feature = "azalea-buf", feature = "simdnbt"))]
-impl AzBuf for FormattedText {
-    fn azalea_read(buf: &mut Cursor<&[u8]>) -> Result<Self, BufReadError> {
-        use simdnbt::FromNbtTag;
-        use tracing::trace;
-
-        let nbt = simdnbt::borrow::read_optional_tag(buf)?;
-        trace!(
-            "Reading NBT for FormattedText: {:?}",
-            nbt.as_ref().map(|n| n.as_tag().to_owned())
-        );
-        match nbt {
-            Some(nbt) => FormattedText::from_nbt_tag(nbt.as_tag()).ok_or(BufReadError::Custom(
-                "couldn't convert nbt to chat message".to_owned(),
-            )),
-            _ => Ok(FormattedText::default()),
-        }
-    }
-    fn azalea_write(&self, buf: &mut impl Write) -> io::Result<()> {
-        use simdnbt::Serialize;
-
-        let mut out = Vec::new();
-        simdnbt::owned::BaseNbt::write_unnamed(&(self.clone().to_compound().into()), &mut out);
-        buf.write_all(&out)
-    }
-}
-
 impl From<String> for FormattedText {
     fn from(s: String) -> Self {
         FormattedText::Text(TextComponent {
@@ -712,10 +340,7 @@ impl Display for FormattedText {
     /// If you want the text to be styled, consider using [`Self::to_ansi`] or
     /// [`Self::to_html`].
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FormattedText::Text(c) => c.fmt(f),
-            FormattedText::Translatable(c) => c.fmt(f),
-        }
+        f.write_str(&self.to_string_in(language::installed_or_empty()))
     }
 }
 
@@ -727,10 +352,11 @@ impl Default for FormattedText {
 
 #[cfg(test)]
 mod tests {
+    use serde::Deserialize;
     use serde_json::Value;
 
     use super::*;
-    use crate::azalea::chat::style::TextColor;
+    use crate::azalea::chat::{style::TextColor, translatable_component::PrimitiveOrComponent};
 
     #[test]
     fn deserialize_translation() {
@@ -771,13 +397,20 @@ mod tests {
         );
     }
 
+    /// `fallback` is a lenient field: a value that is not a string is ignored.
     #[test]
     fn deserialize_translation_invalid_fallback() {
         let j: Value = serde_json::from_str(
             r#"{"translate": "translation.test.undefined", "fallback": {"text": "invalid"}}"#,
         )
         .unwrap();
-        assert!(FormattedText::deserialize(&j).is_err());
+        assert_eq!(
+            FormattedText::deserialize(&j).unwrap(),
+            FormattedText::Translatable(TranslatableComponent::new(
+                "translation.test.undefined".to_owned(),
+                vec![]
+            ))
+        );
     }
     #[test]
     fn deserialize_translation_primitive_args() {
@@ -790,7 +423,7 @@ mod tests {
             FormattedText::Translatable(TranslatableComponent::new(
                 "commands.list.players".to_owned(),
                 vec![
-                    PrimitiveOrComponent::Short(1),
+                    PrimitiveOrComponent::Byte(1),
                     PrimitiveOrComponent::Integer(65536),
                     PrimitiveOrComponent::String("<players>".to_owned()),
                     PrimitiveOrComponent::FormattedText(FormattedText::Text(

@@ -1,12 +1,5 @@
 use std::{collections::HashMap, fmt, sync::LazyLock};
 
-#[cfg(feature = "azalea-buf")]
-use crate::azalea::buf::AzBuf;
-use serde::{Serialize, Serializer, ser::SerializeMap};
-use serde_json::Value;
-#[cfg(feature = "simdnbt")]
-use simdnbt::owned::{NbtCompound, NbtTag};
-
 use crate::azalea::chat::{click_event::ClickEvent, hover_event::HoverEvent};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -15,40 +8,20 @@ pub struct TextColor {
     pub name: Option<String>,
 }
 
-impl Serialize for TextColor {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.serialize())
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::ToNbtTag for TextColor {
-    fn to_nbt_tag(self) -> simdnbt::owned::NbtTag {
-        NbtTag::String(self.serialize().into())
-    }
-}
-
 impl TextColor {
-    /// Parse a text component in the same way that Minecraft does.
-    ///
-    /// This supports named colors and hex codes.
+    /// Parse a color as `TextColor.parseColor` does: `#` and a hex number (Java's `Integer.parseInt`,
+    /// so a sign is allowed) from 0 to 0xFFFFFF, or a color name (case-sensitive).
     pub fn parse(value: &str) -> Option<TextColor> {
-        if value.starts_with('#') {
-            let n = value.chars().skip(1).collect::<String>();
-            let n = u32::from_str_radix(&n, 16).ok()?;
-            return Some(TextColor::from_rgb(n));
+        if let Some(hex) = value.strip_prefix('#') {
+            let n = i64::from_str_radix(hex, 16).ok()?;
+            return (0..=0xFF_FFFF)
+                .contains(&n)
+                .then(|| TextColor::from_rgb(n as u32));
         }
-        let color_option = NAMED_COLORS.get(&value.to_ascii_lowercase());
-        if let Some(color) = color_option {
-            return Some(color.clone());
-        }
-        None
+        NAMED_COLORS.get(value).cloned()
     }
 
-    fn from_rgb(value: u32) -> TextColor {
+    pub fn from_rgb(value: u32) -> TextColor {
         TextColor { value, name: None }
     }
 }
@@ -98,7 +71,6 @@ impl Ansi {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "azalea-buf", derive(AzBuf))]
 pub enum ChatFormatting {
     Black,
     DarkBlue,
@@ -272,7 +244,8 @@ impl TextColor {
         Self { value, name }
     }
 
-    fn serialize(&self) -> String {
+    /// The color's name, or `#RRGGBB` (`TextColor.serialize`).
+    pub fn serialize(&self) -> String {
         if let Some(name) = &self.name {
             name.clone().to_ascii_lowercase()
         } else {
@@ -306,11 +279,10 @@ impl TryFrom<ChatFormatting> for TextColor {
 
 macro_rules! define_style_struct {
     ($($(#[$doc:meta])* $field:ident : $type:ty),* $(,)?) => {
-        #[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
+        #[derive(Clone, Debug, Default, PartialEq)]
         #[non_exhaustive]
         pub struct Style {
             $(
-                #[serde(skip_serializing_if = "Option::is_none")]
                 $(#[$doc])*
                 pub $field: Option<$type>,
             )*
@@ -324,18 +296,6 @@ macro_rules! define_style_struct {
                 }
             )*
 
-            pub fn serialize_map<S>(&self, state: &mut S::SerializeMap) -> Result<(), S::Error>
-            where
-                S: serde::Serializer,
-            {
-                $(
-                    if let Some(value) = &self.$field {
-                        state.serialize_entry(stringify!($field), value)?;
-                    }
-                )*
-                Ok(())
-            }
-
             /// Apply another style to this one
             pub fn apply(&mut self, style: &Style) {
                 $(
@@ -345,27 +305,13 @@ macro_rules! define_style_struct {
                 )*
             }
         }
-
-        #[cfg(feature = "simdnbt")]
-        impl simdnbt::Serialize for Style {
-            fn to_compound(self) -> NbtCompound {
-                let mut compound = NbtCompound::new();
-
-                $(
-                    if let Some(value) = self.$field {
-                        compound.insert(stringify!($field), value);
-                    }
-                )*
-
-                compound
-            }
-        }
     };
 }
 
 define_style_struct! {
     color: TextColor,
-    shadow_color: u32,
+    /// ARGB, as Java's signed `int`.
+    shadow_color: i32,
     bold: bool,
     italic: bool,
     underlined: bool,
@@ -374,7 +320,7 @@ define_style_struct! {
     click_event: ClickEvent,
     hover_event: HoverEvent,
     insertion: String,
-    /// Represented as an `Identifier`.
+    /// An identifier, written with its namespace (`minecraft:uniform`).
     font: String,
 }
 
@@ -385,36 +331,6 @@ impl Style {
 
     pub fn empty() -> Self {
         Self::default()
-    }
-
-    pub fn deserialize(json: &Value) -> Style {
-        let Some(j) = json.as_object() else {
-            return Style::default();
-        };
-
-        Style {
-            color: j
-                .get("color")
-                .and_then(|v| v.as_str())
-                .and_then(TextColor::parse),
-            shadow_color: j
-                .get("shadow_color")
-                .and_then(|v| v.as_u64())
-                .map(|v| v as u32),
-            bold: j.get("bold").and_then(|v| v.as_bool()),
-            italic: j.get("italic").and_then(|v| v.as_bool()),
-            underlined: j.get("underlined").and_then(|v| v.as_bool()),
-            strikethrough: j.get("strikethrough").and_then(|v| v.as_bool()),
-            obfuscated: j.get("obfuscated").and_then(|v| v.as_bool()),
-            // TODO: impl deserialize functions for click_event and hover_event
-            click_event: Default::default(),
-            hover_event: Default::default(),
-            insertion: j
-                .get("insertion")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_owned()),
-            font: j.get("font").and_then(|v| v.as_str()).map(|s| s.to_owned()),
-        }
     }
 
     /// Check if a style has no attributes set
@@ -577,43 +493,6 @@ impl Style {
         }
 
         style
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::Deserialize for Style {
-    fn from_compound(
-        compound: simdnbt::borrow::NbtCompound,
-    ) -> Result<Self, simdnbt::DeserializeError> {
-        use crate::azalea::chat::get_in_compound;
-
-        let color: Option<TextColor> = compound
-            .string("color")
-            .and_then(|v| TextColor::parse(&v.to_str()));
-        let shadow_color = get_in_compound(&compound, "shadow_color").ok();
-        let bold = get_in_compound(&compound, "bold").ok();
-        let italic = get_in_compound(&compound, "italic").ok();
-        let underlined = get_in_compound(&compound, "underlined").ok();
-        let strikethrough = get_in_compound(&compound, "strikethrough").ok();
-        let obfuscated = get_in_compound(&compound, "obfuscated").ok();
-        let click_event = get_in_compound(&compound, "click_event").ok();
-        // TODO
-        // let hover_event = get_in_compound(&compound, "hover_event")?;
-        let insertion = get_in_compound(&compound, "insertion").ok();
-        let font = get_in_compound(&compound, "font").ok();
-        Ok(Style {
-            color,
-            shadow_color,
-            bold,
-            italic,
-            underlined,
-            strikethrough,
-            obfuscated,
-            click_event,
-            hover_event: None,
-            insertion,
-            font,
-        })
     }
 }
 

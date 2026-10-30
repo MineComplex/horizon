@@ -1,48 +1,34 @@
-use serde::Serialize;
-#[cfg(feature = "simdnbt")]
-use simdnbt::owned::NbtCompound;
+use uuid::Uuid;
 
-use crate::azalea::chat::FormattedText;
+use crate::{azalea::chat::FormattedText, nbt::Tag};
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "action")]
+/// What hovering over a component shows (`HoverEvent`, 26.3 shapes).
+#[derive(Clone, Debug, PartialEq)]
 pub enum HoverEvent {
     ShowText {
         value: Box<FormattedText>,
     },
-    // TODO
+    /// `ItemStackTemplate`: the item id, a count from 1 to 99, and the component patch kept as its
+    /// NBT form until item components are ported.
     ShowItem {
-        // item: ItemStack,
+        id: String,
+        count: i32,
+        components: Option<Tag>,
     },
+    /// `EntityTooltipInfo`: the entity type's id.
     ShowEntity {
-        id: i32,
-        // uuid: Uuid,
-        name: Box<FormattedText>,
+        id: String,
+        uuid: Uuid,
+        name: Option<Box<FormattedText>>,
     },
 }
 
-#[cfg(feature = "simdnbt")]
-impl simdnbt::Serialize for HoverEvent {
-    fn to_compound(self) -> NbtCompound {
-        let mut compound = NbtCompound::new();
-        let mut action = |s: &str| {
-            compound.insert("action", s);
-        };
+impl HoverEvent {
+    pub fn action(&self) -> &'static str {
         match self {
-            HoverEvent::ShowText { value } => {
-                action("show_text");
-                compound.insert("value", value.to_compound());
-            }
-            HoverEvent::ShowItem { .. } => {
-                action("show_item");
-            }
-            HoverEvent::ShowEntity { id, name } => {
-                action("show_entity");
-                compound.insert("id", id);
-                // compound.insert("uuid", uuid.to_string());
-                compound.insert("name", name.to_compound());
-            }
+            Self::ShowText { .. } => "show_text",
+            Self::ShowItem { .. } => "show_item",
+            Self::ShowEntity { .. } => "show_entity",
         }
-        compound
     }
 }

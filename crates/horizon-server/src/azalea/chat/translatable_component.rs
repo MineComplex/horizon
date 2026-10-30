@@ -1,12 +1,5 @@
 use std::fmt::{self, Display};
 
-use serde::{Deserialize, Serialize};
-#[cfg(feature = "simdnbt")]
-use simdnbt::{
-    ToNbtTag,
-    owned::{NbtList, NbtTag},
-};
-
 use crate::{
     azalea::{
         chat::{FormattedText, base_component::BaseComponent, text_component::TextComponent},
@@ -15,10 +8,12 @@ use crate::{
     util::number_text::{double_to_string, float_to_string},
 };
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(untagged)]
+/// A translation argument: a Java `Number`, `Boolean` or `String`, or a component
+/// (`TranslatableContents.ARG_CODEC`; a plain literal component is read back as a string).
+#[derive(Clone, Debug, PartialEq)]
 pub enum PrimitiveOrComponent {
     Boolean(bool),
+    Byte(i8),
     Short(i16),
     Integer(i32),
     Long(i64),
@@ -28,54 +23,13 @@ pub enum PrimitiveOrComponent {
     FormattedText(FormattedText),
 }
 
-#[cfg(feature = "simdnbt")]
-impl simdnbt::ToNbtTag for PrimitiveOrComponent {
-    fn to_nbt_tag(self) -> simdnbt::owned::NbtTag {
-        match self {
-            PrimitiveOrComponent::Boolean(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::Short(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::Integer(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::Long(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::Float(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::Double(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::String(value) => value.to_nbt_tag(),
-            PrimitiveOrComponent::FormattedText(value) => value.to_nbt_tag(),
-        }
-    }
-}
-
 /// A message whose content depends on the client's language.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TranslatableComponent {
-    #[serde(flatten)]
     pub base: BaseComponent,
-    #[serde(rename = "translate")]
     pub key: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fallback: Option<String>,
-    #[serde(rename = "with")]
     pub args: Vec<PrimitiveOrComponent>,
-}
-
-#[cfg(feature = "simdnbt")]
-fn serialize_args_as_nbt(args: Vec<PrimitiveOrComponent>) -> NbtList {
-    let tags = args
-        .into_iter()
-        .map(|arg| arg.to_nbt_tag())
-        .collect::<Vec<NbtTag>>();
-    NbtList::from(tags)
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::Serialize for TranslatableComponent {
-    fn to_compound(self) -> simdnbt::owned::NbtCompound {
-        let mut compound = simdnbt::owned::NbtCompound::new();
-        compound.insert("translate", self.key);
-        compound.extend(self.base.style.to_compound());
-
-        compound.insert("with", serialize_args_as_nbt(self.args));
-        compound
-    }
 }
 
 impl TranslatableComponent {
@@ -216,6 +170,7 @@ impl PrimitiveOrComponent {
     pub fn text_in(&self, language: &Language) -> String {
         match self {
             PrimitiveOrComponent::Boolean(value) => value.to_string(),
+            PrimitiveOrComponent::Byte(value) => value.to_string(),
             PrimitiveOrComponent::Short(value) => value.to_string(),
             PrimitiveOrComponent::Integer(value) => value.to_string(),
             PrimitiveOrComponent::Long(value) => value.to_string(),

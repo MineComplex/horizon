@@ -1,7 +1,5 @@
 use std::fmt::{self, Display};
 
-use serde::{Serialize, Serializer, ser::SerializeMap};
-
 use crate::azalea::{
     chat::{
         FormattedText,
@@ -17,51 +15,10 @@ pub struct TextComponent {
     pub base: BaseComponent,
     pub text: String,
 }
-impl Serialize for TextComponent {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if self.base == BaseComponent::default() {
-            return serializer.serialize_str(&self.text);
-        }
-
-        let mut state = serializer.serialize_map(None)?;
-        state.serialize_entry("text", &self.text)?;
-
-        self.base.serialize_map::<S>(&mut state)?;
-
-        state.end()
-    }
-}
-
-#[cfg(feature = "simdnbt")]
-impl simdnbt::Serialize for TextComponent {
-    fn to_compound(self) -> simdnbt::owned::NbtCompound {
-        let mut compound = simdnbt::owned::NbtCompound::new();
-        compound.insert("text", self.text);
-        compound.extend(self.base.style.to_compound());
-        if !self.base.siblings.is_empty() {
-            compound.insert(
-                "extra",
-                simdnbt::owned::NbtList::from(
-                    self.base
-                        .siblings
-                        .into_iter()
-                        .map(|component| component.to_compound())
-                        .collect::<Vec<_>>(),
-                ),
-            );
-        }
-        compound
-    }
-}
-
 const LEGACY_FORMATTING_CODE_SYMBOL: char = '§';
 
-/// Convert a legacy color code string into a FormattedText
-/// Technically in Minecraft this is done when displaying the text, but AFAIK
-/// it's the same as just doing it in TextComponent
+/// Convert a legacy color code string (`§a...`) into styled siblings. Vanilla keeps `§` in literal
+/// text and leaves it to the renderer; this is for console/MOTD-style strings only.
 pub fn legacy_color_code_to_text_component(legacy_color_code: &str) -> TextComponent {
     if legacy_color_code.is_empty() {
         return TextComponent::new("");
@@ -129,16 +86,11 @@ pub fn legacy_color_code_to_text_component(legacy_color_code: &str) -> TextCompo
 }
 
 impl TextComponent {
+    /// A literal (`Component.literal`): the text is kept as is, `§` included.
     pub fn new(text: impl Into<String>) -> Self {
-        let text = text.into();
-        // if it contains a LEGACY_FORMATTING_CODE_SYMBOL, format it
-        if text.contains(LEGACY_FORMATTING_CODE_SYMBOL) {
-            legacy_color_code_to_text_component(&text)
-        } else {
-            Self {
-                base: BaseComponent::new(),
-                text,
-            }
+        Self {
+            base: BaseComponent::new(),
+            text: text.into(),
         }
     }
 
@@ -176,9 +128,10 @@ mod tests {
 
     #[test]
     fn test_hypixel_motd_ansi() {
-        let component =
-            TextComponent::new("§aHypixel Network  §c[1.8-1.18]\n§b§lHAPPY HOLIDAYS".to_owned())
-                .get();
+        let component = legacy_color_code_to_text_component(
+            "§aHypixel Network  §c[1.8-1.18]\n§b§lHAPPY HOLIDAYS",
+        )
+        .get();
         assert_eq!(
             component.to_ansi(),
             format!(
@@ -194,9 +147,10 @@ mod tests {
 
     #[test]
     fn test_hypixel_motd_html() {
-        let component =
-            TextComponent::new("§aHypixel Network  §c[1.8-1.18]\n§b§lHAPPY HOLIDAYS".to_owned())
-                .get();
+        let component = legacy_color_code_to_text_component(
+            "§aHypixel Network  §c[1.8-1.18]\n§b§lHAPPY HOLIDAYS",
+        )
+        .get();
 
         assert_eq!(
             component.to_html(),
@@ -212,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_xss_html() {
-        let component = TextComponent::new("§a<b>&\n§b</b>".to_owned()).get();
+        let component = legacy_color_code_to_text_component("§a<b>&\n§b</b>").get();
 
         assert_eq!(
             component.to_html(),
@@ -227,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_legacy_color_code_to_component() {
-        let component = TextComponent::new("§lHello §r§1w§2o§3r§4l§5d".to_owned()).get();
+        let component = legacy_color_code_to_text_component("§lHello §r§1w§2o§3r§4l§5d").get();
         assert_eq!(
             component.to_ansi(),
             format!(
@@ -246,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_legacy_color_code_with_rgb() {
-        let component = TextComponent::new("§#Ff0000This is a test message".to_owned()).get();
+        let component = legacy_color_code_to_text_component("§#Ff0000This is a test message").get();
         assert_eq!(
             component.to_ansi(),
             format!(
@@ -259,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_serialize_to_json() {
-        let component = TextComponent::new("Hello §aworld".to_owned()).get();
+        let component = legacy_color_code_to_text_component("Hello §aworld").get();
         assert_eq!(
             serde_json::to_string(&component).unwrap(),
             "{\"text\":\"\",\"extra\":[\"Hello \",{\"text\":\"world\",\"color\":\"#55FF55\"}]}"
