@@ -91,17 +91,38 @@ Moonrise's Starlight light tags (`world/chunk/section.rs`, `world/chunk/serial.r
 entities, ticks, post-processing and structures stay raw NBT until their systems are ported); the
 network side up to the configuration state (`network/`: frames, compression, encryption, handshake,
 Velocity modern forwarding); Minecraft's registry-free command argument types; 26.3 text components
-in JSON and network NBT (`azalea/chat/codec.rs`).
+in JSON and network NBT (`azalea/chat/codec.rs`); the tick thread and tokio network runtime
+(`server/runtime.rs`); registries and the configuration state (`registry/`, `network/configuration.rs`);
+level storage, region I/O workers and `LevelChunk` (`world/`); the join's play packets and Moonrise's
+chunk-sending rules (`network/play/`).
+
+**A client gets into the world (2026-10-30).** Startup loads the registries (one `Arc`), opens
+`level-name` with its `session.lock` and `level.dat` (a missing world is not created: generation is
+not ported, said in the log) and the overworld's region I/O workers with `region-file-compression`
+(`server/level.rs`). The tick thread drives each connection's `Configuration`; `PrepareSpawn` reads
+`players/data/<uuid>.dat` (26.3's folder; `server/player_data.rs`) and holds the 7x7 spawn chunks
+until loaded; `Play` places the player (`join_sequence`, the commands packet with Paper's empty tree,
+markers of unported systems skipped at debug level) and switches the connection to play, where
+`server/player.rs` handles teleport acceptance, movement (re-centring the chunk view), client
+information, player loaded and Paper's keep-alive (shared with configuration), and sends chunks by
+Moonrise's distances, nearest first under its rate limiter, with the saved Starlight light. Player
+files are saved on leaving and on stop (typed fields over the file's tag). Stand-ins, each written
+where it is: chunks held by a per-level count of holders instead of Moonrise's tickets; a player holds
+the square of its load distance; a chunk is sent once it is FULL with its 8 neighbours on disk;
+`PlayerSpawnFinder` reduced to the respawn column's `MOTION_BLOCKING` top; no movement checks;
+game rules, world border, clocks, join message, ops and `force-gamemode` at their defaults.
 
 Next, in order:
-1. Run the tick thread over `TickClock` after `bootstrap` (more YAML settings as the code needing them is
-   ported).
-2. Network: tokio transport with `azalea::buf` codecs, one channel per connection into the tick thread;
-   login with Velocity modern forwarding; configuration and play states.
-3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
+1. Play state, continued: player info removal and the leave message, the unported join steps
+   (recipes, recipe book, inventory, effects, scoreboard, entity tracking), block entities in chunk
+   packets, the world border/clocks/game rules from the saved data, `ops.json` and permissions.
+2. The nether and the end: one more `Level` each (its own `ChunkIo` over
+   `dimensions/minecraft/<name>/region`), dimension switching, `paperSpawnDimension`.
+3. Moonrise's chunk system: tickets and holders, chunk saving on unload and autosave, then light
+   and generation.
+4. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
    `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
-4. The chunk itself (sections array, heightmaps, block entities) over `world/chunk`, then the entity
-   arena, following "Data" below.
+5. The entity arena and movement physics, following "Data" below.
 
 ## Ownership and threads
 

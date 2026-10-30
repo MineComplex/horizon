@@ -180,6 +180,23 @@ pub fn set_simulation_distance(distance: i32) -> Vec<u8> {
     out
 }
 
+/// `ClientboundForgetLevelChunkPacket`: `writeChunkPos`, the packed long.
+pub fn forget_level_chunk(pos: crate::core::position::ChunkPos) -> Vec<u8> {
+    let mut out = start(cb::FORGET_LEVEL_CHUNK);
+    out.put_i64(pos.pack());
+    out
+}
+
+/// `ClientboundCommandsPacket`.
+pub fn commands(packet: &crate::command::network::CommandsPacket) -> Vec<u8> {
+    use crate::azalea::buf::AzBuf;
+    let mut out = start(cb::COMMANDS);
+    packet
+        .azalea_write(&mut out)
+        .expect("writing to a Vec cannot fail");
+    out
+}
+
 pub fn chunk_batch_start() -> Vec<u8> {
     start(cb::CHUNK_BATCH_START)
 }

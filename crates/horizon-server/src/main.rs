@@ -1,15 +1,22 @@
 //! `horizon-server`: Leaf 26.3 as far as it is ported (ARCHITECTURE.md). It loads the settings and the
 //! language from the working directory, then runs the tick loop and the network
-//! (`server::runtime`) until `stop`, Ctrl-C or SIGTERM. The levels are not ported yet.
+//! (`server::runtime`) with the overworld of `level-name` until `stop`, Ctrl-C or SIGTERM.
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use clap::Parser;
 use horizon_server::{
     azalea::language,
+    registry::{self, Registries},
     server::{
         bootstrap::{self, BootstrapOptions, ServerPaths},
-        runtime::{self, RuntimeConfig, Server},
+        level::{World, WorldSettings, WorldTables},
+        runtime::{self, RuntimeConfig, Server, StartError},
         server_properties::{CommandLineOverrides, StartupOptions},
+    },
+    world::{
+        chunk_io::compression_from_property,
+        level_storage::{Difficulty, GameType},
     },
 };
 
@@ -124,7 +131,7 @@ fn main() -> std::process::ExitCode {
         },
         velocity_secret_env: std::env::var("PAPER_VELOCITY_SECRET").ok(),
     };
-    let config = match bootstrap::bootstrap(std::path::Path::new("."), bootstrap_options) {
+    let mut config = match bootstrap::bootstrap(std::path::Path::new("."), bootstrap_options) {
         Ok(config) => config,
         Err(e) => {
             tracing::error!("Failed to start the minecraft server: {e}");
@@ -132,14 +139,46 @@ fn main() -> std::process::ExitCode {
         }
     };
     let runtime_config = RuntimeConfig::from_bootstrap(&config, boot);
+    // `WorldLoader.load` in Leaf's `Main`: the registries from the vanilla and Paper packs.
+    let registries = match Registries::load(
+        &mut config.vanilla_jar,
+        &registry::default_report_path(std::path::Path::new(".")),
+    ) {
+        Ok(registries) => Arc::new(registries),
+        Err(e) => {
+            tracing::error!("Failed to load datapacks, can't proceed with server load: {e}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let properties = config.properties.properties();
+    let tables = WorldTables {
+        blocks: Arc::new(config.blocks),
+        block_data: Arc::new(config.block_data),
+        registries: registries.clone(),
+    };
+    let settings = WorldSettings {
+        level_name: &properties.level_name,
+        compression: compression_from_property(&properties.region_file_compression),
+        sync_chunk_writes: properties.sync_chunk_writes,
+        new_world: (
+            GameType::by_id(properties.game_mode as i32),
+            Difficulty::by_name(properties.difficulty.name()).unwrap_or(Difficulty::Normal),
+            properties.hardcore,
+        ),
+    };
     let _ = language::install(config.language);
-    let server = match Server::start(runtime_config) {
+    let open_world = || World::open(std::path::Path::new("."), &settings, &tables);
+    let server = match Server::start(runtime_config, registries, open_world) {
         Ok(server) => server,
         // Paper: "Failed to bind to port" propagates out of `initServer`.
-        Err(e) => {
+        Err(StartError::Bind(e)) => {
             tracing::error!(
                 "Encountered an unexpected exception: java.lang.IllegalStateException: Failed to bind to port: {e}"
             );
+            return std::process::ExitCode::FAILURE;
+        }
+        Err(StartError::World(e)) => {
+            tracing::error!("Failed to load the world: {e}");
             return std::process::ExitCode::FAILURE;
         }
     };

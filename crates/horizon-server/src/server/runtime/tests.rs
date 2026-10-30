@@ -1,16 +1,32 @@
 //! The server over real TCP: a blocking client logs in through a forged Velocity answer while the
-//! server runs on its own thread.
+//! server runs on its own thread, over a small synthetic world in a temporary folder.
 use std::io::{Read as _, Write as _};
 use std::net::TcpStream;
+use std::path::Path;
 use std::thread::JoinHandle;
 
 use bytes::BytesMut;
 
 use super::*;
 use crate::azalea::chat::{FormattedText, read_component};
+use crate::block::flags::BlockStateData;
+use crate::block::{BlockState, BlockStatesBuilder};
+use crate::core::position::BlockPos;
+use crate::nbt::Tag;
 use crate::network::codec::{Inbound, Outbound, put_var_int};
-use crate::network::login::tests::{forged_answer, hex};
+use crate::network::configuration::select_known_packs_packet;
+use crate::network::login::tests::{NOTCH, forged_answer, hex};
 use crate::network::login::{self, PROTOCOL_VERSION};
+use crate::network::play::ids::{cb as play_cb, sb as play_sb};
+use crate::registry::tests::pack;
+use crate::registry::{DataPack, KnownPack, parse_builtin};
+use crate::server::level::{WorldSettings, WorldTables};
+use crate::server::player_data::PlayerDataStorage;
+use crate::world::chunk::{BiomeIds, ChunkStatus, ContainerFactory, SectionFlags, StateFlags};
+use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
+use crate::world::level_chunk::{HeightmapTable, LevelChunk, heightmaps_after};
+use crate::world::level_storage::{self as storage, LevelData, LevelStorageAccess};
+use crate::world::storage::compression::Compression;
 
 fn config(max_players: i32) -> RuntimeConfig {
     RuntimeConfig {
@@ -26,31 +42,140 @@ fn config(max_players: i32) -> RuntimeConfig {
         proxy_online_mode: true,
         white_list: false,
         pause_when_empty_seconds: -1,
+        view_distance: 2,
+        simulation_distance: 2,
+        enforces_secure_chat: false,
         shutdown_message: Reason::Literal("Сервер перезапускается".into()),
         boot: Instant::now(),
     }
+}
+
+const STONE: BlockState = BlockState(1);
+
+/// The synthetic tables: air, stone, a slab and water (`flags_tests::synthetic`), a 32-block high
+/// overworld with one biome.
+fn tables() -> WorldTables {
+    let mut b = BlockStatesBuilder::new();
+    for name in ["air", "stone", "oak_slab", "water"] {
+        b.add_block(&format!("minecraft:{name}"), &[]).unwrap();
+    }
+    let blocks = Arc::new(b.finish());
+    let block_data =
+        Arc::new(BlockStateData::from_bytes(&crate::block::flags_tests::synthetic(4), 4).unwrap());
+    let vanilla = pack(
+        "vanilla",
+        Some(KnownPack::vanilla("core")),
+        &[
+            (
+                "minecraft/dimension_type/overworld.json",
+                r#"{"min_y": 0, "height": 32}"#,
+            ),
+            ("minecraft/worldgen/biome/plains.json", "{}"),
+        ],
+    );
+    let registries = Registries::build(
+        parse_builtin(crate::registry::tests::REPORT).unwrap(),
+        &[vanilla, DataPack::paper()],
+    )
+    .unwrap();
+    WorldTables {
+        blocks,
+        block_data,
+        registries: Arc::new(registries),
+    }
+}
+
+struct Flags;
+impl SectionFlags for Flags {
+    fn section_flags(&self, state: BlockState) -> StateFlags {
+        StateFlags(if state.0 == 0 { StateFlags::AIR } else { 0 })
+    }
+}
+
+/// `level.dat` with the spawn at (8, 0, 8) and the chunks -2..=2 squared: stone at y = 3, the
+/// sky light of section 0 saved as all 15s.
+fn make_world(dir: &Path, tables: &WorldTables) {
+    let access = LevelStorageAccess::open(dir, "world").unwrap();
+    let mut data = LevelData::parse(&Default::default());
+    data.spawn.pos = BlockPos::new(8, 0, 8);
+    access.save_level_data(&data).unwrap();
+    let codec = Arc::new(CodecTables {
+        factory: ContainerFactory::new(4, 1, 0),
+        blocks: tables.blocks.clone(),
+        flags: Arc::new(Flags),
+        biomes: Arc::new(BiomeIds::new(["minecraft:plains"])),
+        min_section_y: 0,
+        max_section_y: 1,
+    });
+    let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
+    let (io, events) = ChunkIo::spawn(
+        access.region_path("minecraft:overworld", "region"),
+        Compression::Lz4,
+        false,
+        codec.clone(),
+        1,
+    )
+    .unwrap();
+    for x in -2..=2 {
+        for z in -2..=2 {
+            let pos = ChunkPos::new(x, z);
+            let mut chunk = LevelChunk::empty(pos, 0, 2, &codec.factory);
+            chunk.prime_heightmaps(heightmaps_after(ChunkStatus::Full), &heightmaps);
+            for (bx, bz) in [(0, 0), (8, 8), (15, 15)] {
+                chunk.set_block_state(BlockPos::new(bx, 3, bz), STONE, &Flags, &heightmaps);
+            }
+            let mut data = chunk.to_data();
+            data.light_correct = true;
+            let section = data.sections.iter_mut().find(|s| s.y == 0).unwrap();
+            section.sky_light = Some(Box::new([0xff; 2048]));
+            section.sky_light_state = Some(2);
+            io.save(pos, Some(Box::new(data)));
+        }
+    }
+    io.shutdown();
+    assert!(events.iter().all(|e| match e {
+        ChunkIoEvent::Saved { result, .. } => result.is_ok(),
+        _ => true,
+    }));
 }
 
 struct Running {
     addr: SocketAddr,
     control: std_mpsc::Sender<Control>,
     thread: JoinHandle<u8>,
+    dir: tempfile::TempDir,
 }
 
-fn run(config: RuntimeConfig, place_on_join: bool) -> Running {
-    let mut server = Server::start(config).unwrap();
-    server.place_on_join = place_on_join;
+fn run(config: RuntimeConfig) -> Running {
+    let dir = tempfile::tempdir().unwrap();
+    let tables = tables();
+    make_world(dir.path(), &tables);
+    let settings = WorldSettings {
+        level_name: "world",
+        compression: Compression::Lz4,
+        sync_chunk_writes: false,
+        new_world: (
+            storage::GameType::Survival,
+            storage::Difficulty::Normal,
+            false,
+        ),
+    };
+    let server = Server::start(config, tables.registries.clone(), || {
+        World::open(dir.path(), &settings, &tables)
+    })
+    .unwrap();
     Running {
         addr: server.local_addr(),
         control: server.control(),
         thread: std::thread::spawn(move || server.run()),
+        dir,
     }
 }
 
 impl Running {
-    fn stop(self, control: Control) -> u8 {
+    fn stop(self, control: Control) -> (u8, tempfile::TempDir) {
         self.control.send(control).unwrap();
-        self.thread.join().unwrap()
+        (self.thread.join().unwrap(), self.dir)
     }
 }
 
@@ -95,6 +220,17 @@ impl Client {
         }
     }
 
+    /// Packets until one with this id; `None` when the connection closes first.
+    fn until(&mut self, id: u8, seen: &mut Vec<Vec<u8>>) -> Option<Vec<u8>> {
+        loop {
+            let packet = self.recv()?;
+            if packet[0] == id {
+                return Some(packet);
+            }
+            seen.push(packet);
+        }
+    }
+
     /// Handshake, hello and the Velocity answer; returns the server's next packet.
     fn log_in(addr: SocketAddr) -> (Self, Vec<u8>) {
         let mut client = Client::connect(addr);
@@ -126,41 +262,180 @@ impl Client {
         client.send(&[3]);
         client
     }
+
+    /// Through the configuration as a vanilla client (view distance 1), up to the play state.
+    fn play(addr: SocketAddr) -> Self {
+        let mut client = Client::join(addr);
+        let mut seen = Vec::new();
+        let packs = client.until(15, &mut seen).expect("select_known_packs");
+        let mut info = vec![0];
+        put_var_int(&mut info, 5);
+        info.extend(b"en_us");
+        info.extend([1, 0, 1, 0x7f, 1, 0, 1, 0]);
+        client.send(&info);
+        // The client knows `core`: it answers with the same list.
+        let mut answer = packs.clone();
+        answer[0] = 7;
+        assert_eq!(
+            packs,
+            select_known_packs_packet(&[KnownPack::vanilla("core")])
+        );
+        client.send(&answer);
+        loop {
+            let packet = client.recv().expect("configuration packets");
+            match packet[0] {
+                // Keep-alives are answered with their challenge.
+                4 => client.send(&packet),
+                3 => break,
+                _ => {}
+            }
+        }
+        client.send(&[3]);
+        client
+    }
+
+    fn send_play(&mut self, id: i32, fields: &[u8]) {
+        let mut body = Vec::new();
+        put_var_int(&mut body, id);
+        body.extend(fields);
+        self.send(&body);
+    }
+
+    /// Play packets until `id`, answering keep-alives.
+    fn until_play(&mut self, id: u8, seen: &mut Vec<Vec<u8>>) -> Vec<u8> {
+        loop {
+            let packet = self.recv().expect("a play packet");
+            if packet[0] == play_cb::KEEP_ALIVE {
+                self.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
+            } else if packet[0] == id {
+                return packet;
+            } else {
+                seen.push(packet);
+            }
+        }
+    }
+
+    fn move_to(&mut self, x: f64, y: f64, z: f64) {
+        let mut fields = Vec::new();
+        for v in [x, y, z] {
+            fields.extend(v.to_be_bytes());
+        }
+        fields.push(1); // on ground
+        self.send_play(play_sb::MOVE_PLAYER_POS, &fields);
+    }
 }
 
 fn component(packet: &[u8]) -> FormattedText {
     read_component(&mut std::io::Cursor::new(&packet[1..])).unwrap()
 }
 
+fn chunk_pos(packet: &[u8]) -> (i32, i32) {
+    let x = i32::from_be_bytes(packet[1..5].try_into().unwrap());
+    let z = i32::from_be_bytes(packet[5..9].try_into().unwrap());
+    (x, z)
+}
+
+/// Login, configuration, play: the join, the chunks that can be sent, a teleport accepted, moves
+/// across chunk borders, and the player's file written when it leaves.
+#[test]
+fn a_player_joins_sees_chunks_moves_and_is_saved() {
+    let server = run(config(20));
+    let mut client = Client::play(server.addr);
+    let mut seen = Vec::new();
+    let login = client.until_play(play_cb::LOGIN, &mut seen);
+    assert_eq!(&login[1..5], &1i32.to_be_bytes(), "entity id 1");
+    let position = client.until_play(play_cb::PLAYER_POSITION, &mut seen);
+    // Teleport id 1, then x, y (on the stone at y = 3), z.
+    assert_eq!(position[1], 1);
+    let xyz: Vec<f64> = (0..3)
+        .map(|i| f64::from_be_bytes(position[2 + 8 * i..10 + 8 * i].try_into().unwrap()))
+        .collect();
+    assert_eq!(xyz, [8.5, 4.0, 8.5]);
+    assert!(seen.iter().any(|p| p[0] == play_cb::COMMANDS));
+    // Send distance min(load - 1, view distance + 1) = 2: the 3x3 chunks whose neighbours are
+    // all on disk, nearest first.
+    let mut chunks = Vec::new();
+    while chunks.len() < 9 {
+        let packet = client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+        assert!(
+            packet.windows(2048).any(|w| w.iter().all(|&b| b == 0xff)),
+            "the saved sky light"
+        );
+        chunks.push(chunk_pos(&packet));
+    }
+    assert_eq!(chunks[0], (0, 0));
+    let mut sorted = chunks.clone();
+    sorted.sort();
+    let expected: Vec<(i32, i32)> = (-1..=1)
+        .flat_map(|x| (-1..=1).map(move |z| (x, z)))
+        .collect();
+    assert_eq!(sorted, expected);
+
+    // Moves before the teleport is accepted are ignored; after it, a new chunk re-centres.
+    let mut accept = vec![1];
+    for v in [8.5f64, 4.0, 8.5] {
+        accept.extend(v.to_be_bytes());
+    }
+    accept.extend([0; 8]);
+    client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+    client.move_to(24.5, 4.0, 8.5);
+    let center = client.until_play(play_cb::SET_CHUNK_CACHE_CENTER, &mut seen);
+    assert_eq!(&center[1..], &[1, 0]);
+    // Three chunks further: the chunks at x = -1 and 0 leave the send square, forgotten first.
+    seen.clear();
+    client.move_to(72.5, 4.0, 8.5);
+    let center = client.until_play(play_cb::SET_CHUNK_CACHE_CENTER, &mut seen);
+    assert_eq!(&center[1..], &[4, 0]);
+    let forgotten: Vec<ChunkPos> = seen
+        .iter()
+        .filter(|p| p[0] == play_cb::FORGET_LEVEL_CHUNK)
+        .map(|p| ChunkPos::unpack(i64::from_be_bytes(p[1..9].try_into().unwrap())))
+        .collect();
+    assert_eq!(forgotten.len(), 6, "{forgotten:?}");
+    assert!(forgotten.iter().all(|p| p.x <= 0));
+
+    drop(client);
+    let (code, dir) = server.stop(Control::Console("stop".into()));
+    assert_eq!(code, 0);
+    let players = PlayerDataStorage::new(&dir.path().join("world")).unwrap();
+    let saved = players.load(NOTCH, "Notch").expect("the player's file");
+    assert_eq!(saved.position, Some([72.5, 4.0, 8.5]));
+    assert_eq!(saved.dimension.as_deref(), Some("minecraft:overworld"));
+    assert_eq!(saved.tag.get(&"DataVersion".into()).map(Tag::id), Some(3));
+}
+
 #[test]
 fn join_then_stop_from_the_console() {
-    let server = run(config(20), false);
+    let server = run(config(20));
     let mut client = Client::join(server.addr);
-    let code = server.stop(Control::Console("/stop".into()));
+    let (code, _) = server.stop(Control::Console("/stop".into()));
     assert_eq!(code, 0);
-    // Configuration connections are closed without a packet (`handleAllDisconnections`).
-    assert_eq!(client.recv(), None);
+    // Configuration connections are closed without a disconnect packet (`handleAllDisconnections`).
+    while let Some(packet) = client.recv() {
+        assert_ne!(packet[0], 2, "no disconnect");
+    }
 }
 
 #[test]
 fn a_full_server_refuses() {
-    let server = run(config(0), false);
+    let server = run(config(0));
     let (mut client, refusal) = Client::log_in(server.addr);
     assert_eq!(
         refusal,
         login::disconnect_packet(&Reason::translatable("multiplayer.disconnect.server_full"))
     );
     assert_eq!(client.recv(), None);
-    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)), 130);
+    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
 }
 
 #[test]
 fn a_duplicate_login_kicks_the_old_player() {
-    let server = run(config(20), true);
-    let mut first = Client::join(server.addr);
-    let mut second = Client::join(server.addr);
-    let kick = first.recv().unwrap();
-    assert_eq!(kick[0], 2, "configuration disconnect");
+    let server = run(config(20));
+    let mut first = Client::play(server.addr);
+    let mut seen = Vec::new();
+    first.until_play(play_cb::LOGIN, &mut seen);
+    let mut second = Client::play(server.addr);
+    let kick = first.until_play(play_cb::DISCONNECT, &mut seen);
     assert_eq!(
         component(&kick),
         listener::reason_component(&Reason::translatable(
@@ -168,9 +443,10 @@ fn a_duplicate_login_kicks_the_old_player() {
         ))
     );
     assert_eq!(first.recv(), None);
+    second.until_play(play_cb::LOGIN, &mut seen);
     // On stop, players get the shutdown message.
-    assert_eq!(server.stop(Control::Signal(Signal::Terminate)), 143);
-    let message = second.recv().unwrap();
+    assert_eq!(server.stop(Control::Signal(Signal::Terminate)).0, 143);
+    let message = second.until_play(play_cb::DISCONNECT, &mut seen);
     assert_eq!(
         component(&message),
         FormattedText::from("Сервер перезапускается")
@@ -181,54 +457,23 @@ fn a_duplicate_login_kicks_the_old_player() {
 /// `handleKeepAlive`: an answer to no keep-alive is a timeout.
 #[test]
 fn a_wrong_keep_alive_times_out() {
-    let server = run(config(20), false);
+    let server = run(config(20));
     let mut client = Client::join(server.addr);
     client.send(&[4, 0, 0, 0, 0, 0, 0, 0, 7]);
-    let kick = client.recv().unwrap();
+    let kick = client.until(2, &mut Vec::new()).unwrap();
     assert_eq!(
         component(&kick),
         listener::reason_component(&Reason::translatable("disconnect.timeout"))
     );
     assert_eq!(client.recv(), None);
-    assert_eq!(server.stop(Control::Console("stop".into())), 0);
+    assert_eq!(server.stop(Control::Console("stop".into())).0, 0);
 }
 
 #[test]
-fn keep_alive_schedule() {
-    let (outgoing, mut sent) = mpsc::unbounded_channel();
-    let (_to_tick, incoming) = mpsc::unbounded_channel();
-    let conn = Connection {
-        profile: GameProfile::offline("Notch"),
-        address: "127.0.0.1:1".parse().unwrap(),
-        transferred: false,
-        state: ConnectionState::Configuration,
-        incoming,
-        outgoing,
-    };
-    let mut peer = Peer::new(conn, 1000);
-    peer.keep_alive(15_999);
-    assert!(sent.try_recv().is_err());
-    peer.keep_alive(16_000);
-    let Ok(listener::Outgoing::Packet(ping)) = sent.try_recv() else {
-        panic!("expected a keep-alive")
-    };
-    assert_eq!(&ping[..], &[4, 0, 0, 0, 0, 0, 0, 0x3e, 0x80]);
-    // Answered 40 ms later: the latency moves a quarter of the way.
-    let mut answer = vec![4];
-    answer.extend(16_000i64.to_be_bytes());
-    assert!(peer.handle_keep_alive(&answer, 16_040));
-    assert_eq!((peer.latency, peer.keep_alive_pending), (10, false));
-    // Unanswered: a new one 15 s later, the kick only once 30 s have passed (Paper).
-    peer.keep_alive(31_000);
-    assert!(sent.try_recv().is_ok());
-    peer.keep_alive(60_999);
-    assert!(sent.try_recv().is_err());
-    peer.keep_alive(61_000);
-    assert!(sent.try_recv().is_ok(), "the disconnect packet");
-    assert_eq!(
-        peer.closing,
-        Some(Reason::translatable("disconnect.timeout"))
-    );
+fn obfuscated_seed_is_guava_sha256() {
+    // `Hashing.sha256().hashLong(seed).asLong()` from Guava 33.6 (`BiomeManager.obfuscateSeed`).
+    assert_eq!(obfuscate_seed(0), 8_794_265_229_978_523_055);
+    assert_eq!(obfuscate_seed(12345), 293_737_985_876_514_017);
 }
 
 #[test]
@@ -236,5 +481,10 @@ fn a_taken_port_fails_to_start() {
     let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let mut config = config(20);
     config.server_port = i32::from(taken.local_addr().unwrap().port());
-    assert!(Server::start(config).is_err());
+    let started = Server::start(
+        config,
+        Arc::new(Registries::build(Vec::new(), &[]).unwrap()),
+        || unreachable!("the world opens after the port is bound"),
+    );
+    assert!(matches!(started, Err(StartError::Bind(_))));
 }

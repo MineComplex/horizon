@@ -298,7 +298,7 @@ fn now_millis() -> i64 {
 }
 
 /// `Files.createTempFile(dir, prefix, suffix)`.
-fn tempfile_in(dir: &Path, prefix: &str, suffix: &str) -> io::Result<PathBuf> {
+pub(crate) fn tempfile_in(dir: &Path, prefix: &str, suffix: &str) -> io::Result<PathBuf> {
     let mut n = u64::from(std::process::id()) << 20 ^ now_millis() as u64;
     loop {
         let path = dir.join(format!("{prefix}{n}{suffix}"));
@@ -312,7 +312,12 @@ fn tempfile_in(dir: &Path, prefix: &str, suffix: &str) -> io::Result<PathBuf> {
 
 /// `Util.safeReplaceOrMoveFile` (its retries dropped): back the target up, replace it, and put
 /// the backup back when the replacement fails (unless `no_rollback`).
-fn safe_replace(target: &Path, new: &Path, backup: &Path, no_rollback: bool) -> io::Result<()> {
+pub(crate) fn safe_replace(
+    target: &Path,
+    new: &Path,
+    backup: &Path,
+    no_rollback: bool,
+) -> io::Result<()> {
     let remove = |p: &Path| match fs::remove_file(p) {
         Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
         _ => Ok(()),
@@ -330,7 +335,7 @@ fn safe_replace(target: &Path, new: &Path, backup: &Path, no_rollback: bool) -> 
 }
 
 /// `NbtIo.readCompressed`, or plain NBT when the file is not gzip (`SavedDataStorage.isGzip`).
-fn read_root(path: &Path) -> io::Result<Compound> {
+pub(crate) fn read_root(path: &Path) -> io::Result<Compound> {
     let bytes = fs::read(path)?;
     let limits = Limits::templates();
     let raw = if bytes.starts_with(&[0x1f, 0x8b]) {
@@ -350,7 +355,7 @@ fn read_root(path: &Path) -> io::Result<Compound> {
 }
 
 /// `NbtIo.writeCompressed` (truncate, write, sync).
-fn write_gzip(path: &Path, root: Compound) -> io::Result<()> {
+pub(crate) fn write_gzip(path: &Path, root: Compound) -> io::Result<()> {
     let named = NamedTag {
         name: JavaString::default(),
         tag: Tag::Compound(root),

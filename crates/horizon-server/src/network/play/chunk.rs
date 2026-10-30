@@ -50,7 +50,7 @@ impl<'a> LightSection<'a> {
     /// 0 null, 1 uninitialised, 2 initialised, 3 hidden). Saved chunks give the state from the
     /// section's `starlight.*_state` tag (0 when missing, even with an array) and the array from
     /// `BlockLight`/`SkyLight` (Moonrise's `SaveUtil.loadLightHook`); sections the save does not
-    /// list, and every section of an unlit chunk, are uninitialised.
+    /// list, and every section of an unlit chunk, are null (`getFilledEmptyLight`).
     pub fn from_starlight(state: i32, data: Option<&'a [u8; 2048]>) -> Self {
         match (state, data) {
             (1, _) => Self::Empty,

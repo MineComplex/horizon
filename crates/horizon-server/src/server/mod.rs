@@ -1,6 +1,9 @@
 //! The dedicated server: its files and settings, and the tick loop that owns the levels.
 pub mod bootstrap;
 pub mod config;
+pub mod level;
+pub mod player;
+pub mod player_data;
 pub mod properties_file;
 pub mod runtime;
 pub mod server_properties;

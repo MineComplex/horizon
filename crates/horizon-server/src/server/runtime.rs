@@ -14,7 +14,7 @@
 //! - **Signals** (Ctrl-C, SIGTERM) are a task on the runtime that posts to the same control queue,
 //!   in place of Paper's `ServerShutdownThread` (which halts the loop and lets it stop the server).
 //!
-//! Each tick follows `tickServer`: the empty-server pause, the tick rate, the levels (none yet),
+//! Each tick follows `tickServer`: the empty-server pause, the tick rate, the levels (nothing ticks in them yet),
 //! then `tickConnection`: new connections and logins (`addPendingConnections`), each connection's
 //! tick (login verification, packets, keep-alive, disconnections), then the console's lines.
 //!
@@ -25,10 +25,19 @@
 //! (Paper: also by name, ignoring case, when the proxy is in online mode): they are kicked with
 //! `multiplayer.disconnect.duplicate_login` and the new login waits until they are gone.
 //!
-//! Hand-off to the configuration and play states (other modules): [`Server::start_configuration`]
-//! receives each connection that finished logging in, [`Server::configuration_packet`] each of its
-//! packets but keep-alives, and [`Server::place_new_player`] moves it into the player list.
+//! Joining (`network::configuration` drives each connection's configuration state, `Server`
+//! carries out its actions): [`Server::start_configuration`] receives each connection that finished
+//! logging in; on `PrepareSpawn` the player's file is read and the chunks around its spawn are held
+//! (`PrepareSpawnTask`, radius 3) until loaded; on `Play`, [`Server::place_new_player`] checks for a
+//! duplicate and a full server, places the player (`PlayerList.placeNewPlayer`: the join packets of
+//! `network::play::join`) and switches the connection to the play state, where `server::player`
+//! handles its packets and sends its chunks each tick. Players are saved when they leave and on stop.
+//! Keep-alives are Paper's in both states (`configuration::KeepAlive`, carried into play).
+//!
+//! The overworld's chunk I/O answers are drained at the start of each `tickConnection`, also while
+//! the server is paused, as Moonrise completes chunk loads on its own executor.
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::sync::mpsc as std_mpsc;
 use std::time::{Duration, Instant};
 
@@ -38,18 +47,28 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use super::bootstrap::ServerConfig;
+use super::level::{World, WorldError};
+use super::player::{NewPlayer, Player, Spawn, chunk_of};
+use super::player_data::SavedPlayer;
 use super::tick_loop::{
     EmptyPause, EmptyTick, TickAction, TickClock, TickLoopConfig, TickTimeSamples,
 };
 use super::tick_rate::TickRateManager;
+use crate::command::network::CommandsPacket;
+use crate::core::position::ChunkPos;
+use crate::network::configuration::{Action, Configuration, PlayHandoff, Settings};
 use crate::network::listener::{self, Connection, Incoming, LoginRequest, LoginVerdict, NetEvent};
 use crate::network::login::{GameProfile, LoginConfig};
+use crate::network::play::chunk_sending::{ViewDistances, api_distances};
+use crate::network::play::clientbound::{self as cb, GameType};
+use crate::network::play::join::{self, JoinStep};
 use crate::network::{ConnectionState, Reason};
+use crate::registry::Registries;
 
-/// `ServerCommonPacketListenerImpl`: a keep-alive every 15 s; Paper kicks once one has been
-/// unanswered for 30 s (`paper.playerconnection.keepalive`).
-const KEEP_ALIVE_INTERVAL_MS: i64 = 15_000;
-const KEEP_ALIVE_LIMIT_MS: i64 = 30_000;
+/// Leaf's `misc.rebrand.server-mod-name` default (`leaf-global.yml`'s value is not read yet).
+const BRAND: &str = "Leaf";
+/// `PrepareSpawnTask.PREPARE_CHUNK_RADIUS`.
+const PREPARE_CHUNK_RADIUS: i32 = 3;
 /// Paper's `handleAllDisconnections`: how long stopping waits for the connections to close.
 const CLOSE_WAIT: Duration = Duration::from_secs(30);
 
@@ -67,6 +86,11 @@ pub struct RuntimeConfig {
     pub proxy_online_mode: bool,
     pub white_list: bool,
     pub pause_when_empty_seconds: i32,
+    /// `view-distance`, `simulation-distance`: the levels' Moonrise distances.
+    pub view_distance: i32,
+    pub simulation_distance: i32,
+    /// `enforceSecureProfile()`: the property, in online mode.
+    pub enforces_secure_chat: bool,
     /// `settings.shutdown-message` of `bukkit.yml` (Leaf's default), sent to players on stop.
     /// `bukkit.yml` is not read yet.
     pub shutdown_message: Reason,
@@ -95,6 +119,9 @@ impl RuntimeConfig {
             proxy_online_mode: properties.online_mode || (velocity.enabled && velocity.online_mode),
             white_list: properties.white_list,
             pause_when_empty_seconds: properties.pause_when_empty_seconds,
+            view_distance: properties.view_distance,
+            simulation_distance: properties.simulation_distance,
+            enforces_secure_chat: properties.enforce_secure_profile && properties.online_mode,
             shutdown_message: Reason::Literal("Сервер перезапускается".into()),
             boot,
         }
@@ -117,14 +144,10 @@ pub enum Signal {
     Terminate,
 }
 
-/// A logged-in connection, with `ServerCommonPacketListenerImpl`'s keep-alive state.
+/// A logged-in connection (the listener's state lives with it: [`Configuring`] or [`Joined`]).
 #[derive(Debug)]
 struct Peer {
     conn: Connection,
-    keep_alive_time: i64,
-    keep_alive_pending: bool,
-    keep_alive_challenge: i64,
-    latency: i32,
     /// Set by a disconnect: what the log says once the connection is closed; packets are ignored.
     closing: Option<Reason>,
 }
@@ -137,13 +160,9 @@ enum PeerState {
 }
 
 impl Peer {
-    fn new(conn: Connection, now_ms: i64) -> Self {
+    fn new(conn: Connection) -> Self {
         Self {
             conn,
-            keep_alive_time: now_ms,
-            keep_alive_pending: false,
-            keep_alive_challenge: 0,
-            latency: 0,
             closing: None,
         }
     }
@@ -156,59 +175,11 @@ impl Peer {
         }
     }
 
-    /// `keepConnectionAlive` with Paper's longer limit.
-    fn keep_alive(&mut self, now_ms: i64) {
-        let elapsed = now_ms - self.keep_alive_time;
-        if self.closing.is_some() || elapsed < KEEP_ALIVE_INTERVAL_MS {
-            return;
-        }
-        if self.keep_alive_pending {
-            if elapsed >= KEEP_ALIVE_LIMIT_MS {
-                self.disconnect(Reason::translatable("disconnect.timeout"));
-            }
-        } else {
-            self.keep_alive_pending = true;
-            self.keep_alive_time = now_ms;
-            self.keep_alive_challenge = now_ms;
-            let id = match self.conn.state {
-                ConnectionState::Play => 45,
-                _ => 4,
-            };
-            let mut packet = vec![id];
-            packet.extend(now_ms.to_be_bytes());
-            self.conn.send(packet);
-        }
-    }
-
-    /// `handleKeepAlive`: `Some` when the body is a keep-alive of this state.
-    fn handle_keep_alive(&mut self, body: &[u8], now_ms: i64) -> bool {
-        let id = match self.conn.state {
-            ConnectionState::Configuration => 4,
-            ConnectionState::Play => 28,
-            _ => return false,
-        };
-        let Some((&first, rest)) = body.split_first() else {
-            return false;
-        };
-        if first != id {
-            return false;
-        }
-        let answer = <[u8; 8]>::try_from(rest).ok().map(i64::from_be_bytes);
-        if self.keep_alive_pending && answer == Some(self.keep_alive_challenge) {
-            let time = (now_ms - self.keep_alive_time) as i32;
-            self.latency = (self.latency * 3 + time) / 4;
-            self.keep_alive_pending = false;
-        } else {
-            self.disconnect(Reason::translatable("disconnect.timeout"));
-        }
-        true
-    }
-
     /// One message from the reader task. `Err` hands a packet on to the state's listener.
-    fn receive(&mut self, incoming: Incoming, now_ms: i64) -> Result<PeerState, listener::Packet> {
+    fn receive(&mut self, incoming: Incoming) -> Result<PeerState, listener::Packet> {
         Ok(match incoming {
             Incoming::Packet(packet) => {
-                if self.closing.is_none() && !self.handle_keep_alive(&packet, now_ms) {
+                if self.closing.is_none() {
                     return Err(packet);
                 }
                 PeerState::Open
@@ -232,6 +203,14 @@ impl Peer {
         })
     }
 
+    /// The next message from the reader task, if any.
+    fn next(&mut self) -> Option<Incoming> {
+        match self.conn.incoming.try_recv() {
+            Ok(incoming) => Some(incoming),
+            Err(mpsc::error::TryRecvError::Empty) => None,
+            Err(mpsc::error::TryRecvError::Disconnected) => Some(Incoming::Closed),
+        }
+    }
     /// `onDisconnect`'s log line.
     fn log_lost(&self, reason: &Reason) {
         let text = listener::reason_component(reason).to_string();
@@ -249,6 +228,43 @@ struct PendingLogin {
     waiting: bool,
 }
 
+/// `PrepareSpawnTask` between `start` and `Ready`: the chunks around the spawn are held until
+/// loaded, then the position is known.
+#[derive(Debug)]
+struct PreparingSpawn {
+    saved: Option<SavedPlayer>,
+    center: ChunkPos,
+    /// The saved position, else the respawn position (its height found once loaded).
+    position: Option<[f64; 3]>,
+    respawn: (i32, i32, i32),
+    rotation: (f32, f32),
+    ready: Option<Spawn>,
+}
+
+/// A connection in the configuration state.
+#[derive(Debug)]
+struct Configuring {
+    peer: Peer,
+    config: Configuration,
+    spawn: Option<PreparingSpawn>,
+}
+
+/// A player in the play state.
+#[derive(Debug)]
+struct Joined {
+    peer: Peer,
+    player: Player,
+}
+
+/// Why the server could not start.
+#[derive(Debug, thiserror::Error)]
+pub enum StartError {
+    #[error(transparent)]
+    Bind(#[from] std::io::Error),
+    #[error(transparent)]
+    World(#[from] WorldError),
+}
+
 /// The tick thread's state.
 pub struct Server {
     config: RuntimeConfig,
@@ -264,19 +280,29 @@ pub struct Server {
     tick_count: i32,
     tick_times: TickTimeSamples,
     epoch: Instant,
+    /// Read-only once loaded; an `Arc` because the I/O workers' tables and, later, Leaf's async
+    /// command-tree builder share startup's data with the tick thread.
+    registries: Arc<Registries>,
+    world: World,
+    level_distances: ViewDistances,
+    /// `Entity.ENTITY_COUNTER` (the first id is 1).
+    last_entity_id: i32,
     logins: Vec<PendingLogin>,
-    configuring: Vec<Peer>,
-    players: Vec<Peer>,
+    configuring: Vec<Configuring>,
+    players: Vec<Joined>,
     /// `ServerConnectionListener.getSessionId`: made on first use, forgotten when nobody is connected.
     session_id: Option<Uuid>,
     exit_code: Option<u8>,
-    #[cfg(test)]
-    place_on_join: bool,
 }
 
 impl Server {
-    /// `initServer` from "Starting Minecraft server on" to the listener running.
-    pub fn start(config: RuntimeConfig) -> std::io::Result<Self> {
+    /// `initServer` from "Starting Minecraft server on" to the listener running, then the world
+    /// (`loadLevel`).
+    pub fn start(
+        config: RuntimeConfig,
+        registries: Arc<Registries>,
+        open_world: impl FnOnce() -> Result<World, WorldError>,
+    ) -> Result<Self, StartError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .thread_name("Netty Epoll Server IO")
             .enable_all()
@@ -308,7 +334,7 @@ impl Server {
                 tracing::warn!("**** FAILED TO BIND TO PORT!");
                 tracing::warn!("The exception was: {e}");
                 tracing::warn!("Perhaps a server is already running on that port?");
-                return Err(e);
+                return Err(e.into());
             }
         };
         let local_addr = tcp.local_addr()?;
@@ -326,10 +352,18 @@ impl Server {
             std::sync::Arc::new(config.login.clone()),
             event_sender,
         ));
+        let world = open_world()?;
         let (control_sender, control) = std_mpsc::channel();
         let rate = TickRateManager::new();
         let now = Instant::now();
         Ok(Self {
+            level_distances: ViewDistances::for_level(
+                config.view_distance,
+                config.simulation_distance,
+            ),
+            registries,
+            world,
+            last_entity_id: 0,
             clock: TickClock::new(now, config.tick_loop, &rate, false),
             empty_pause: EmptyPause::new(config.pause_when_empty_seconds),
             config,
@@ -348,8 +382,6 @@ impl Server {
             players: Vec::new(),
             session_id: None,
             exit_code: None,
-            #[cfg(test)]
-            place_on_join: false,
         })
     }
 
@@ -423,7 +455,7 @@ impl Server {
             EmptyTick::Run => {
                 self.tick_count = self.tick_count.wrapping_add(1);
                 self.rate.tick();
-                // tickChildren: the levels are not ported yet; then the connections.
+                // tickChildren: nothing ticks in the levels yet (their chunk I/O is drained in tickConnection); then the connections.
                 self.tick_connection();
                 let spent = i64::try_from(start.elapsed().as_nanos()).unwrap_or(i64::MAX);
                 self.tick_times.record(self.tick_count, spent);
@@ -433,12 +465,24 @@ impl Server {
         sprinting
     }
 
-    fn now_ms(&self) -> i64 {
-        i64::try_from(self.epoch.elapsed().as_millis()).unwrap_or(i64::MAX)
+    /// `System.nanoTime` for the listeners (from the server's start).
+    fn now_ns(&self) -> i64 {
+        i64::try_from(self.epoch.elapsed().as_nanos()).unwrap_or(i64::MAX)
     }
 
-    /// `DedicatedServer.tickConnection`: the connections, then the console.
+    fn settings(&self) -> Settings<'_> {
+        Settings {
+            registries: &self.registries,
+            brand: BRAND,
+            enabled_features: &self.world.data.enabled_features,
+            // `enable-code-of-conduct` and `codeofconduct/` are not read yet.
+            codes_of_conduct: &[],
+        }
+    }
+
+    /// `DedicatedServer.tickConnection`: the chunk I/O answers, the connections, then the console.
     fn tick_connection(&mut self) {
+        self.world.overworld.tick_io();
         while let Ok(event) = self.events.try_recv() {
             match event {
                 NetEvent::Login(request) => self.logins.push(PendingLogin {
@@ -449,13 +493,22 @@ impl Server {
             }
         }
         self.tick_logins();
-        let now = self.now_ms();
-        for players in [false, true] {
-            let mut peers = std::mem::take(self.peers(players));
-            peers.retain_mut(|peer| self.tick_peer(peer, now));
-            let list = self.peers(players);
-            peers.append(list);
-            *list = peers;
+        let now = self.now_ns();
+        for mut c in std::mem::take(&mut self.configuring) {
+            match self.tick_configuring(&mut c, now) {
+                Ok(None) => self.configuring.push(c),
+                Ok(Some(handoff)) => self.place_new_player(c, *handoff, now),
+                Err(reason) => {
+                    c.peer.log_lost(&reason);
+                    self.release_spawn(&mut c);
+                }
+            }
+        }
+        for mut joined in std::mem::take(&mut self.players) {
+            match self.tick_joined(&mut joined, now) {
+                Ok(()) => self.players.push(joined),
+                Err(reason) => self.remove_player(joined, &reason),
+            }
         }
         if self.logins.is_empty() && self.configuring.is_empty() && self.players.is_empty() {
             self.session_id = None;
@@ -465,39 +518,152 @@ impl Server {
         }
     }
 
-    fn peers(&mut self, players: bool) -> &mut Vec<Peer> {
-        if players {
-            &mut self.players
-        } else {
-            &mut self.configuring
+    /// A configuring connection's packets, its listener's tick and its spawn preparation:
+    /// `Ok(Some)` once it finished, `Err` once it is gone.
+    fn tick_configuring(
+        &mut self,
+        c: &mut Configuring,
+        now_ns: i64,
+    ) -> Result<Option<Box<PlayHandoff>>, Reason> {
+        let mut actions = Vec::new();
+        while let Some(incoming) = c.peer.next() {
+            match c.peer.receive(incoming) {
+                Ok(PeerState::Open) => {}
+                Ok(PeerState::Lost(reason)) => return Err(reason),
+                Err(packet) => c
+                    .config
+                    .handle(&packet, &self.settings(), now_ns, &mut actions),
+            }
+        }
+        if let Some(spawn) = &mut c.spawn
+            && spawn.ready.is_none()
+            && self.prepare_spawn_tick(spawn)
+        {
+            c.config.spawn_prepared();
+        }
+        c.config.tick(&self.settings(), now_ns, &mut actions);
+        let mut handoff = None;
+        for action in actions {
+            match action {
+                Action::Send(packet) => c.peer.conn.send(packet),
+                Action::Disconnect(reason) => c.peer.disconnect(reason),
+                Action::PrepareSpawn => c.spawn = Some(self.prepare_spawn(&c.peer.conn.profile)),
+                Action::Play(h) => handoff = Some(h),
+            }
+        }
+        Ok(handoff)
+    }
+
+    /// `PrepareSpawnTask.start` (with Paper's level choice): the player's file, its level (only
+    /// the overworld exists: another saved dimension is Paper's "unknown dimension" case) and
+    /// position (saved, else the world's respawn position), then the spawn chunks are held.
+    fn prepare_spawn(&mut self, profile: &GameProfile) -> PreparingSpawn {
+        let saved = self.world.players.load(profile.id, &profile.name);
+        let respawn = &self.world.data.spawn;
+        if let Some(dimension) = saved.as_ref().and_then(|s| s.dimension.as_deref())
+            && dimension != self.world.overworld.dimension
+        {
+            tracing::warn!(
+                "Unknown respawn dimension ResourceKey[minecraft:dimension / {dimension}], defaulting to overworld"
+            );
+        }
+        let position = saved.as_ref().and_then(|s| s.position);
+        let rotation = saved
+            .as_ref()
+            .and_then(|s| s.rotation)
+            .unwrap_or((respawn.yaw, respawn.pitch));
+        let p = respawn.pos;
+        let center = match position {
+            Some(position) => chunk_of(position),
+            None => ChunkPos::new(p.x >> 4, p.z >> 4),
+        };
+        let r = PREPARE_CHUNK_RADIUS;
+        for x in -r..=r {
+            for z in -r..=r {
+                self.world
+                    .overworld
+                    .hold(ChunkPos::new(center.x + x, center.z + z));
+            }
+        }
+        PreparingSpawn {
+            saved,
+            center,
+            position,
+            respawn: (p.x, p.y, p.z),
+            rotation,
+            ready: None,
         }
     }
 
-    /// Drains a peer's packets and runs its keep-alive; false once it is gone.
-    fn tick_peer(&mut self, peer: &mut Peer, now_ms: i64) -> bool {
-        loop {
-            let incoming = match peer.conn.incoming.try_recv() {
-                Ok(incoming) => incoming,
-                Err(mpsc::error::TryRecvError::Empty) => break,
-                Err(mpsc::error::TryRecvError::Disconnected) => Incoming::Closed,
-            };
-            match peer.receive(incoming, now_ms) {
-                Ok(PeerState::Open) => {}
-                Ok(PeerState::Lost(reason)) => {
-                    peer.log_lost(&reason);
-                    return false;
+    /// `Preparing.tick`: ready once every spawn chunk is loaded (or known missing). A new player
+    /// stands on the top of the respawn column (`PlayerSpawnFinder` reduced to the heightmap at
+    /// the respawn position, see `Level::spawn_height`; its search over the respawn radius and
+    /// its collision checks need the physics), or at the respawn position when that chunk is missing.
+    fn prepare_spawn_tick(&self, spawn: &mut PreparingSpawn) -> bool {
+        let level = &self.world.overworld;
+        let r = PREPARE_CHUNK_RADIUS;
+        let c = spawn.center;
+        if (-r..=r).any(|x| (-r..=r).any(|z| level.is_loading(ChunkPos::new(c.x + x, c.z + z)))) {
+            return false;
+        }
+        let (x, y, z) = spawn.respawn;
+        let position = spawn.position.unwrap_or_else(|| {
+            let y = level.spawn_height(x, z).unwrap_or(y);
+            [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5]
+        });
+        spawn.ready = Some(Spawn {
+            position,
+            y_rot: spawn.rotation.0,
+            x_rot: spawn.rotation.1,
+        });
+        true
+    }
+
+    fn release_spawn(&mut self, c: &mut Configuring) {
+        if let Some(spawn) = c.spawn.take() {
+            let r = PREPARE_CHUNK_RADIUS;
+            for x in -r..=r {
+                for z in -r..=r {
+                    let pos = ChunkPos::new(spawn.center.x + x, spawn.center.z + z);
+                    self.world.overworld.release(pos);
                 }
-                Err(packet) => match peer.conn.state {
-                    ConnectionState::Configuration => self.configuration_packet(peer, packet),
-                    _ => tracing::debug!(
-                        "{}: play packets are not handled yet",
-                        peer.conn.profile.name
-                    ),
-                },
             }
         }
-        peer.keep_alive(now_ms);
-        true
+    }
+
+    /// A player's packets, then its tick; `Err` once it is gone.
+    fn tick_joined(&mut self, j: &mut Joined, now_ns: i64) -> Result<(), Reason> {
+        let level = &mut self.world.overworld;
+        while let Some(incoming) = j.peer.next() {
+            match j.peer.receive(incoming) {
+                Ok(PeerState::Open) => {}
+                Ok(PeerState::Lost(reason)) => return Err(reason),
+                Err(packet) => {
+                    if let Err(reason) = j.player.handle(&packet, level, &j.peer.conn, now_ns) {
+                        j.peer.disconnect(reason);
+                    }
+                }
+            }
+        }
+        if j.peer.closing.is_none()
+            && let Err(reason) = j.player.tick(level, &j.peer.conn, now_ns)
+        {
+            j.peer.disconnect(reason);
+        }
+        Ok(())
+    }
+
+    /// `PlayerList.remove`: saved, its chunks released.
+    fn remove_player(&mut self, mut j: Joined, reason: &Reason) {
+        j.peer.log_lost(reason);
+        self.save_player(&j.player);
+        j.player.remove(&mut self.world.overworld);
+    }
+
+    fn save_player(&self, player: &Player) {
+        let data = player.saved_data(self.world.overworld.dimension);
+        let profile = &player.profile;
+        self.world.players.save(profile.id, &profile.name, &data);
     }
 
     /// The login listener's tick for each login the tick thread was asked about.
@@ -515,7 +681,11 @@ impl Server {
                 login.waiting = self.disconnect_all_players_with_profile(&profile.clone());
             }
             let profile = &login.request.forwarded.profile;
-            if self.players.iter().any(|p| p.conn.profile.id == profile.id) {
+            if self
+                .players
+                .iter()
+                .any(|p| p.player.profile.id == profile.id)
+            {
                 self.logins.push(login);
                 continue;
             }
@@ -535,10 +705,10 @@ impl Server {
     fn disconnect_all_players_with_profile(&mut self, profile: &GameProfile) -> bool {
         let by_name = self.config.proxy_online_mode;
         let mut any = false;
-        for player in &mut self.players {
-            let same = &player.conn.profile;
+        for joined in &mut self.players {
+            let same = &joined.player.profile;
             if same.id == profile.id || (by_name && same.name.eq_ignore_ascii_case(&profile.name)) {
-                player.disconnect(Reason::translatable(
+                joined.peer.disconnect(Reason::translatable(
                     "multiplayer.disconnect.duplicate_login",
                 ));
                 any = true;
@@ -548,33 +718,227 @@ impl Server {
     }
 
     /// Hand-off: a connection that finished logging in, now in the configuration state
-    /// (`ServerConfigurationPacketListenerImpl.startConfiguration` goes here).
+    /// (`ServerConfigurationPacketListenerImpl.startConfiguration`).
     pub fn start_configuration(&mut self, connection: Connection) {
-        let peer = Peer::new(connection, self.now_ms());
-        #[cfg(test)]
-        if self.place_on_join {
-            self.players.push(peer);
-            return;
-        }
-        self.configuring.push(peer);
-    }
-
-    /// Hand-off: a configuration packet other than a keep-alive.
-    fn configuration_packet(&mut self, peer: &mut Peer, packet: listener::Packet) {
-        tracing::debug!(
-            "{}: configuration packet {:#04x} is not handled yet",
-            peer.conn.profile.name,
-            packet.first().copied().unwrap_or_default()
+        let mut actions = Vec::new();
+        let config = Configuration::start(
+            connection.profile.clone(),
+            connection.transferred,
+            &self.settings(),
+            self.now_ns(),
+            &mut actions,
         );
+        let mut peer = Peer::new(connection);
+        for action in actions {
+            match action {
+                Action::Send(packet) => peer.conn.send(packet),
+                Action::Disconnect(reason) => peer.disconnect(reason),
+                other => unreachable!("not at the start: {other:?}"),
+            }
+        }
+        self.configuring.push(Configuring {
+            peer,
+            config,
+            spawn: None,
+        });
     }
 
-    /// Hand-off: `PlayerList.placeNewPlayer`, the configuration connection at `index` joins the
-    /// player list (counted for `max-players`, checked for duplicates).
-    pub fn place_new_player(&mut self, index: usize) {
-        let peer = self.configuring.remove(index);
-        self.players.push(peer);
+    /// `handleConfigurationFinished`, then `PrepareSpawnTask.spawnPlayer` and
+    /// `PlayerList.placeNewPlayer`.
+    fn place_new_player(&mut self, mut c: Configuring, handoff: PlayHandoff, now_ns: i64) {
+        let profile = handoff.profile.clone();
+        let refusal = if self
+            .players
+            .iter()
+            .any(|p| p.player.profile.id == profile.id)
+        {
+            Some(Reason::translatable(
+                "multiplayer.disconnect.duplicate_login",
+            ))
+        } else {
+            self.can_player_login(&profile)
+        };
+        let ready = c.spawn.as_ref().and_then(|s| s.ready.clone());
+        let (Some(spawn), None) = (ready, refusal.clone()) else {
+            c.peer.disconnect(refusal.unwrap_or(Reason::translatable(
+                "multiplayer.disconnect.invalid_player_data",
+            )));
+            self.release_spawn(&mut c);
+            self.configuring.push(c);
+            return;
+        };
+        let saved = c
+            .spawn
+            .as_mut()
+            .and_then(|s| s.saved.take())
+            .unwrap_or_default();
+        // `calculateGameModeForNewPlayer`: the saved mode, else the world's (`force-gamemode` is
+        // not read yet).
+        let world_mode = game_type_by_id(self.world.data.game_type as u8);
+        self.last_entity_id += 1;
+        let player = Player::new(
+            NewPlayer {
+                profile,
+                entity_id: self.last_entity_id,
+                spawn,
+                game_type: saved.game_type.unwrap_or(world_mode),
+                previous_game_type: saved.previous_game_type,
+                client_information: handoff.client_information,
+                keep_alive: handoff.keep_alive,
+                latency: handoff.latency,
+                saved,
+                level_distances: self.level_distances,
+            },
+            &mut self.world.overworld,
+            now_ns,
+        );
+        // The player's chunk loader holds its chunks now; the spawn ticket can go.
+        self.release_spawn(&mut c);
+        c.peer.conn.state = ConnectionState::Play;
+        let [x, y, z] = player
+            .position
+            .map(crate::util::number_text::double_to_string);
+        tracing::info!(
+            "{}[/{}] logged in with entity id {} at ([{}]{x}, {y}, {z})",
+            player.profile.name,
+            c.peer.conn.address,
+            player.entity_id,
+            self.world.overworld.dimension,
+        );
+        let joined = Joined {
+            peer: c.peer,
+            player,
+        };
+        match self.join_steps(&joined.player) {
+            Ok(steps) => self.send_join(&joined, steps),
+            Err(e) => tracing::error!("Couldn't place player in world: {e}"),
+        }
+        self.players.push(joined);
     }
 
+    /// The join packets (`network::play::join`) for this server.
+    fn join_steps(&self, player: &Player) -> Result<Vec<JoinStep>, crate::nbt::Error> {
+        use crate::network::play::clientbound::{
+            Abilities, Border, Login, PlayerInfoEntry, SpawnInfo,
+        };
+        let world = &self.world;
+        let level = &world.overworld;
+        let (view, simulation) = api_distances(self.level_distances);
+        let levels = [level.dimension];
+        let mode = player.game_type;
+        let creative = mode == GameType::Creative;
+        let spectator = mode == GameType::Spectator;
+        /// `createPlayerInitializing`'s entry (display names, list order and chat sessions are
+        /// not ported).
+        fn entry(p: &Player) -> PlayerInfoEntry<'_> {
+            PlayerInfoEntry {
+                profile: &p.profile,
+                listed: true,
+                latency: p.latency,
+                game_mode: p.game_type,
+                display_name: None,
+                show_hat: p.client_information.model_customisation & 0x40 != 0,
+                list_order: 0,
+                chat_session: None,
+            }
+        }
+        let own = entry(player);
+        let others: Vec<PlayerInfoEntry> = self.players.iter().map(|j| entry(&j.player)).collect();
+        let weather = &world.weather;
+        let spawn = &world.data.spawn;
+        join::join_sequence(&join::JoinInputs {
+            login: Login {
+                player_id: player.entity_id,
+                hardcore: world.data.hardcore,
+                levels: &levels,
+                max_players: self.config.max_players,
+                chunk_radius: view,
+                simulation_distance: simulation,
+                // Game rules are not ported: their defaults.
+                reduced_debug_info: false,
+                show_death_screen: true,
+                do_limited_crafting: false,
+                spawn: SpawnInfo {
+                    dimension_type: level.dimension_type,
+                    dimension: level.dimension,
+                    seed: obfuscate_seed(world.seed),
+                    game_type: mode,
+                    previous_game_type: player.previous_game_type,
+                    is_debug: false,
+                    is_flat: world.flat,
+                    last_death_location: None,
+                    portal_cooldown: 0,
+                    // The noise settings are not read: the overworld's and flat's sea levels.
+                    sea_level: if world.flat { -63 } else { 63 },
+                },
+                online_mode: self.config.online_mode,
+                enforces_secure_chat: self.config.enforces_secure_chat,
+            },
+            difficulty: world.data.difficulty as u8,
+            difficulty_locked: world.data.difficulty_locked,
+            abilities: Abilities {
+                invulnerable: creative || spectator,
+                flying: spectator,
+                may_fly: creative || spectator,
+                instabuild: creative,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            },
+            selected_slot: 0,
+            // `ops.json` is not ported.
+            permission_level: 0,
+            teleport_id: 1,
+            position: player.position,
+            y_rot: player.y_rot,
+            x_rot: player.x_rot,
+            level: join::LevelInfo {
+                // `world_border.dat` is not read yet: a new border.
+                border: Border::default(),
+                game_time: world.data.game_time,
+                // The world clocks are not ported.
+                clocks: &[],
+                spawn_dimension: &spawn.dimension,
+                spawn_pos: spawn.pos,
+                spawn_yaw: spawn.yaw,
+                spawn_pitch: spawn.pitch,
+                raining: weather.raining,
+                rain_level: if weather.raining { 1.0 } else { 0.0 },
+                thunder_level: if weather.raining && weather.thundering {
+                    1.0
+                } else {
+                    0.0
+                },
+                tick_rate: self.rate.tick_rate(),
+                frozen: self.rate.is_frozen(),
+                frozen_ticks_to_run: self.rate.frozen_ticks_to_run(),
+            },
+            own_info: own,
+            others: &others,
+            // Leaf's join message settings are not read yet: no message.
+            join_message: None,
+            distances: player.distances(),
+            chunk: chunk_of(player.position),
+        })
+    }
+
+    fn send_join(&self, joined: &Joined, steps: Vec<JoinStep>) {
+        for step in steps {
+            match step {
+                JoinStep::Packet(packet) => joined.peer.conn.send(packet),
+                JoinStep::ToOthers(packet) => {
+                    for other in &self.players {
+                        other.peer.conn.send(packet.clone());
+                    }
+                }
+                // No command is ported: Paper's empty tree (only the root).
+                JoinStep::Commands => joined
+                    .peer
+                    .conn
+                    .send(cb::commands(&CommandsPacket::empty())),
+                missing => tracing::debug!("Join step {missing:?} skipped: not ported yet"),
+            }
+        }
+    }
     fn handle_control(&mut self, control: Control) {
         match control {
             Control::Signal(signal) => self.halt(match signal {
@@ -608,20 +972,25 @@ impl Server {
     fn stop(mut self) -> u8 {
         tracing::info!("Stopping server");
         self.accept.abort();
+        // `saveAll`, then `removeAll` (Paper: the shutdown message; their saves already done).
         tracing::info!("Saving players");
         let message = self.config.shutdown_message.clone();
-        for player in &mut self.players {
-            player.disconnect(message.clone());
+        let mut peers = Vec::new();
+        for mut joined in std::mem::take(&mut self.players) {
+            self.save_player(&joined.player);
+            joined.player.remove(&mut self.world.overworld);
+            joined.peer.disconnect(message.clone());
+            peers.push(joined.peer);
         }
-        for peer in &self.configuring {
-            peer.conn.close();
+        for mut c in std::mem::take(&mut self.configuring) {
+            self.release_spawn(&mut c);
+            c.peer.conn.close();
+            peers.push(c.peer);
         }
         // Logins still waiting for an answer: their tasks close when the runtime goes.
         drop(std::mem::take(&mut self.logins));
+        tracing::info!("Saving worlds");
         let deadline = tokio::time::Instant::now() + CLOSE_WAIT;
-        let now = self.now_ms();
-        let mut peers = std::mem::take(&mut self.configuring);
-        peers.append(&mut self.players);
         for mut peer in peers {
             let lost = self.runtime.block_on(async {
                 loop {
@@ -631,7 +1000,7 @@ impl Server {
                         Err(_) => return None,
                         Ok(message) => {
                             let message = message.unwrap_or(Incoming::Closed);
-                            if let Ok(PeerState::Lost(reason)) = peer.receive(message, now) {
+                            if let Ok(PeerState::Lost(reason)) = peer.receive(message) {
                                 return Some(reason);
                             }
                         }
@@ -645,11 +1014,29 @@ impl Server {
                 ),
             }
         }
+        self.world.close();
         self.runtime.shutdown_timeout(Duration::from_secs(1));
         self.exit_code.unwrap_or(0)
     }
 }
 
+/// `BiomeManager.obfuscateSeed`: the first 8 bytes of SHA-256 over the seed, both little-endian
+/// (Guava's `hashLong`/`asLong`).
+fn obfuscate_seed(seed: i64) -> i64 {
+    use sha2::Digest;
+    let hash = sha2::Sha256::digest(seed.to_le_bytes());
+    i64::from_le_bytes(hash[..8].try_into().expect("8 bytes"))
+}
+
+/// `GameType.byId` over the network ids.
+fn game_type_by_id(id: u8) -> GameType {
+    match id {
+        1 => GameType::Creative,
+        2 => GameType::Adventure,
+        3 => GameType::Spectator,
+        _ => GameType::Survival,
+    }
+}
 /// The console: one thread reading stdin lines into `control` until stdin ends.
 pub fn spawn_console(control: std_mpsc::Sender<Control>) -> std::io::Result<()> {
     std::thread::Builder::new()

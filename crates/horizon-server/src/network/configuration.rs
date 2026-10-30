@@ -406,6 +406,16 @@ impl PingCalculator {
     }
 }
 
+/// What [`KeepAlive::tick`] decided.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeepAliveTick {
+    Idle,
+    /// Send a keep-alive with this challenge (one per second).
+    Send(i64),
+    /// The oldest unanswered one is past the limit: log and kick with `disconnect.timeout`.
+    TimedOut,
+}
+
 /// Paper's `KeepAlive`: what a connection's keep-alives carry from one state to the next.
 #[derive(Clone, Debug)]
 pub struct KeepAlive {
@@ -436,6 +446,41 @@ impl KeepAlive {
 
     pub fn average_latency_1m_ms(&self) -> i64 {
         self.ping_1m.last_average_ns / 1_000_000
+    }
+
+    /// `keepConnectionAlive`'s part common to the configuration and play states.
+    pub fn tick(&mut self, now_ns: i64) -> KeepAliveTick {
+        let mut challenge = None;
+        if now_ns - self.last_tx_ns >= 1_000_000_000 {
+            let now_ms = now_ns.div_euclid(1_000_000);
+            self.last_tx_ns = now_ns;
+            self.pending.push_back((now_ns, now_ms));
+            challenge = Some(now_ms);
+        }
+        match self.pending.front() {
+            Some(&(tx, _)) if now_ns - tx > KEEPALIVE_LIMIT_NS => KeepAliveTick::TimedOut,
+            _ => challenge.map_or(KeepAliveTick::Idle, KeepAliveTick::Send),
+        }
+    }
+
+    /// `handleKeepAlive`: the 5 s latency average in milliseconds, or why the answer is refused
+    /// (the caller disconnects with `disconnect.timeout`).
+    pub fn answer(&mut self, challenge: i64, now_ns: i64) -> Result<i32, &'static str> {
+        if let Some(&(tx, c)) = self.pending.front()
+            && c == challenge
+        {
+            self.pending.pop_front();
+            self.ping_1m.update(tx, now_ns);
+            self.ping_5s.update(tx, now_ns);
+            return Ok((self.ping_5s.last_average_ns / 1_000_000) as i32);
+        }
+        match self.pending.iter().position(|&(_, c)| c == challenge) {
+            Some(i) => {
+                self.pending.remove(i);
+                Err("out-of-order")
+            }
+            None => Err("without matching challenge"),
+        }
     }
 }
 
@@ -654,45 +699,27 @@ impl Configuration {
             }
             return;
         }
-        let ka = &mut self.keep_alive;
-        if now_ns - ka.last_tx_ns >= 1_000_000_000 {
-            ka.last_tx_ns = now_ns;
-            ka.pending.push_back((now_ns, now_ms));
-            out.push(Action::Send(keep_alive_packet(now_ms)));
-        }
-        if ka
-            .pending
-            .front()
-            .is_some_and(|&(tx, _)| now_ns - tx > KEEPALIVE_LIMIT_NS)
-        {
-            tracing::info!("{} was kicked due to keepalive timeout!", self.profile.name);
-            self.disconnect(Reason::translatable("disconnect.timeout"), out);
+        match self.keep_alive.tick(now_ns) {
+            KeepAliveTick::Send(challenge) => out.push(Action::Send(keep_alive_packet(challenge))),
+            KeepAliveTick::Idle => {}
+            KeepAliveTick::TimedOut => {
+                tracing::info!("{} was kicked due to keepalive timeout!", self.profile.name);
+                self.disconnect(Reason::translatable("disconnect.timeout"), out);
+            }
         }
     }
 
     fn handle_keep_alive(&mut self, challenge: i64, now_ns: i64, out: &mut Vec<Action>) {
-        let ka = &mut self.keep_alive;
-        if let Some(&(tx, c)) = ka.pending.front()
-            && c == challenge
-        {
-            ka.pending.pop_front();
-            ka.ping_1m.update(tx, now_ns);
-            ka.ping_5s.update(tx, now_ns);
-            self.latency = (ka.ping_5s.last_average_ns / 1_000_000) as i32;
-            return;
-        }
-        let why = match ka.pending.iter().position(|&(_, c)| c == challenge) {
-            Some(i) => {
-                ka.pending.remove(i);
-                "out-of-order"
+        match self.keep_alive.answer(challenge, now_ns) {
+            Ok(latency) => self.latency = latency,
+            Err(why) => {
+                tracing::info!(
+                    "Disconnecting {} for sending keepalive response ({challenge}) {why}!",
+                    self.profile.name
+                );
+                self.disconnect(Reason::translatable("disconnect.timeout"), out);
             }
-            None => "without matching challenge",
-        };
-        tracing::info!(
-            "Disconnecting {} for sending keepalive response ({challenge}) {why}!",
-            self.profile.name
-        );
-        self.disconnect(Reason::translatable("disconnect.timeout"), out);
+        }
     }
 
     /// Paper's `handleCustomPayload`: channel (un)registrations and the client's brand.

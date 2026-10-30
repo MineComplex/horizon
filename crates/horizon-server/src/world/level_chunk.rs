@@ -235,6 +235,29 @@ impl LevelChunk {
     pub fn sections(&self) -> &[LevelChunkSection] {
         &self.sections
     }
+    /// The bottom section's y (`getMinSectionY`).
+    pub fn min_section_y(&self) -> i32 {
+        self.min_section_y
+    }
+    /// A heightmap's raw words (`Heightmap.getRawData`), `None` without it.
+    pub fn heightmap_words(&self, kind: Heightmap) -> Option<Vec<i64>> {
+        let map = self.heightmaps[kind as usize].as_ref()?;
+        Some(map.words().iter().map(|&w| w as i64).collect())
+    }
+    /// The saved light of section `y` (block or sky layer) as Moonrise's `loadLightHook` reads it:
+    /// the Starlight state (0, null, when the tag is missing or the section is not listed) and the
+    /// nibbles.
+    pub fn saved_light(&self, y: i32, sky: bool) -> (i32, Option<&[u8; 2048]>) {
+        let Some(light) = self.light.get(&y) else {
+            return (0, None);
+        };
+        let (state, data) = if sky {
+            (light.sky_light_state, &light.sky_light)
+        } else {
+            (light.block_light_state, &light.block_light)
+        };
+        (state.unwrap_or(0), data.as_deref())
+    }
     fn heightmap_bits(&self) -> u8 {
         (self.height() as u32 + 1)
             .next_power_of_two()
