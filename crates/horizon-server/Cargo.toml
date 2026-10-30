@@ -41,7 +41,7 @@ jiff = "0.2.38"
 num-bigint = "0.4.6"
 # network: tokio replaces Netty (TCP, tasks, channels), bytes its buffers; hmac verifies Velocity's
 # forwarding signature (HMAC-SHA256 over the crate's sha2).
-tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
+tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "rt-multi-thread", "macros", "signal"] }
 bytes = "1.12"
 hmac = "0.13"
 # The YAML configs (paper-global.yml, spigot.yml, purpur.yml, leaf-global.yml): why saphyr is in

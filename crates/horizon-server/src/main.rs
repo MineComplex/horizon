@@ -1,6 +1,6 @@
-//! `horizon-server`: Leaf 26.3's startup, as far as it is ported (ARCHITECTURE.md). It loads the settings
-//! and the language from the working directory, reports them and exits: the levels, the tick loop and
-//! the network are not ported yet.
+//! `horizon-server`: Leaf 26.3 as far as it is ported (ARCHITECTURE.md). It loads the settings and the
+//! language from the working directory, then runs the tick loop and the network
+//! (`server::runtime`) until `stop`, Ctrl-C or SIGTERM. The levels are not ported yet.
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -8,6 +8,7 @@ use horizon_server::{
     azalea::language,
     server::{
         bootstrap::{self, BootstrapOptions, ServerPaths},
+        runtime::{self, RuntimeConfig, Server},
         server_properties::{CommandLineOverrides, StartupOptions},
     },
 };
@@ -98,6 +99,7 @@ struct Options {
 }
 
 fn main() -> std::process::ExitCode {
+    let boot = std::time::Instant::now();
     tracing_subscriber::fmt().with_target(false).init();
     let options = Options::parse();
     let bootstrap_options = BootstrapOptions {
@@ -129,40 +131,21 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    let properties = config.properties.properties();
-    let yaml = &config.yaml;
-    let tick_loop = yaml.tick_loop();
-    println!(
-        "horizon-server: startup settings loaded from {}",
-        config.vanilla_jar.path().display()
-    );
-    println!(
-        "  server.properties: level-name={} server-port={} online-mode={} max-players={}",
-        properties.level_name,
-        properties.server_port,
-        properties.online_mode,
-        properties.max_players
-    );
-    println!(
-        "  velocity: enabled={} online-mode={}; tab-complete={} send-namespaced={}",
-        yaml.paper.velocity.enabled,
-        yaml.paper.velocity.online_mode,
-        yaml.spigot.tab_complete,
-        yaml.spigot.send_namespaced
-    );
-    println!(
-        "  tick loop: catch-up-ticks={} lagging-threshold={} including-5s-in-get-tps={}",
-        tick_loop.catchup_ticks, tick_loop.lagging_threshold, yaml.leaf.including_5s_in_get_tps
-    );
-    println!("  language: {} translations", config.language.len());
-    println!(
-        "  blocks: {} blocks, {} states",
-        config.blocks.block_count(),
-        config.blocks.state_count()
-    );
+    let runtime_config = RuntimeConfig::from_bootstrap(&config, boot);
     let _ = language::install(config.language);
-    println!(
-        "horizon-server: the levels, the tick loop and the network are not ported yet; exiting."
-    );
-    std::process::ExitCode::SUCCESS
+    let server = match Server::start(runtime_config) {
+        Ok(server) => server,
+        // Paper: "Failed to bind to port" propagates out of `initServer`.
+        Err(e) => {
+            tracing::error!(
+                "Encountered an unexpected exception: java.lang.IllegalStateException: Failed to bind to port: {e}"
+            );
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    server.listen_for_signals();
+    if let Err(e) = runtime::spawn_console(server.control()) {
+        tracing::error!("Could not start the console: {e}");
+    }
+    std::process::ExitCode::from(server.run())
 }

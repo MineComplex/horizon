@@ -9,7 +9,17 @@
 //! session id for `login_finished`), and [`NetEvent::Joined`] once the client acknowledged the login.
 //! A joined [`Connection`] is two queues: packet bodies in (the reader task decodes frames and sends
 //! them in order) and packet bodies out (the writer task compresses, frames, encrypts and writes
-//! them). Both are unbounded: the tick thread never blocks on a socket, as with Netty's queues.
+//! them). The tick thread never blocks on a socket: both channels are unbounded, as Netty's queues.
+//!
+//! **What a connection may queue.** Leaf has no packet-rate kick: MineComplex's cleanup patches
+//! (`0318-Cleanup.patch` on the server, `0073-Cleanup-v2.patch` on Paper) delete Paper's packet
+//! limiter (`packet-limiter` in `paper-global.yml`, `Connection.killForPacketSpam`) and vanilla's
+//! `rate-limit` (`RateKickingConnection`), so nothing here kicks for sending fast. What is ours, and
+//! invisible to clients, is a bound on the memory a connection's unread packets take: each queued
+//! packet holds [`INBOUND_BUDGET`] permits for its size until the tick thread drops it, and when
+//! the budget is spent the reader task stops reading the socket, so a client that floods faster
+//! than the tick thread drains waits in TCP's flow control instead of in the server's memory.
+//! A byte budget rather than a packet count because packets range from a few bytes to 8 MiB.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -19,18 +29,25 @@ use bytes::{Bytes, BytesMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, mpsc, oneshot};
 use tokio::time::{Instant, sleep_until, timeout};
 use uuid::Uuid;
 
 use super::codec::{Inbound, Outbound};
 use super::login::{self, Forwarded, GameProfile, Handshake, Login, LoginConfig, Step};
 use super::{ConnectionState, Fault, Reason};
+use crate::azalea::chat::translatable_component::{PrimitiveOrComponent, TranslatableComponent};
+use crate::azalea::chat::{FormattedText, write_component};
 
 /// `ReadTimeoutHandler(30)` of every server connection.
 pub const READ_TIMEOUT: Duration = Duration::from_secs(30);
 /// One server tick at 20 TPS: the login listener's timeout counts ticks.
 const TICK: Duration = Duration::from_millis(50);
+/// The bytes of unhandled packets one connection may have queued for the tick thread: the largest
+/// frame a client can send (`Varint21`: 2^21 - 1 bytes), so a client that sends at full speed always
+/// has a frame in flight, and a connection costs at most this plus one packet (a packet bigger than
+/// the budget takes all of it; decompressed packets are at most 8 MiB).
+pub const INBOUND_BUDGET: usize = (1 << 21) - 1;
 
 /// What the network side tells the tick thread.
 #[derive(Debug)]
@@ -66,10 +83,10 @@ pub struct Connection {
     pub outgoing: mpsc::UnboundedSender<Outgoing>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum Incoming {
     /// A packet body (id + payload) of the connection's current state.
-    Packet(Bytes),
+    Packet(Packet),
     /// The bytes could not be decoded: the tick thread sends `disconnect.genericReason` with
     /// [`Fault::reason`] in its state's disconnect packet, then closes.
     Fault(Fault),
@@ -77,6 +94,70 @@ pub enum Incoming {
     TimedOut,
     /// The client closed the connection.
     Closed,
+}
+
+impl Connection {
+    /// Queue a packet body for the writer task (dropped silently once the connection is closed).
+    pub fn send(&self, body: impl Into<Bytes>) {
+        let _ = self.outgoing.send(Outgoing::Packet(body.into()));
+    }
+
+    /// The wire half of `ServerCommonPacketListenerImpl.disconnect`: the state's disconnect packet,
+    /// then close once it is written.
+    pub fn disconnect(&self, reason: &Reason) {
+        self.send(disconnect_packet(self.state, reason));
+        self.close();
+    }
+
+    /// `Connection.disconnect` without a packet: flush what is queued and close.
+    pub fn close(&self) {
+        let _ = self.outgoing.send(Outgoing::Close);
+    }
+}
+
+/// The disconnect packet of a state: `ClientboundLoginDisconnectPacket` (JSON) in login, the common
+/// `ClientboundDisconnectPacket` (the reason as a network NBT component) in configuration (id 2)
+/// and play (id 32). The handshake state has none; its connections are only closed.
+pub fn disconnect_packet(state: ConnectionState, reason: &Reason) -> Vec<u8> {
+    let id = match state {
+        ConnectionState::Handshake | ConnectionState::Login => {
+            return login::disconnect_packet(reason);
+        }
+        ConnectionState::Configuration => 2,
+        ConnectionState::Play => 32,
+    };
+    let mut out = vec![id];
+    write_component(&reason_component(reason), &mut out).expect("a reason is a small component");
+    out
+}
+
+/// A reason as a chat component (string arguments stay strings, as Java's `Object` arguments).
+pub fn reason_component(reason: &Reason) -> FormattedText {
+    match reason {
+        Reason::Literal(text) => FormattedText::from(text.as_str()),
+        Reason::Translatable(key, args) => TranslatableComponent::new(
+            (*key).to_owned(),
+            args.iter()
+                .cloned()
+                .map(PrimitiveOrComponent::String)
+                .collect(),
+        )
+        .into(),
+    }
+}
+
+/// A packet body with its share of the connection's [`INBOUND_BUDGET`], given back when it is dropped.
+#[derive(Debug)]
+pub struct Packet {
+    pub body: Bytes,
+    _budget: OwnedSemaphorePermit,
+}
+
+impl std::ops::Deref for Packet {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.body
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -282,13 +363,31 @@ async fn read_loop(
     to_tick: mpsc::UnboundedSender<Incoming>,
     mut on_close: oneshot::Receiver<()>,
 ) {
+    // Shared by this task (which takes permits) and the tick thread (whose dropped packets give them
+    // back): the one counter both sides of the queue must see.
+    let budget = Arc::new(Semaphore::new(INBOUND_BUDGET));
     loop {
         let read = tokio::select! {
             read = reader.next() => read,
             _ = &mut on_close => Read::Closed,
         };
         let (message, last) = match read {
-            Read::Packet(body) => (Incoming::Packet(body), false),
+            Read::Packet(body) => {
+                let cost = body.len().clamp(1, INBOUND_BUDGET) as u32;
+                // Backpressure: nothing more is read from the socket until the tick thread has
+                // dropped enough of what it was given.
+                let permit = tokio::select! {
+                    permit = Arc::clone(&budget).acquire_many_owned(cost) => permit.expect("never closed"),
+                    _ = &mut on_close => return drop(to_tick.send(Incoming::Closed)),
+                };
+                (
+                    Incoming::Packet(Packet {
+                        body,
+                        _budget: permit,
+                    }),
+                    false,
+                )
+            }
             Read::Fault(fault) => (Incoming::Fault(fault), true),
             Read::TimedOut => (Incoming::TimedOut, true),
             Read::Closed => (Incoming::Closed, true),
@@ -431,18 +530,46 @@ mod tests {
         assert_eq!(connection.state, ConnectionState::Configuration);
         assert_eq!(connection.profile.name, "Notch");
         assert_eq!(connection.address.ip().to_string(), "203.0.113.5");
-        assert_eq!(
-            connection.incoming.recv().await,
-            Some(Incoming::Packet(Bytes::from_static(&[0x07, 1, 2, 3])))
-        );
+        let Some(Incoming::Packet(packet)) = connection.incoming.recv().await else {
+            panic!("expected a packet")
+        };
+        assert_eq!(&*packet, &[0x07, 1, 2, 3]);
         connection
             .outgoing
             .send(Outgoing::Packet(Bytes::from(vec![0x0e; 600])))
             .unwrap();
         assert_eq!(client.recv().await, vec![0x0e; 600]);
+
+        // The inbound budget: 30 packets of 100 kB, but only what fits in the budget is queued
+        // while the tick thread holds them; the rest arrives once they are dropped.
+        let mut flood = BytesMut::new();
+        for _ in 0..30 {
+            client
+                .writer
+                .outbound
+                .encode(&[0x14; 100_000], &mut flood)
+                .unwrap();
+        }
+        client.writer.socket.write_all(&flood).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let mut held = Vec::new();
+        while let Ok(Incoming::Packet(packet)) = connection.incoming.try_recv() {
+            held.push(packet);
+        }
+        assert_eq!(held.len(), INBOUND_BUDGET / 100_000);
+        drop(held);
+        for _ in 0..30 - INBOUND_BUDGET / 100_000 {
+            let Some(Incoming::Packet(packet)) = connection.incoming.recv().await else {
+                panic!("expected a packet")
+            };
+            assert_eq!(packet.len(), 100_000);
+        }
         connection.outgoing.send(Outgoing::Close).unwrap();
         assert!(client.closed().await);
-        assert_eq!(connection.incoming.recv().await, Some(Incoming::Closed));
+        assert!(matches!(
+            connection.incoming.recv().await,
+            Some(Incoming::Closed)
+        ));
     }
 
     #[tokio::test]
