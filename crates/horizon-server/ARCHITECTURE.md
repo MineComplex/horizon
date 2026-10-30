@@ -69,7 +69,9 @@ from their patches): the command tree and its packet (`command`, `command/networ
 `server/server_properties.rs`; Leaf deletes the EULA check, so there is no `eula.txt`); `/tick` and the
 tick loop's timing with Paper's TPS/MSPT (`server/tick_rate.rs`, `server/tick_loop.rs`); paletted
 containers with Moonrise's save form (`world/chunk`); the block state table read from the data
-generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`); startup (`server/bootstrap.rs`, `main.rs`): Leaf's
+generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`), and each state's cached
+flags and shapes (`block/flags.rs`, `LeafBlockStatesExporter.java` under
+`mods/horizon/src/test/java/dev/horizonlab/leafserver/`); startup (`server/bootstrap.rs`, `main.rs`): Leaf's
 order and log lines; the YAML settings read so far (`server/config`: Velocity, catch-up ticks,
 `tab-complete`/`send-namespaced`, the lagging threshold, Leaf's 5 s TPS; YAML typing checked against
 SnakeYAML 2.6, the libraries' coercions derived from their sources) and the vanilla jar with `en_us.json`
@@ -82,7 +84,7 @@ Next, in order:
    login with Velocity modern forwarding; configuration and play states.
 3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
    `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
-4. Block state flags and shapes (an exporter in the prepare step), chunk sections over `world/chunk`
+4. Chunk sections over `world/chunk`
    with `block::BlockState`, chunk NBT, then the entity arena, following "Data" below.
 
 ## Ownership and threads
@@ -112,9 +114,15 @@ Next, in order:
   `blocks.json` (`block::BlockStates::load`, ~7 MB, checked state by state against vanilla's order).
   Paper/Purpur/Leaf patches do not change state ids or properties (Moonrise only replaces the
   neighbour table by the same index arithmetic), so the vanilla report is Leaf's table. The report
-  has no flags or shapes: `isAir` comes from the three `Properties.air()` blocks; light emission,
-  random ticks, shapes, sounds, map colours and the like need a Horizon-written exporter run in the
-  same prepare step (as `horizon-prepare` does for the client), writing another file beside it.
+  has no flags or shapes: `isAir` comes from the three `Properties.air()` blocks. The same prepare
+  step then runs `LeafBlockStatesExporter.java` (`mods/horizon/src/test/java/dev/horizonlab/leafserver/`)
+  on the jar, which writes
+  `cache/vanilla-26.3/block_states.bin` (~1 MB, versioned binary documented in `block/flags.rs`):
+  per state what `BlockStateBase`/`initCache` cache (flags, light emission/dampening, push reaction,
+  fluid state, destroy speed, map colour, instrument, face sturdiness, the `Cache`'s collision shape
+  and the occlusion shape, de-duplicated: 529 shapes for 35,723 states) plus Moonrise's and Leaf's
+  derived flags (`occludesFullBlock`, `isSpecialCollidingBlock`, Leaf's constant collision shape);
+  `block::BlockStateData` keeps them as flat arrays by state id. Sounds and the like come later.
 - **Positions:** `BlockPos`/`ChunkPos`/`SectionPos` are `Copy` value types (`i32` fields, Java's long packing
   as functions); `Vec3`/`AABB` are `Copy` `f64` structs.
 - **Chunks:** paletted containers (Java's bit layout, for the protocol and region format), sections in a

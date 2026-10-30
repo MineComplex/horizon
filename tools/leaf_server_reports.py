@@ -5,7 +5,11 @@ horizon-server runs without a JVM and the repository holds no Mojang data, so th
 (and later other registries) comes from the server owner's own 26.3 server jar: this tool runs
 vanilla's data generator (`net.minecraft.data.Main --reports`) on it and copies `reports/` to
 `<server dir>/cache/vanilla-26.3/reports/` (`blocks.json`, `registries.json`, ...), which the server
-reads at startup (crates/horizon-server/ARCHITECTURE.md, "Data").
+reads at startup (crates/horizon-server/ARCHITECTURE.md, "Data"). It then runs
+`mods/horizon/src/test/java/dev/horizonlab/leafserver/LeafBlockStatesExporter.java`
+(Java's single-file launcher, after `Bootstrap.bootStrap()`) on the
+same jar, which writes each block state's cached flags and shapes to
+`<server dir>/cache/vanilla-26.3/block_states.bin` (crates/horizon-server/src/block/flags.rs).
 
   python3 tools/leaf_server_reports.py --jar server-26.3.jar --server-dir path/to/server
   python3 tools/leaf_server_reports.py --jar extracted/server.jar --libraries libraries/ --server-dir .
@@ -48,7 +52,8 @@ def main():
     else:
         sys.exit("an extracted server jar needs --libraries")
 
-    target = Path(args.server_dir).resolve() / "cache" / "vanilla-26.3" / "reports"
+    cache = Path(args.server_dir).resolve() / "cache" / "vanilla-26.3"
+    target = cache / "reports"
     with tempfile.TemporaryDirectory(prefix="horizon-server-reports-") as work:
         # The generator writes `out/` and, for the bundler, `libraries/` and `versions/` in its
         # working directory: a scratch folder keeps them out of the server directory.
@@ -62,7 +67,24 @@ def main():
             shutil.rmtree(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(reports, target)
-    print(f"wrote {target}")
+        print(f"wrote {target}")
+
+        # The bundler has extracted the server jar and its libraries into the working directory.
+        if bundler:
+            server = sorted(Path(work, "versions").rglob("*.jar"))
+            if not server:
+                sys.exit("the bundler extracted no server jar under versions/")
+            cp = classpath(str(server[0]), Path(work, "libraries"))
+        else:
+            cp = classpath(jar, args.libraries)
+        exporter = (Path(__file__).resolve().parents[1] / "mods/horizon/src/test/java/dev/horizonlab"
+                    / "leafserver/LeafBlockStatesExporter.java")
+        states = Path(work) / "block_states.bin"
+        result = subprocess.run([args.java, "-cp", cp, str(exporter), str(states)], cwd=work)
+        if result.returncode != 0 or not states.is_file():
+            sys.exit(f"the block state exporter failed (exit {result.returncode})")
+        shutil.copyfile(states, cache / "block_states.bin")
+    print(f"wrote {cache / 'block_states.bin'}")
 
 
 if __name__ == "__main__":

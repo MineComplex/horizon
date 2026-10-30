@@ -12,6 +12,9 @@
 //! and then only read, so the server shares it as one `Arc<BlockStates>` with the other registries
 //! (a single allocation shared by the tick thread and the workers, never mutated).
 
+pub mod flags;
+#[cfg(test)]
+mod flags_tests;
 mod report;
 #[cfg(test)]
 mod tests;
@@ -21,6 +24,7 @@ use std::ops::Range;
 
 use thiserror::Error;
 
+pub use flags::{BlockStateData, PushReaction, StateFluid, SupportType, default_state_data_path};
 pub use report::default_report_path;
 
 use crate::world::chunk::PaletteValue;
@@ -87,6 +91,10 @@ pub enum BlockDataError {
     NoDefault(String),
     #[error("too many blocks or properties for the table")]
     TooLarge,
+    #[error("malformed block_states.bin: {0}")]
+    StateData(String),
+    #[error("block_states.bin has {file} states, blocks.json {report}: rerun the prepare step")]
+    StateDataCount { file: u32, report: u32 },
 }
 
 struct Property {
