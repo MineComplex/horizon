@@ -230,9 +230,12 @@ impl crate::game::Server<'_> {
             .collect();
         drop(teams);
         for (j, touched, pushes) in mobs {
+            // VehicleEntityCollisionEvent: a plugin may stop the pickup or the push.
+            let (pickup, push) = self.plugin_vehicle_touch(id, self.mobs[j].id as i32);
             if touched {
                 let m = &self.mobs[j];
                 let boards = pick_up
+                    && pickup
                     && count < max
                     && m.extra.mount.is_none()
                     && m.width() < super::boats::WIDTH as f32
@@ -256,9 +259,11 @@ impl crate::game::Server<'_> {
                     }
                     continue;
                 }
-                self.boat_push_mob(i, j, count);
+                if push {
+                    self.boat_push_mob(i, j, count);
+                }
             }
-            if pushes {
+            if pushes && push {
                 self.boat_push_mob(i, j, count);
             }
         }
@@ -286,6 +291,10 @@ impl crate::game::Server<'_> {
             let Some(v) = push_impulse(self.boats[i].position, self.boats[k].position) else {
                 continue;
             };
+            // VehicleEntityCollisionEvent: a plugin may stop the push.
+            if !self.plugin_vehicle_touch(id, self.boats[k].id as i32).1 {
+                continue;
+            }
             if count == 0 {
                 self.boats[i].velocity = self.boats[i].velocity.subtract(v);
             }
@@ -302,6 +311,10 @@ impl crate::game::Server<'_> {
             let Some(v) = push_impulse(self.boats[i].position, self.carts[c].position) else {
                 continue;
             };
+            // VehicleEntityCollisionEvent: a plugin may stop the push.
+            if !self.plugin_vehicle_touch(id, self.carts[c].id as i32).1 {
+                continue;
+            }
             if count == 0 {
                 self.boats[i].velocity = self.boats[i].velocity.subtract(v);
             }

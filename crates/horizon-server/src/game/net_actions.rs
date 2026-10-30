@@ -1039,6 +1039,10 @@ impl crate::game::Server<'_> {
         {
             return;
         }
+        // PlayerRegisterChannelEvent and PlayerUnregisterChannelEvent.
+        if self.plugin_players_packet(net, conn, &packet) {
+            return;
+        }
         let spectator = net.hub.players[gi].spectator();
         match packet {
             S::PlayerAction(a) => match a.action {
@@ -1098,6 +1102,15 @@ impl crate::game::Server<'_> {
                 }
                 2 => {
                     net.hub.ack(conn, a.sequence);
+                    // BlockDamageAbortEvent: the dig of this block stops.
+                    if net
+                        .play
+                        .get(&conn)
+                        .and_then(|p| p.digging)
+                        .is_some_and(|(p, _)| p == a.pos)
+                    {
+                        self.plugin_dig_abort(net, conn, a.pos);
+                    }
                     let play = net.play.entry(conn).or_default();
                     play.digging = None;
                     play.mining = None;
@@ -1214,6 +1227,8 @@ impl crate::game::Server<'_> {
                     Some((p.pos, p.face)),
                 ) {
                     // PlayerInteractEvent cancelled: nothing is used or placed.
+                } else if !self.plugin_flower_pot(net, conn, p.hand == 1, p.pos) {
+                    // PlayerFlowerPotManipulateEvent cancelled: the pot stays as it is.
                 } else {
                     let logged = self.world.block_log.as_ref().map_or(0, Vec::len);
                     let heard = self.sounds.capture.as_ref().map_or(0, Vec::len);
@@ -1299,6 +1314,11 @@ impl crate::game::Server<'_> {
                 let Some(stack) = self.item_from_network(net, &p.item) else {
                     return;
                 };
+                // InventoryCreativeEvent: a plugin may change or keep the thrown item.
+                let Some(Some(stack)) = self.plugin_creative_slot(net, conn, -999, Some(stack))
+                else {
+                    return;
+                };
                 if stack.count
                     > self
                         .res
@@ -1325,6 +1345,11 @@ impl crate::game::Server<'_> {
                     return;
                 }
                 let item = self.item_from_network(net, &p.item);
+                // InventoryCreativeEvent: a plugin may change or refuse the item.
+                let Some(item) = self.plugin_creative_slot(net, conn, i32::from(p.slot), item)
+                else {
+                    return;
+                };
                 let slot = p.slot as usize;
                 let g = &mut net.hub.players[gi];
                 let old = g.menu_slot(slot);
@@ -1555,7 +1580,10 @@ impl crate::game::Server<'_> {
                     if d2 >= range * range {
                         return None;
                     }
-                    g.picked_stack(p.pos, g.creative && p.include_data)
+                    let stack = g.picked_stack(p.pos, g.creative && p.include_data)?;
+                    // PlayerPickBlockEvent: cancelled, nothing is picked.
+                    g.plugin_pick_block(p.pos, p.include_data, &stack)
+                        .then_some(stack)
                 });
             }
             // handlePickItemFromEntity.
@@ -1564,6 +1592,8 @@ impl crate::game::Server<'_> {
                     g.within_entity_range(p.id)
                         .then(|| g.entity_pick_result(p.id))
                         .flatten()
+                        // PlayerPickEntityEvent: cancelled, nothing is picked.
+                        .filter(|s| g.plugin_pick_entity(p.id, p.include_data, s))
                 });
             }
             _ => {}
@@ -2197,8 +2227,13 @@ impl crate::game::Server<'_> {
         // PlayerLocaleChangeEvent, PlayerChangedMainHandEvent, PlayerCommandSendEvent.
         self.plugin_watch_world(net);
         // EntityCombustEvent, EntityAirChangeEvent, EntityToggleGlideEvent...
-        // for what changed about the players.
+        // for what changed about the players (EntityPoseChangeEvent,
+        // EntityCombustByBlockEvent... before them).
+        self.plugin_watch_player_mobs(net);
         self.plugin_watch_player_bodies(net);
+        // PlayerHealthChangeEvent, PlayerInputEvent, PlayerJumpEvent,
+        // PlayerArmorChangeEvent, PlayerLinksSendEvent... (plugin_players.rs).
+        self.plugin_watch_players(net);
         self.net_merchant_tick(net);
         self.net_stations_tick(net);
         self.net_tables_tick(net);
@@ -2589,7 +2624,7 @@ impl crate::game::Server<'_> {
             let health = &motion.health;
             let freeze_immune = game.wears_freeze_immune();
             // Plugins hear of the damage the surroundings deal: it waits for them.
-            let defer = game.plugins_hear_damage();
+            let defer = game.plugins_hear_damage() || game.plugins_hear_block_damage();
             let burn_immune = game.wears_burn_from_stepping_immunity();
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
@@ -2633,12 +2668,17 @@ impl crate::game::Server<'_> {
                     });
                 from = to;
             }
+            // EntityExhaustionEvent: the jumps' and the moves' exhaustion.
+            let exhausted = w.player.health.food.exhaustion;
+            let mut jumped = 0.0;
             for (moved, on_ground) in moves {
                 let movement = Vec3::new(moved[0], moved[1], moved[2]);
                 if w.player.ground.on_ground && !on_ground && moved[1] > 0.0 {
                     let sprinting = w.player.sprinting;
+                    let was = w.player.health.food.exhaustion;
                     w.player
                         .cause_food_exhaustion(if sprinting { 0.2 } else { 0.05 });
+                    jumped += w.player.health.food.exhaustion - was;
                 }
                 let landed = (|| -> crate::hc::Result<()> {
                     w.set_on_ground_with_movement(on_ground, false, movement)?;
@@ -2675,7 +2715,19 @@ impl crate::game::Server<'_> {
             // Player.tick ends with updatePlayerPose: a swimmer, or a player
             // crawling under a block, takes the short box its moves are checked with.
             let _ = w.update_player_pose();
+            let moved = w.player.health.food.exhaustion - exhausted - jumped;
+            let (sprinting, swimming) = (w.player.sprinting, w.player.swimming);
             let mut events = std::mem::take(&mut w.player.events);
+            {
+                use horizon_server_api::event::ExhaustionReason as R;
+                let jump = if sprinting { R::JumpSprint } else { R::Jump };
+                let walk = match (swimming, sprinting) {
+                    (true, _) => R::Swim,
+                    (_, true) => R::Sprint,
+                    _ => R::Walk,
+                };
+                game.plugin_exhausted(&[(jumped, jump), (moved, walk)]);
+            }
             // LayeredCauldronBlock.handleEntityOnFireInside along those moves.
             for event in &events {
                 if let MotionEvent::CauldronExtinguish { pos } = event {
@@ -2699,7 +2751,9 @@ impl crate::game::Server<'_> {
             // enchantments' location_changed effects (frost walker).
             game.location_changed_effects([start.x, start.y, start.z], from_ground);
             // LivingEntity.baseTick: outside the world border, then tickEffects.
-            // EntityDamageEvent for the damage of the surroundings held back above.
+            // EntityDamageEvent for the damage of the surroundings held back above
+            // (EntityDamageByBlockEvent first, for the blocks').
+            game.plugin_player_block_damage();
             game.plugin_player_env_damage();
             game.border_damage();
             game.tick_mob_effects();
@@ -2711,7 +2765,10 @@ impl crate::game::Server<'_> {
                 return (Vec::new(), None);
             };
             let _ = player.peaceful_regeneration(rules);
+            let fed = player.health.food.exhaustion;
             let _ = player.food_tick(health, rules);
+            // EntityExhaustionEvent (REGEN), below.
+            let regen_added = player.health.food.exhaustion - fed;
             events.append(&mut player.events);
             // Flying into a wall waits for the plugins too.
             player.defer_env_damage = defer;
@@ -2725,7 +2782,10 @@ impl crate::game::Server<'_> {
             }
             .server_travel();
             // EntityDamageEvent for it.
+            game.plugin_player_block_damage();
             game.plugin_player_env_damage();
+            let regen = horizon_server_api::event::ExhaustionReason::Regen;
+            game.plugin_exhausted(&[(regen_added, regen)]);
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };
@@ -3080,6 +3140,10 @@ impl crate::game::Server<'_> {
             .collect();
         let mut taken = Vec::new();
         for i in near.into_iter().rev() {
+            // PlayerAttemptPickupItemEvent: a cancelled item stays on the ground.
+            if !self.plugin_attempt_pickup(net, gi, i) {
+                continue;
+            }
             // PlayerPickupItemEvent: a cancelled item stays on the ground.
             let (stack, item_id) = (self.dropped[i].stack.clone(), self.dropped[i].id);
             let at = self.dropped[i].position;

@@ -34,6 +34,8 @@ impl crate::game::Server<'_> {
         };
         // A client of a server predicts the placing; the server decides.
 
+        // CampfireStartEvent: a plugin may change the cook time.
+        let time = self.plugin_campfire_start(pos, &held, time);
         let key = (pos[0], pos[1], pos[2]);
         let placed = match self.world.block_entities.get_mut(&key) {
             Some(BlockEntity::Campfire(c)) => {

@@ -240,9 +240,13 @@ impl crate::game::Server<'_> {
         // causeExtraKnockback: a push of 0.4, then the weapon's Knockback.
         if deals_knockback {
             let (xd, zd) = self.extra_knockback_direction();
+            let before = self.plugin_knock_before(index);
             self.mobs[index].knockback(0.4, xd, zd);
             let (strength, _) = self.extra_knockback(&kind, 0.0);
             self.mobs[index].knockback(f64::from(strength), xd, zd);
+            // EntityKnockbackByEntityEvent: the spear's push.
+            let cause = horizon_server_api::event::KnockbackCause::EntityAttack;
+            self.plugin_mob_knocked(index, before, cause);
             // ...and the attacker stops sprinting.
             self.stop_sprint_after_extra_knockback();
         }
@@ -293,10 +297,13 @@ impl crate::game::Server<'_> {
         if hurt {
             self.last_hurt_by_player.insert(id, self.net_acting);
         }
+        // EntityExhaustionEvent (ATTACK).
+        let amount =
+            self.plugin_exhaustion(0.1, horizon_server_api::event::ExhaustionReason::Attack);
         if let Some(p) = self.player.as_mut()
             && !self.creative
         {
-            p.cause_food_exhaustion(0.1);
+            p.cause_food_exhaustion(amount);
         }
         true
     }

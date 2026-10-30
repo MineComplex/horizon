@@ -443,6 +443,7 @@ impl crate::game::Server<'_> {
             entities: &obstacles,
             border: None,
         };
+        let wanted = b.velocity;
         if let Ok(moved) = scene.resolve(b.bounds(), b.velocity, 0.0, b.on_ground) {
             b.position = Vec3::new(
                 b.position.x + moved.x,
@@ -458,6 +459,10 @@ impl crate::game::Server<'_> {
             }
             if (moved.y - b.velocity.y).abs() > 1.0e-7 {
                 b.velocity.y = 0.0;
+            }
+            // VehicleBlockCollisionEvent: it ran into something sideways.
+            if (moved.x - wanted.x).abs() > 1.0e-7 || (moved.z - wanted.z).abs() > 1.0e-7 {
+                self.plugin_boat_bump(&b, wanted);
             }
         }
         // Paddle sounds at the top of each stroke.
@@ -687,6 +692,15 @@ impl crate::game::Server<'_> {
         if !scene.unobstructed(inner).unwrap_or(false) || self.boat_entity_collision(bb) {
             return false;
         }
+        // EntityPlaceEvent, then VehicleCreateEvent: a plugin may keep the
+        // boat in hand.
+        let on = [hit[0].floor(), (hit[1] - 1.0e-3).floor(), hit[2].floor()].map(|v| v as i32);
+        let placed = (boat.id, boat.entity_type(), boat.position, boat.yaw);
+        if !self.plugin_entity_place((placed.0, &placed.1, placed.2, placed.3), on, [0, 1, 0])
+            || !self.plugin_boat_create(&boat)
+        {
+            return true;
+        }
         self.next_entity += 1;
         let key = (hit[0].floor() as i32 >> 4, hit[2].floor() as i32 >> 4);
         self.world.modified.insert(key);
@@ -774,6 +788,8 @@ impl crate::game::Server<'_> {
         }
         self.vehicle_attack_sounds();
         let creative = self.creative;
+        // The player is the VehicleDamageEvent's attacker.
+        self.plugin_vehicle_attacked();
         self.hurt_boat(i, damage, creative);
         self.swing_arm();
         true
@@ -782,11 +798,23 @@ impl crate::game::Server<'_> {
     /// (`creative`: a creative player's hit removes it without drops).
     /// True when the boat was removed.
     pub(super) fn hurt_boat(&mut self, i: usize, damage: f32, creative: bool) -> bool {
+        // VehicleDamageEvent: a plugin may change or stop the damage.
+        let Some(damage) = self.plugin_vehicle_damage(self.boats[i].id, damage) else {
+            return false;
+        };
         let b = &mut self.boats[i];
         b.hurt_dir = -b.hurt_dir;
         b.hurt_time = 10;
         b.damage += damage * 10.0;
         let destroyed = creative || b.damage > 40.0;
+        // VehicleDestroyEvent: a plugin may keep the boat, at 40 damage.
+        let destroyed = destroyed && {
+            let kept = !self.plugin_vehicle_destroy(self.boats[i].id);
+            if kept {
+                self.boats[i].damage = 40.0;
+            }
+            !kept
+        };
         if destroyed {
             self.eject_boat_mobs(i, true);
             let b = self.boats.remove(i);

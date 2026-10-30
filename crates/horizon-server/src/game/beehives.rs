@@ -135,6 +135,10 @@ impl crate::game::Server<'_> {
         {
             return;
         }
+        // EntityEnterBlockEvent: a plugin may keep the bee out.
+        if !self.plugin_enter_block(mob, at) {
+            return;
+        }
         if self.mobs[i].extra.leash.is_some() {
             self.break_leash(mob, true, false);
             self.mobs[i].extra.leash = None;

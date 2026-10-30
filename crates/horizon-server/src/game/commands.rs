@@ -95,7 +95,10 @@ impl crate::game::Server<'_> {
         let parse = d.parse(command, &self.world_data.registries);
         let result = match parse.executable() {
             Err(e) => {
-                self.syntax_failure(&e, command);
+                // UnknownCommandEvent: a plugin may change or drop the error.
+                if self.plugin_unknown_command(command, &e) {
+                    self.syntax_failure(&e, command);
+                }
                 return false;
             }
             Ok((ctx, _)) => {
@@ -1532,9 +1535,11 @@ impl crate::game::Server<'_> {
                 if total == t {
                     return Err(err("commands.time.set.already_at_time", &[&clock, &t]));
                 }
-                // TimeSkipEvent (COMMAND): a plugin may change or cancel the jump.
+                // ClockTimeSkipEvent, then TimeSkipEvent (COMMAND): a plugin may
+                // change or cancel the jump.
                 let reason = horizon_server_api::event::TimeSkipReason::Command;
-                let Some(skip) = self.plugin_time_skip(reason, t - total) else {
+                let skip = self.plugin_clock_skip(t - total);
+                let Some(skip) = skip.and_then(|s| self.plugin_time_skip(reason, s)) else {
                     return Ok(0);
                 };
                 let t = total + skip;
@@ -1559,9 +1564,10 @@ impl crate::game::Server<'_> {
                         &[&clock, &marker],
                     ));
                 }
-                // TimeSkipEvent (COMMAND).
+                // ClockTimeSkipEvent, then TimeSkipEvent (COMMAND).
                 let reason = horizon_server_api::event::TimeSkipReason::Command;
-                let Some(skip) = self.plugin_time_skip(reason, m.resolve(total) - total) else {
+                let skip = self.plugin_clock_skip(m.resolve(total) - total);
+                let Some(skip) = skip.and_then(|s| self.plugin_time_skip(reason, s)) else {
                     return Ok(0);
                 };
                 self.world.day_time = total + skip;
@@ -1574,9 +1580,10 @@ impl crate::game::Server<'_> {
             }
             "time.add" => {
                 let t = i64::from(crate::game::Server::int(ctx, "time").unwrap_or(0));
-                // TimeSkipEvent (COMMAND).
+                // ClockTimeSkipEvent, then TimeSkipEvent (COMMAND).
                 let reason = horizon_server_api::event::TimeSkipReason::Command;
-                let Some(t) = self.plugin_time_skip(reason, t) else {
+                let skip = self.plugin_clock_skip(t);
+                let Some(t) = skip.and_then(|s| self.plugin_time_skip(reason, s)) else {
                     return Ok(0);
                 };
                 self.world.day_time = (total + t).max(0);
@@ -1875,7 +1882,10 @@ impl crate::game::Server<'_> {
                         cart_kind,
                         Vec3::new(pos[0], pos[1], pos[2]),
                     );
-                    self.carts.push(cart);
+                    // VehicleCreateEvent: a plugin may keep it out.
+                    if self.plugin_cart_create(&cart) {
+                        self.carts.push(cart);
+                    }
                     name = Text::translate(&format!("entity.minecraft.{k}"), &[]);
                 }
                 // SummonCommand.createEntity: any other type from an empty compound.
@@ -2582,21 +2592,28 @@ impl crate::game::Server<'_> {
         let level = self.dim;
         for &t in &targets {
             self.for_player(t, |g| {
-                if level == Dim::Overworld {
+                let config = super::respawn_anchor::RespawnConfig {
+                    dim: level,
+                    pos,
+                    yaw,
+                    forced: true,
+                };
+                // PlayerSpawnChangeEvent (COMMAND): a plugin may move or clear
+                // the point, or keep the old one.
+                let cause = horizon_server_api::event::SpawnChangeCause::Command;
+                let Some(config) = g.plugin_spawn_point(cause, config) else {
+                    return;
+                };
+                if config.dim == Dim::Overworld && config.forced {
                     g.spawn = Some(Vec3::new(
-                        f64::from(pos[0]) + 0.5,
-                        f64::from(pos[1]),
-                        f64::from(pos[2]) + 0.5,
+                        f64::from(config.pos[0]) + 0.5,
+                        f64::from(config.pos[1]),
+                        f64::from(config.pos[2]) + 0.5,
                     ));
                     g.respawn_config = None;
                 } else {
                     g.spawn = None;
-                    g.respawn_config = Some(super::respawn_anchor::RespawnConfig {
-                        dim: level,
-                        pos,
-                        yaw,
-                        forced: true,
-                    });
+                    g.respawn_config = Some(config);
                 }
             });
         }

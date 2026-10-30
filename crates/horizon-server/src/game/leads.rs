@@ -60,6 +60,8 @@ impl crate::game::Server<'_> {
     }
     /// `Leashable.dropLeash` / `removeLeash`: the lead falls as an item.
     pub(super) fn break_leash(&mut self, id: u32, drop: bool, sound: bool) {
+        // EntityUnleashEvent: a plugin may say whether the lead drops.
+        let drop = self.plugin_unleash(id, drop);
         let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
             return;
         };
@@ -185,6 +187,7 @@ impl crate::game::Server<'_> {
             if !self.plugin_leash(id, false, !creative) {
                 return true;
             }
+            self.plugin_unleash_reason(horizon_server_api::event::UnleashReason::PlayerUnleash);
             self.break_leash(id, !creative, false);
             self.lead_sound("untied", at);
             return true;
@@ -260,6 +263,13 @@ impl crate::game::Server<'_> {
             && in_hand.is_empty()
         {
             return false;
+        }
+        // HangingPlaceEvent: a new knot; a plugin may keep the mobs in hand.
+        if existing.is_empty()
+            && in_hand.iter().any(|&j| self.can_attach_lead(j, center))
+            && !self.plugin_knot_place(knot_pos)
+        {
+            return true;
         }
         let mut attached = false;
         for j in in_hand {

@@ -148,6 +148,8 @@ impl crate::game::Server<'_> {
         let loaded = std::mem::take(&mut self.world.loaded_entities);
         let player_uuid = self.level.player_uuid;
         for (key, tags) in loaded {
+            // EntitiesLoadEvent: the entities with ids from here on.
+            let mark = self.plugin_load_mark();
             for tag in tags {
                 let kind = entity_nbt::kind(&tag).unwrap_or_default();
                 let uuid = entity_nbt::uuid(&tag);
@@ -359,6 +361,7 @@ impl crate::game::Server<'_> {
                     _ => self.persist.unknown.entry(key).or_default().push(tag),
                 }
             }
+            self.plugin_entities_loaded(key, mark);
         }
     }
     /// A saved mob and, under `Passengers`, the mobs riding it.
@@ -874,6 +877,8 @@ impl crate::game::Server<'_> {
             }
         }
         if remove {
+            // EntitiesUnloadEvent, and EntityRemoveEvent's UNLOAD to come.
+            self.plugin_entities_unloading(keys);
             let gone = |p: Vec3| keys.contains(&chunk_of(p));
             let mut removed: Vec<u32> = Vec::new();
             let riding = self.riding;

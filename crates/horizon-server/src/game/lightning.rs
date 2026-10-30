@@ -213,6 +213,10 @@ impl crate::game::Server<'_> {
         let r = &mut self.world.random;
         let seed = r.next_long();
         let flashes = r.next_int_bound(3).unwrap_or(0) + 1;
+        // EntitySpawnEvent: a plugin may keep the bolt out.
+        if !self.plugin_entity_spawn("minecraft:lightning_bolt", 0, at) {
+            return;
+        }
         self.lightning_seen[0] += 1;
         self.bolts.push(Bolt {
             id: 0,
@@ -493,6 +497,22 @@ impl crate::game::Server<'_> {
 
             m.damage(5.0, damage);
         }
+        // EntityRemoveEvent (TRANSFORMATION) for the struck that turned, and
+        // EntityCombustByEntityEvent for the others: the bolt set them alight.
+        let (bolt, bolt_at) = (b.id as i32, b.at);
+        for &id in &ids {
+            if self
+                .mobs
+                .iter()
+                .any(|m| m.id == id && m.removed && m.alive())
+            {
+                let cause = horizon_server_api::event::EntityRemoveCause::Transformation;
+                self.plugin_mob_leaving(id, cause);
+            } else {
+                let who = crate::hc::mobs::Who::Mob(id);
+                self.plugin_combust_by(who, bolt, "minecraft:lightning_bolt", bolt_at);
+            }
+        }
         if !events.is_empty() {
             let _ = self.handle_mob_events(events);
         }
@@ -501,6 +521,8 @@ impl crate::game::Server<'_> {
             if let Some(p) = g.player.as_ref().map(|p| p.position)
                 && inside([p.x, p.y, p.z])
             {
+                let who = crate::hc::mobs::Who::Player;
+                g.plugin_combust_by(who, bolt, "minecraft:lightning_bolt", bolt_at);
                 if let Some(p) = g.player.as_mut() {
                     p.fire_ticks += 1;
                     if p.fire_ticks == 0

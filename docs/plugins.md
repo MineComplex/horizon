@@ -237,8 +237,80 @@ plugin listens: `horizon-world/src/level/plugin_asks.rs`)
 | `GenericGameEvent` | a vanilla game event (vibrations) | radius, `cancelled` |
 | `LootGenerateEvent` | a container's or a mob's loot | the loot, `cancelled` |
 
-Not covered: `BlockCanBuildEvent` (placement is decided in one pass in horizon-world), natural tree growth in
-`StructureGrowEvent` (bone meal only), and `BlockPhysicsEvent` (left out on purpose).
+**Paintings, frames and vehicles** (`event/vehicles.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `HangingPlaceEvent` | a painting, item frame or leash knot is placed | `cancelled` |
+| `HangingBreakEvent`, `HangingBreakByEntityEvent` | a painting or frame breaks (`Entity`, `Obstruction`, `Physics`) | `cancelled` |
+| `VehicleCreateEvent` | a boat or minecart is placed, dispensed or summoned | `cancelled` |
+| `VehicleDamageEvent`, `VehicleDestroyEvent` | a boat or minecart is hurt or about to break | `damage`, `cancelled` |
+| `VehicleMoveEvent`, `VehicleUpdateEvent` | once a tick for each vehicle (that moved) | |
+| `VehicleBlockCollisionEvent`, `VehicleEntityCollisionEvent` | a vehicle runs into a block or an entity | `cancelled` (entities: no pickup, no push) |
+| `EntityPlaceEvent` | a boat, minecart, armor stand or end crystal is placed | `cancelled` |
+| `EntityUnleashEvent` | a lead comes off (distance, holder gone, player) | `drop_leash` |
+
+**More mob events** (`event/mobs.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `EntityKnockbackEvent`, `EntityKnockbackByEntityEvent` | knockback about to land on a mob or a player | `knockback`, `cancelled` |
+| `EntityExhaustionEvent` | a player's exhaustion (mining, attacks, jumps, sprinting, swimming, walking, regeneration, Hunger) | `exhaustion`, `cancelled` |
+| `EntityPoseChangeEvent`, `EntityRemoveEvent` | a pose changed, an entity is gone (once a tick) | |
+| `EntityPortalEnterEvent`, `EntityPortalExitEvent` | an entity touches a portal, arrives through one | `cancelled`; `to`, `after` |
+| `EnderDragonChangePhaseEvent` | the dragon's phase changes | `new_phase`, `cancelled` |
+| `PigZombieAngerEvent`, `VillagerCareerChangeEvent`, `StriderTemperatureChangeEvent` | (once a tick) | `new_anger`, `cancelled` |
+| `EntitiesLoadEvent`, `EntitiesUnloadEvent` | a chunk's entities load or unload | |
+| `EntityEnterBlockEvent`, `EntityBlockFormEvent` | a bee enters its hive; Frost Walker ice, a snow golem's snow | `cancelled` |
+| `EntitySpawnEvent` | an orb, primed TNT, falling block, potion cloud or bolt comes into the world | `cancelled` |
+| `EntityTargetEvent` | before `EntityTargetLivingEntityEvent` | `target`, `cancelled` |
+| `EntityCombustByEntityEvent`, `EntityCombustByBlockEvent` | set on fire by an arrow, fireball, Fire Aspect, lightning; by fire or lava | `duration`, `cancelled` |
+| `EntityDamageByBlockEvent` | damage from cactus, berry bushes, campfires, fire, lava, magma, dripstone | `damage`, `cancelled` |
+
+**More block and station events** (`event/stations.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `FurnaceStartSmeltEvent`, `BrewingStartEvent`, `CampfireStartEvent` | cooking or brewing starts | the total time |
+| `BlockDropItemEvent`, `BlockExpEvent` | the items and experience of a block a player broke | the items, `exp_to_drop`, `cancelled` |
+| `BlockDamageAbortEvent` | a player stops digging | |
+| `BlockDispenseArmorEvent`, `BlockDispenseLootEvent` | a dispenser puts armour on, a vault ejects its loot | the loot, `cancelled` |
+| `HopperInventorySearchEvent` | a hopper looks for a container | `inventory` (None only) |
+| `InventoryCreativeEvent` | a creative player sets a slot | the item, `cancelled` |
+| `PrepareItemEnchantEvent` | the enchanting table's offers | the offers, `cancelled` |
+| `SpawnerSpawnEvent`, `TrialSpawnerSpawnEvent` | a spawner spawns a mob | `cancelled` |
+| `VaultDisplayItemEvent`, `SculkBloomEvent`, `BlockReceiveGameEvent` | a vault's shown item, a catalyst's bloom, a sensor or shrieker hears a vibration | the item, `charge`, `cancelled` |
+| `BlockCanBuildEvent` | a player's block is about to be placed | `buildable` (may only refuse) |
+| `AsyncStructureGenerateEvent`, `AsyncStructureSpawnEvent` | a structure is in a newly generated chunk | |
+| `MapInitializeEvent` | a new map | centre, scale, tracking, locked |
+
+**More player and server events** (`event/players.rs`, Paper's included)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `PlayerAttemptPickupItemEvent`, `PlayerBucketFishEvent` | an item in reach (even with a full inventory); a fish into a bucket | `fly_at_player`, `cancelled` |
+| `PlayerInputEvent`, `PlayerRecipeBookSettingsChangeEvent`, `PlayerClientOptionsChangeEvent`, `PlayerHealthChangeEvent` | (once a tick) | |
+| `PlayerLinksSendEvent` | the server links | the links |
+| `PlayerSpawnChangeEvent` | a bed, an anchor, `/spawnpoint`, a lost spawn point | the point, `forced`, `cancelled` |
+| `UnknownCommandEvent` | a command that doesn't parse | `message` |
+| `PluginEnableEvent`, `PluginDisableEvent` | each plugin enabled or about to be disabled | |
+| `PlayerRegisterChannelEvent`, `PlayerUnregisterChannelEvent` | `minecraft:register` / `unregister` | |
+| `ClockTimeSkipEvent` | `/time` (then `TimeSkipEvent`) | `skip_amount`, `cancelled` |
+| `PlayerJumpEvent` | a jump | `from`, `cancelled` |
+| `PlayerArmorChangeEvent`, `PlayerInventorySlotChangeEvent`, `PlayerPostRespawnEvent` | (once a tick) | |
+| `ServerTickStartEvent`, `ServerTickEndEvent` | every server tick | |
+| `PlayerReadyArrowEvent`, `PlayerLaunchProjectileEvent`, `PlayerStopUsingItemEvent` | a bow picks its arrow; a snowball, egg or pearl is thrown; an item stops being used | `should_consume`, `cancelled` |
+| `PlayerFlowerPotManipulateEvent`, `PlayerPickBlockEvent`, `PlayerPickEntityEvent` | | `cancelled` |
+| `AsyncChatEvent` | after `AsyncPlayerChatEvent` | the message, viewers, `cancelled` |
+| `WhitelistToggleEvent`, `ServerResourcesReloadedEvent` | `whitelist on/off`, `/reload` | |
+
+Not covered: `BlockCanBuildEvent` can't force a placement horizon-world refuses; natural tree growth in
+`StructureGrowEvent` (bone meal only); `BellResonateEvent` (the server doesn't run the bell's resonance),
+`PlayerPickupArrowEvent` (the server has no arrow pickup by players yet), `ArrowBodyCountChangeEvent`
+(arrows in bodies aren't kept), `PlayerTradeEvent`, `PlayerHideEntityEvent` and `PlayerShowEntityEvent` (no
+hide/show in the API), and `BlockPhysicsEvent` (left out on purpose). Bukkit's abstract events
+(`PlayerEvent`, `BlockEvent`...), the server-list ping (Velocity answers it), RCON and the plugin-messaging
+service have no events here.
 
 ## Tests
 
@@ -247,4 +319,5 @@ panics) and `python3 tools/test_plugins_e2e.py` (a horizon-server built with the
 horizon-client on it: join, commands, `/plugins`, chat, a cancelled break, a kept diamond, the game mode line,
 a fall that hurts nothing, a teleport's cause, a cancelled phantom, a mob's death, TNT that breaks no blocks, the server-loaded line,
 food that never drops, rain taken back, a cancelled time jump, a dry sponge, TNT that redstone doesn't light, a
-refused effect, a furnace that smelts gold, falling sand that never lands, enable and disable in the log).
+refused effect, a furnace that smelts gold, falling sand that never lands, a 20-tick cook time, the plugin's
+unknown-command line, a minecart that never comes, enable and disable in the log).

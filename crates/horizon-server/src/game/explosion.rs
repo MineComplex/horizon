@@ -297,6 +297,7 @@ impl crate::game::Server<'_> {
         let (creative, spectator) = (self.creative, self.spectator());
         let flying = self.player.as_ref().is_some_and(|p| p.flying);
         let mut outcome = crate::hc::health::BlockOutcome::default();
+        let knocked = self.player.as_ref().map(|p| p.velocity);
         if let Some(p) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(damage_type)
         {
@@ -329,6 +330,12 @@ impl crate::game::Server<'_> {
                     p.velocity.z + dir[2] * power,
                 );
             }
+        }
+        // EntityKnockbackEvent (EXPLOSION), by the exploding mob.
+        if let Some(before) = knocked {
+            let cause = horizon_server_api::event::KnockbackCause::Explosion;
+            self.plugin_knock_cause(cause, exploding.map(crate::hc::mobs::Who::Mob));
+            self.plugin_player_knockback(before);
         }
         if raised {
             self.after_block(outcome, amount, None, false);
@@ -388,12 +395,18 @@ impl crate::game::Server<'_> {
         }
         // Mobs.
         let mut mobs = std::mem::take(&mut self.mobs);
+        // EntityKnockbackEvent: the mobs' velocities before the blast.
+        let mut knocked = Vec::new();
+        let hear_knockback = self.plugins_hear_knockback();
         for m in mobs.iter_mut().filter(|m| m.alive()) {
             let hurtable = teams_allow(self, self.mob_team(m.id));
             let feet = [m.position.x, m.position.y, m.position.z];
             let dist = distance(feet) / diameter;
             if dist > 1.0 {
                 continue;
+            }
+            if hear_knockback {
+                knocked.push((m.id, m.velocity));
             }
             let (w, h) = (m.kind.width / 2.0, m.kind.height);
             let eye = [feet[0], feet[1] + m.kind.eye_height, feet[2]];
@@ -430,6 +443,13 @@ impl crate::game::Server<'_> {
             );
         }
         self.mobs = mobs;
+        // EntityKnockbackEvent (EXPLOSION) for the mobs it pushed.
+        let source = self.combat.explosion_owner.or(exploding);
+        for (id, before) in knocked {
+            let cause = horizon_server_api::event::KnockbackCause::Explosion;
+            let by = source.filter(|&o| o != id).map(crate::hc::mobs::Who::Mob);
+            self.plugin_mob_knockback(id, before, cause, by);
+        }
         // Dropped items: 5 health, destroyed by the explosion damage (nether stars resist).
         let mut items = std::mem::take(&mut self.dropped);
         items.retain_mut(|item| {

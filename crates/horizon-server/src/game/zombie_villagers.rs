@@ -65,6 +65,9 @@ impl crate::game::Server<'_> {
         let old = self.mobs[v].clone();
         self.mobs[v].removed = true;
         self.mobs[v].health = 0.0;
+        // EntityRemoveEvent (TRANSFORMATION).
+        let cause = horizon_server_api::event::EntityRemoveCause::Transformation;
+        self.plugin_mob_leaving(old.id, cause);
         let at = [old.position.x, old.position.y, old.position.z];
         let Some(id) = self.spawn_mob("minecraft:zombie_villager", at, old.persistent) else {
             return;
@@ -132,6 +135,9 @@ impl crate::game::Server<'_> {
         }
         let old = self.mobs[i].clone();
         self.mobs[i].removed = true;
+        // EntityRemoveEvent (TRANSFORMATION).
+        let cause = horizon_server_api::event::EntityRemoveCause::Transformation;
+        self.plugin_mob_leaving(old.id, cause);
         let at = [old.position.x, old.position.y, old.position.z];
         let Some(vid) = self.spawn_mob("minecraft:villager", at, old.persistent) else {
             return;

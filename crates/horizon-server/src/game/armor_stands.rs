@@ -55,6 +55,14 @@ impl crate::game::Server<'_> {
         {
             return false;
         }
+        // EntityPlaceEvent: a plugin may keep the stand in hand.
+        if !self.plugin_entity_place(
+            (stand.id, "minecraft:armor_stand", foot, yaw),
+            hit.pos,
+            hit.face,
+        ) {
+            return true;
+        }
         self.next_entity += 1;
         self.sounds.play(
             "minecraft:entity.armor_stand.place",

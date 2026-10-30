@@ -96,7 +96,10 @@ impl crate::game::Server<'_> {
             spawner.server_tick(&level, &mut random, pos, &mut spawn, &mut events);
         }
         self.world.random = random;
+        // SpawnerSpawnEvent: the spawner the mobs come from.
+        self.plugin_stations.spawning = Some((key, false));
         let ids = self.add_planned(planned);
+        self.plugin_stations.spawning = None;
         self.apply_spawner_events(key, events, &ids)
     }
     /// Creates the mobs a spawner tick planned; their provisional ids
@@ -110,8 +113,12 @@ impl crate::game::Server<'_> {
                     self.next_entity += 1;
                     mob.id = self.next_entity;
                     let id = mob.id;
-                    if self
-                        .plugin_spawn_allowed(&mob, horizon_server_api::event::SpawnReason::Spawner)
+                    // SpawnerSpawnEvent / TrialSpawnerSpawnEvent, then CreatureSpawnEvent.
+                    if self.plugin_spawner_spawn(&mob)
+                        && self.plugin_spawn_allowed(
+                            &mob,
+                            horizon_server_api::event::SpawnReason::Spawner,
+                        )
                     {
                         self.mobs.push(mob);
                         self.enchant_spawn_equipment(id);
@@ -121,9 +128,10 @@ impl crate::game::Server<'_> {
                         None
                     }
                 }
-                Planned::Loaded(tag, equipment) => {
-                    self.load_mob(tag, None).map(|id| (id, equipment))
-                }
+                Planned::Loaded(tag, equipment) => self
+                    .load_mob(tag, None)
+                    .filter(|&id| self.plugin_spawner_spawned(id))
+                    .map(|id| (id, equipment)),
             };
             if let Some((id, equipment)) = id {
                 // `nextSpawnData.getEquipment().ifPresent(mob::equip)`.

@@ -514,6 +514,8 @@ impl crate::game::Server<'_> {
     pub(super) fn cmd_reload(&mut self) -> R<i32> {
         self.feedback(Text::translate("commands.reload.success", &[]));
         self.reload_datapacks(true);
+        // ServerResourcesReloadedEvent (COMMAND).
+        self.plugin_resources_reloaded();
         Ok(0)
     }
     /// `PackLocationInfo.createChatLink`: the id decorated with its source

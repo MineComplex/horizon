@@ -7,7 +7,8 @@
 //! - a line for each teleport, no phantoms, a line when a mob dies, explosions that break no blocks;
 //! - nobody goes hungry, no rain, and a log line once the server has started;
 //! - `/time add 1000` does nothing, sponges stay dry, redstone lights no TNT, no Speed, furnaces
-//!   smelt gold, and falling blocks land as nothing;
+//!   smelt gold in 20 ticks, and falling blocks land as nothing;
+//! - its own line for unknown commands, and no minecarts;
 //! - chat: `!` at the start shouts (gold, to everyone), `/mute` silences a player;
 //! - `/hello [name]`, `/heal` (operators: full food, a golden apple), `/mute <player>`;
 //! - every 5 minutes, a tip to everyone.
@@ -189,6 +190,29 @@ impl Plugin for Example {
                     if let Some(p) = &e.entity.player {
                         server.send_message(p, "§7No speed here.");
                     }
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::FurnaceStartSmeltEvent, _| {
+                e.total_cook_time = 20;
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::UnknownCommandEvent, _| {
+                e.message = Some(format!("§eNo such command: /{}", e.command_line));
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::VehicleCreateEvent, _| {
+                if e.vehicle.kind.ends_with("minecart") {
+                    e.cancelled = true;
                 }
             },
         );

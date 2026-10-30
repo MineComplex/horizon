@@ -141,6 +141,10 @@ impl crate::game::Server<'_> {
             f64::from(pos.y),
             f64::from(pos.z) + 0.5,
         );
+        // EntitySpawnEvent: a plugin may keep the primed TNT out.
+        if !self.plugin_entity_spawn("minecraft:tnt", 0, [position.x, position.y, position.z]) {
+            return;
+        }
         self.tnts.push(PrimedTnt {
             id: 0,
             position,

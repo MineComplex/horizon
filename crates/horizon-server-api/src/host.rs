@@ -268,49 +268,79 @@ impl PluginHost {
     }
     /// `onEnable`, in load order.
     pub fn enable(&mut self) {
-        for (i, s) in self.slots.iter_mut().enumerate() {
-            self.log.push(format!(
-                "[{}] Enabling {} v{}",
-                s.description.name, s.description.name, s.description.version
-            ));
-            let mut plugins = Plugins {
-                registry: &mut self.registry,
-                plugin: i,
-                name: &s.description.name,
-            };
-            let plugin = &mut s.plugin;
-            match catch_unwind(AssertUnwindSafe(|| plugin.on_enable(&mut plugins))) {
-                Ok(()) => s.enabled = true,
-                Err(_) => {
-                    self.log.push(format!(
-                        "Error occurred while enabling {} (Is it up to date?)",
-                        s.description.name
-                    ));
-                    unregister(&mut self.registry, i);
-                }
+        for i in 0..self.slots.len() {
+            self.enable_one(i);
+        }
+    }
+    /// How many plugins there are (in load order).
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
+    /// `onEnable` of the plugin `i` of the load order: its name when it is
+    /// now enabled (for `PluginEnableEvent`).
+    pub fn enable_one(&mut self, i: usize) -> Option<String> {
+        let s = self.slots.get_mut(i)?;
+        if s.enabled {
+            return None;
+        }
+        self.log.push(format!(
+            "[{}] Enabling {} v{}",
+            s.description.name, s.description.name, s.description.version
+        ));
+        let mut plugins = Plugins {
+            registry: &mut self.registry,
+            plugin: i,
+            name: &s.description.name,
+        };
+        let plugin = &mut s.plugin;
+        match catch_unwind(AssertUnwindSafe(|| plugin.on_enable(&mut plugins))) {
+            Ok(()) => {
+                s.enabled = true;
+                Some(s.description.name.clone())
+            }
+            Err(_) => {
+                self.log.push(format!(
+                    "Error occurred while enabling {} (Is it up to date?)",
+                    s.description.name
+                ));
+                unregister(&mut self.registry, i);
+                None
             }
         }
     }
     /// `onDisable`, in reverse load order; their listeners, commands and tasks go.
     pub fn disable(&mut self) {
-        for (i, s) in self.slots.iter_mut().enumerate().rev() {
-            if !s.enabled {
-                continue;
-            }
-            self.log.push(format!(
-                "[{}] Disabling {} v{}",
-                s.description.name, s.description.name, s.description.version
-            ));
-            let plugin = &mut s.plugin;
-            if catch_unwind(AssertUnwindSafe(|| plugin.on_disable())).is_err() {
-                self.log.push(format!(
-                    "Error occurred while disabling {}",
-                    s.description.name
-                ));
-            }
-            s.enabled = false;
-            unregister(&mut self.registry, i);
+        for i in (0..self.slots.len()).rev() {
+            self.disable_one(i);
         }
+    }
+    /// The name of the plugin `i` of the load order while it is enabled.
+    pub fn enabled_name(&self, i: usize) -> Option<&str> {
+        let s = self.slots.get(i)?;
+        s.enabled.then_some(s.description.name.as_str())
+    }
+    /// `onDisable` of the plugin `i` of the load order; its listeners,
+    /// commands and tasks go.
+    pub fn disable_one(&mut self, i: usize) {
+        let Some(s) = self.slots.get_mut(i) else {
+            return;
+        };
+        if !s.enabled {
+            return;
+        }
+        self.log.push(format!(
+            "[{}] Disabling {} v{}",
+            s.description.name, s.description.name, s.description.version
+        ));
+        let plugin = &mut s.plugin;
+        if catch_unwind(AssertUnwindSafe(|| plugin.on_disable())).is_err() {
+            self.log.push(format!(
+                "Error occurred while disabling {}",
+                s.description.name
+            ));
+        }
+        s.enabled = false;
+        unregister(&mut self.registry, i);
     }
     /// Whether any listener waits for `E` (the server skips building it otherwise).
     pub fn listens<E: Event>(&self) -> bool {

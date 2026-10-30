@@ -148,6 +148,10 @@ impl crate::game::Server<'_> {
             .unwrap_or(0) as usize;
         let v = &fitting[pick];
         (candidate.variant, candidate.width, candidate.height) = (v.id.clone(), v.width, v.height);
+        // HangingPlaceEvent: a plugin may keep the painting in hand.
+        if !self.plugin_painting_place(&candidate, stack) {
+            return true;
+        }
         let (lo, hi) = candidate.bounds();
         let at = [
             (lo[0] + hi[0]) / 2.0,
@@ -193,6 +197,10 @@ impl crate::game::Server<'_> {
     }
     /// `Painting.hurtServer` -> kill and `dropItem`.
     pub(super) fn break_painting(&mut self, index: usize, by_player: bool) {
+        // HangingBreak(ByEntity)Event: a plugin may keep it hanging.
+        if !self.plugin_painting_break(index, by_player) {
+            return;
+        }
         let p = self.paintings.remove(index);
         let (lo, hi) = p.bounds();
         let at = [

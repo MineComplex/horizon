@@ -575,6 +575,8 @@ impl crate::game::Server<'_> {
             SculkKind::Shrieker => !self.shrieker_shrieking(state) && ctx.player,
             SculkKind::Catalyst => false,
         };
+        // BlockReceiveGameEvent: cancelled when it can't take it; a plugin may change that.
+        let can_receive = self.plugin_receive_game_event(key, event, ctx.source, can_receive);
         if !can_receive {
             return;
         }
@@ -1150,11 +1152,14 @@ impl crate::game::Server<'_> {
             return false;
         };
         let xp = experience(self);
-        if xp > 0 {
+        // SculkBloomEvent: a plugin may change the charge, or spread none.
+        if xp > 0
+            && let Some(charge) = self.plugin_sculk_bloom(key, xp as i32)
+        {
             // sourcePosition.relative(UP, 0.5)
             let start = BlockPos::new(source[0], (at[1] + 0.5).floor() as i32, source[2]);
             if let Some(e) = self.sculk_entity(key) {
-                e.spreader.add_cursors(start, xp as i32);
+                e.spreader.add_cursors(start, charge);
             }
         }
         self.catalyst_bloom(key);

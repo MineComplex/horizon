@@ -451,6 +451,8 @@ impl crate::game::Server<'_> {
             self.maps.data.insert(id, data);
             let last = self.maps.last_id.unwrap_or(-1).max(id);
             self.maps.last_id = Some(last);
+            // MapInitializeEvent: a plugin may change the new map's view.
+            self.plugin_map_init(id);
             self.render_biome_preview(id);
         }
     }
@@ -612,6 +614,8 @@ impl crate::game::Server<'_> {
     pub(super) fn new_map_id(&mut self, data: MapData) -> i32 {
         let id = self.next_map_id();
         self.maps.data.insert(id, data);
+        // MapInitializeEvent: a plugin may change the new map's view.
+        self.plugin_map_init(id);
         id
     }
     /// `EmptyMapItem.use`: a new map centred around the player.
@@ -625,6 +629,8 @@ impl crate::game::Server<'_> {
         let id = self.next_map_id();
         let data = MapData::fresh(p.x, p.z, 0, self.dimension_id());
         self.maps.data.insert(id, data);
+        // MapInitializeEvent: a plugin may change the new map's view.
+        self.plugin_map_init(id);
         let mut filled = ItemStack::new("minecraft:filled_map", 1);
         filled.data_mut().map_id = Some(id);
         if self.creative {

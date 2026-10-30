@@ -89,7 +89,8 @@ impl crate::game::Server<'_> {
             } else {
                 1
             };
-            let slot_ammo = self.projectile_slot(CROSSBOW);
+            // PlayerReadyArrowEvent for each projectile it could load.
+            let slot_ammo = self.plugin_projectile_slot(CROSSBOW);
             let ammo = slot_ammo
                 .and_then(|i| self.stack_in(i).cloned())
                 .unwrap_or_else(|| ItemStack::new("minecraft:arrow", 1));

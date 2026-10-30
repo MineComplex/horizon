@@ -91,6 +91,10 @@ impl crate::game::Server<'_> {
         if !self.frame_survives(&frame) {
             return false;
         }
+        // HangingPlaceEvent: a plugin may keep the frame in hand.
+        if !self.plugin_frame_place(&frame, stack) {
+            return true;
+        }
         self.next_entity += 1;
         self.sounds
             .play(&sound(&frame, "place"), Some(center(&frame)), 1.0, 1.0);
@@ -183,6 +187,10 @@ impl crate::game::Server<'_> {
             return true;
         }
         let with_frame = self.item_frames[i].item.is_none();
+        // HangingBreakByEntityEvent: a plugin may keep the frame up.
+        if with_frame && !self.plugin_frame_break(&self.item_frames[i].clone(), true) {
+            return true;
+        }
         let at = center(&self.item_frames[i]);
         let f = if with_frame {
             self.item_frames.remove(i)
@@ -249,7 +257,8 @@ impl crate::game::Server<'_> {
             if self.item_frames[i].check_interval >= 100 {
                 self.item_frames[i].check_interval = 0;
                 let f = self.item_frames[i].clone();
-                if !self.frame_survives(&f) {
+                // HangingBreakEvent: a plugin may keep it hanging.
+                if !self.frame_survives(&f) && self.plugin_frame_break(&f, false) {
                     self.item_frames.remove(i);
                     self.sounds
                         .play(&sound(&f, "break"), Some(center(&f)), 1.0, 1.0);

@@ -209,6 +209,15 @@ impl crate::game::Server<'_> {
             }
         }
         if ignite > 0.0
+            && self
+                .mobs
+                .get(mob)
+                .is_some_and(|m| !m.kind.flags.fire_immune)
+        {
+            // EntityCombustByEntityEvent: the player's Fire Aspect.
+            self.plugin_combust_by_acting(mob);
+        }
+        if ignite > 0.0
             && let Some(m) = self.mobs.get_mut(mob)
             && !m.kind.flags.fire_immune
         {
@@ -269,8 +278,11 @@ impl crate::game::Server<'_> {
             }
             Some("minecraft:change_item_damage") => self.damage_held(amount() as u32),
             Some("minecraft:apply_exhaustion") => {
+                // EntityExhaustionEvent.
+                let reason = horizon_server_api::event::ExhaustionReason::Unknown;
+                let amount = self.plugin_exhaustion(amount(), reason);
                 if let Some(p) = self.player.as_mut() {
-                    p.cause_food_exhaustion(amount());
+                    p.cause_food_exhaustion(amount);
                 }
             }
             // The direction turned by the look (`Entity.getLookQuaternion`:
@@ -825,8 +837,10 @@ impl crate::game::Server<'_> {
                         f64::from(pos[0]) + 0.5 - at[0],
                         f64::from(pos[2]) + 0.5 - at[2],
                     );
+                    // EntityBlockFormEvent: Frost Walker's ice.
                     if x * x + z * z >= f64::from(radius * radius)
                         || !self.disk_predicate(&effect["predicate"], pos, new)
+                        || !self.plugin_player_block_form(pos, new)
                         || self.level_set(pos, new).is_err()
                     {
                         continue;

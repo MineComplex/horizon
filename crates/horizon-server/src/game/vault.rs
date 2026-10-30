@@ -94,10 +94,16 @@ impl crate::game::Server<'_> {
                     Some(s) => loot.roll_split(table, sequences.get(s, seed)),
                     None => loot.roll_split(table, random),
                 };
-                drops
+                let drops = drops
                     .iter()
                     .map(crate::hc::structure_blocks::loot_item_with_components)
-                    .collect()
+                    .collect();
+                // BlockDispenseLootEvent: the reward a key unlocks (the roll
+                // with the table's sequence); none keeps the vault locked.
+                if sequence {
+                    return self.plugin_vault_loot(key, drops);
+                }
+                drops
             };
             f(
                 &mut vault,
@@ -120,12 +126,15 @@ impl crate::game::Server<'_> {
     /// is a window.
     pub(super) fn tick_vault(&mut self, key: Pos) -> Result<()> {
         let pos = [key.0, key.1, key.2];
+        // VaultDisplayItemEvent: the item shown before the tick.
+        let shown = self.plugin_vault_shown(key);
         let ticked = self.with_vault(key, |v, l, random, state, ominous, roll, events| {
             v.server_tick(l, random, pos, state, ominous, roll, events);
         });
         if let Some(result) = ticked {
             result?;
         }
+        self.plugin_vault_display(key, shown);
         Ok(())
     }
     /// `VaultBlock.useItemOn` with `held` in the hand that acts: true when the

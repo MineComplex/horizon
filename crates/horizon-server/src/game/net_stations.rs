@@ -283,6 +283,11 @@ impl crate::game::Server<'_> {
             bookcases,
             gs.menu.slot(0),
         );
+        // PrepareItemEnchantEvent: a plugin may change the offers, or show none.
+        let conn = net.hub.players[gi].conn;
+        let item = gs.menu.slot(0).cloned();
+        let offers =
+            self.plugin_prepare_enchant(net, conn, gs.pos, item.as_ref(), bookcases, offers);
         for i in 0..3 {
             gs.menu.data[i] = offers.costs[i];
             let clue = offers.clues[i].as_ref();

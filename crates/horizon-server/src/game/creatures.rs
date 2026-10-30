@@ -411,7 +411,8 @@ impl crate::game::Server<'_> {
             teams: std::sync::Arc::new(self.mob_teams()),
             items: Some(self.res.items()),
             // Plugins hear of the damage the surroundings deal: it waits for them.
-            defer_env_damage: self.plugins_hear_damage(),
+            // ... and EntityDamageByBlockEvent.
+            defer_env_damage: self.plugins_hear_damage() || self.plugins_hear_block_damage(),
             lid_openers: &self.lid_openers,
             // The first player in the level: a server has no player of its own.
             difficulty: self.local_difficulty(
@@ -530,6 +531,8 @@ impl crate::game::Server<'_> {
         let mut gone = Vec::new();
         // Bukkit's entity events: what each mob's tick did.
         let mut noted = self.plugin_noted();
+        // EntityRemoveEvent: why the mobs that go in their ticks went.
+        let mut leaving = self.plugin_leaving();
         let level_random;
         {
             // The level random, lent to the mobs (brain behaviours draw from
@@ -595,6 +598,7 @@ impl crate::game::Server<'_> {
                 if !ticking(m.position.x.floor() as i32, m.position.z.floor() as i32) {
                     let kept = crate::hc::mobs::ai::despawn_check(m, &w);
                     if !kept {
+                        leaving.despawned(m);
                         died.remove(&m.id);
                         snapshot[i].alive = false;
                     }
@@ -604,7 +608,9 @@ impl crate::game::Server<'_> {
                 crate::hc::mobs::apply_mob_pushes(m, &mut pushes);
                 let from = events.len();
                 noted.before(m);
+                leaving.before(m);
                 let kept = m.tick(&w, &mut scratch, &mut events);
+                leaving.after(m, kept, &events[from..]);
                 // A killed mob's body is removed: its effects that act on
                 // death run (`LivingEntity.remove` with KILLED).
                 if !kept && !m.alive() && !m.removed && !m.extra.effects.is_empty() {
@@ -676,7 +682,12 @@ impl crate::game::Server<'_> {
         self.died = died;
         // EntityDamageEvent for the damage the surroundings dealt in the
         // mob ticks, held back while plugins listen.
+        // EntityDamageByBlockEvent first, for the hits of blocks.
+        self.plugin_mobs_block_damage();
         self.plugin_mob_env_damage(&mut dead);
+        // EntityRemoveEvent, EntityPoseChangeEvent, PigZombieAngerEvent,
+        // EntityTargetEvent, EntityCombustByBlockEvent... for what the mobs did.
+        self.plugin_watch_mob_changes(leaving);
         // EntityTargetLivingEntityEvent and EntityTameEvent for what the mobs did.
         self.plugin_watch_mobs();
         // EntityCombustEvent, EntityPotionEffectEvent, SheepDyeWoolEvent... for
@@ -1188,10 +1199,25 @@ impl crate::game::Server<'_> {
                     x,
                     z,
                 } => match target {
-                    Who::Player => self.knock_back_player(power, x, z),
+                    Who::Player => {
+                        // EntityKnockbackEvent: a mob's melee push.
+                        self.plugin_knock_cause(
+                            horizon_server_api::event::KnockbackCause::EntityAttack,
+                            None,
+                        );
+                        self.knock_back_player(power, x, z);
+                    }
                     Who::Mob(id) => {
                         if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
+                            let before = m.velocity;
                             m.knockback(power, x, z);
+                            // EntityKnockbackEvent: a mob's melee push.
+                            self.plugin_mob_knockback(
+                                id,
+                                before,
+                                horizon_server_api::event::KnockbackCause::EntityAttack,
+                                None,
+                            );
                         }
                     }
                 },
@@ -1492,7 +1518,10 @@ impl crate::game::Server<'_> {
                             0.8,
                         );
                     }
-                    if let Some(state) = self.pack.assets.registry.default_state(name) {
+                    // EntityBlockFormEvent: a snow golem's trail.
+                    if let Some(state) = self.pack.assets.registry.default_state(name)
+                        && (effect || self.plugin_snow_trail(pos, name))
+                    {
                         self.world.set(pos[0], pos[1], pos[2], state)?;
                     }
                 }
@@ -1656,6 +1685,7 @@ impl crate::game::Server<'_> {
                     self.give_player_effect(effect, ticks, amplifier);
                 }
                 MobEvent::Ignite { target, seconds } => match target {
+                    // (EntityCombustEvent: the mob that did it isn't known here.)
                     Who::Player => {
                         if !self.creative
                             && let Some(p) = self.player.as_mut()
@@ -1684,7 +1714,16 @@ impl crate::game::Server<'_> {
                         crate::hc::mobs::animal_brain::set_breed_partner(m, partner);
                     }
                 }
-                MobEvent::LeashBreak { mob, drop, sound } => self.break_leash(mob, drop, sound),
+                MobEvent::LeashBreak { mob, drop, sound } => {
+                    // EntityUnleashEvent's reason: only a stretched lead snaps
+                    // with a sound.
+                    self.plugin_unleash_reason(if sound {
+                        horizon_server_api::event::UnleashReason::Distance
+                    } else {
+                        horizon_server_api::event::UnleashReason::HolderGone
+                    });
+                    self.break_leash(mob, drop, sound)
+                }
                 MobEvent::Vibration { from, to, ticks } => {
                     self.mob_vibration_particle(from, to, ticks)
                 }
@@ -2189,6 +2228,12 @@ impl crate::game::Server<'_> {
                 if o.blocked <= 0.0 {
                     player.health.indicate_damage(xd, zd, player.yaw);
                 }
+                // EntityKnockbackEvent: the hit's own push (a PvP hit set its cause).
+                if self.plugin_mobs.knock.is_none() {
+                    let source = attacker.or(owner).map(Who::Mob);
+                    let cause = horizon_server_api::event::KnockbackCause::Damage;
+                    self.plugin_knock_cause(cause, source);
+                }
                 self.knock_back_player(f64::from(0.4_f32), xd, zd);
                 if let Some(p) = self.player.as_mut()
                     && let Some(r) = p.hurt_log.last_mut()
@@ -2228,11 +2273,14 @@ impl crate::game::Server<'_> {
     /// the ground.
     pub(super) fn knock_back_player(&mut self, power: f64, mut xd: f64, mut zd: f64) {
         let Some(p) = self.player.as_mut() else {
+            self.plugin_mobs.knock = None;
             return;
         };
+        let before = p.velocity;
         let resistance = p.attribute("minecraft:knockback_resistance").unwrap_or(0.0);
         let power = power * (1.0 - resistance);
         if power <= 0.0 {
+            self.plugin_mobs.knock = None;
             return;
         }
         while xd * xd + zd * zd < f64::from(1.0e-5_f32) {
@@ -2251,6 +2299,8 @@ impl crate::game::Server<'_> {
             },
             v.z / 2.0 - zd / l * power,
         );
+        // EntityKnockbackEvent (EntityKnockbackByEntityEvent).
+        self.plugin_player_knockback(before);
     }
     /// A status effect from a mob, arrow or splash potion (`addEffect`).
     pub(super) fn give_player_effect(&mut self, effect: &'static str, ticks: i32, amplifier: i32) {
@@ -2874,6 +2924,9 @@ impl crate::game::Server<'_> {
                 let player_fire = self.player.as_ref().map(|pl| pl.fire_ticks);
                 // AbstractArrow.onHitEntity: a burning arrow sets its target alight.
                 if p.arrow.as_ref().is_some_and(|a| a.on_fire()) {
+                    // EntityCombustByEntityEvent: the arrow did it.
+                    let at = [p.position.x, p.position.y, p.position.z];
+                    self.plugin_combust_by(who, p.id as i32, p.kind.id(), at);
                     self.handle_mob_events(vec![MobEvent::Ignite {
                         target: who,
                         seconds: 5,
@@ -3064,6 +3117,9 @@ impl crate::game::Server<'_> {
                 Hit::Entity { who, .. } => match who {
                     Who::Player => {
                         if !self.creative {
+                            // EntityCombustByEntityEvent: the fireball did it.
+                            let at = [p.position.x, p.position.y, p.position.z];
+                            self.plugin_combust_by(who, p.id as i32, p.kind.id(), at);
                             if let Some(p) = self.player.as_mut() {
                                 p.ignite_for_ticks(100)?;
                             }
@@ -3075,6 +3131,9 @@ impl crate::game::Server<'_> {
                         }
                     }
                     Who::Mob(id) => {
+                        // EntityCombustByEntityEvent: the fireball did it.
+                        let at = [p.position.x, p.position.y, p.position.z];
+                        self.plugin_combust_by(who, p.id as i32, p.kind.id(), at);
                         if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
                             if !m.kind.flags.fire_immune {
                                 m.ignite_for_ticks(100);
@@ -3363,6 +3422,10 @@ impl crate::game::Server<'_> {
             )));
             // PlayerBucketEntityEvent: a plugin may leave the mob in the water.
             if !self.plugin_bucket_entity(self.mobs[index].id, held.as_ref(), &filled) {
+                return Ok(true);
+            }
+            // PlayerBucketFishEvent, the same for fish.
+            if !self.plugin_bucket_fish(self.mobs[index].id, held.as_ref(), &filled) {
                 return Ok(true);
             }
             self.sounds
@@ -4128,6 +4191,10 @@ impl crate::game::Server<'_> {
             on_ground,
         );
         self.add_projectile(proj);
+        // PlayerLaunchProjectileEvent: cancelled, nothing is thrown or used.
+        let Some(consume) = self.plugin_launch_projectile(stack) else {
+            return Ok(true);
+        };
         self.player_projectile_shot();
         // ItemStack.use's applyAfterUseComponentSideEffects: the pearl's
         // second is the `use_cooldown` component, as for any thrown item.
@@ -4141,6 +4208,7 @@ impl crate::game::Server<'_> {
         self.sounds.play(sound, Some(eye), 0.5, pitch);
         self.swing_arm();
         if !self.creative
+            && consume
             && let Some(s) = self.held_mut().as_mut()
         {
             s.count -= 1;

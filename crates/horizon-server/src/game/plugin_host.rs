@@ -81,13 +81,25 @@ impl crate::game::Server<'_> {
         let Some(mut net) = self.plugins.take() else {
             return;
         };
-        net.enable();
+        for i in 0..net.len() {
+            let enabled = net.enable_one(i);
+            self.plugins = Some(net);
+            // PluginEnableEvent, right after the plugin's onEnable.
+            if let Some(name) = enabled {
+                self.plugin_enabled(&name, true);
+            }
+            let Some(back) = self.plugins.take() else {
+                return;
+            };
+            net = back;
+        }
         if let Some(network) = self.network.as_mut() {
             // The plugins decide the join and quit messages and see chat first.
             network.hub.quiet_joins =
                 net.listens::<ev::PlayerJoinEvent>() || net.listens::<ev::PlayerLoginEvent>();
             network.hub.quiet_leaves = net.listens::<ev::PlayerQuitEvent>();
-            network.hub.intercept_chat = net.listens::<ev::PlayerChatEvent>();
+            network.hub.intercept_chat =
+                net.listens::<ev::PlayerChatEvent>() || net.listens::<ev::AsyncChatEvent>();
         }
         self.plugins = Some(net);
         self.plugin_log();
@@ -95,8 +107,17 @@ impl crate::game::Server<'_> {
     }
     /// `onDisable` as the server stops, with what they still asked for.
     pub(super) fn plugins_disable(&mut self) {
-        if let Some(net) = self.plugins.as_mut() {
-            net.disable();
+        let n = self.plugins.as_ref().map_or(0, |h| h.len());
+        for i in (0..n).rev() {
+            let Some(name) = self.plugins.as_ref().and_then(|h| h.enabled_name(i)) else {
+                continue;
+            };
+            // PluginDisableEvent, right before the plugin's onDisable.
+            let name = name.to_owned();
+            self.plugin_enabled(&name, false);
+            if let Some(net) = self.plugins.as_mut() {
+                net.disable_one(i);
+            }
         }
         self.plugin_log();
     }
@@ -439,6 +460,8 @@ impl crate::game::Server<'_> {
             cancelled: false,
         };
         self.plugin_fire(Some(net), &mut event);
+        // AsyncChatEvent, with what the legacy event left.
+        self.plugin_async_chat(net, &mut event);
         if event.cancelled {
             return Vec::new();
         }

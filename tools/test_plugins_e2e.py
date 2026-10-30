@@ -25,6 +25,9 @@ Checks, from the client's side:
   effect    EntityPotionEffectEvent: Speed is refused, and the player is told
   furnace   FurnaceSmeltEvent: raw iron smelts into a gold ingot
   falling   EntityChangeBlockEvent: falling sand lands as nothing
+  quick     FurnaceStartSmeltEvent: the furnace's cook time is 20 ticks, not 200
+  unknown   UnknownCommandEvent: the plugin's own line for a command that doesn't exist
+  minecart  VehicleCreateEvent: a summoned minecart never comes
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -281,6 +284,28 @@ def main():
             block = ctl('block', fx, y, z)['block']
             assert block != 'minecraft:sand', 'the sand landed'
         check('falling', falling)
+
+        def quick():
+            qz = z - 12
+            items = '[{Slot:0b,id:"minecraft:raw_iron",count:1},{Slot:1b,id:"minecraft:coal",count:1}]'
+            ctl('command', f'setblock {x} {y} {qz} minecraft:furnace{{Items:{items}}}')
+            ctl('wait', 10)
+            chat = ctl('command', f'data get block {x} {y} {qz} cooking_total_time', check=False).get('chat', [])
+            assert any(line.rstrip().endswith(': 20') for line in chat), chat
+        check('quick', quick)
+
+        def unknown():
+            ctl('chat', '/nosuchcommand here')
+            chat_until('No such command: /nosuchcommand')
+        check('unknown', unknown)
+
+        def minecart():
+            before = len(ctl('status').get('carts', []))
+            ctl('command', f'summon minecraft:minecart {x + 2} {y} {z + 2}', check=False)
+            ctl('wait', 10)
+            after = len(ctl('status').get('carts', []))
+            assert after == before, f'carts {before} -> {after}'
+        check('minecart', minecart)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60

@@ -102,6 +102,10 @@ mod plugin_entities;
 mod plugin_events;
 mod plugin_host;
 mod plugin_inventories;
+mod plugin_mobs;
+mod plugin_players;
+mod plugin_stations;
+mod plugin_vehicles;
 mod plugin_world;
 mod postprocess;
 mod potions;
@@ -1322,6 +1326,10 @@ struct Server<'a> {
     plugin_entities: plugin_entities::State,
     plugin_inventories: plugin_inventories::State,
     plugin_world: plugin_world::State,
+    plugin_vehicles: plugin_vehicles::State,
+    plugin_mobs: plugin_mobs::State,
+    plugin_stations: plugin_stations::State,
+    plugin_players: plugin_players::State,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
     /// Players whose inventory a plugin kept as it was (a cancelled drop):
@@ -2813,6 +2821,12 @@ impl crate::game::Server<'_> {
                         f64::from(pos.y),
                         f64::from(pos.z) + 0.5,
                     );
+                    // EntitySpawnEvent: cancelled, the block stays where it was.
+                    let kind = "minecraft:falling_block";
+                    if !self.plugin_entity_spawn(kind, 0, [p.x, p.y, p.z]) {
+                        self.level_set([pos.x, pos.y, pos.z], state)?;
+                        continue;
+                    }
                     self.falling.push(FallingBlock {
                         id: 0,
                         state,
@@ -3416,10 +3430,17 @@ impl crate::game::Server<'_> {
             if harvest {
                 // Block.playerDestroy: the mined statistic, the exhaustion and the drops.
                 self.stats.add("mined", &facts.name, 1);
+                // EntityExhaustionEvent (BLOCK_MINED).
+                let amount = self.plugin_exhaustion(
+                    0.005,
+                    horizon_server_api::event::ExhaustionReason::BlockMined,
+                );
                 if let Some(p) = self.player.as_mut() {
-                    p.cause_food_exhaustion(0.005);
+                    p.cause_food_exhaustion(amount);
                 }
                 let drops = self.block_loot_at(pos, state, held.as_ref());
+                // BlockDropItemEvent: a plugin may change or keep the drops.
+                let drops = self.plugin_block_drops(pos, broken, drops);
                 let silk = held
                     .as_ref()
                     .is_some_and(|h| h.enchantment_level("minecraft:silk_touch") > 0);
@@ -3458,6 +3479,8 @@ impl crate::game::Server<'_> {
                 } else {
                     self.block_experience(&facts.name)
                 };
+                // BlockExpEvent: a plugin may change the experience.
+                let xp = self.plugin_block_exp(pos, xp);
                 if xp > 0 {
                     self.spawn_orbs(
                         [
@@ -3861,7 +3884,12 @@ impl crate::game::Server<'_> {
         };
         // BlockMultiPlaceEvent: the blocks the other parts may go in, as they are.
         let parts_before = self.plugin_multi_place_before(hit.pos, hit.face);
-        let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
+        // BlockCanBuildEvent: a plugin may refuse a placement vanilla allows.
+        let outcome = if self.plugin_can_build(&ctx, &stack) {
+            self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx))
+        } else {
+            PlaceOutcome::Failed
+        };
         // BlockPlaceEvent (a server's player): a plugin may take the block back.
         if let PlaceOutcome::Placed { pos, state } = &outcome {
             let target = [pos.x, pos.y, pos.z];
@@ -4176,6 +4204,8 @@ impl crate::game::Server<'_> {
     /// used for `ticks`, its hand acting: a bow or a trident lets go (not
     /// when its hand changed), a spyglass stops scoping.
     pub(super) fn release_used_item(&mut self, stack: &ItemStack, ticks: u32, hand_changed: bool) {
+        // PlayerStopUsingItemEvent.
+        self.plugin_stop_using(stack, ticks);
         match &*stack.item {
             "minecraft:bow" if !hand_changed => self.release_bow(ticks),
             "minecraft:trident" if !hand_changed => self.release_trident(ticks),
@@ -4387,6 +4417,8 @@ impl crate::game::Server<'_> {
             crate::hc::spans::time("tick_cushions", || self.tick_cushions());
             crate::hc::spans::time("tick_boats", || self.tick_boats());
             crate::hc::spans::time("tick_carts", || self.tick_carts());
+            // VehicleUpdateEvent and VehicleMoveEvent for the boats and carts.
+            self.plugin_watch_vehicles();
             crate::hc::spans::time("tick_thunder", || self.tick_thunder());
             crate::hc::spans::time("tick_lecterns", || self.tick_lecterns());
             crate::hc::spans::time("tick_maps", || self.tick_maps());
@@ -5226,7 +5258,11 @@ impl crate::game::Server<'_> {
             let damage = (sweep_damage + self.enchant_damage_bonus(&kind)) * scale;
             let source = self.attack_source(from);
             if self.hurt_by_player(i, damage, source) {
+                let before = self.plugin_knock_before(i);
                 self.mobs[i].knockback(0.4, xd, zd);
+                // EntityKnockbackByEntityEvent (SWEEP_ATTACK).
+                let cause = horizon_server_api::event::KnockbackCause::SweepAttack;
+                self.plugin_mob_knocked(i, before, cause);
                 self.last_hurt_by_player
                     .insert(self.mobs[i].id, self.net_acting);
             }
@@ -5365,7 +5401,11 @@ impl crate::game::Server<'_> {
         if landed {
             if knockback > 0.0 {
                 let (xd, zd) = self.extra_knockback_direction();
+                let before = self.plugin_knock_before(index);
                 self.mobs[index].knockback(f64::from(knockback), xd, zd);
+                // EntityKnockbackByEntityEvent: the weapon's Knockback.
+                let cause = horizon_server_api::event::KnockbackCause::EntityAttack;
+                self.plugin_mob_knocked(index, before, cause);
                 self.stop_sprint_after_extra_knockback();
             }
             let mob = &self.mobs[index];
@@ -5448,10 +5488,13 @@ impl crate::game::Server<'_> {
             self.weapon_hit(index);
             // Player.attack: causeFoodExhaustion(0.1F) only when the hit hurt
             // (inside `if (wasHurt)`), after damageStatsAndHearts.
+            // EntityExhaustionEvent (ATTACK).
+            let amount =
+                self.plugin_exhaustion(0.1, horizon_server_api::event::ExhaustionReason::Attack);
             if let Some(p) = self.player.as_mut()
                 && !self.creative
             {
-                p.cause_food_exhaustion(0.1);
+                p.cause_food_exhaustion(amount);
             }
         } else {
             self.sounds
@@ -6388,6 +6431,10 @@ impl crate::game::Server<'_> {
         let mut r = dispenser::entity_random();
         let _yaw = r.next_float();
         let p = Vec3::new(at[0], at[1], at[2]);
+        // EntitySpawnEvent: a plugin may keep the orb out.
+        if !self.plugin_entity_spawn("minecraft:experience_orb", 0, at) {
+            return;
+        }
         self.next_entity += 1;
         self.orbs.push(ExperienceOrb {
             id: self.next_entity,
@@ -6602,7 +6649,8 @@ impl crate::game::Server<'_> {
         if power < 0.1 {
             return;
         }
-        let arrow_slot = self.projectile_slot("minecraft:bow");
+        // PlayerReadyArrowEvent for each arrow it could use.
+        let arrow_slot = self.plugin_projectile_slot("minecraft:bow");
         if arrow_slot.is_none() && !self.creative {
             return;
         }
@@ -6816,8 +6864,14 @@ impl crate::game::Server<'_> {
         // an anchor or a spawnpoint; respawning checks the bed is still there
         // and finds where to stand up (findRespawnAndUseSpawnBlock).
         // Straw beds never set it (`straw_bed_rule`).
-        if self.bed_sets_spawn(state) {
-            let config = respawn_anchor::RespawnConfig::wrapped(self.dim, head, yaw, false);
+        // PlayerSpawnChangeEvent (BED): a plugin may move or clear the point,
+        // or keep the old one.
+        if self.bed_sets_spawn(state)
+            && let Some(config) = self.plugin_spawn_point(
+                horizon_server_api::event::SpawnChangeCause::Bed,
+                respawn_anchor::RespawnConfig::wrapped(self.dim, head, yaw, false),
+            )
+        {
             // ServerPlayer.setRespawnPosition: the chat message only when the
             // point moved (`isSamePosition`).
             let moved = self
@@ -7103,6 +7157,8 @@ impl crate::game::Server<'_> {
         self.streaming.extra.truncate(areas);
         // ChunkLoadEvent, ChunkUnloadEvent and ChunkPopulateEvent.
         self.plugin_watch_chunks();
+        // AsyncStructureGenerateEvent and AsyncStructureSpawnEvent.
+        self.plugin_watch_structures();
         let dirty: Vec<_> = unloaded
             .iter()
             .filter(|c| self.world.modified.remove(&(c.x, c.z)))
@@ -7525,6 +7581,10 @@ impl<'a> Server<'a> {
             plugin_entities: Default::default(),
             plugin_inventories: Default::default(),
             plugin_world: Default::default(),
+            plugin_vehicles: Default::default(),
+            plugin_mobs: Default::default(),
+            plugin_stations: Default::default(),
+            plugin_players: Default::default(),
             plugin_resend: Vec::new(),
             plugin_resync: Vec::new(),
             plugin_last_moves: HashMap::new(),

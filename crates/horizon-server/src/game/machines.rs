@@ -661,6 +661,10 @@ impl crate::game::Server<'_> {
         let front = offset(pos, facing);
         let face = facing.opposite();
         if let Some(target) = c.view(front, false) {
+            // HopperInventorySearchEvent (DESTINATION): a plugin may hide it.
+            if !self.plugin_hopper_search(pos, front, target.len(), true) {
+                return false;
+            }
             return self.eject_into(pos, hopper, &target, face);
         }
         let Some(id) = self.entity_container_at([
@@ -765,6 +769,11 @@ impl crate::game::Server<'_> {
             self.with_level(|b, level, ticks| b.composter_empty(level, ticks, at));
             self.world.modified.insert((above.0 >> 4, above.2 >> 4));
             return Some(moved);
+        }
+        // HopperInventorySearchEvent (SOURCE): hidden, the hopper pulls item entities.
+        let below = (above.0, above.1 - 1, above.2);
+        if !self.plugin_hopper_search(below, above, source.len(), false) {
+            return None;
         }
         let source_hopper = (source.kind == Kind::Hopper).then_some(above);
         Some(self.suck_from_slots(source_hopper, &source, hopper))

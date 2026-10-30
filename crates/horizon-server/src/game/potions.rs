@@ -527,6 +527,11 @@ impl crate::game::Server<'_> {
                     None => return,
                 }
             }
+            // EntityExhaustionEvent (HUNGER_EFFECT).
+            EffectAction::Exhaust(amount) => {
+                let reason = horizon_server_api::event::ExhaustionReason::HungerEffect;
+                EffectAction::Exhaust(self.plugin_exhaustion(amount, reason))
+            }
             EffectAction::Poison if !self.creative => {
                 if self
                     .plugin_damage_acting("minecraft:magic", 1.0, None)
@@ -1050,6 +1055,11 @@ impl crate::game::Server<'_> {
             // LingeringPotionSplashEvent: a plugin may leave no cloud.
             if !def.effects.is_empty() && self.plugin_lingering_splash(stack, at) {
                 let at = mob.unwrap_or(at);
+                // EntitySpawnEvent: a plugin may keep the cloud out.
+                let kind = "minecraft:area_effect_cloud";
+                if !self.plugin_entity_spawn(kind, 0, [at.x, at.y, at.z]) {
+                    return;
+                }
                 self.breath_clouds.push(Breath {
                     id: 0,
                     at: [at.x, at.y, at.z],

@@ -791,6 +791,15 @@ impl crate::game::Server<'_> {
         let Some(target) = target else {
             return false;
         };
+        // BlockDispenseArmorEvent: cancelled, the dispenser drops the item instead.
+        let wearer = match target {
+            Target::Player => None,
+            Target::Stand(i) => Some((self.armor_stands[i].id, true)),
+            Target::Mob(i) => Some((self.mobs[i].id, false)),
+        };
+        if !self.plugin_dispense_armor(pos, &one, wearer) {
+            return false;
+        }
         stack.count -= 1;
         // setItemSlot: onEquipItem plays the equip sound and the equip event.
         let (at, sound) = match target {
@@ -1082,6 +1091,10 @@ impl crate::game::Server<'_> {
         if chest {
             boat = boat.with_chest();
         }
+        // VehicleCreateEvent: a plugin may keep the boat in the dispenser.
+        if !self.plugin_boat_create(&boat) {
+            return (Some(stack), CLICK);
+        }
         self.world.modified.insert((front.0 >> 4, front.2 >> 4));
         self.boats.push(boat);
         (shrink(stack), CLICK)
@@ -1121,6 +1134,10 @@ impl crate::game::Server<'_> {
             kind,
             Vec3::new(x, base_y + y_offset, z),
         );
+        // VehicleCreateEvent: a plugin may keep the cart in the dispenser.
+        if !self.plugin_cart_create(&cart) {
+            return (Some(stack), CLICK);
+        }
         self.world.modified.insert((front.0 >> 4, front.2 >> 4));
         self.carts.push(cart);
         (shrink(stack), CLICK)

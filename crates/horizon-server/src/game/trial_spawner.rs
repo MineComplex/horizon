@@ -215,7 +215,10 @@ impl crate::game::Server<'_> {
         };
         self.world.random = random;
         self.rand_sequences = sequences;
+        // TrialSpawnerSpawnEvent: the spawner the mobs come from.
+        self.plugin_stations.spawning = Some((key, true));
         let ids = self.add_planned(planned);
+        self.plugin_stations.spawning = None;
         let mut by_uuid = HashMap::new();
         for (provisional, uuid) in uuids {
             if let Some(id) = ids.get(&provisional) {

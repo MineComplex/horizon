@@ -131,11 +131,15 @@ impl crate::game::Server<'_> {
     fn tick_furnace(&mut self, pos: Pos) -> Result<()> {
         // FurnaceBurnEvent and FurnaceSmeltEvent: the furnace before its tick.
         let before = self.plugin_furnace_before(pos);
+        // FurnaceStartSmeltEvent: whether it cooked nothing yet.
+        let idle = self.plugin_furnace_idle(pos);
         let Some(BlockEntity::Furnace(f)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
         let lit = f.tick(self.res.recipes(), self.res.items(), self.res.providers());
-        let Some(lit) = self.plugin_furnace_ticked(pos, before, lit) else {
+        let lit = self.plugin_furnace_ticked(pos, before, lit);
+        self.plugin_furnace_start(pos, idle);
+        let Some(lit) = lit else {
             return Ok(());
         };
         let state = self.world.block(pos.0, pos.1, pos.2);

@@ -881,8 +881,13 @@ impl crate::game::Server<'_> {
                     (false, false) => "commands.whitelist.alreadyOff",
                     (false, true) => "commands.whitelist.disabled",
                 };
+                let toggled = l.use_whitelist != on;
                 l.use_whitelist = on;
                 drop(l);
+                // WhitelistToggleEvent.
+                if toggled {
+                    self.plugin_whitelist_toggle(on);
+                }
                 self.store_property("white-list", on.to_string());
                 self.console_reply(Text::translate(key, &[]));
                 if turned_on {
@@ -1326,6 +1331,8 @@ impl crate::game::Server<'_> {
         let mut next = Instant::now();
         while !state.stop {
             let tick_start = Instant::now();
+            // ServerTickStartEvent.
+            self.plugin_tick_start();
             while let Ok(line) = state.console.try_recv() {
                 self.console_line(&mut state, &line);
             }
@@ -1371,6 +1378,8 @@ impl crate::game::Server<'_> {
             }
             // MinecraftServer.tickServer records each tick's time, for /tick query (and the status).
             self.clock.record(tick_start.elapsed());
+            // ServerTickEndEvent.
+            self.plugin_tick_end(tick_start.elapsed(), next);
             state.ticked(Instant::now());
             self.wait_for_next_server_tick(&mut next, paused);
         }

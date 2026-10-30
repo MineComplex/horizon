@@ -816,7 +816,34 @@ impl crate::game::Server<'_> {
             self.next_entity += 1;
             c.id = self.next_entity;
         }
+        // EnderDragonChangePhaseEvent: the phase the tick chose waits for the plugins.
+        let phase = self
+            .plugins_hear_dragon_phase()
+            .then(|| self.dragon.as_ref().map(|d| d.phase.clone()))
+            .flatten();
         self.tick_dragon();
+        if let Some(old) = phase
+            && let Some((id, at, new)) = self
+                .dragon
+                .as_ref()
+                .filter(|d| d.phase.id() != old.id())
+                .map(|d| {
+                    (
+                        d.id,
+                        [d.position.x, d.position.y, d.position.z],
+                        d.phase.id(),
+                    )
+                })
+        {
+            let chosen = self.plugin_dragon_phase(id, at, old.id(), new);
+            if let Some(d) = self.dragon.as_mut() {
+                match chosen {
+                    None => d.phase = old,
+                    Some(n) if n != new => d.set_phase(Phase::from_id(n)),
+                    Some(_) => {}
+                }
+            }
+        }
     }
     /// EndSpikeFeature's crystals (with fire under them on the bedrock).
     fn place_spike_crystals(&mut self) {
@@ -2556,6 +2583,12 @@ impl crate::game::Server<'_> {
         // EndCrystal's constructor takes an id from the entity counter, so
         // the crystal is an entity a command can name (`@e[type=end_crystal]`).
         self.next_entity += 1;
+        // EntityPlaceEvent: a plugin may keep the crystal in hand.
+        let at = Vec3::new(x + 0.5, y, z + 0.5);
+        let placed = (self.next_entity, "minecraft:end_crystal", at, 0.0);
+        if !self.plugin_entity_place(placed, hit.pos, hit.face) {
+            return true;
+        }
         self.crystals.push(Crystal {
             id: self.next_entity,
             position: Vec3::new(x + 0.5, y, z + 0.5),

@@ -430,6 +430,8 @@ impl crate::game::Server<'_> {
     pub(super) fn tick_brewing_stand(&mut self, pos: (i32, i32, i32)) -> crate::hc::Result<()> {
         // BrewingStandFuelEvent and BrewEvent: the stand before its tick.
         let before = self.plugin_brewing_before(pos);
+        // BrewingStartEvent: whether it brewed nothing yet.
+        let idle = self.plugin_brewing_idle(pos);
         let Some(BlockEntity::Brewing(b)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
@@ -439,6 +441,7 @@ impl crate::game::Server<'_> {
             self.res.providers(),
         );
         let out = self.plugin_brewing_ticked(pos, before, out);
+        self.plugin_brewing_start(pos, idle);
         if out != brewing::BrewTick::default() {
             let (x, y, z) = pos;
             self.world.modified.insert((x >> 4, z >> 4));

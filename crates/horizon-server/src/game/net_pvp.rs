@@ -90,10 +90,13 @@ impl crate::game::Server<'_> {
     /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
     /// (the game, or a player swapped in) only once the hit hurt the victim.
     pub(super) fn pvp_exhaustion(&mut self) {
+        // EntityExhaustionEvent (ATTACK).
+        let amount =
+            self.plugin_exhaustion(0.1, horizon_server_api::event::ExhaustionReason::Attack);
         if let Some(p) = self.player.as_mut()
             && !self.creative
         {
-            p.cause_food_exhaustion(0.1);
+            p.cause_food_exhaustion(amount);
         }
     }
     /// The attacker's side of `Player.attack` (the game, or a player swapped
@@ -228,14 +231,20 @@ impl crate::game::Server<'_> {
         }
         // Player.attack: the hurt (with its knockback away from the
         // attacker), then causeExtraKnockback along the attacker's yaw.
+        // EntityKnockbackByEntityEvent: the attacker pushes the victim.
+        let source = self.plugin_knock_source();
         let land = |g: &mut Self| {
+            use horizon_server_api::event::KnockbackCause;
             g.combat.player_attacker = Some((s.from, s.disable_blocking));
+            g.plugin_knock_cause_ref(KnockbackCause::EntityAttack, source.clone());
             let hurt = g.mob_hits_player(s.amount, s.from, "minecraft:player_attack");
             g.combat.player_attacker = None;
             let (strength, xd, zd) = s.knockback;
             if hurt && strength > 0.0 {
+                g.plugin_knock_cause_ref(KnockbackCause::EntityAttack, source.clone());
                 g.knock_back_player(f64::from(strength), xd, zd);
             }
+            g.plugin_mobs.knock = None;
             // The victim's thorns, dealt to the attacker below.
             let thorns = if hurt { g.thorns_damage() } else { Vec::new() };
             (hurt, thorns)
@@ -384,11 +393,17 @@ impl crate::game::Server<'_> {
             }
         }
         let (xd, zd) = sweep.knockback;
+        // EntityKnockbackByEntityEvent (SWEEP_ATTACK).
+        let source = self.plugin_knock_source();
         let land = |g: &mut Self| {
+            use horizon_server_api::event::KnockbackCause;
+            g.plugin_knock_cause_ref(KnockbackCause::EntityAttack, source.clone());
             let hurt = g.mob_hits_player(sweep.damage, sweep.from, "minecraft:player_attack");
             if hurt {
+                g.plugin_knock_cause_ref(KnockbackCause::SweepAttack, source.clone());
                 g.knock_back_player(0.4, xd, zd);
             }
+            g.plugin_mobs.knock = None;
         };
         for (victim, team) in victims {
             if sweep.skip == Some(victim)

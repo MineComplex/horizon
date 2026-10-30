@@ -174,7 +174,14 @@ impl crate::game::Server<'_> {
         let same = self
             .respawn_config
             .is_some_and(|c| c.dim == config.dim && c.pos == config.pos);
-        if !same {
+        // PlayerSpawnChangeEvent (RESPAWN_ANCHOR): a plugin may move or clear
+        // the point, or keep the old one.
+        if !same
+            && let Some(config) = self.plugin_spawn_point(
+                horizon_server_api::event::SpawnChangeCause::RespawnAnchor,
+                config,
+            )
+        {
             // setRespawnPosition(config, true): the message, the point; the
             // anchor replaces a bed.
             self.system_message(Text::translate("block.minecraft.set_spawn", &[]));

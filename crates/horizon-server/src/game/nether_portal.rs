@@ -497,6 +497,11 @@ impl crate::game::Server<'_> {
             if self.player_rides(id) {
                 self.portals.carrying.push((self.dim, id, entry));
             } else {
+                // EntityRemoveEvent (CHANGED_DIMENSION).
+                self.plugin_mob_leaving(
+                    id,
+                    horizon_server_api::event::EntityRemoveCause::ChangedDimension,
+                );
                 self.send_through_portal(id, entry);
             }
         }
@@ -626,6 +631,10 @@ impl crate::game::Server<'_> {
         }
         self.portals.sections = portal_sections;
         for (id, pos) in inside {
+            // EntityPortalEnterEvent: a plugin may keep the portal from counting it.
+            if !self.plugin_portal_enter(None, None, id, [pos.x, pos.y, pos.z]) {
+                continue;
+            }
             self.portals
                 .entities
                 .entry(id)
@@ -845,6 +854,9 @@ impl crate::game::Server<'_> {
                 let (at, rotation) = self.arrival(&plan, exit);
                 (at, rotate_y(motion, -rotation), [yaw + rotation, pitch])
             };
+            // EntityPortalExitEvent: a plugin may move it or change its motion.
+            let before = crate::hc::entity_nbt::motion(&tag);
+            let (at, motion) = self.plugin_portal_exit(&tag, at, before, motion);
             if let Tag::Compound(c) = &mut tag {
                 c.insert("Pos".into(), doubles([at.x, at.y, at.z]));
                 c.insert("Motion".into(), doubles([motion.x, motion.y, motion.z]));

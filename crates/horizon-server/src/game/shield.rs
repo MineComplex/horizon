@@ -253,6 +253,10 @@ impl crate::game::Server<'_> {
                     v.y
                 };
                 p.velocity = horizon_core::geometry::Vec3::new(v.x / 2.0 - dx, y, v.z / 2.0 - dz);
+                // EntityKnockbackEvent (SHIELD_BLOCK).
+                let cause = horizon_server_api::event::KnockbackCause::ShieldBlock;
+                self.plugin_knock_cause(cause, None);
+                self.plugin_player_knockback(v);
             }
         }
         // BlocksAttacks.disable: item cooldown and stopUsingItem.

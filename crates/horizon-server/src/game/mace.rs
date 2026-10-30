@@ -134,6 +134,7 @@ impl crate::game::Server<'_> {
     /// `LivingEntity.hurtServer` of the mob at `index` by the player's hit:
     /// the weapon's `armor_effectiveness` enchantments (Breach) thin its armor.
     pub(super) fn hurt_by_player(&mut self, index: usize, amount: f32, source: Damage) -> bool {
+        let knocked = self.plugin_knock_before(index);
         let held = self.held().cloned();
         let kind = self.mobs[index].kind.id.clone();
         let ctx = EffectContext {
@@ -163,6 +164,11 @@ impl crate::game::Server<'_> {
         };
         let old_health = self.mobs[index].health;
         let hurt = self.mobs[index].damage_with(amount, source, Some(&mut breach));
+        // EntityKnockbackByEntityEvent: the hit's own push.
+        if hurt {
+            let cause = horizon_server_api::event::KnockbackCause::EntityAttack;
+            self.plugin_mob_knocked(index, knocked, cause);
+        }
         if hurt && self.mobs[index].health != old_health {
             self.mob_damage_event(self.mobs[index].id);
         }

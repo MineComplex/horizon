@@ -504,6 +504,7 @@ impl crate::game::Server<'_> {
     }
     /// `AbstractMinecart.tick` for one cart; returns false once it is gone.
     fn tick_cart(&mut self, c: &mut Minecart, intent: [f64; 2]) -> bool {
+        let wanted = c.velocity;
         c.first_tick = false;
         c.previous = c.position;
         c.previous_yaw = c.yaw;
@@ -534,6 +535,10 @@ impl crate::game::Server<'_> {
             c.flipped = !c.flipped;
         }
         c.yaw %= 360.0;
+        // VehicleBlockCollisionEvent: it ran into something sideways.
+        if c.horizontal_collision {
+            self.plugin_cart_bump(c, wanted);
+        }
         // Variants.
         match c.kind {
             CartKind::Furnace => {
@@ -630,26 +635,33 @@ impl crate::game::Server<'_> {
         if self.carts.is_empty() {
             return;
         }
-        // (feet, box)
-        let mut pushers: Vec<(Vec3, Aabb)> = Vec::new();
+        // (feet, box, entity id for VehicleEntityCollisionEvent)
+        let mut pushers: Vec<(Vec3, Aabb, Option<i32>)> = Vec::new();
         if self.riding.is_none()
             && let Some(p) = self.player.as_ref()
         {
-            pushers.push((p.position, p.bounds()));
+            pushers.push((p.position, p.bounds(), None));
         }
         if let Some(net) = self.network.as_ref() {
             for g in net.hub.players.iter().filter(|g| {
                 net.hub.here(g) && g.loaded && !g.dead && !g.spectator() && g.vehicle.is_none()
             }) {
                 let [x, y, z] = g.position;
-                pushers.push((Vec3::new(x, y, z), g.bounds()));
+                pushers.push((Vec3::new(x, y, z), g.bounds(), Some(g.entity_id)));
             }
         }
-        for (feet, bb) in pushers {
-            for c in &mut self.carts {
-                if !bb.intersects(c.bounds()) {
+        for (feet, bb, who) in pushers {
+            for k in 0..self.carts.len() {
+                if !bb.intersects(self.carts[k].bounds()) {
                     continue;
                 }
+                // VehicleEntityCollisionEvent: a plugin may stop the push.
+                if let Some(who) = who
+                    && !self.plugin_vehicle_touch(self.carts[k].id, who).1
+                {
+                    continue;
+                }
+                let c = &mut self.carts[k];
                 let (mut xa, mut za) = (feet.x - c.position.x, feet.z - c.position.z);
                 let dd = xa * xa + za * za;
                 if dd < f64::from(1.0e-4f32) {
@@ -673,6 +685,13 @@ impl crate::game::Server<'_> {
         let hitbox = self.carts[i].bounds().inflate(Vec3::new(reach, 0.0, reach));
         for j in 0..self.carts.len() {
             if j == i || !hitbox.intersects(self.carts[j].bounds()) {
+                continue;
+            }
+            // VehicleEntityCollisionEvent: a plugin may stop the push.
+            if !self
+                .plugin_vehicle_touch(self.carts[j].id, self.carts[i].id as i32)
+                .1
+            {
                 continue;
             }
             // AbstractMinecart.push(entity): `this` is cart j, `entity` cart i.
@@ -902,8 +921,15 @@ impl crate::game::Server<'_> {
             f64::from(hit.pos[1]) + 0.0625 + offset,
             f64::from(hit.pos[2]) + 0.5,
         );
+        let cart = Minecart::new(self.next_entity + 1, kind, at);
+        // EntityPlaceEvent, then VehicleCreateEvent: a plugin may keep the
+        // cart in hand.
+        if !self.plugin_entity_place((cart.id, kind.id(), at, cart.yaw), hit.pos, hit.face)
+            || !self.plugin_cart_create(&cart)
+        {
+            return true;
+        }
         self.next_entity += 1;
-        let cart = Minecart::new(self.next_entity, kind, at);
         self.world
             .modified
             .insert((hit.pos[0] >> 4, hit.pos[2] >> 4));
@@ -1061,6 +1087,8 @@ impl crate::game::Server<'_> {
             .is_some_and(|s| s.enchantment_level("minecraft:fire_aspect") > 0);
         self.vehicle_attack_sounds();
         let creative = self.creative;
+        // The player is the VehicleDamageEvent's attacker.
+        self.plugin_vehicle_attacked();
         self.hurt_cart(i, damage, creative, burning);
         self.swing_arm();
         true
@@ -1089,11 +1117,23 @@ impl crate::game::Server<'_> {
     /// once for creative players); TNT minecarts prime instead when moving
     /// or hurt by fire or an explosion (`damageSourceIgnitesTnt`).
     pub(super) fn hurt_cart(&mut self, i: usize, damage: f32, creative: bool, fire: bool) {
+        // VehicleDamageEvent: a plugin may change or stop the damage.
+        let Some(damage) = self.plugin_vehicle_damage(self.carts[i].id, damage) else {
+            return;
+        };
         let c = &mut self.carts[i];
         c.hurt_dir = -c.hurt_dir;
         c.hurt_time = 10;
         c.damage += damage * 10.0;
         let destroyed = creative || c.damage > 40.0;
+        // VehicleDestroyEvent: a plugin may keep the cart, at 40 damage.
+        let destroyed = destroyed && {
+            let kept = !self.plugin_vehicle_destroy(self.carts[i].id);
+            if kept {
+                self.carts[i].damage = 40.0;
+            }
+            !kept
+        };
         if destroyed {
             let mut c = self.carts.remove(i);
             let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;

@@ -179,7 +179,11 @@ impl crate::game::Server<'_> {
         // Entity.checkInsideBlocks: the Nether portal blocks the box is in.
         // `canUsePortal(false)` is false for a passenger: its vehicle goes
         // through and carries it (`carry_riders_through_portals`).
-        if !riding && let Some(pos) = self.nether_portal_inside(at) {
+        // EntityPortalEnterEvent: a plugin may keep the portal from counting them.
+        if !riding
+            && let Some(pos) = self.nether_portal_inside(at)
+            && self.plugin_player_portal_enter(net, conn, [pos.x, pos.y, pos.z])
+        {
             self.portals.player.set_inside(pos, PLAYER_DELAY);
         }
         // `ServerPlayer.showEndCredits`: the player stays out of the world while the
@@ -429,7 +433,10 @@ impl crate::game::Server<'_> {
                 Some((at, yaw))
             }
             Ok(None) | Err(_) => {
-                self.respawn_config = None;
+                // PlayerSpawnChangeEvent (RESET): a plugin may keep the point.
+                if self.plugin_spawn_reset() {
+                    self.respawn_config = None;
+                }
                 self.system_message(Text::translate("block.minecraft.spawn.not_valid", &[]));
                 None
             }
