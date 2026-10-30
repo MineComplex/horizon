@@ -20,8 +20,8 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
 - Not ported (no Java library is ported; Rust crates or code taken from azalea instead):
   JDK -> std/tokio/rayon/chrono/...; netty -> tokio + `azalea::buf`; Gson -> `serde_json`; JOML -> `glam`;
   Guava/fastutil/Caffeine -> std/`moka`; YAML configs -> `serde_yaml`; log4j/slf4j -> `log`;
-  jline -> `rustyline`; joptsimple -> `clap`; Brigadier -> `azalea::brigadier`; Adventure -> `azalea::chat`;
-  translations -> `azalea::language` (`en_us.json` read at run time, never committed); encryption ->
+  jline -> `rustyline`; joptsimple -> `clap`; Brigadier -> `command` (Horizon's own Brigadier core, arena tree); Adventure -> `azalea::chat`;
+  translations -> `azalea::language` (`en_us.json` loaded and installed once at startup, never committed); encryption ->
   `azalea::crypto`. DFU `Codec`s become plain (de)serialization functions/`serde` over JSON and NBT.
 - Left out entirely: data fixing (26.3 worlds only: DFU datafixers, `util.datafix`, DataConverter), Sentry,
   spark, oshi, the status protocol (Velocity answers pings), Query, RCON, JSON-RPC management, JFR, secure
@@ -50,11 +50,27 @@ and thread-safety; logging is `tracing`.
 |---|---|---|---|---|
 | `src/azalea/buf` | azalea-buf (Rust) | protocol primitives (VarInt, strings, UUIDs) | network codecs (to come) | kept; stable-Rust edits: no specialization, no simdnbt, no backtrace capture |
 | `src/azalea/chat` | azalea-chat (Rust) | text components (Adventure's role) | chat, commands (to come) | kept |
-| `src/azalea/language` | azalea-language (Rust) | translations; `en_us.json` read at run time | chat | kept |
+| `src/azalea/language` | azalea-language (Rust) | translations | chat | **reworked (2026-10-30):** an explicit `Language` value, installed once at startup like vanilla's `Language.inject`; no hidden file read on first use (it read `lang/en_us.json` relative to the working directory and silently fell back to an empty table); lang JSON read as `Language.loadFromJson` does |
 | `src/azalea/crypto` | azalea-crypto (Rust) | login encryption, AES/CFB8 | network login (to come) | kept |
-| `src/azalea/brigadier` | azalea-brigadier (Rust) | command parsing/suggestions | commands (to come) | kept; must be checked against Minecraft's command semantics |
-| `src/util/random` | NMS `RandomSource` family | game RNG | everything | native, checked against Leaf on the JVM |
-| former `src/java`, generated skeleton, `tools/leaf_port` | JDK / Java object model | first attempt | — | removed |
+| former `src/azalea/brigadier` | azalea-brigadier (Rust) | command parsing | — | **replaced (2026-10-30)** by `src/command`: it was a line-by-line port of Java Brigadier: nodes as `Arc<RwLock<CommandNode>>` with parent links, parsed arguments as `Arc<dyn Any>` read back with `downcast_ref` (runtime type casts), commands/requirements/modifiers as `Arc<dyn Fn>`, English messages built from `{:?}` instead of Minecraft's translation keys, and no tests |
+| `src/command` | Horizon's `horizon-command` core (checked against vanilla by Horizon's parity harnesses) | Brigadier's behaviour | commands (to come) | native: one arena (`Vec<Node>`, `NodeId`s), closed enums for argument types and values, a server-chosen key `K` instead of stored closures (the tree is plain `Send + Sync` data, the commands packet's shape), contexts borrow the tree and input; Minecraft's `BrigadierExceptions` keys; checked by Brigadier's own test cases |
+| `src/util/number_text` | Horizon's `horizon-client-core::snbt` | the text Java prints for `double`/`float` (`1.0`, `1.0E7`) | command errors, chat arguments (and SNBT to come) | native |
+| former `src/java`, generated skeleton, `tools/leaf_port` | JDK / Java object model (`JRef`, `JObject`, `Mut<T>` over `UnsafeCell`, `jobject!`, `cast_arc`, `instance_of`, monitors) | first attempt | — | removed (ab3326d1); the crate now has `#![forbid(unsafe_code)]` |
+
+Checked and kept: the `LazyLock` tables in `azalea/chat` (immutable constants), `AzBuf for Arc<T>` in
+`azalea/buf` (a codec impl, not storage), the temp-name counter in `world/storage/region.rs` (an atomic
+for unique file names). Unused crates after these changes (`compact_str`, `parking_lot`) were removed.
+
+### Next steps (in order)
+
+1. Server bootstrap: read `server.properties`/Paper/Leaf YAML, load and `install` `en_us.json` from the
+   server jar, start the tick loop that owns the levels.
+2. Network: tokio transport with `azalea::buf` codecs, one channel per connection into the tick thread;
+   the commands packet written from `CommandTree` (nodes in breadth-first order, as vanilla numbers them).
+3. Commands: Minecraft's argument types as `ArgumentType` variants, the vanilla tree registered from
+   `Commands`, and vanilla's executor (`net.minecraft.commands.execution`) over `ContextChain`.
+4. Blocks (`BlockState` table), chunks (paletted containers, region I/O already here), then the entity
+   arena, following "Data" below.
 
 ## Ownership and threads
 

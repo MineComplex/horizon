@@ -20,12 +20,10 @@ flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", 
 lz4_flex = { version = "0.14", default-features = false, features = ["std", "safe-encode", "safe-decode", "checked-decode"] }
 tracing = "0.1"
 thiserror = "2"
-compact_str = { version = "0.9.0", features = ["serde"] }
 byteorder = "1.5.0"
 rsa_public_encrypt_pkcs1 = "0.4.0"
 indexmap = "2"
 uuid = { version = "1", features = ["v3", "v4"] }
-parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 rand = { version = "0.10.0", features = ["sys_rng"] }

@@ -85,8 +85,7 @@ impl LegacyRandom {
 
     fn bits(&mut self, count: u32) -> i32 {
         self.state = self.state.wrapping_mul(Self::MULTIPLIER).wrapping_add(11) & Self::MASK;
-        let value = (self.state >> (48 - count)) as i32;
-        value
+        (self.state >> (48 - count)) as i32
     }
 }
 
