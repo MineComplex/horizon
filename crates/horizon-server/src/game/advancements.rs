@@ -446,6 +446,7 @@ impl crate::game::Server<'_> {
     fn award(&mut self, index: usize) {
         let tree = self.adv.tree.clone();
         let a = &tree.list[index];
+        self.plugin_advancement_done(&a.id);
         // AdvancementRewards.grant
         if a.rewards.experience > 0 {
             self.experience.give(a.rewards.experience);

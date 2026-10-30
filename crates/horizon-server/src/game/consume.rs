@@ -48,6 +48,9 @@ impl crate::game::Server<'_> {
         stack: &ItemStack,
     ) {
         // PlayerItemConsumeEvent: a cancelled one eats nothing.
+        if !self.plugin_consume(stack) {
+            return;
+        }
         self.emit_consume(consumable, stack, 16);
         // ServerPlayer: the used statistic and the consume_item trigger.
         self.stats.add("used", &stack.item, 1);
@@ -181,6 +184,13 @@ impl crate::game::Server<'_> {
             return false;
         }
         // PlayerTeleportEvent: a cancelled spot is one more failed try.
+        let Some((at, _)) = self.plugin_teleport(
+            at,
+            None,
+            horizon_server_api::event::TeleportCause::ChorusFruit,
+        ) else {
+            return false;
+        };
         if let Some(p) = self.player.as_mut() {
             p.position = at;
         }

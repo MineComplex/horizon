@@ -119,6 +119,16 @@ impl crate::game::Server<'_> {
         mob.previous_body_yaw = yaw;
         mob.previous_head_yaw = yaw;
         let id = mob.id;
+        let reason = if mob.kind.id.ends_with("snow_golem") {
+            horizon_server_api::event::SpawnReason::BuildSnowman
+        } else if mob.kind.id.ends_with("wither") {
+            horizon_server_api::event::SpawnReason::BuildWither
+        } else {
+            horizon_server_api::event::SpawnReason::BuildIronGolem
+        };
+        if !self.plugin_spawn_allowed(&mob, reason) {
+            return None;
+        }
         self.mobs.push(mob);
         Some(id)
     }

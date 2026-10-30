@@ -36,6 +36,6 @@ scripts that start the client themselves.
 
 ## Next
 
-- Plugin events for item pickup, inventories, entity spawn and death, and the world's own block changes
-  ([plugins.md](plugins.md)).
+- The plugin events still missing: hunger, projectiles, targets, crafting and enchanting, vehicles, weather,
+  chunks, redstone ([plugins.md](plugins.md)).
 - Leaf's touches: the `world_nether` / `world_the_end` layout, `/tps`, `/version`.

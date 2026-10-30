@@ -284,6 +284,14 @@ impl crate::game::Server<'_> {
             crate::hc::mobs::raider::finalize(&mut mob, reason);
         }
         let id = mob.id;
+        let reason = match (persistent, scripted) {
+            (_, true) => horizon_server_api::event::SpawnReason::Patrol,
+            (true, false) => horizon_server_api::event::SpawnReason::Command,
+            (false, false) => horizon_server_api::event::SpawnReason::Natural,
+        };
+        if !self.plugin_spawn_allowed(&mob, reason) {
+            return None;
+        }
         self.mobs.push(mob);
         self.enchant_spawn_equipment(id);
         if !persistent && !scripted {
@@ -728,6 +736,8 @@ impl crate::game::Server<'_> {
     /// LivingEntity.die / dropAllDeathLoot.
     fn mob_died(&mut self, m: &Mob) {
         let killer = self.last_hurt_by_player.remove(&m.id);
+        // EntityDeathEvent, with the player who killed it.
+        self.plugin_mob_died(m, killer.flatten());
         let by_player = killer.is_some() || m.ai.last_hurt_by_player > 0;
         let mut dying = m.clone();
         // LivingEntity.die: the death is heard, and a sculk catalyst nearby
@@ -2987,21 +2997,27 @@ impl crate::game::Server<'_> {
                         self.spawn_mob("minecraft:endermite", [from.x, from.y, from.z], false);
                     }
                     // To where the pearl started its last tick (oldPosition).
-                    let to = p.previous;
-                    if let Some(pl) = self.player.as_mut() {
-                        pl.position = to;
-                        pl.velocity = Vec3::ZERO;
-                        pl.fall_distance = 0.0;
-                        pl.teleported = true;
+                    // PlayerTeleportEvent: a cancelled pearl moves nobody.
+                    if let Some((to, _)) = self.plugin_teleport(
+                        p.previous,
+                        None,
+                        horizon_server_api::event::TeleportCause::EnderPearl,
+                    ) {
+                        if let Some(pl) = self.player.as_mut() {
+                            pl.position = to;
+                            pl.velocity = Vec3::ZERO;
+                            pl.fall_distance = 0.0;
+                            pl.teleported = true;
+                        }
+                        self.previous_position = to;
+                        self.hurt_player_by("minecraft:ender_pearl", 5.0);
+                        self.sounds.play(
+                            "minecraft:entity.player.teleport",
+                            Some([to.x, to.y, to.z]),
+                            1.0,
+                            1.0,
+                        );
                     }
-                    self.previous_position = to;
-                    self.hurt_player_by("minecraft:ender_pearl", 5.0);
-                    self.sounds.play(
-                        "minecraft:entity.player.teleport",
-                        Some([to.x, to.y, to.z]),
-                        1.0,
-                        1.0,
-                    );
                 }
             }
             (ProjectileKind::SmallFireball, hit) => match hit {

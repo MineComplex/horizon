@@ -68,6 +68,9 @@ impl crate::game::Server<'_> {
             return false;
         };
         // InventoryOpenEvent: cancelled, the use opens nothing.
+        if !self.plugin_inventory_open(net, conn, menu_type, 0) {
+            return true;
+        }
         self.net_station_closed(net, conn, None);
         self.net_crafting_closed(net, conn, None);
         // The container it replaces loses its opener.

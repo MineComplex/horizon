@@ -84,7 +84,8 @@ impl crate::game::Server<'_> {
         net.enable();
         if let Some(network) = self.network.as_mut() {
             // The plugins decide the join and quit messages and see chat first.
-            network.hub.quiet_joins = net.listens::<ev::PlayerJoinEvent>();
+            network.hub.quiet_joins =
+                net.listens::<ev::PlayerJoinEvent>() || net.listens::<ev::PlayerLoginEvent>();
             network.hub.quiet_leaves = net.listens::<ev::PlayerQuitEvent>();
             network.hub.intercept_chat = net.listens::<ev::PlayerChatEvent>();
         }
@@ -130,7 +131,7 @@ impl crate::game::Server<'_> {
         self.plugin_seen.clone()
     }
     /// The player whose turn it is (`as_player`).
-    fn plugin_acting(&self) -> Option<PlayerRef> {
+    pub(super) fn plugin_acting(&self) -> Option<PlayerRef> {
         let uuid = self.net_acting_uuid?;
         let mut p = self.plugin_seen.iter().find(|p| p.uuid == uuid)?.clone();
         // The turn's own state is in the game.
@@ -147,11 +148,11 @@ impl crate::game::Server<'_> {
         }
         Some(p)
     }
-    fn plugins_listen<E: Event>(&self) -> bool {
+    pub(super) fn plugins_listen<E: Event>(&self) -> bool {
         self.plugins.as_ref().is_some_and(|h| h.listens::<E>())
     }
     /// `callEvent`; what the listeners asked for waits for `apply_plugin_actions`.
-    fn plugin_fire<E: Event>(&mut self, net: Option<&Network>, event: &mut E) {
+    pub(super) fn plugin_fire<E: Event>(&mut self, net: Option<&Network>, event: &mut E) {
         let players = self.plugin_players(net);
         let Some(mut plugins) = self.plugins.take() else {
             return;
@@ -267,9 +268,26 @@ impl crate::game::Server<'_> {
                 super::dedicated::log("INFO", &format!("[{plugin}] {}", api::strip_colors(&line)));
             }
             Action::Kick { player, reason } => {
-                if let Some((conn, _)) = name_of(self, player)
-                    && let Some(h) = self.network.as_mut()
+                let Some((conn, _)) = name_of(self, player) else {
+                    return;
+                };
+                // PlayerKickEvent: a plugin may keep them or change the message.
+                let mut reason = reason;
+                if self.plugins_listen::<ev::PlayerKickEvent>()
+                    && let Some(g) = self.network.as_ref().and_then(|h| h.hub.player(conn))
                 {
+                    let mut event = ev::PlayerKickEvent {
+                        player: crate::game::Server::plugin_player(g),
+                        reason: reason.clone(),
+                        cancelled: false,
+                    };
+                    self.plugin_fire(None, &mut event);
+                    if event.cancelled {
+                        return;
+                    }
+                    reason = event.reason;
+                }
+                if let Some(h) = self.network.as_mut() {
                     h.hub.kick(conn, legacy_nbt(&reason));
                 }
             }
@@ -337,7 +355,14 @@ impl crate::game::Server<'_> {
         !crate::hc::server_net::playerdata::exists(&self.world_root, g.uuid)
     }
     pub(super) fn plugin_joined(&mut self, net: &mut Network, conn: u32, first_join: bool) {
+        // PlayerLoginEvent first: a player turned away hears of no join.
+        if !self.plugin_login(net, conn) {
+            return;
+        }
         if !self.plugins_listen::<ev::PlayerJoinEvent>() {
+            if net.hub.quiet_joins {
+                net.hub.announce_join(conn);
+            }
             return;
         }
         let Some(g) = net.hub.player(conn).filter(|g| g.placed) else {

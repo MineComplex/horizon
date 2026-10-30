@@ -74,6 +74,20 @@ impl fmt::Display for PlayerRef {
     }
 }
 
+/// `Block`: a block of a level and its state (`minecraft:oak_log[axis=y]`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Block {
+    pub world: World,
+    pub pos: BlockPos,
+    pub state: String,
+}
+impl Block {
+    /// The block's type: the state without its properties.
+    pub fn kind(&self) -> &str {
+        self.state.split('[').next().unwrap_or_default()
+    }
+}
+
 /// An entity an event names: a player (`player` set) or any other.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EntityRef {

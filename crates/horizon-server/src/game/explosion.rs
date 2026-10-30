@@ -560,6 +560,10 @@ impl crate::game::Server<'_> {
         self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.exploded_positions(center, radius, resists);
         // EntityExplodeEvent: plugins may cancel it or spare blocks.
+        let exploding = self.combat.explosion_source;
+        if !self.plugin_explosion(center, exploding, &mut targets) {
+            return Ok(());
+        }
         self.explosion_hurt_entities(center, radius, damage_type);
         if interaction != BlockInteraction::Keep {
             // Util.shuffle(list, level.random)

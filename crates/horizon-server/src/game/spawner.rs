@@ -110,10 +110,16 @@ impl crate::game::Server<'_> {
                     self.next_entity += 1;
                     mob.id = self.next_entity;
                     let id = mob.id;
-                    self.mobs.push(mob);
-                    self.enchant_spawn_equipment(id);
-                    self.spawn_jockeys(id, true);
-                    Some((id, equipment))
+                    if self
+                        .plugin_spawn_allowed(&mob, horizon_server_api::event::SpawnReason::Spawner)
+                    {
+                        self.mobs.push(mob);
+                        self.enchant_spawn_equipment(id);
+                        self.spawn_jockeys(id, true);
+                        Some((id, equipment))
+                    } else {
+                        None
+                    }
                 }
                 Planned::Loaded(tag, equipment) => {
                     self.load_mob(tag, None).map(|id| (id, equipment))

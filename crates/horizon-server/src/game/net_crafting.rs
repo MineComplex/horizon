@@ -421,6 +421,9 @@ impl crate::game::Server<'_> {
     /// The player opened a crafting table (`CraftingTableBlock.getMenuProvider`).
     pub(super) fn net_open_crafting(&mut self, net: &mut Network, conn: u32, pos: [i32; 3]) {
         // InventoryOpenEvent: cancelled, the table opens nothing.
+        if !self.plugin_inventory_open(net, conn, "minecraft:crafting", 0) {
+            return;
+        }
         self.net_crafting_closed(net, conn, None);
         self.net_station_closed(net, conn, None);
         // The container it replaces loses its opener.

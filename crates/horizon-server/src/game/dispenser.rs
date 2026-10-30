@@ -1311,6 +1311,19 @@ impl crate::game::Server<'_> {
         let target = offset(pos, facing);
         let target_pos = crate::game::Server::pos_of(target);
         // BlockFertilizeEvent, with no player: a cancelled one keeps the meal.
+        if self.plugins_hear_fertilize()
+            && self.with_level(|b, level, ticks| {
+                b.bone_meal_target(
+                    level,
+                    ticks,
+                    target_pos,
+                    horizon_core::geometry::Direction::Up,
+                )
+            }) == Some(target_pos)
+            && !self.plugin_fertilize(target_pos, false)
+        {
+            return Ok((Some(stack), FAIL));
+        }
         let grown = self.with_level(|b, level, ticks| {
             b.grow_crop(level, ticks, target_pos)
                 || b.grow_water_plant(level, ticks, target_pos, None)

@@ -737,6 +737,9 @@ impl crate::game::Server<'_> {
         spawning::finalize(&mut mob, &facts, &difficulty);
         raider::finalize(&mut mob, reason);
         let id = mob.id;
+        if !self.plugin_spawn_allowed(&mob, horizon_server_api::event::SpawnReason::Raid) {
+            return None;
+        }
         self.mobs.push(mob);
         self.enchant_spawn_equipment(id);
         Some(id)

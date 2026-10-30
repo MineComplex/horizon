@@ -409,6 +409,14 @@ impl<'a> crate::game::Server<'a> {
             mob.id = self.next_entity;
             mob.persistent = persistent;
             let id = mob.id;
+            let reason = if persistent {
+                horizon_server_api::event::SpawnReason::ChunkGen
+            } else {
+                horizon_server_api::event::SpawnReason::Natural
+            };
+            if !self.plugin_spawn_allowed(&mob, reason) {
+                continue;
+            }
             self.mobs.push(mob);
             self.enchant_spawn_equipment(id);
             if !persistent {

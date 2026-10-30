@@ -54,6 +54,10 @@ impl crate::game::Server<'_> {
             state.session.update_special_prices();
         }
         // InventoryOpenEvent: cancelled, no trades.
+        if !self.plugin_inventory_open(net, conn, "minecraft:merchant", 0) {
+            self.merchant_closed(&mut state);
+            return;
+        }
         let title = self.merchant_display_name(&state);
         // The container or workstation the trading screen replaces is closed.
         self.player_container_closed(net, conn);

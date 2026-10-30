@@ -97,6 +97,7 @@ mod pick_entity;
 mod piglins;
 mod piston_push;
 mod player_equip;
+mod plugin_events;
 mod plugin_host;
 mod postprocess;
 mod potions;
@@ -1284,6 +1285,10 @@ struct Server<'a> {
     plugin_seen_ids: Vec<(i32, u128)>,
     /// The damage a plugin set for the attack under way (`EntityDamageByEntityEvent`).
     plugin_damage_override: Option<f32>,
+    /// What the plugins last saw of each player (by connection).
+    plugin_watched: HashMap<u32, plugin_events::Watch>,
+    /// Blocks a plugin's cancelled change puts back: no events for those.
+    plugin_reverting: bool,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
     /// Players whose inventory a plugin kept as it was (a cancelled drop):
@@ -2179,12 +2184,12 @@ impl crate::game::Server<'_> {
     }
     /// Plugins hear of blocks growing, spreading, forming and fading.
     fn plugin_change_events(&self) -> bool {
-        false
+        self.plugins_hear_block_changes()
     }
     /// Plugins hear of pistons moving (`BlockPistonExtendEvent`,
     /// `BlockPistonRetractEvent`).
     fn plugin_piston_events(&self) -> bool {
-        false
+        self.plugins_hear_pistons()
     }
     /// `ServerLevel.runBlockEvents` with the plugins asked before each piston
     /// moves, then `tickBlockEntities`.
@@ -2198,10 +2203,7 @@ impl crate::game::Server<'_> {
             let Some(mv) = next else {
                 break;
             };
-            let allowed = {
-                let _ = mv;
-                true
-            };
+            let allowed = self.plugin_piston(&mv);
             self.with_level(|b, level, ticks| b.run_piston_move(level, ticks, allowed));
         }
         self.with_level(|b, level, ticks| b.tick_block_entities(level, ticks));
@@ -2473,7 +2475,17 @@ impl crate::game::Server<'_> {
                 continue;
             }
             // BlockFromToEvent: plugins hear where each fluid tick flows first.
+            let flows = fluids && self.plugins_hear_flows();
             loop {
+                if flows
+                    && let Some(flow) =
+                        self.with_level(|b, level, ticks| b.scheduled_fluid_flow(level, ticks))
+                {
+                    let vetoes = self.plugin_fluid_flow(&flow);
+                    if !vetoes.is_empty() {
+                        self.with_level(|b, _, ticks| b.veto_flow(ticks, vetoes));
+                    }
+                }
                 let more =
                     self.with_level(|b, level, ticks| b.scheduled_step(level, ticks, fluids));
                 if !self.level_events.is_empty() {
@@ -2870,11 +2882,14 @@ impl crate::game::Server<'_> {
                 } => self.shrieker_block_event(pos, state),
                 // LeavesDecay, BlockBurn, Form and FadeEvent before the change.
                 LevelEvent::Pending(change) => {
-                    let _ = change;
+                    if self.plugin_pending(change) {
+                        self.with_level(|b, level, ticks| b.apply_pending(level, ticks, change));
+                        self.process_level_events()?;
+                    }
                 }
                 // BlockGrow, Spread, Form and FadeEvent.
                 LevelEvent::Changed { cause, changes } => {
-                    let _ = (cause, changes);
+                    self.plugin_block_changed(cause, &changes)?;
                 }
                 LevelEvent::BlockEntityEvent { pos, a, b, .. } => {
                     self.block_entity_event([pos.x, pos.y, pos.z], a, b)
@@ -6048,6 +6063,9 @@ impl crate::game::Server<'_> {
             };
             let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
             // PlayerBucketFillEvent.
+            if !self.plugin_bucket(true, hit.pos, stack) {
+                return Ok(UseResult::Fail);
+            }
             let Some(filled) =
                 self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, pos))
             else {
@@ -6098,6 +6116,9 @@ impl crate::game::Server<'_> {
             };
             let pos = BlockPos::new(target[0], target[1], target[2]);
             // PlayerBucketEmptyEvent.
+            if !self.plugin_bucket(false, target, stack) {
+                return Ok(UseResult::Fail);
+            }
             let emptied = self
                 .with_level(|b, level, ticks| b.bucket_empty(level, ticks, pos, content, sound));
             self.process_level_events()?;
@@ -6667,6 +6688,9 @@ impl crate::game::Server<'_> {
             return;
         }
         // PlayerBedEnterEvent: cancelled, the bed does nothing.
+        if !self.plugin_bed_enter(head) {
+            return;
+        }
         // In reach (bedInRange), day or night: setRespawnPosition(
         // RespawnConfig(the head, the player's yaw), not forced). It replaces
         // an anchor or a spawnpoint; respawning checks the bed is still there
@@ -7364,6 +7388,8 @@ impl<'a> Server<'a> {
             plugin_seen: Vec::new(),
             plugin_seen_ids: Vec::new(),
             plugin_damage_override: None,
+            plugin_watched: HashMap::new(),
+            plugin_reverting: false,
             plugin_resend: Vec::new(),
             plugin_resync: Vec::new(),
             plugin_last_moves: HashMap::new(),

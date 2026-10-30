@@ -4,14 +4,16 @@
 //! - bedrock nobody breaks, and placed TNT taken back unless the player is an operator;
 //! - diamonds nobody throws away, and a line when a player's game mode changes;
 //! - no fall damage for players: a line instead;
+//! - a line for each teleport, no phantoms, a line when a mob dies, explosions that break no blocks;
 //! - chat: `!` at the start shouts (gold, to everyone), `/mute` silences a player;
 //! - `/hello [name]`, `/heal` (operators: full food, a golden apple), `/mute <player>`;
 //! - every 5 minutes, a tip to everyone.
 use horizon_server_api::{
     ItemStack, Plugin, PluginDescription, Plugins,
     event::{
-        BlockBreakEvent, BlockPlaceEvent, EntityDamageEvent, EventPriority, PlayerChatEvent,
-        PlayerDeathEvent, PlayerDropItemEvent, PlayerGameModeChangeEvent, PlayerJoinEvent,
+        BlockBreakEvent, BlockPlaceEvent, CreatureSpawnEvent, EntityDamageEvent, EntityDeathEvent,
+        EntityExplodeEvent, EventPriority, PlayerChatEvent, PlayerDeathEvent, PlayerDropItemEvent,
+        PlayerGameModeChangeEvent, PlayerJoinEvent, PlayerTeleportEvent,
     },
 };
 use std::{
@@ -92,6 +94,36 @@ impl Plugin for Example {
                     e.cancelled = true;
                     server.send_message(player, &format!("§aSoft landing ({:.1}).", e.damage));
                 }
+            },
+        );
+        plugins.listen(
+            EventPriority::Monitor,
+            true,
+            |e: &mut PlayerTeleportEvent, server| {
+                server.send_message(&e.player, &format!("§7Teleported ({:?}).", e.cause));
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut CreatureSpawnEvent, _| {
+                if e.entity.kind == "minecraft:phantom" {
+                    e.cancelled = true;
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Monitor,
+            false,
+            |e: &mut EntityDeathEvent, server| {
+                server.broadcast(&format!("§7{} died.", e.entity.kind));
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut EntityExplodeEvent, _| {
+                e.blocks.clear();
             },
         );
         let muted = self.muted.clone();

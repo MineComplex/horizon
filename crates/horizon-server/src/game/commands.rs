@@ -1249,6 +1249,13 @@ impl crate::game::Server<'_> {
             }
             Target::Player => {
                 // PlayerTeleportEvent: a plugin may cancel it or send them elsewhere.
+                let Some((v, rotation)) = self.plugin_teleport(
+                    v,
+                    rotation,
+                    horizon_server_api::event::TeleportCause::Command,
+                ) else {
+                    return;
+                };
                 // ServerPlayer.teleport: removeVehicle before placing the player.
                 self.stop_riding();
                 // A server's player teleported within their level is placed

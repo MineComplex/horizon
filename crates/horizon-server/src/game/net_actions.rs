@@ -877,6 +877,9 @@ impl crate::game::Server<'_> {
             return false;
         };
         // InventoryOpenEvent: cancelled, the use opens nothing.
+        if !self.plugin_inventory_open(net, conn, menu, items.len()) {
+            return true;
+        }
         // ServerPlayer.openMenu closes the menu that was open.
         self.player_container_closed(net, conn);
         self.net_station_closed(net, conn, None);
@@ -1015,6 +1018,11 @@ impl crate::game::Server<'_> {
                 S::ClientCommand(_) | S::ChatCommand(_) | S::ChatCommandSigned(_)
             )
         {
+            return;
+        }
+        // The plugins' events for the packet first: a cancelled one is dropped.
+        let mut packet = packet;
+        if self.plugin_packet(net, conn, &mut packet) {
             return;
         }
         let spectator = net.hub.players[gi].spectator();
@@ -2170,6 +2178,7 @@ impl crate::game::Server<'_> {
     /// Per tick, for every player: dig, use items, pick up drops, die.
     pub(super) fn tick_players(&mut self, net: &mut Network) {
         self.plugin_moves(net);
+        self.plugin_watch(net);
         self.net_merchant_tick(net);
         self.net_stations_tick(net);
         self.net_tables_tick(net);
@@ -3053,6 +3062,10 @@ impl crate::game::Server<'_> {
         for i in near.into_iter().rev() {
             // PlayerPickupItemEvent: a cancelled item stays on the ground.
             let (stack, item_id) = (self.dropped[i].stack.clone(), self.dropped[i].id);
+            let at = self.dropped[i].position;
+            if !self.plugin_pickup(net, conn, item_id, at, &stack) {
+                continue;
+            }
             let before = stack.count;
             let rest = self.as_player(net, conn, |g| g.give(stack)).flatten();
             match rest {

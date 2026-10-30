@@ -12,6 +12,10 @@ Checks, from the client's side:
   drop      PlayerDropItemEvent: a diamond the player throws stays in the hand
   mode      PlayerGameModeChangeEvent: the player hears of their new game mode
   damage    EntityDamageEvent: a survival player's fall hurts nothing, and the player is told
+  teleport  PlayerTeleportEvent: /tp tells the player its cause
+  spawn     CreatureSpawnEvent: a summoned phantom never comes, a pig does
+  death     EntityDeathEvent: a killed pig is announced
+  explode   EntityExplodeEvent: TNT breaks no blocks
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -152,6 +156,41 @@ def main():
             after = ctl('state')['player']['health']
             assert after == before, f'the fall hurt: {before} -> {after}'
         check('damage', damage)
+
+        def teleport():
+            ctl('command', 'tp @s ~ ~ ~')
+            chat_until('Teleported (Command).')
+        check('teleport', teleport)
+
+        def mobs_near():
+            return [m.get('kind', m.get('type', '')) for m in ctl('mobs', 32)['near']]
+
+        def spawn():
+            ctl('command', 'kill @e[type=!player]', check=False)
+            ctl('command', 'summon minecraft:phantom ~ ~3 ~', check=False)
+            ctl('command', 'summon minecraft:pig ~2 ~ ~')
+            ctl('wait', 10)
+            kinds = mobs_near()
+            assert not any('phantom' in k for k in kinds), kinds
+            assert any('pig' in k for k in kinds), kinds
+        check('spawn', spawn)
+
+        def death():
+            ctl('command', 'kill @e[type=minecraft:pig]')
+            chat_until('minecraft:pig died.')
+        check('death', death)
+
+        def explode():
+            x, y, z = ctl('state')['player']['block_pos']
+            bx = x + 8
+            ctl('command', f'fill {bx - 1} {y - 1} {z - 1} {bx + 1} {y - 1} {z + 1} minecraft:stone')
+            ctl('command', f'summon minecraft:tnt {bx} {y} {z} {{fuse:20}}')
+            ctl('wait', 60)
+            for dx in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    block = ctl('block', bx + dx, y - 1, z + dz)['block']
+                    assert block == 'minecraft:stone', f'({bx + dx}, {y - 1}, {z + dz}) is {block}'
+        check('explode', explode)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60
