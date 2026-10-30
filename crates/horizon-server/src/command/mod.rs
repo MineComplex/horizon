@@ -26,6 +26,7 @@
 
 mod argument;
 mod error;
+pub mod network;
 mod reader;
 mod suggestion;
 mod tree;
