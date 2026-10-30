@@ -1,0 +1,14 @@
+pub mod abstract_nautilus;
+pub mod nautilus;
+pub mod nautilus_ai;
+pub mod zombie_nautilus;
+pub mod zombie_nautilus_ai;
+pub mod zombie_nautilus_variant;
+pub mod zombie_nautilus_variants;
+pub use self::abstract_nautilus::{AbstractNautilus, AbstractNautilusTrait};
+pub use self::nautilus::{Nautilus};
+pub use self::nautilus_ai::{NautilusAi};
+pub use self::zombie_nautilus::{ZombieNautilus};
+pub use self::zombie_nautilus_ai::{ZombieNautilusAi};
+pub use self::zombie_nautilus_variant::{ZombieNautilusVariant, ZombieNautilusVariantModelType, ZombieNautilusVariantModelTypeData};
+pub use self::zombie_nautilus_variants::{ZombieNautilusVariants};

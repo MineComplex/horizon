@@ -4,45 +4,26 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 rust-version = "1.90"
-description = "Horizon's Minecraft 26.3 server, run as Paper and Leaf run: server.properties, config/paper-global.yml, a console, logs/"
+description = "Horizon's Minecraft 26.3 server: Leaf (Paper fork) ported from Java to Rust, with the Bukkit/Paper API implemented on the game's own types"
+
+[lib]
+path = "src/lib.rs"
 
 [[bin]]
 name = "horizon-server"
 path = "src/main.rs"
 
 [dependencies]
-# The game without sound or controllers (the server half moves here step by step: docs/crates.md).
-# The game's server half (src/game*): the windowless crates only.
-horizon-assets = { path = "../horizon-assets" }
-horizon-client-core = { path = "../horizon-client-core" }
-horizon-command = { path = "../horizon-command" }
-horizon-items = { path = "../horizon-items" }
-horizon-core = { path = "../horizon-core" }
-horizon-game = { path = "../horizon-game" }
-horizon-server-core = { path = "../horizon-server-core" }
-horizon-threads = { path = "../horizon-threads" }
-horizon-world = { path = "../horizon-world" }
-horizon-protocol = { path = "../horizon-protocol" }
-horizon-server-files = { path = "../horizon-server-files" }
-horizon-bench = { path = "../horizon-bench" }
-glam = "0.30"
-sha1 = "0.10"
-sha2 = "0.10.9"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.151", features = ["raw_value"] }
-png = "0.18"
-miniz_oxide = "0.8"
-chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
-flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
-zip = { version = "2", default-features = false, features = ["deflate"] }
-# The plugin API (Bukkit-shaped), and the plugins this server is built with (src/plugins.rs).
-horizon-server-api = { path = "../horizon-server-api" }
-horizon-plugin-example = { path = "../horizon-plugin-example", optional = true }
+indexmap = "2"
+uuid = { version = "1", features = ["v3", "v4"] }
+parking_lot = "0.12"
+dashmap = "6"
+crossbeam = "0.8"
+regex = "1"
 log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_yaml = "0.9"
 
-[features]
-# The example plugin (crates/horizon-plugin-example): the plugin tests run it; a real server leaves it out.
-example-plugin = ["dep:horizon-plugin-example"]
-
-[lints]
-workspace = true
+# Java's int arithmetic wraps; the port writes it with plain operators.
+# (overflow-checks is off for this crate in the workspace's profiles.)

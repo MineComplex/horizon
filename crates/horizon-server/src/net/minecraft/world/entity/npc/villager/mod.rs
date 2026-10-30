@@ -1,0 +1,12 @@
+pub mod abstract_villager;
+pub mod villager;
+pub mod villager_data;
+pub mod villager_data_holder;
+pub mod villager_profession;
+pub mod villager_type;
+pub use self::abstract_villager::{AbstractVillager, AbstractVillagerTrait};
+pub use self::villager::{Villager};
+pub use self::villager_data::{VillagerData};
+pub use self::villager_data_holder::{VillagerDataHolder};
+pub use self::villager_profession::{VillagerProfession};
+pub use self::villager_type::{VillagerType};

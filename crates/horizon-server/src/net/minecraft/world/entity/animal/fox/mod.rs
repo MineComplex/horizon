@@ -1,0 +1,2 @@
+pub mod fox;
+pub use self::fox::{Fox, FoxDefendTrustedTargetGoal, FoxFaceplantGoal, FoxFoxAlertableEntitiesSelector, FoxFoxBehaviorGoal, FoxFoxBehaviorGoalTrait, FoxFoxBreedGoal, FoxFoxEatBerriesGoal, FoxFoxFloatGoal, FoxFoxFollowParentGoal, FoxFoxGroupData, FoxFoxLookAtPlayerGoal, FoxFoxLookControl, FoxFoxMeleeAttackGoal, FoxFoxMoveControl, FoxFoxPanicGoal, FoxFoxPounceGoal, FoxFoxSearchForItemsGoal, FoxFoxStrollThroughVillageGoal, FoxPerchAndSearchGoal, FoxSeekShelterGoal, FoxSleepGoal, FoxStalkPreyGoal, FoxVariant, FoxVariantData};

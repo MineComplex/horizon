@@ -1,0 +1,10 @@
+pub mod paper_poi_search_result;
+pub mod paper_poi_type;
+pub mod poi_search_result;
+pub mod poi_type;
+pub mod poi_types;
+pub use self::paper_poi_search_result::{PaperPoiSearchResult};
+pub use self::paper_poi_type::{PaperPoiType, PaperPoiTypePaperOccupancy};
+pub use self::poi_search_result::{PoiSearchResult};
+pub use self::poi_type::{PoiType, PoiTypeOccupancy};
+pub use self::poi_types::{PoiTypes};

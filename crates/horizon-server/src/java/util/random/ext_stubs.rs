@@ -1,0 +1,10 @@
+//! Stand-ins for the external library types this package's users name (tools/leaf_port/gen.py).
+//! Replace each with its port.
+use crate::prelude::*;
+
+pub struct RandomGenerator(pub std::marker::PhantomData<()>);
+impl Clone for RandomGenerator { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct RandomGeneratorFactory<A0 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0,)>);
+impl<A0> Clone for RandomGeneratorFactory<A0> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct RandomGeneratorSplittableGenerator(pub std::marker::PhantomData<()>);
+impl Clone for RandomGeneratorSplittableGenerator { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }

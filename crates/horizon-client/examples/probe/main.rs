@@ -22,14 +22,12 @@ mod block_particles_fixture;
 mod block_transform_fixture;
 mod breaking_fixture;
 mod camera_probe;
-mod cauldron_fixture;
 mod chat_screen_fixture;
 mod cloud_fixture;
 mod command_parse_fixture;
 mod container_screen_probe;
 mod creative_mining_probe;
 mod creative_search_fixture;
-mod cushion_placement_probe;
 mod emitter_particles_probe;
 mod enchanting_fixture;
 mod entity_anim_fixture;
@@ -65,18 +63,15 @@ mod particle_providers_probe;
 mod pick_block_data_fixture;
 mod place_recipe_fixture;
 mod player_sync_fixture;
-mod raid_fixture;
 mod random_tick_sections_probe;
 mod recipe_book_fixture;
 mod recipe_book_render_fixture;
 mod recipe_book_view_fixture;
 mod recipe_fixture;
 mod scene_collision_probe;
-mod scene_motion_probe;
 mod scoreboard_fixture;
 mod screen_layout_fixture;
 mod section_mesh_fixture;
-mod server_files_probe;
 mod situational_music_fixture;
 mod skin_image_fixture;
 mod sound_engine_fixture;
@@ -110,8 +105,6 @@ probes! {
     camera_probe,
     squid_client_probe,
     creative_mining_probe,
-    cushion_placement_probe,
-    cauldron_fixture,
     chat_screen_fixture,
     cloud_fixture,
     command_parse_fixture,
@@ -152,18 +145,15 @@ probes! {
     pick_block_data_fixture,
     place_recipe_fixture,
     player_sync_fixture,
-    raid_fixture,
     random_tick_sections_probe,
     recipe_book_fixture,
     recipe_book_render_fixture,
     recipe_book_view_fixture,
     recipe_fixture,
     scene_collision_probe,
-    scene_motion_probe,
     scoreboard_fixture,
     screen_layout_fixture,
     section_mesh_fixture,
-    server_files_probe,
     situational_music_fixture,
     skin_image_fixture,
     sound_engine_fixture,

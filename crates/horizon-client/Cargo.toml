@@ -98,9 +98,6 @@ path = "examples/probe/main.rs"
 workspace = true
 
 [dev-dependencies]
-# The server's half of the game, for the probes and tests of server logic only:
-# the client itself never links it.
-horizon-server-core = { path = "../horizon-server-core" }
 horizon-items = { path = "../horizon-items", features = ["test-support"] }
 # Every WGSL shader translated as wgpu's DirectX 12 backend does (gfx.rs tests).
 naga = { version = "30.0.1", features = ["wgsl-in", "hlsl-out", "msl-out", "spv-out"] }
