@@ -11,6 +11,7 @@
 //!   thread to admit the profile ([`listener::NetEvent::Login`]), and once the client acknowledges the
 //!   login it hands the connection over ([`listener::NetEvent::Joined`]): from then on a reader task
 //!   sends packet bodies to the tick thread and a writer task sends what the tick thread queues.
+//! - [`play`]: the play state's packets, the join sequence and Moonrise's chunk-sending rules.
 //!
 //! Java exceptions that reach `Connection.exceptionCaught` become a [`Fault`] carrying the text Java
 //! would put in `disconnect.genericReason` (`"Internal Exception: " + cause`), since that text is what
@@ -19,6 +20,7 @@
 pub mod codec;
 pub mod listener;
 pub mod login;
+pub mod play;
 
 use std::fmt::Write as _;
 
