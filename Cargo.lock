@@ -1593,6 +1593,7 @@ dependencies = [
  "regex",
  "rsa",
  "rsa_public_encrypt_pkcs1",
+ "rustix 1.1.5",
  "saphyr",
  "saphyr-parser",
  "serde",
