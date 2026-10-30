@@ -74,6 +74,29 @@ impl fmt::Display for PlayerRef {
     }
 }
 
+/// An entity an event names: a player (`player` set) or any other.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityRef {
+    /// The entity id the server and its players know it by.
+    pub id: i32,
+    /// Its type: `minecraft:player`, `minecraft:zombie`...; empty when the
+    /// server no longer knows it.
+    pub kind: String,
+    pub location: Location,
+    pub player: Option<PlayerRef>,
+}
+impl EntityRef {
+    /// The entity of a player.
+    pub fn of_player(id: i32, player: PlayerRef) -> Self {
+        Self {
+            id,
+            kind: "minecraft:player".into(),
+            location: player.location.clone(),
+            player: Some(player),
+        }
+    }
+}
+
 /// A UUID's text form.
 pub fn uuid_string(uuid: u128) -> String {
     let hex = format!("{uuid:032x}");

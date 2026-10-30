@@ -283,6 +283,15 @@ impl crate::game::Server<'_> {
         let hurtable = exploding.is_none_or(|id| {
             crate::hc::scoreboard::teams_allow_damage(self.mob_team(id), self.player_team())
         });
+        // EntityDamageEvent: plugins may cancel or change the hit.
+        let (amount, hurtable) = if hurtable && !self.creative {
+            match self.plugin_damage_acting(damage_type, amount, exploding) {
+                Some(a) => (a, true),
+                None => (amount, false),
+            }
+        } else {
+            (amount, hurtable)
+        };
         let blocking = self.player_blocking(Some(center), damage_type, false);
         let raised = blocking.is_some();
         let (creative, spectator) = (self.creative, self.spectator());

@@ -36,6 +36,6 @@ scripts that start the client themselves.
 
 ## Next
 
-- Plugin events for damage (`EntityDamageEvent`), item pickup, inventories and the world's own block
-  changes ([plugins.md](plugins.md)).
+- Plugin events for item pickup, inventories, entity spawn and death, and the world's own block changes
+  ([plugins.md](plugins.md)).
 - Leaf's touches: the `world_nether` / `world_the_end` layout, `/tps`, `/version`.

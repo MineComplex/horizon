@@ -1,6 +1,6 @@
 //! Events (`org.bukkit.event`): what happened, what a listener may change,
 //! and `cancelled` where Bukkit's event is `Cancellable`.
-use crate::server::{BlockPos, ItemStack, Location, PlayerRef, World};
+use crate::server::{BlockPos, EntityRef, ItemStack, Location, PlayerRef, World};
 use std::any::Any;
 
 /// `EventPriority`: listeners run from `Lowest` to `Monitor`; `Monitor`
@@ -246,3 +246,20 @@ pub struct PlayerGameModeChangeEvent {
     pub cancelled: bool,
 }
 cancellable!(PlayerGameModeChangeEvent, "PlayerGameModeChangeEvent");
+
+/// `EntityDamageEvent`, and `EntityDamageByEntityEvent` when `damager` is
+/// set: an entity is about to be hurt. `cause` is vanilla's damage type
+/// (`minecraft:fall`, `minecraft:lava`, `minecraft:player_attack`,
+/// `minecraft:mob_attack`, `minecraft:explosion`...). Changing `damage`
+/// changes the hit, before armour and effects; cancelling stops it.
+#[derive(Clone, Debug)]
+pub struct EntityDamageEvent {
+    pub entity: EntityRef,
+    pub cause: String,
+    pub damage: f64,
+    /// The entity that caused it: the attacker, a projectile's shooter, the
+    /// creeper that exploded.
+    pub damager: Option<EntityRef>,
+    pub cancelled: bool,
+}
+cancellable!(EntityDamageEvent, "EntityDamageEvent");

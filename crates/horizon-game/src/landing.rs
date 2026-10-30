@@ -519,11 +519,11 @@ impl LivingFallWorld for FallCall<'_, '_, '_, '_> {
             source: self.source,
             amount,
         });
-        let resources = &self.world.resources.health;
-        self.world.player.hurt(
-            resources,
+        // The surroundings' damage: it waits for the plugins on a server.
+        self.world.player.hurt_by_surroundings(
+            &self.world.resources.health,
             self.world.scene.health_rules,
-            resources.landing_source(self.source),
+            crate::health::landing_source_name(self.source),
             amount,
         )?;
         Ok(())

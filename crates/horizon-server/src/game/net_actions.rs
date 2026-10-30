@@ -1761,8 +1761,17 @@ impl crate::game::Server<'_> {
             return;
         }
         if let Some(victim) = crate::game::Server::pvp_victim(net, conn, id) {
-            #[allow(unused_mut)]
             if let Some(Some(mut strike)) = self.as_player(net, conn, |g| g.pvp_strike())
+                && {
+                    // EntityDamageByEntityEvent for the hit about to land.
+                    match self.plugin_attack(net, conn, id, strike.amount()) {
+                        Some(amount) => {
+                            strike.set_amount(amount);
+                            true
+                        }
+                        None => false,
+                    }
+                }
                 && self.pvp_land(net, victim, &strike)
             {
                 self.as_player(net, conn, |g| {
@@ -1795,6 +1804,28 @@ impl crate::game::Server<'_> {
             return;
         }
         // EntityDamageByEntityEvent for the hit about to land.
+        if self.plugins_hear_damage() {
+            use super::commands::Target;
+            let kind = u32::try_from(id)
+                .ok()
+                .filter(|id| self.mobs.iter().any(|m| m.id == *id))
+                .map(|id| self.target_type(Target::Mob(id)))
+                .unwrap_or_default();
+            let estimate = self
+                .as_player(net, conn, |g| g.melee_damage(&kind).0)
+                .unwrap_or(1.0);
+            match self.plugin_attack(net, conn, id, estimate) {
+                None => {
+                    net.hub.players[gi].yaw = old_yaw;
+                    net.hub.players[gi].pitch = old_pitch;
+                    return;
+                }
+                Some(amount) if amount != estimate => {
+                    self.plugin_damage_override = Some(amount);
+                }
+                Some(_) => {}
+            }
+        }
         // A mace's smash sets the attacker's velocity and sends it at once, before the
         // Wind Burst's push (MaceItem.hurtEnemy, then the post-attack effects).
         let sent = self
@@ -2525,6 +2556,7 @@ impl crate::game::Server<'_> {
             let health = &motion.health;
             let freeze_immune = game.wears_freeze_immune();
             // Plugins hear of the damage the surroundings deal: it waits for them.
+            let defer = game.plugins_hear_damage();
             let burn_immune = game.wears_burn_from_stepping_immunity();
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
@@ -2538,6 +2570,7 @@ impl crate::game::Server<'_> {
                 resources: game.motion,
             };
             w.player.health.advance_clock();
+            w.player.defer_env_damage = defer;
             let _ = w.fluid_base_tick();
             w.player.ground.on_ground = from_ground;
             // Player.aiStep: a flying player that isn't riding starts every tick
@@ -2634,6 +2667,7 @@ impl crate::game::Server<'_> {
             game.location_changed_effects([start.x, start.y, start.z], from_ground);
             // LivingEntity.baseTick: outside the world border, then tickEffects.
             // EntityDamageEvent for the damage of the surroundings held back above.
+            game.plugin_player_env_damage();
             game.border_damage();
             game.tick_mob_effects();
             // Soul Speed's effects (LivingEntity.baseTick's location_changed
@@ -2647,6 +2681,7 @@ impl crate::game::Server<'_> {
             let _ = player.food_tick(health, rules);
             events.append(&mut player.events);
             // Flying into a wall waits for the plugins too.
+            player.defer_env_damage = defer;
             let _ = MotionWorld {
                 entities: &[],
                 player,
@@ -2657,6 +2692,7 @@ impl crate::game::Server<'_> {
             }
             .server_travel();
             // EntityDamageEvent for it.
+            game.plugin_player_env_damage();
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };

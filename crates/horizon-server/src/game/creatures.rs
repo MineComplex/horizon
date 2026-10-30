@@ -403,7 +403,7 @@ impl crate::game::Server<'_> {
             teams: std::sync::Arc::new(self.mob_teams()),
             items: Some(self.res.items()),
             // Plugins hear of the damage the surroundings deal: it waits for them.
-            defer_env_damage: false,
+            defer_env_damage: self.plugins_hear_damage(),
             lid_openers: &self.lid_openers,
             // The first player in the level: a server has no player of its own.
             difficulty: self.local_difficulty(
@@ -664,6 +664,7 @@ impl crate::game::Server<'_> {
         self.died = died;
         // EntityDamageEvent for the damage the surroundings dealt in the
         // mob ticks, held back while plugins listen.
+        self.plugin_mob_env_damage(&mut dead);
         // ... and entity event 60 goes out as it is: the poof.
         for (id, at, width, height) in gone {
             let at = [at.x, at.y, at.z];
@@ -2122,6 +2123,10 @@ impl crate::game::Server<'_> {
         // owner) caused the hit, not a player.
         let living_cause = attacker.or(owner).is_some();
         // EntityDamageEvent: plugins may cancel or change the hit.
+        let Some(amount) = self.plugin_damage_acting(damage_type, amount, attacker.or(owner))
+        else {
+            return false;
+        };
         let mut outcome = crate::hc::health::BlockOutcome::default();
         if let Some(player) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(damage_type)
@@ -2238,6 +2243,9 @@ impl crate::game::Server<'_> {
         if self.creative {
             return;
         }
+        let Some(amount) = self.plugin_damage_acting(damage_type, amount, None) else {
+            return;
+        };
         if let Some(player) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(damage_type)
         {

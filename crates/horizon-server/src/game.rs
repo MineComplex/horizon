@@ -1280,6 +1280,10 @@ struct Server<'a> {
     plugins: Option<Box<horizon_server_api::PluginHost>>,
     plugin_actions: Vec<horizon_server_api::Action>,
     plugin_seen: Vec<horizon_server_api::PlayerRef>,
+    /// Their entity ids and UUIDs.
+    plugin_seen_ids: Vec<(i32, u128)>,
+    /// The damage a plugin set for the attack under way (`EntityDamageByEntityEvent`).
+    plugin_damage_override: Option<f32>,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
     /// Players whose inventory a plugin kept as it was (a cancelled drop):
@@ -5022,6 +5026,9 @@ impl crate::game::Server<'_> {
         let magic_boost = self.enchant_damage_bonus(target_kind) * scale;
         amount += magic_boost;
         // A plugin's EntityDamageEvent changed the hit under way.
+        if let Some(changed) = self.plugin_damage_override.take() {
+            amount = changed;
+        }
         (amount, scale, crit, magic_boost > 0.0)
     }
     /// `Player.getAttackStrengthScale(0.5)`.
@@ -7355,6 +7362,8 @@ impl<'a> Server<'a> {
             plugins: None,
             plugin_actions: Vec::new(),
             plugin_seen: Vec::new(),
+            plugin_seen_ids: Vec::new(),
+            plugin_damage_override: None,
             plugin_resend: Vec::new(),
             plugin_resync: Vec::new(),
             plugin_last_moves: HashMap::new(),

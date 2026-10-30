@@ -75,13 +75,24 @@ and build the server.
 | `BlockBreakEvent` | a player breaks a block | `cancelled` (the block goes back to the player), `drop_items` |
 | `BlockPlaceEvent` | a player placed a block | `cancelled` (the old block is put back) |
 | `PlayerDeathEvent` | a player dies | `death_message`, `keep_inventory` |
+| `PlayerMoveEvent` | a player moved (1/256 of a block) or turned (10°) this tick | `to`, `cancelled` (back to `from`) |
+| `PlayerRespawnEvent` | a dead player comes back | `respawn_location` |
+| `PlayerInteractEvent` | a left click on a block, a right click on a block or in the air | `cancelled` (nothing used, placed or dug) |
+| `PlayerDropItemEvent` | a player throws an item from their hand | `cancelled` (it stays in the hand) |
+| `PlayerGameModeChangeEvent` | a player's game mode changes | `cancelled` (the old mode stays) |
+| `EntityDamageEvent` (also `EntityDamageByEntityEvent`: `damager` set) | a player is about to be hurt (mobs, players, explosions, falls, fire, lava, drowning, effects, rockets, falling blocks); a mob by its surroundings; a mob or a player by a player's hit | `damage` (before armour), `cancelled` |
 
-Next: damage (`EntityDamageEvent`), respawn, interact, move and teleport, item pickup and drop, inventories,
-and the world's own block changes (pistons, growth, fluids): the server's hook points for them are listed in
-git history before commit `a06a6484f` (the WebAssembly plugins), `game/plugin_events.rs`.
+While a plugin listens to `EntityDamageEvent`, the damage of the surroundings (fire, lava, falls, drowning,
+suffocation, the void, freezing, cactus, magma) is held back in the tick and dealt once the plugins have seen it
+(`defer_env_damage` on `PlayerMotion` and `MobWorld`); without one, it is dealt in vanilla's order.
+
+Next: item pickup, inventories, entity spawn and death, mobs hurt by players' projectiles, and the world's own
+block changes (pistons, growth, fluids): the server's hook points for them are listed in git history before
+commit `a06a6484f` (the WebAssembly plugins), `game/plugin_events.rs`.
 
 ## Tests
 
 `cargo test -p horizon-server-api` (the manager: load order, priorities, cancellation, commands, timers,
 panics) and `python3 tools/test_plugins_e2e.py` (a horizon-server built with the example plugin and a
-horizon-client on it: join, commands, `/plugins`, chat, a cancelled break, enable and disable in the log).
+horizon-client on it: join, commands, `/plugins`, chat, a cancelled break, a kept diamond, the game mode line,
+a fall that hurts nothing, enable and disable in the log).

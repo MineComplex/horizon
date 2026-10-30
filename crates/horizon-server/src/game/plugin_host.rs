@@ -118,6 +118,13 @@ impl crate::game::Server<'_> {
                 .map(crate::game::Server::plugin_player)
                 .collect();
             self.plugin_seen = players.clone();
+            self.plugin_seen_ids = h
+                .hub
+                .players
+                .iter()
+                .filter(|g| g.placed)
+                .map(|g| (g.entity_id, g.uuid))
+                .collect();
             return players;
         }
         self.plugin_seen.clone()
@@ -767,6 +774,181 @@ impl crate::game::Server<'_> {
             health: g.health,
             game_mode: g.game_mode.clamp(0, 3) as u8,
             op_level: g.permission,
+        }
+    }
+}
+
+impl crate::game::Server<'_> {
+    /// Whether plugins hear of damage: the damage of the surroundings
+    /// (fire, lava, falls, drowning...) then waits for them.
+    pub(super) fn plugins_hear_damage(&self) -> bool {
+        self.plugins_listen::<ev::EntityDamageEvent>()
+    }
+    /// `EntityDamageEvent`: the amount to deal, None when a plugin cancelled it.
+    pub(super) fn plugin_damage(
+        &mut self,
+        net: Option<&Network>,
+        entity: api::EntityRef,
+        cause: &str,
+        amount: f32,
+        damager: Option<api::EntityRef>,
+    ) -> Option<f32> {
+        if !self.plugins_hear_damage() {
+            return Some(amount);
+        }
+        let mut event = ev::EntityDamageEvent {
+            entity,
+            cause: cause.to_owned(),
+            damage: f64::from(amount),
+            damager,
+            cancelled: false,
+        };
+        self.plugin_fire(net, &mut event);
+        if event.cancelled {
+            None
+        } else if event.damage.is_finite() {
+            Some(event.damage.max(0.0) as f32)
+        } else {
+            Some(amount)
+        }
+    }
+    /// The entity `id` as plugins see it: a player, a mob, a projectile.
+    pub(super) fn plugin_entity(&self, net: Option<&Network>, id: i32) -> api::EntityRef {
+        if let Some(g) = net
+            .or(self.network.as_ref())
+            .and_then(|h| h.hub.players.iter().find(|g| g.placed && g.entity_id == id))
+        {
+            return api::EntityRef::of_player(id, crate::game::Server::plugin_player(g));
+        }
+        if let Some(&(_, uuid)) = self.plugin_seen_ids.iter().find(|(e, _)| *e == id) {
+            let player = self
+                .plugin_acting()
+                .filter(|p| p.uuid == uuid)
+                .or_else(|| self.plugin_seen.iter().find(|p| p.uuid == uuid).cloned());
+            if let Some(player) = player {
+                return api::EntityRef::of_player(id, player);
+            }
+        }
+        use super::commands::Target;
+        let target = u32::try_from(id).ok().and_then(|id| {
+            if self.mobs.iter().any(|m| m.id == id) {
+                Some(Target::Mob(id))
+            } else if self.creatures.projectiles.iter().any(|p| p.id == id) {
+                Some(Target::Projectile(id))
+            } else {
+                None
+            }
+        });
+        let at = target
+            .and_then(|t| self.target_position(t))
+            .unwrap_or_default();
+        api::EntityRef {
+            id,
+            kind: target.map(|t| self.target_type(t)).unwrap_or_default(),
+            location: Location::new(self.dim.id(), at[0], at[1], at[2]),
+            player: None,
+        }
+    }
+    /// `EntityDamageEvent` for the player whose turn it is, hurt by `cause`
+    /// (`damager`: the entity that caused it). The amount to deal, or None.
+    pub(super) fn plugin_damage_acting(
+        &mut self,
+        cause: &str,
+        amount: f32,
+        damager: Option<u32>,
+    ) -> Option<f32> {
+        if !self.plugins_hear_damage() {
+            return Some(amount);
+        }
+        let Some(player) = self.plugin_acting() else {
+            return Some(amount);
+        };
+        let id = self
+            .plugin_seen_ids
+            .iter()
+            .find(|(_, uuid)| *uuid == player.uuid)
+            .map_or(0, |e| e.0);
+        let victim = api::EntityRef::of_player(id, player);
+        let damager = damager.map(|id| self.plugin_entity(None, id as i32));
+        self.plugin_damage(None, victim, cause, amount, damager)
+    }
+    /// The player whose turn it is attacks the entity `id` (a mob or
+    /// another player) for `amount`: `EntityDamageByEntityEvent` before the
+    /// hit. The amount to deal, or None when a plugin cancelled it.
+    pub(super) fn plugin_attack(
+        &mut self,
+        net: &Network,
+        conn: u32,
+        id: i32,
+        amount: f32,
+    ) -> Option<f32> {
+        if !self.plugins_hear_damage() {
+            return Some(amount);
+        }
+        let Some(g) = net.hub.player(conn) else {
+            return Some(amount);
+        };
+        let damager = api::EntityRef::of_player(g.entity_id, crate::game::Server::plugin_player(g));
+        let victim = self.plugin_entity(Some(net), id);
+        self.plugin_damage(
+            Some(net),
+            victim,
+            "minecraft:player_attack",
+            amount,
+            Some(damager),
+        )
+    }
+    /// The damage the surroundings dealt the player whose turn it is (fire,
+    /// lava, magma, cactus, berry bushes, campfires, freezing, drowning,
+    /// suffocation, the void, falls), held back in its motion while plugins
+    /// listen: `EntityDamageEvent` for each hit, then the hit.
+    pub(super) fn plugin_player_env_damage(&mut self) {
+        let Some(player) = self.player.as_mut() else {
+            return;
+        };
+        player.defer_env_damage = false;
+        let held = std::mem::take(&mut player.env_damage);
+        for (cause, amount) in held {
+            let Some(amount) = self.plugin_damage_acting(cause, amount, None) else {
+                continue;
+            };
+            let (rules, health) = (self.world.health_rules, &self.motion.health);
+            if let Some(player) = self.player.as_mut()
+                && let Some(id) = health.damage.id(cause)
+            {
+                let _ = player.hurt(health, rules, id, amount);
+            }
+        }
+    }
+    /// The damage the mobs' surroundings dealt them in their ticks, held
+    /// back in `Mob::env_damage`: `EntityDamageEvent` for each hit, then the
+    /// hit. The mobs it kills go to `dead`.
+    pub(super) fn plugin_mob_env_damage(&mut self, dead: &mut Vec<crate::hc::mobs::Mob>) {
+        let held: Vec<_> = self
+            .mobs
+            .iter_mut()
+            .filter(|m| !m.env_damage.is_empty())
+            .map(|m| (m.id, std::mem::take(&mut m.env_damage)))
+            .collect();
+        for (id, hits) in held {
+            for (amount, kind) in hits {
+                let cause = super::creatures::damage_type(kind, false);
+                let victim = self.plugin_entity(None, id as i32);
+                let Some(amount) = self.plugin_damage(None, victim, cause, amount, None) else {
+                    continue;
+                };
+                // A plugin may have removed or killed it meanwhile.
+                let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
+                    break;
+                };
+                if !m.alive() || m.removed {
+                    break;
+                }
+                m.damage(amount, crate::hc::mobs::Damage::of(kind));
+                if !m.alive() && self.died.insert(id) {
+                    dead.push(m.clone());
+                }
+            }
         }
     }
 }

@@ -48,7 +48,7 @@ pub mod server;
 pub use command::{CommandContext, CommandSender};
 pub use event::{Event, EventPriority};
 pub use host::{PluginHost, Plugins};
-pub use server::{Action, BlockPos, ItemStack, Location, PlayerRef, Server, World};
+pub use server::{Action, BlockPos, EntityRef, ItemStack, Location, PlayerRef, Server, World};
 
 /// What a plugin is: `plugin.yml`'s name, version, description and authors.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

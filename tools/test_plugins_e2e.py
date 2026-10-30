@@ -11,6 +11,7 @@ Checks, from the client's side:
   break     BlockBreakEvent: bedrock the player breaks stays, and the player is told
   drop      PlayerDropItemEvent: a diamond the player throws stays in the hand
   mode      PlayerGameModeChangeEvent: the player hears of their new game mode
+  damage    EntityDamageEvent: a survival player's fall hurts nothing, and the player is told
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -142,6 +143,15 @@ def main():
             ctl('chat', '/gamemode survival')
             chat_until('Game mode 0.')
         check('mode', mode)
+
+        def damage():
+            before = ctl('state')['player']['health']
+            ctl('command', 'tp @s ~ ~12 ~')
+            chat_until('Soft landing (', ticks=200)
+            ctl('wait', 10)
+            after = ctl('state')['player']['health']
+            assert after == before, f'the fall hurt: {before} -> {after}'
+        check('damage', damage)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60

@@ -71,6 +71,14 @@ pub(super) struct Sweep {
 }
 
 impl Strike {
+    /// The hit's damage, before the victim's armour.
+    pub(super) fn amount(&self) -> f32 {
+        self.amount
+    }
+    /// The damage a plugin's `EntityDamageEvent` set.
+    pub(super) fn set_amount(&mut self, amount: f32) {
+        self.amount = amount;
+    }
     /// Whether it has extra knockback, which stops the attacker's sprint
     /// once it lands (Player.causeExtraKnockback).
     pub(super) fn stops_sprint(&self) -> bool {

@@ -57,11 +57,15 @@ impl HealthResources {
     }
     pub fn landing_source(&self, source: LandingDamage) -> DamageTypeId {
         self.damage
-            .id(match source {
-                LandingDamage::Fall => "minecraft:fall",
-                LandingDamage::Stalagmite => "minecraft:stalagmite",
-            })
+            .id(landing_source_name(source))
             .expect("validated landing source")
+    }
+}
+/// The damage type of a landing: a fall, or a pointed dripstone below.
+pub fn landing_source_name(source: LandingDamage) -> &'static str {
+    match source {
+        LandingDamage::Fall => "minecraft:fall",
+        LandingDamage::Stalagmite => "minecraft:stalagmite",
     }
 }
 /// `DamageEffects.sound()` by its serialized id: what `Player.getHurtSound`
