@@ -18,6 +18,7 @@
 //! the client shows.
 
 pub mod codec;
+pub mod configuration;
 pub mod listener;
 pub mod login;
 pub mod play;

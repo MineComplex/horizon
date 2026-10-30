@@ -9,6 +9,7 @@ pub mod command;
 pub mod core;
 pub mod nbt;
 pub mod network;
+pub mod registry;
 pub mod server;
 pub mod util;
 pub mod world;

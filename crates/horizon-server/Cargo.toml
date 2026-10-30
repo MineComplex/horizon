@@ -25,7 +25,8 @@ rsa_public_encrypt_pkcs1 = "0.4.0"
 indexmap = "2"
 uuid = { version = "1", features = ["v3", "v4"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+# float_roundtrip: correctly rounded floats, as Java's parsers give (registry data: registry/nbt_json.rs).
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 rand = { version = "0.10.0", features = ["sys_rng"] }
 rsa = { version = "0.10.0-rc.17", features = ["sha2"] }
 aes = "0.8.4"

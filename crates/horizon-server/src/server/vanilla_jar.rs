@@ -151,6 +151,14 @@ impl VanillaJar {
         result.map_err(|e| self.entry_error(name, e.to_string()))
     }
 
+    /// The jar's entry names (the vanilla datapack is listed from these).
+    pub fn entry_names(&self) -> Vec<String> {
+        match &self.archive {
+            Archive::File(a) => a.file_names().map(str::to_owned).collect(),
+            Archive::Nested(a) => a.file_names().map(str::to_owned).collect(),
+        }
+    }
+
     /// `Language.loadDefault`: `en_us.json` with `deprecated.json` applied. As in vanilla, an unreadable
     /// file is logged and leaves the table empty (or without the deprecations).
     pub fn load_language(&mut self) -> Language {
