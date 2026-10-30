@@ -7,7 +7,13 @@ use simdnbt::{
     owned::{NbtList, NbtTag},
 };
 
-use crate::azalea::chat::{FormattedText, base_component::BaseComponent, text_component::TextComponent};
+use crate::{
+    azalea::{
+        chat::{FormattedText, base_component::BaseComponent, text_component::TextComponent},
+        language::{self, Language},
+    },
+    util::number_text::{double_to_string, float_to_string},
+};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -95,15 +101,18 @@ impl TranslatableComponent {
         }
     }
 
-    /// Convert the key and args to a FormattedText.
+    /// Convert the key and args to a FormattedText, with the installed language (an empty one when
+    /// none is installed).
     pub fn read(&self) -> Result<TextComponent, fmt::Error> {
-        let template = crate::azalea::language::get(&self.key).unwrap_or_else(|| {
-            if let Some(fallback) = &self.fallback {
-                fallback.as_str()
-            } else {
-                &self.key
-            }
-        });
+        self.read_in(language::installed_or_empty())
+    }
+
+    /// Convert the key and args to a FormattedText, looking up this key and those of translatable
+    /// args in `language`.
+    pub fn read_in(&self, language: &Language) -> Result<TextComponent, fmt::Error> {
+        let template = language
+            .get(&self.key)
+            .unwrap_or_else(|| self.fallback.as_deref().unwrap_or(&self.key));
         // decode the % things
 
         let mut matched = 0;
@@ -142,7 +151,7 @@ impl TranslatableComponent {
 
                     components.push(TextComponent::new(built_text.clone()));
                     built_text.clear();
-                    components.push(TextComponent::from(arg_component));
+                    components.push(TextComponent::new(arg_component.text_in(language)));
                     matched += 1;
                 }
                 '0'..='9' if let Some(d) = char_after.to_digit(10) => {
@@ -154,13 +163,9 @@ impl TranslatableComponent {
                     let Some('s') = chars.next() else {
                         return Err(fmt::Error);
                     };
-                    built_text.push_str(
-                        &self
-                            .args
-                            .get((d - 1) as usize)
-                            .unwrap_or(&PrimitiveOrComponent::String("".to_owned()))
-                            .to_string(),
-                    );
+                    if let Some(arg) = self.args.get((d as usize).wrapping_sub(1)) {
+                        built_text.push_str(&arg.text_in(language));
+                    }
                 }
                 _ => {
                     built_text.push('%');
@@ -184,37 +189,47 @@ impl TranslatableComponent {
     }
 }
 
+impl TranslatableComponent {
+    /// Appends the text without styling (this and its siblings), translated with `language`.
+    pub(crate) fn write_plain(&self, out: &mut String, language: &Language) {
+        match self.read_in(language) {
+            Ok(text) => text.write_plain(out, language),
+            Err(_) => out.push_str(&self.key),
+        }
+        for sibling in &self.base.siblings {
+            sibling.write_plain(out, language);
+        }
+    }
+}
+
 impl Display for TranslatableComponent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // this contains the final string will all the ansi escape codes
-        for component in FormattedText::Translatable(self.clone()).into_iter() {
-            let component_text = match &component {
-                FormattedText::Text(c) => c.text.to_string(),
-                FormattedText::Translatable(c) => match c.read() {
-                    Ok(c) => c.to_string(),
-                    Err(_) => c.key.to_string(),
-                },
-            };
+        let mut out = String::new();
+        self.write_plain(&mut out, language::installed_or_empty());
+        f.write_str(&out)
+    }
+}
 
-            f.write_str(&component_text)?;
+impl PrimitiveOrComponent {
+    /// The argument's text as `String.valueOf` gives it (Java's number text), translated with
+    /// `language` when it is a component.
+    pub fn text_in(&self, language: &Language) -> String {
+        match self {
+            PrimitiveOrComponent::Boolean(value) => value.to_string(),
+            PrimitiveOrComponent::Short(value) => value.to_string(),
+            PrimitiveOrComponent::Integer(value) => value.to_string(),
+            PrimitiveOrComponent::Long(value) => value.to_string(),
+            PrimitiveOrComponent::Float(value) => float_to_string(*value),
+            PrimitiveOrComponent::Double(value) => double_to_string(*value),
+            PrimitiveOrComponent::String(value) => value.clone(),
+            PrimitiveOrComponent::FormattedText(value) => value.to_string_in(language),
         }
-
-        Ok(())
     }
 }
 
 impl Display for PrimitiveOrComponent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            PrimitiveOrComponent::Boolean(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::Short(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::Integer(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::Long(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::Float(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::Double(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::String(value) => write!(f, "{value}"),
-            PrimitiveOrComponent::FormattedText(value) => write!(f, "{value}"),
-        }
+        f.write_str(&self.text_in(language::installed_or_empty()))
     }
 }
 
@@ -222,13 +237,7 @@ impl From<PrimitiveOrComponent> for TextComponent {
     fn from(soc: PrimitiveOrComponent) -> Self {
         match soc {
             PrimitiveOrComponent::String(value) => TextComponent::new(value),
-            PrimitiveOrComponent::Boolean(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::Short(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::Integer(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::Long(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::Float(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::Double(value) => TextComponent::new(value.to_string()),
-            PrimitiveOrComponent::FormattedText(value) => TextComponent::new(value.to_string()),
+            other => TextComponent::new(other.text_in(language::installed_or_empty())),
         }
     }
 }
@@ -242,10 +251,30 @@ impl From<&str> for TranslatableComponent {
 mod tests {
     use super::*;
 
+    /// azalea's test strings (Minecraft's own `translation.test.*` keys).
+    fn test_language() -> Language {
+        Language::from_entries([
+            ("translation.test.none", "Hello, world!"),
+            (
+                "translation.test.complex",
+                "Prefix, %s%2$s again %s and %1$s lastly %s and also %1$s again!",
+            ),
+            ("translation.test.escape", "%%s %%%s %%%%s %%%%%s"),
+            ("translation.test.invalid", "hi %"),
+            ("translation.test.invalid2", "hi %  s"),
+            ("translation.test.args", "%s %s"),
+            ("translation.test.world", "world"),
+        ])
+    }
+
+    fn render(c: &TranslatableComponent) -> String {
+        c.read_in(&test_language()).unwrap().to_string()
+    }
+
     #[test]
     fn test_none() {
         let c = TranslatableComponent::new("translation.test.none".to_owned(), vec![]);
-        assert_eq!(c.read().unwrap().to_string(), "Hello, world!".to_owned());
+        assert_eq!(render(&c), "Hello, world!".to_owned());
     }
     #[test]
     fn test_complex() {
@@ -260,7 +289,7 @@ mod tests {
         );
         // so true mojang
         assert_eq!(
-            c.read().unwrap().to_string(),
+            render(&c),
             "Prefix, ab again b and a lastly c and also a again!".to_owned()
         );
     }
@@ -275,7 +304,7 @@ mod tests {
                 PrimitiveOrComponent::String("d".to_owned()),
             ],
         );
-        assert_eq!(c.read().unwrap().to_string(), "%s %a %%s %%b".to_owned());
+        assert_eq!(render(&c), "%s %a %%s %%b".to_owned());
     }
     #[test]
     fn test_invalid() {
@@ -288,7 +317,7 @@ mod tests {
                 PrimitiveOrComponent::String("d".to_owned()),
             ],
         );
-        assert_eq!(c.read().unwrap().to_string(), "hi %".to_owned());
+        assert_eq!(render(&c), "hi %".to_owned());
     }
     #[test]
     fn test_invalid2() {
@@ -301,7 +330,7 @@ mod tests {
                 PrimitiveOrComponent::String("d".to_owned()),
             ],
         );
-        assert_eq!(c.read().unwrap().to_string(), "hi %  s".to_owned());
+        assert_eq!(render(&c), "hi %  s".to_owned());
     }
 
     #[test]
@@ -310,10 +339,7 @@ mod tests {
             "translation.test.undefined".to_owned(),
             vec![PrimitiveOrComponent::String("a".to_owned())],
         );
-        assert_eq!(
-            c.read().unwrap().to_string(),
-            "translation.test.undefined".to_owned()
-        );
+        assert_eq!(render(&c), "translation.test.undefined".to_owned());
     }
 
     #[test]
@@ -323,9 +349,54 @@ mod tests {
             Some("translation fallback: %s".to_owned()),
             vec![PrimitiveOrComponent::String("a".to_owned())],
         );
-        assert_eq!(
-            c.read().unwrap().to_string(),
-            "translation fallback: a".to_owned()
+        assert_eq!(render(&c), "translation fallback: a".to_owned());
+    }
+
+    #[test]
+    fn test_nested_translatable_arg() {
+        let world = TranslatableComponent::new("translation.test.world".to_owned(), vec![]);
+        let c = TranslatableComponent::new(
+            "translation.test.args".to_owned(),
+            vec![
+                PrimitiveOrComponent::String("hello".to_owned()),
+                PrimitiveOrComponent::FormattedText(world.into()),
+            ],
         );
+        assert_eq!(render(&c), "hello world");
+        let outer = FormattedText::Translatable(c);
+        assert_eq!(outer.to_string_in(&test_language()), "hello world");
+        assert_eq!(
+            outer.to_string_in(&Language::default()),
+            "translation.test.args"
+        );
+    }
+
+    #[test]
+    fn test_java_number_text() {
+        let c = TranslatableComponent::new(
+            "translation.test.args".to_owned(),
+            vec![
+                PrimitiveOrComponent::Double(1.0),
+                PrimitiveOrComponent::Float(1.0e7),
+            ],
+        );
+        assert_eq!(render(&c), "1.0 1.0E7");
+        assert_eq!(PrimitiveOrComponent::Double(0.5).to_string(), "0.5");
+        assert_eq!(PrimitiveOrComponent::Float(-2.0).to_string(), "-2.0");
+        assert_eq!(
+            TextComponent::from(PrimitiveOrComponent::Double(1e-4)).text,
+            "1.0E-4"
+        );
+        assert_eq!(PrimitiveOrComponent::Integer(3).to_string(), "3");
+    }
+
+    #[test]
+    fn test_zero_positional_index() {
+        let c = TranslatableComponent::with_fallback(
+            "translation.test.undefined".to_owned(),
+            Some("a%0$sb".to_owned()),
+            vec![PrimitiveOrComponent::String("x".to_owned())],
+        );
+        assert_eq!(render(&c), "ab");
     }
 }

@@ -9,11 +9,14 @@ use std::{
 use crate::azalea::buf::{AzBuf, BufReadError};
 use serde::{Deserialize, Deserializer, Serialize, de};
 
-use crate::azalea::chat::{
-    base_component::BaseComponent,
-    style::{ChatFormatting, Style},
-    text_component::TextComponent,
-    translatable_component::{PrimitiveOrComponent, TranslatableComponent},
+use crate::azalea::{
+    chat::{
+        base_component::BaseComponent,
+        style::{ChatFormatting, Style},
+        text_component::TextComponent,
+        translatable_component::{PrimitiveOrComponent, TranslatableComponent},
+    },
+    language::{self, Language},
 };
 
 /// A chat component, basically anything you can see in chat.
@@ -91,7 +94,7 @@ impl FormattedText {
     /// # Example
     ///
     /// ```rust
-    /// use crate::azalea::chat::{FormattedText, DEFAULT_STYLE};
+    /// use horizon_server::azalea::chat::{FormattedText, DEFAULT_STYLE};
     /// use serde::de::Deserialize;
     ///
     /// let component = FormattedText::deserialize(&serde_json::json!({
@@ -134,6 +137,7 @@ impl FormattedText {
             &mut text_formatter,
             &default_style.clone(),
             &mut running_style,
+            language::installed_or_empty(),
         );
         output.push_str(&cleanup_formatter(&running_style));
 
@@ -147,6 +151,7 @@ impl FormattedText {
         text_formatter: &mut S,
         parent_style: &Style,
         running_style: &mut Style,
+        language: &Language,
     ) where
         F: FnMut(&Style, &Style) -> (String, String),
         S: FnMut(&str) -> String,
@@ -172,7 +177,7 @@ impl FormattedText {
             Self::Text(c) => {
                 append_text(&c.text);
             }
-            Self::Translatable(c) => match c.read() {
+            Self::Translatable(c) => match c.read_in(language) {
                 Ok(c) => {
                     FormattedText::Text(c).to_custom_format_recursive(
                         output,
@@ -180,6 +185,7 @@ impl FormattedText {
                         text_formatter,
                         &new_style,
                         running_style,
+                        language,
                     );
                 }
                 Err(_) => {
@@ -195,7 +201,22 @@ impl FormattedText {
                 text_formatter,
                 &new_style,
                 running_style,
+                language,
             );
+        }
+    }
+
+    /// The text without styling, translated with `language` (`to_string` uses the installed one).
+    pub fn to_string_in(&self, language: &Language) -> String {
+        let mut out = String::new();
+        self.write_plain(&mut out, language);
+        out
+    }
+
+    pub(crate) fn write_plain(&self, out: &mut String, language: &Language) {
+        match self {
+            FormattedText::Text(c) => c.write_plain(out, language),
+            FormattedText::Translatable(c) => c.write_plain(out, language),
         }
     }
 
@@ -227,7 +248,7 @@ impl FormattedText {
     /// # Examples
     ///
     /// ```rust
-    /// use crate::azalea::chat::FormattedText;
+    /// use horizon_server::azalea::chat::FormattedText;
     /// use serde::de::Deserialize;
     ///
     /// let component = FormattedText::deserialize(&serde_json::json!({

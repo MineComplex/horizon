@@ -2,10 +2,13 @@ use std::fmt::{self, Display};
 
 use serde::{Serialize, Serializer, ser::SerializeMap};
 
-use crate::azalea::chat::{
-    FormattedText,
-    base_component::BaseComponent,
-    style::{ChatFormatting, Style, TextColor},
+use crate::azalea::{
+    chat::{
+        FormattedText,
+        base_component::BaseComponent,
+        style::{ChatFormatting, Style, TextColor},
+    },
+    language::{self, Language},
 };
 
 /// A component that contains text that's the same in all locales.
@@ -148,19 +151,21 @@ impl TextComponent {
     }
 }
 
+impl TextComponent {
+    /// Appends the text without styling (this and its siblings), translated with `language`.
+    pub(crate) fn write_plain(&self, out: &mut String, language: &Language) {
+        out.push_str(&self.text);
+        for sibling in &self.base.siblings {
+            sibling.write_plain(out, language);
+        }
+    }
+}
+
 impl Display for TextComponent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // this contains the final string will all the ansi escape codes
-        for component in FormattedText::Text(self.clone()).into_iter() {
-            let component_text = match &component {
-                FormattedText::Text(c) => c.text.to_string(),
-                FormattedText::Translatable(c) => c.read()?.to_string(),
-            };
-
-            f.write_str(&component_text)?;
-        }
-
-        Ok(())
+        let mut out = String::new();
+        self.write_plain(&mut out, language::installed_or_empty());
+        f.write_str(&out)
     }
 }
 
