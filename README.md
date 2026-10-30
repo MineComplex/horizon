@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/horizon-rust/horizon/actions/workflows/ci.yml"><img src="https://github.com/horizon-rust/horizon/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/MineComplex/horizon/actions/workflows/ci.yml"><img src="https://github.com/MineComplex/horizon/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <img src="https://img.shields.io/badge/Minecraft-Java%2026.3-5D9C3F" alt="Minecraft Java 26.3">
   <img src="https://img.shields.io/badge/Rust-stable-B7410E?logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/vanilla%20parity-100%25-F0795A" alt="Vanilla parity 100%">
@@ -12,10 +12,8 @@
 </p>
 
 <p align="center">
-  <a href="https://playhorizon.dev"><b>Website</b></a> ·
   <a href="#download"><b>Download</b></a> ·
-  <a href="https://playhorizon.dev/docs/"><b>Documentation</b></a> ·
-  <a href="https://github.com/horizon-rust/horizon/releases"><b>Release notes</b></a> ·
+  <a href="docs/README.md"><b>Documentation</b></a> ·
   <a href="ROADMAP.md"><b>Roadmap</b></a> ·
   <a href="#project-status"><b>Project status</b></a> ·
   <a href="#contributing"><b>Contributing</b></a>
@@ -23,32 +21,25 @@
 
 # Horizon
 
-Horizon is Minecraft: Java Edition 26.3 rewritten in Rust: a native game that reads the same worlds, follows the same rules and generates the same terrain as the Java game, and is checked against it by 281 differential harnesses. You play it through a small launcher, on the files from your own copy of Minecraft. It is free, open source and unofficial.
+Horizon is Minecraft: Java Edition 26.3 rewritten in Rust: a native game that reads the same worlds, follows the same rules and generates the same terrain as the Java game, and is checked against it by 281 differential harnesses. You play it on MineComplex's servers, started from the MineComplex launcher. It is free, open source and unofficial.
 
 > Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Horizon contains no Minecraft code, assets or data: you need your own legally obtained copy of Minecraft: Java Edition 26.3.
 
 ## Download
 
-Horizon is installed through **the Horizon launcher**. Get it from [playhorizon.dev](https://playhorizon.dev) (the Download button picks your system) or from [the launcher releases](https://github.com/horizon-rust/horizon/releases?q=launcher-v&expanded=true), for Linux x86-64, macOS on Apple Silicon or Windows x64. The launcher installs and updates the game, prepares its files from your copy of Minecraft (your own install, or downloaded from Mojang for your account), and updates itself.
+Horizon is installed and updated by **the MineComplex launcher**, which signs you in with your MineComplex account, downloads the game and starts it. There is no separate Horizon launcher.
 
-**You need** a MineComplex account (the MineComplex launcher signs in and starts the game; Horizon joins servers through the MineComplex proxy and never talks to Mojang's or Microsoft's services, skins aside); Minecraft: Java Edition 26.3, played once (the official launcher, Prism, MultiMC and other launchers all work); a Java 25 runtime, for the one-time preparation; and a GPU with Vulkan on Linux and Windows, or any Apple Silicon Mac. Step by step, with macOS's first-open prompt and the first launch: [Install and first launch](https://playhorizon.dev/docs/install).
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/media/launcher-play.webp" alt="The launcher's Play page: a version ready to play, its summary, Client and Server, the version picker and Play"></td>
-    <td width="50%"><img src="docs/media/launcher-patch-notes.webp" alt="The launcher's Patch notes page"></td>
-  </tr>
-</table>
+**You need** a MineComplex account (Horizon joins servers through the MineComplex proxy and never talks to Mojang's or Microsoft's services, skins aside) and a GPU with Vulkan on Linux and Windows, or any Apple Silicon Mac.
 
 ## What works today
 
-The [documentation](https://playhorizon.dev/docs/) covers each of these.
+The [documentation](docs/README.md) covers each of these.
 
-- **The game:** singleplayer with vanilla's world generation, mobs, villagers, raids, redstone, every command, the HUD and the recipe book, on saves in vanilla's format. Worlds from 1.8 to 26.2 are upgraded as vanilla does. [Status table](#project-status).
-- **Horizon's own extras:** new menus (vanilla's are one setting away), graphics presets, distant terrain up to 1024 chunks, controller support, optional zoom, minimap and more, all off by default where they would change the vanilla look. See [Settings](https://playhorizon.dev/docs/settings).
+- **The game:** vanilla's world generation, mobs, villagers, raids, redstone, every command, the HUD and the recipe book, on `horizon-server`, with saves in vanilla's format. Worlds from 1.8 to 26.2 are upgraded as vanilla does. [Status table](#project-status).
+- **Horizon's own extras:** new menus (vanilla's are one setting away), graphics presets, controller support, optional zoom, minimap and more, all off by default where they would change the vanilla look. See [Horizon extras](docs/extras.md) and [graphics](docs/graphics.md).
 - **Resource packs and data packs:** resource packs work, and data packs load functions, predicates and item modifiers.
-- **Playing with others:** joining servers (`horizon-server`, behind the proxy or not); the client has no single player or LAN of its own. See [Multiplayer](https://playhorizon.dev/docs/multiplayer).
-- **Mods:** Horizon has its own mod system (Rust compiled to WebAssembly). Java mod jars do not run. See [Mods and data packs](https://playhorizon.dev/docs/mods).
+- **Playing with others:** joining servers (`horizon-server`, behind the proxy or not); the client has no single player or LAN of its own. See [docs/server.md](docs/server.md).
+- **Server plugins:** `horizon-server` has a Bukkit-shaped plugin API in Rust: events with priorities and cancellation, commands and a scheduler. See [docs/plugins.md](docs/plugins.md). Java mods and plugin jars do not run.
 
 Screenshots, captured in the Rust client itself with vanilla assets and no mods or shaders:
 
@@ -66,13 +57,9 @@ Screenshots, captured in the Rust client itself with vanilla assets and no mods 
   </tr>
 </table>
 
-## Host a server
+## Run a server
 
-The launcher's **Servers** page creates, starts, backs up and updates a Horizon server with buttons, and invites friends over Tailscale. On a VPS, `horizon-server` installs with one command and runs without Java. Guide: [Host a server](https://playhorizon.dev/docs/hosting) ([reference](docs/hosting.md)).
-
-## Modpacks
-
-The launcher's **Modpacks** page imports a Modrinth or CurseForge pack, shows which of its mods Horizon can carry over, and plays the ones it can as their own profile. Today that means content mods made of data and assets; mods with Java code are not ported yet. See [Modpacks](https://playhorizon.dev/docs/modpacks).
+`horizon-server --nogui` runs a world Leaf-style, without Java: `server.properties`, `config/paper-global.yml` for Velocity forwarding, a console and `logs/` ([docs/server.md](docs/server.md)). Players reach it through `horizon-proxy`, MineComplex's Velocity fork in Rust, which checks the launcher's sign-in and switches players between servers ([docs/proxy.md](docs/proxy.md)).
 
 ## Agent control
 
@@ -93,13 +80,13 @@ Commands block until the action is done and reply with what happened; errors are
 
 For developers. Requirements: Rust 1.90 or newer, Python 3.10 or newer, JDK 25, and on Linux the ALSA and udev development headers (`libasound2-dev libudev-dev` on Debian and Ubuntu). Development and the vanilla harnesses run on Linux.
 
-Horizon contains no game files, and `horizon-prepare` never downloads them (the launcher downloads them from Mojang only for a signed-in account that owns the game). It builds its resources from **your own copy** of Minecraft: Java Edition 26.3, verified against the checksums in `research-lock.json`:
+Horizon contains no game files, and `horizon-prepare` never downloads them. It builds its resources from **your own copy** of Minecraft: Java Edition 26.3, verified against the checksums in `research-lock.json`:
 
 1. **Client:** install Java Edition with the official launcher and play 26.3 once. Horizon reads `versions/26.3/`, `libraries/` and `assets/` from the launcher's game directory (`~/.minecraft` on Linux). If yours lives elsewhere, pass `--minecraft-dir` or set `HORIZON_MINECRAFT_DIR`.
 2. **Server jar:** the 26.3 server jar, from the `downloads.server.url` in your launcher's `versions/26.3/26.3.json` (or [minecraft.net/download/server](https://www.minecraft.net/en-us/download/server) while 26.3 is the current release). Pass it with `--server-jar` or set `HORIZON_SERVER_JAR`. It is only needed the first time.
 
 ```sh
-git clone https://github.com/horizon-rust/horizon.git
+git clone https://github.com/MineComplex/horizon.git
 cd horizon
 cargo run --release -p horizon-prepare -- --prepare --server-jar ~/Downloads/server.jar   # needs JDK 25
 cargo run --release -p horizon-prepare -- sounds   # optional: sounds from your launcher install
@@ -112,11 +99,11 @@ The client starts on the title screen and only joins servers: worlds run on `hor
 
 ## Roadmap
 
-What is being done now, what comes next and where you can help, in plain words and in technical detail: [ROADMAP.md](ROADMAP.md). [playhorizon.dev/hub](https://playhorizon.dev/hub) shows it with the work board, the journal of what shipped and how to help.
+What is being done now, what comes next and where you can help, in plain words and in technical detail: [ROADMAP.md](ROADMAP.md).
 
 ## Contributing
 
-Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for how we work (vanilla first, small pull requests, labels), or [the contributing guide](https://playhorizon.dev/docs/contributing) on the site. Questions and ideas: [Discord](https://discord.gg/HcTeMZxe5E). Before opening a pull request, run the self-check and paste the block it prints:
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for how we work (vanilla first, small pull requests, labels). Before opening a pull request, run the self-check and paste the block it prints:
 
 ```sh
 git config core.hooksPath .githooks
@@ -143,7 +130,7 @@ them too (Rust uses Java's own float maths on each platform).
 | --- | ---: | --- |
 | Window, input and game loop | 1 | None: the game loop, options, camera, auto-jump, toggle sprint/sneak, local input and the frame limiter match vanilla |
 | Assets and resources | 1 | None: item models match vanilla over 196,290 stacks and the client draws every item through them; the resource pack screen matches vanilla's drawing over 3,000 sessions of clicks, scrolling and searching, its incompatibility confirmation included |
-| Network protocol and multiplayer | 1 | None: joins vanilla servers; the dedicated server (`--dedicated`) matches vanilla's files, status ping, login, configuration, play, chunks, chat, recipes, advancements and command tree, a client built from vanilla's packet code joins it, Horizon joins a vanilla server, and LAN discovery matches over 462 cases (offline mode only) |
+| Network protocol and multiplayer | 1 | None: joins vanilla servers; the dedicated server (`horizon-server`) matches vanilla's files, status ping, login, configuration, play, chunks, chat, recipes, advancements and command tree, a client built from vanilla's packet code joins it, and Horizon joins a vanilla server |
 | Chunk storage and palettes | 1 | None: client and saves share paletted containers, identical to vanilla over 266 scenarios |
 | Section meshing | 1 | None: 112 scenes and over a million quads identical to vanilla |
 | Rendering | 1 | None: entity models, block entity renderers (407 cases, End portals, gateways and the loom's banner preview included) and their animations (296 cases, End gateway beams included), the HUD overlays (2,200 states), the recipe book (600 states), the player list, subtitles and the world border match vanilla |

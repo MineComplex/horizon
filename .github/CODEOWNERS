@@ -6,7 +6,6 @@
 /.github/                                @ludovic111
 /tools/ci/                               @ludovic111
 /tools/release_train.py                  @ludovic111
-/crates/horizon-release-sign/            @ludovic111
 /launcher/src/signed.rs                  @ludovic111
 /launcher/src/backend.rs                 @ludovic111
 /launcher/links.json                     @ludovic111

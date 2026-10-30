@@ -26,7 +26,6 @@ members = [
     "crates/horizon-server-core",
     "crates/horizon-shaders",
     "crates/horizon-shader-api",
-    "crates/horizon-release-sign",
     "xtask",
 ]
 resolver = "2"

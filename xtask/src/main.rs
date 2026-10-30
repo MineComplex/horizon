@@ -10,9 +10,6 @@
 //! (`cargo build --release -p horizon-server`, without sound or controllers)
 //! with horizon-prepare from beside it and the same sources.
 //!
-//! `tokens`: writes `crates/horizon-theme/tokens.css`, the design tokens of `crates/horizon-theme` as CSS
-//! custom properties (a horizon-theme test fails when the file is out of date).
-//!
 //! `icons`: renders the icon masters in `docs/media/brand` (with `rsvg-convert`, from librsvg)
 //! into every size the platforms and the website use, and packs `packaging/icons/horizon.ico`
 //! and `horizon.icns`. `docs/media/brand/README.md` lists what goes where.
@@ -21,7 +18,8 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo run -p xtask -- package BINARY OUTDIR | package-server SERVER OUTDIR | tokens | icons";
+const USAGE: &str =
+    "usage: cargo run -p xtask -- package BINARY OUTDIR | package-server SERVER OUTDIR | icons";
 
 /// What the release folder takes from the repository at HEAD, as `git archive` writes it.
 const ARCHIVED: [&str; 5] = [
@@ -47,7 +45,6 @@ fn main() -> ExitCode {
         [task, engine, out] if task == "package-server" => {
             package_server(Path::new(engine), Path::new(out))
         }
-        [task] if task == "tokens" => tokens(),
         [task] if task == "icons" => icons(),
         _ => Err(USAGE.to_string()),
     };
@@ -75,13 +72,6 @@ fn git(repo: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
         ));
     }
     Ok(output.stdout)
-}
-
-fn tokens() -> Result<(), String> {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/horizon-theme/tokens.css");
-    fs::write(&path, horizon_theme::css()).map_err(|e| format!("{}: {e}", path.display()))?;
-    println!("wrote crates/horizon-theme/tokens.css");
-    Ok(())
 }
 
 /// The square icon's sizes: Linux's hicolor theme, and the ones the .ico holds.

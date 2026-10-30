@@ -7,10 +7,10 @@ run-name: nightly build${{ inputs.request && format(' (request {0})', inputs.req
 # release-blocker is open. It publishes the result as the `nightly` pre-release. Launchers install it only for players
 # who turn Nightly on. The previous nightly stays a week as nightly-<date>.
 #
-# Why the signing key never meets the pull requests' code:
+# Why the pull requests' code never meets the release's tools:
 # - `pick` merges the picked heads onto main with `git merge-tree --write-tree`: git objects only, no working tree,
 #   so none of their files reaches the disk and no hook, filter or script of theirs runs. It refuses any pull
-#   request that changes a path CODEOWNERS gives to Ludovic (this folder, tools/ci/, the signing and update code),
+#   request that changes a path CODEOWNERS gives to Ludovic (this folder, tools/ci/),
 #   pushes the merge as nightly/build-<date>-<n> and saves the set on the nightly-state branch.
 # - This file, game-build.yml and every script below run from main's copy: a schedule runs the default branch, and
 #   `uses: ./…` takes the caller's commit. A picked pull request's own .github/ is never read.
@@ -20,17 +20,15 @@ run-name: nightly build${{ inputs.request && format(' (request {0})', inputs.req
 # - `build` (game-build.yml) checks out and compiles the merge with no secrets: its token reads contents only and
 #   isn't kept in the checkout; the macOS programs are signed ad hoc (Developer ID needs the runner's keychain,
 #   which stays locked for nightlies).
-# - `sign` is the only job with RELEASE_SIGNING_KEY. It checks out nothing but main's tools/ci/sign_release.sh, which
-#   runs the runner's sha256sum and OpenSSL over the archives: it hashes them, never runs them. The signed message
-#   names the channel ("horizon release nightly"), so a nightly's signature can't pass for a release's.
-# - `publish` verifies the signature with main's horizon-release-sign, checks the smoke test, and only then moves
-#   the tag. Like sign, it never executes what build produced.
+# - `publish` writes SHA256SUMS with the runner's sha256sum, checks the smoke test, and only then moves the tag. It
+#   never executes what build produced. The launcher's own signed manifests (MineComplex's Backend) are what players
+#   install from; these GitHub builds are unsigned.
 # - The source ships with the build: `pick` writes horizon-source.tar.gz with `git archive` (git objects again, nothing
-#   run), `sign` signs it with the builds, and `publish` attaches it and tags the commit nightly-source/<date>-<short>
+#   run), `publish` lists it in SHA256SUMS, attaches it and tags the commit nightly-source/<date>-<short>
 #   for good (the dated release and the build branch go after 7 days; native mods pin the commit: docs/native-mods.md).
 #   gh workflow run "nightly build"                     # now (skips when the pick is the same commit as last night's)
 #   gh workflow run "nightly build" -f force=true       # build and publish even if unchanged
-#   gh workflow run "nightly build" -f dry_run=true     # build and sign with a throwaway key, publish nothing
+#   gh workflow run "nightly build" -f dry_run=true     # build, publish nothing
 on:
   schedule:
     - cron: '17 20 * * *'  # 20:17 UTC: after the day's waves, before the 03:07 Paris parity audit takes the Mac mini
@@ -41,7 +39,7 @@ on:
         type: boolean
         default: false
       dry_run:
-        description: Build and sign with a throwaway key, publish nothing
+        description: Build, but publish nothing
         type: boolean
         default: false
       issue:
@@ -142,46 +140,8 @@ jobs:
       developer_id: false
       trusted: false  # it can hold unreviewed pull requests: their own cache key, never saved, not the release runner
 
-  sign:
-    needs: [pick, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # The key's only job: main's sign_release.sh hashes the archives and signs with the runner's OpenSSL.
-    environment: ${{ needs.pick.outputs.dry_run != 'true' && 'release' || '' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: tools/ci/sign_release.sh
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: horizon-*
-          merge-multiple: true
-      - name: Sign the checksums (SHA256SUMS, SHA256SUMS.sig) for the nightly channel
-        env:
-          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
-          RELEASE_SIGNING_KEY_NEXT: ${{ secrets.RELEASE_SIGNING_KEY_NEXT }}
-          EPHEMERAL: ${{ needs.pick.outputs.dry_run == 'true' && 'yes' || '' }}
-        run: |
-          bash tools/ci/sign_release.sh nightly dist/horizon-linux-x86_64.tar.gz dist/horizon-windows-x64.zip \
-            dist/horizon-macos-arm64.zip dist/horizon-server-linux-x86_64.tar.gz dist/horizon-source.tar.gz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: signature
-          path: dist/SHA256SUMS*
-          if-no-files-found: error
-          retention-days: 3
-      - uses: actions/upload-artifact@v4
-        if: needs.pick.outputs.dry_run == 'true'
-        with:
-          name: ephemeral.pub
-          path: dist/ephemeral.pub
-          retention-days: 3
-
   publish:
-    needs: [pick, build, sign]
+    needs: [pick, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -195,12 +155,9 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      - name: The signature, checked as launchers check it
-        env:
-          EPHEMERAL: ${{ needs.pick.outputs.dry_run == 'true' && 'yes' || '' }}
+      - name: Checksums (SHA256SUMS)
         run: |
-          key=(); [[ -n "$EPHEMERAL" ]] && key=(--key "$(cat dist/ephemeral.pub)")
-          cargo run --locked --quiet -p horizon-release-sign -- verify --tag nightly --publishing "${key[@]}" dist
+          (cd dist && sha256sum -- horizon-linux-x86_64.tar.gz horizon-windows-x64.zip horizon-macos-arm64.zip horizon-server-linux-x86_64.tar.gz horizon-source.tar.gz) > dist/SHA256SUMS
       - name: Ready to publish (the smoke test drew a world, no release-blocker is open)
         # Right before publishing, as for a release: an issue labelled while the builds ran still holds it. A dry run
         # only reports what a real run would do (that is how a blocker's fix is tried).
@@ -222,7 +179,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/ci/nightly.py rotate
-          signature=(); [[ -f dist/SHA256SUMS.sig ]] && signature=(dist/SHA256SUMS.sig)
           # A pre-release, never GitHub's latest: launchers on the release channel never see it.
           gh release create nightly --prerelease --latest=false --target "$SHA" \
             --title "Nightly $DATE · ${SHA:0:7}" --notes-file dist/nightly-notes.md \
@@ -231,7 +187,7 @@ jobs:
             "dist/horizon-macos-arm64.zip#Nightly game files: macOS (horizon-macos-arm64.zip)" \
             "dist/horizon-server-linux-x86_64.tar.gz#Nightly dedicated server for Linux (horizon-server-linux-x86_64.tar.gz)" \
             "dist/horizon-source.tar.gz#Source of this Nightly, commit ${SHA:0:7} (horizon-source.tar.gz; kept for good as the tag $SOURCE_TAG)" \
-            dist/SHA256SUMS "${signature[@]}" dist/smoke-test.json
+            dist/SHA256SUMS dist/smoke-test.json
           python3 tools/ci/nightly.py keep-source "$SHA" "$DATE"
           python3 tools/ci/nightly.py prune --days 7
       - name: Dry run, the nightly that would be published
@@ -242,7 +198,7 @@ jobs:
 
   answer:
     # Tells the thread that asked for this build how it ended. A conflict `pick` already explained there.
-    needs: [pick, build, sign, publish]
+    needs: [pick, build, publish]
     if: always() && inputs.issue != '' && needs.pick.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -262,7 +218,7 @@ jobs:
           if [[ "$BUILD" != true ]]; then
             text="nothing new: the published Nightly is already this build."
           elif [[ "$PUBLISHED" == success && "$DRY_RUN" == true ]]; then
-            text="the dry run built and signed $NAME; nothing was published. $RUN"
+            text="the dry run built $NAME; nothing was published. $RUN"
           elif [[ "$PUBLISHED" == success ]]; then
             text="published $NAME: https://github.com/$GITHUB_REPOSITORY/releases/tag/nightly. Launchers with Nightly on install it at their next start."
           else

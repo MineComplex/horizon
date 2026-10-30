@@ -120,7 +120,7 @@ ones only there.
 ## Merging
 
 Pull requests merge with a merge commit, by hand: never `gh pr merge --auto`. Branch protection on main
-requires `verify` for everyone, and Ludovic's review for the files `.github/CODEOWNERS` lists (what builds, signs
+requires `verify` for everyone, and Ludovic's review for the files `.github/CODEOWNERS` lists (what builds
 and ships releases). Branches don't have to be up to date with main: main's own `checks` run catches the rare
 semantic conflict.
 
@@ -321,47 +321,12 @@ off, every release that is not a pre-release, which is now every new one.
 
 `promote.yml` and `tools/release_channels.py` (the daily promotion at 20:00 UTC) are gone.
 
-### Signed checksums
+### Checksums
 
-Every game and launcher release carries `SHA256SUMS` (the archives' SHA-256, `sha256sum`'s format) and
-`SHA256SUMS.sig`: one base64 Ed25519 signature per line over `horizon release <tag>\n` followed by SHA256SUMS,
-so a signed list can't be reused under another tag.
-
-- A `sign` job of its own makes them: `tools/ci/sign_release.sh` runs the runner's `sha256sum` and OpenSSL and
-  nothing else. It is the only job that holds the private key, the `RELEASE_SIGNING_KEY` secret of the
-  repository's `release` environment, which only real releases from main enter (`environment:` is empty in dry
-  runs, which sign with a throwaway key). No code from the repository runs beside the key, so no pull request
-  can read it by changing what a build compiles; the key is in no file, no log and no password vault, and nobody
-  needs to read it.
-- The publish job then checks the signature the way launchers do (`horizon-release-sign verify --publishing`,
-  crates/horizon-release-sign), against the public keys built in from
-  `crates/horizon-release-sign/release-keys.txt`. While that file lists no key, releases go out with SHA256SUMS
-  alone and a warning (today's releases keep working). Once it lists one, a missing secret or a key it doesn't
-  list fails the release before anything is published, instead of publishing something launchers would refuse.
-- Making the key: `tools/ci/new_release_key.sh` pipes a new key from `horizon-release-sign keygen` straight into
-  `gh secret set RELEASE_SIGNING_KEY --env release` and prints only the public key, which then goes into
-  release-keys.txt by pull request.
-
-**Releases from before signing.** The launcher and `horizon-server update` install only signed releases, with
-one exception, so a player or a server can still go back to an older version: every release published before
-signing began has its archives' SHA-256 pinned in `crates/horizon-release-sign/legacy-releases.txt`, built into
-both. Those releases install only with exactly those files, whatever GitHub serves for them later. The file was
-written once by `tools/ci/legacy_releases.py` from the SHA-256s GitHub computed at upload; it lists no signed
-release and never changes again (`--check` says whether it is complete).
-
-**Rotating the key** (a new key every year, or at once if the old one may have leaked). The publish job signs
-with every key the environment holds, `RELEASE_SIGNING_KEY` and `RELEASE_SIGNING_KEY_NEXT`, and the two names take
-turns:
-
-1. `tools/ci/new_release_key.sh <the empty name>` makes the next key; add its public key to release-keys.txt
-   beside the old one. From then on every release is signed with both keys (one line each).
-2. Wait until launchers and servers built with both keys are in use (a few weeks: launchers update themselves).
-3. Delete the old key's secret (`gh secret delete <its name> --env release`) and its line in release-keys.txt.
-   The next rotation makes its new key under the name just freed.
-
-If the old key may have leaked, skip the wait: remove its public key from release-keys.txt at once and delete
-its secret. Launchers built before the new key cannot check releases signed only with it: they refuse to install
-them with a clear message, and players download the launcher again from the website once.
+Every game release carries `SHA256SUMS` (the archives' SHA-256, `sha256sum`'s format), written by the publish job
+with the runner's `sha256sum`. These GitHub releases are not signed: players install the game through
+MineComplex's launcher, which takes it from the Backend's signed client manifest and checks every file's SHA-256
+there (the Launcher's `docs/security.md`), never from GitHub.
 
 ### Starting one by hand
 
@@ -451,7 +416,7 @@ agents' review), never its author's (Ludovic, 2026-10-28). A push after the revi
 scheduled build keeps the approved head. `/nightly dry-run` needs no review: it publishes nothing.
 
 Every Nightly ships its exact source. Its notes name the commit; `horizon-source.tar.gz` on the release is that
-commit's `git archive`, signed with the builds in `SHA256SUMS`; and `nightly.py keep-source` tags the commit
+commit's `git archive`, listed with the builds in `SHA256SUMS`; and `nightly.py keep-source` tags the commit
 `nightly-source/<date>-<short>`. That tag is never pruned, unlike the `nightly-<date>` release and the
 `nightly/build-*` branch (7 days each), because native mods pin a Nightly's commit and the launcher downloads that
 commit's source to build them ([native-mods.md](native-mods.md)).
@@ -494,7 +459,7 @@ comment on any issue or pull request (`.github/workflows/nightly-command.yml`, `
 /nightly remove 2640   drops one; builds now
 /nightly clear         empties the set: back to main alone; builds now
 /nightly status        what the set holds
-/nightly dry-run 2640  builds main + these and signs with a throwaway key; publishes nothing, the set stays
+/nightly dry-run 2640  builds main + these; publishes nothing, the set stays
 ```
 
 - **The answer.** The workflow answers in the thread with one comment starting `🤖 Nightly:`: the set, the build's
@@ -529,19 +494,16 @@ comment on any issue or pull request (`.github/workflows/nightly-command.yml`, `
   Fixed, as a release's notes), then each picked pull request with its title, author and who picked it, the known
   issues and the thanks. `build` is
   `game-build.yml`, the same builds and smoke test as a release, with the version `nightly-<date>` and
-  `HORIZON_NIGHTLY="<date> <short sha>"` built in, macOS signed ad hoc. `sign` signs SHA256SUMS for the channel
-  (the message says `horizon release nightly`, so a nightly's signature never passes for a release's). `publish`
-  checks the signature, the smoke test and that no `release-blocker` is open (as a release; a dry run only warns, so
+  `HORIZON_NIGHTLY="<date> <short sha>"` built in, macOS signed ad hoc. `publish` writes SHA256SUMS,
+  checks the smoke test and that no `release-blocker` is open (as a release; a dry run only warns, so
   `/nightly dry-run <pr>` still tries a blocker's fix), renames the
   previous `nightly` pre-release to `nightly-<its date>`, publishes the new one as the `nightly` pre-release (never
   GitHub's latest), and deletes the `nightly-<date>` pre-releases and tags older than 7 days, nothing else.
-- **The signing key never meets the pull requests' code.** Every workflow file and script runs from main's copy (a
+- **The release's tools never meet the pull requests' code.** Every workflow file and script runs from main's copy (a
   schedule and `issue_comment` run the default branch; `uses: ./…` takes the caller's commit), never a pull
   request's `.github/`, and a pull request that changes `.github/` or `tools/ci/` is refused. `build` compiles the
   merge with a read-only token that isn't kept in the checkout and no secrets; the runner's Developer ID keychain
-  stays locked. `sign` is the only job with the key, and checks out only main's `tools/ci/sign_release.sh`, which
-  hashes the archives with the runner's `sha256sum` and signs with its OpenSSL: it never runs what `build` made.
-  `publish` runs main's `horizon-release-sign`, never the archives. Nothing a nightly's build leaves reaches a
+  stays locked. `publish` hashes the archives with the runner's `sha256sum`: it never runs what `build` made. Nothing a nightly's build leaves reaches a
   release either: `game-build.yml`'s `trusted` input is true only for `release.yml`. An untrusted build runs its
   macOS jobs on the runner that runs pull requests' parity jobs (`horizon-game`), never the release runner
   (`MAC_RUNNER`), and its Rust cache has its own key and is never saved. A trusted build doesn't use the machine's
@@ -553,7 +515,7 @@ comment on any issue or pull request (`.github/workflows/nightly-command.yml`, `
 ```sh
 gh workflow run "nightly build"                  # now; skips when the pick is the commit already published
 gh workflow run "nightly build" -f force=true    # build and publish anyway
-gh workflow run "nightly build" -f dry_run=true  # build and sign with a throwaway key, publish nothing
+gh workflow run "nightly build" -f dry_run=true  # build, publish nothing
 ```
 
 ## Nightly audit

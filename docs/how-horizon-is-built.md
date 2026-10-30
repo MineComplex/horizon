@@ -23,7 +23,7 @@ Not every line is read by a person. Instead, every change is checked against the
 
 - **Open source.** All of the code is public on [GitHub](https://github.com/horizon-rust/horizon), under the MIT licence.
 - **Built from the public code.** Releases are built by GitHub Actions, the build service of GitHub, from the public source. Linux and Windows are built on GitHub's machines, and macOS on Ludovic's Mac mini, which runs GitHub Actions jobs. Every build log is [public](https://github.com/horizon-rust/horizon/actions/workflows/release.yml).
-- **Signed checksums.** Every release has a `SHA256SUMS` file, a fingerprint of each download, and `SHA256SUMS.sig`, a signature of that list made with Horizon's release key, which only release builds from main can use. The launcher and `horizon-server update` check both before they install anything, and refuse a file that does not match. The very first server install with `install.sh` checks the fingerprint but not the signature.
+- **Checksums.** Every release has a `SHA256SUMS` file, a fingerprint of each download. The launcher installs the game from its own signed manifest and checks every file's fingerprint before it starts it.
 - **Not yet signed by Apple or Microsoft.** The macOS app is not notarized by Apple, because it is not signed with a paid Apple developer account, so macOS asks you to confirm the first time ([Install](https://playhorizon.dev/docs/install#download-the-launcher) shows how). The Windows programs are not code-signed either, so Windows may warn you too.
 - **Nothing collected unless you say yes.** Data collection is off until you turn it on, with four separate switches. The one exception is an anonymous "I'm playing" ping for the launcher's player count, which holds nothing about you. See [Opt-in data collection](telemetry.md).
 
@@ -36,5 +36,4 @@ Not every line is read by a person. Instead, every change is checked against the
 
 - **Read the code and its checks.** [The source](https://github.com/horizon-rust/horizon), [the checks on every pull request](https://github.com/horizon-rust/horizon/actions/workflows/ci.yml) and [the release builds](https://github.com/horizon-rust/horizon/actions/workflows/release.yml).
 - **Compare the fingerprints.** Put a release's files and its `SHA256SUMS` in one folder and run `sha256sum -c SHA256SUMS --ignore-missing` (on macOS `shasum -a 256 -c SHA256SUMS --ignore-missing`, on Windows `Get-FileHash <file>` in PowerShell). Each file should say `OK`.
-- **Check the signature.** Download a whole release into a folder, then from a clone of the repository run `cargo run -p horizon-release-sign -- verify --tag <tag> <folder>`. The public key is in `crates/horizon-release-sign/release-keys.txt`.
 - **Build it yourself.** The README explains how to [build from source](../README.md#build-from-source).

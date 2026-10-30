@@ -65,7 +65,7 @@ impl LauncherAuth {
     async fn check(&self, username: &str, token: Option<&str>) -> AuthResult {
         let Some(token) = token else {
             return deny(
-                "Вход на сервер возможен только через лаунчер Minecomplex. Запустите игру из лаунчера.",
+                "Вход на сервер возможен только через лаунчер MineComplex. Запустите игру из лаунчера.",
             );
         };
         let Some(verifier) = &self.token else {

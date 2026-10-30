@@ -53,14 +53,14 @@ Game workspace (root `Cargo.toml`). This fork has no launcher (MineComplex's own
 | `horizon-proxy` | MineComplex's Velocity fork in Rust on tokio: `velocity.toml`, launcher-token login, modern forwarding, server switching, plugins, the Network plugin on Core gRPC ([docs/proxy.md](docs/proxy.md)) |
 | `horizon-shader-api` | Horizon's own WGSL shader packs ([docs/api/shaders.md](docs/api/shaders.md)): `horizon-shaders.toml`, the `.hshader` package; shared by the game, the launcher and the registry |
 | `horizon-shaders` | Shader packs (the `shaders/` folder format), rebuilt clean-room from a written spec of the format; no wgpu |
-| `horizon-theme` | Design tokens and fonts for the launcher, the game's own menus and the website |
+| `horizon-theme` | Design tokens, Geist fonts and the window icon for what the game draws itself (`ui_theme.rs`) |
 | `horizon-bench` | The benchmark report format and the machine probes |
-| `horizon-dualsense`, `horizon-threads`, `horizon-release-sign`, `horizon-bots`, `xtask` | DualSense output, thread priorities, signed release checksums, load-test bots, repo tasks |
+| `horizon-dualsense`, `horizon-threads`, `horizon-bots`, `xtask` | DualSense output, thread priorities, load-test bots, repo tasks |
 
 Other top-level folders: `tools/` (harnesses and dev scripts), `tests/` (Python unit tests: `python3 -m
 unittest discover -s tests`), `mods/horizon/src/test/java/dev/horizonlab/parity/` (Java oracles),
 `docs/`, `.github/workflows/`. The website (playhorizon.dev) is the private horizon-rust/horizon-site: its build
-reads `README.md`, `launcher/links.json`, `docs/api/`, `roadmap/roadmap.json` and `crates/horizon-theme/tokens.css` from main.
+reads `README.md`, `launcher/links.json`, `docs/api/`, `roadmap/roadmap.json` from main.
 
 ## Build and test fast
 

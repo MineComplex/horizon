@@ -53,7 +53,7 @@ pub(crate) mod color {
     }
 }
 
-/// The launcher's type scale and shapes (`horizon_theme`), in dp.
+/// The type scale and shapes (`horizon_theme`), in dp.
 pub(crate) const SMALL: f32 = horizon_theme::CAPTION.px;
 pub(crate) const BODY: f32 = horizon_theme::LABEL.px;
 /// Fields; plates (hover rows, selection); pills (buttons, segments).

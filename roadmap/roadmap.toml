@@ -1,4 +1,4 @@
-# Horizon's roadmap: the one source of truth for ROADMAP.md, playhorizon.dev/roadmap and Kira's answers.
+# Horizon's roadmap: the one source of truth for ROADMAP.md.
 # Edit this file, then run `python3 tools/roadmap.py build`. How to keep it current: roadmap/README.md.
 #
 # No dates, ever: an item is Now, Next or Later. Each item says the same thing twice: `plain` for players
@@ -10,32 +10,24 @@
 
 [overview]
 today_plain = """Horizon is Minecraft: Java Edition 26.3 rewritten from scratch in Rust, so it runs faster on the \
-same computer. Single player, LAN, servers, resource packs and Horizon's own mods work today, on your own copy of \
-the game."""
+same computer. MineComplex's servers, resource packs and server plugins work today, started from the MineComplex \
+launcher."""
 today_dev = """A native Rust and wgpu reimplementation of Java 26.3: the same saves, rules and terrain, checked \
 against the real game by more than 300 differential harnesses (a Java oracle and a Rust probe on the same inputs). \
-Single player runs on its own server thread, like vanilla's integrated server."""
+Two programs: `horizon-client` only joins servers, and worlds run on `horizon-server` behind the proxy."""
 help_plain = """Play it and tell us what differs from vanilla (Discord or GitHub), run the benchmark on your \
 computer, vote for what you want next, or pick one of the Help wanted items."""
 help_dev = """Read CONTRIBUTING.md, pick a Help wanted item or a To do card, check vanilla's code for the \
 behaviour, and paste the block `python3 tools/pr_ready.py` prints in your pull request."""
 
-# Areas, in the project's order of priority: performance first, then modpacks and servers.
+# Areas, in the project's order of priority: performance first, then servers.
 [[area]]
 id = "performance"
 name = "Performance"
 
 [[area]]
-id = "modpacks"
-name = "Modpacks"
-
-[[area]]
 id = "servers"
 name = "Servers and multiplayer"
-
-[[area]]
-id = "mods"
-name = "Mods and API"
 
 [[area]]
 id = "gameplay"
@@ -44,10 +36,6 @@ name = "Gameplay parity"
 [[area]]
 id = "rendering"
 name = "Rendering"
-
-[[area]]
-id = "launcher"
-name = "Launcher"
 
 [[area]]
 id = "platforms"
@@ -60,10 +48,6 @@ name = "Horizon extras"
 [[area]]
 id = "ai"
 name = "AI and agents"
-
-[[area]]
-id = "community"
-name = "Community"
 
 [[area]]
 id = "project"
@@ -82,36 +66,22 @@ by spreading the work better over the processor's cores."""
 dev = """Frame pacing at render distance 32 (#678): long frames come from work competing with the render thread. \
 In review: world generation workers build free structure starts instead of queueing them (#1760), the worker pool \
 leaves one core as vanilla does (#1778), and the terrain vertex arena is read as storage where flat draws run \
-(#1742). Still open: far terrain at 48 to 64 chunks (#718) and CPU-bound fields of block entities (#717). Every \
+(#1742). Still open: CPU-bound fields of block entities (#717). Every \
 change shows before and after numbers from `tools/perf_bench.py` against vanilla 26.3 (docs/benchmark.md)."""
-links = ["#678", "#1760", "#1778", "#1742", "#718", "#717", "docs/benchmark.md"]
+links = ["#678", "#1760", "#1778", "#1742", "#717", "docs/benchmark.md"]
 
 [[item]]
 id = "block-storage"
 title = "Faster block lookups"
 status = "now"
 area = "performance"
+focus = true
 plain = """Speeding up the code that reads and writes the blocks of the world, which almost everything in the game \
 goes through: generation, lighting, meshing and ticking."""
 dev = """`PalettedContainer` and `PackedStorage` find an entry's word by multiply and shift instead of an integer \
 division (#1790, #1794); meshing looks up baked models by index, not by name (#1747). Each change keeps the paletted \
 storage harnesses identical and shows its microbenchmark (docs/performance/paletted-container-access-results.md)."""
 links = ["#1790", "#1794", "#1747", "docs/performance/paletted-container-access-results.md"]
-
-[[item]]
-id = "modpack-worldgen"
-title = "Modpacks' world generation, natively"
-status = "now"
-area = "modpacks"
-announce = true
-focus = true
-plain = """Making the world-generation mods of popular modpacks (new structures, YUNG's dungeons and mineshafts, \
-packs built on Lithostitched) generate their worlds in Horizon, natively and fast."""
-dev = """`horizon-port-pack` carries a pack's data-driven content over; structure mods that need code get a native \
-port: YUNG's worldgen as written (#1746), Lithostitched's limited and guaranteed elements with pool and processor \
-modifiers (#1777), its processors as the game's own types (#1765). Proved by the structure blocks and layout \
-harnesses (#1753, #1757). Mods whose Java code does more than world generation don't run (docs/modpacks.md)."""
-links = ["#1746", "#1777", "#1765", "#1753", "#1757"]
 
 [[item]]
 id = "server-clients"
@@ -129,40 +99,11 @@ names (#1702), primed TNT between updates (#1710)."""
 links = ["#1802", "#1798", "#1795", "#1652", "#1650", "#1671", "#1731", "#1702", "#1710"]
 
 [[item]]
-id = "server-thread"
-title = "Single player as a server: the last differences"
-status = "now"
-ongoing = true
-area = "gameplay"
-focus = true
-plain = """Single player now runs a small server in the background, as vanilla does. We are fixing what still \
-behaves differently there; every fix also works for LAN and server players."""
-dev = """Since #1514 single player runs on the server thread (`game/integrated.rs`) and the window joins it as a \
-client; `--in-frame` keeps the old path. The open `[server-thread]` issues list the gaps. In review: a tool that \
-changes a block ends the click (#1797), potions keep their potion over the connection (#1796), mobs' aggression \
-and arm swings (#1802). docs/server-levels.md."""
-links = ["#1514", "#1797", "#1796", "#1802", "docs/server-levels.md"]
-
-[[item]]
-id = "mod-registry"
-title = "Horizon's mod registry"
-status = "now"
-area = "mods"
-announce = true
-focus = true
-plain = """One place for mods, modpacks and resource packs made for Horizon: browse them on the website and \
-install them from the launcher in one click."""
-dev = """Merged: the registry index (schema 1, `.hpack`, checks before install, #1634), `cargo horizon-mod check` \
-(#1642) and the submission service (`crates/horizon-mod-registry`, #1659). In review: the website's /mods (#1596) \
-and /mods/submit (#1635), and in the launcher the registry as a source (#1636), install, enable and takedowns \
-(#1637), the Mods page (#1638) and modpacks as their own profiles (#1640)."""
-links = ["#1634", "#1642", "#1659", "#1596", "#1635", "#1636", "#1637", "#1638", "#1640"]
-
-[[item]]
 id = "server-dialogs"
 title = "Server dialogs and login screens"
 status = "now"
 area = "servers"
+focus = true
 plain = """Servers that show dialogs, such as the register and login screens of AuthMe, will work in Horizon."""
 dev = """26.3's dialog packets and model (#1720), the dialog screen with its buttons and actions (#1734), then text \
 and boolean inputs (#1735)."""
@@ -236,46 +177,6 @@ scratch'."""
 links = ["#1820", "#1822", "#1861", "#1863", "#1855", "docs/shaders.md", "docs/api/shaders.md"]
 
 [[item]]
-id = "server-mods"
-title = "Mods that run on the server"
-status = "now"
-area = "mods"
-plain = """Mods that run on the server side of a world, so a dedicated server or a LAN world can have mods that react \
-to players joining, chat and blocks being broken or placed, and that add commands."""
-dev = """API 0.3, experimental first (#1833, in review): the same sandboxed component runs on the server thread and \
-the dedicated server, with world events (block broken or placed, entity spawned or killed, player joined or \
-left), game rules and server commands with typed arguments. The world, item and entity interfaces come after \
-(see 'Mods that read and change the world'). docs/api/mods.md, docs/mods.md."""
-links = ["#1833"]
-
-[[item]]
-id = "mod-screens"
-title = "Screens, input and drawing for mods"
-status = "now"
-area = "mods"
-plain = """Mods will be able to open their own screens and settings pages and react to keys and item use, so bigger \
-mods, such as the Orbital Laser, can run on the normal game."""
-dev = """Capability `ui` is in review (#1864): mod-owned screens and a settings page under Options > Mods, built from \
-vanilla's widgets. Still to design: `input` (an item's use, key binds, the crosshair target), `render` (a \
-budgeted draw list on the native shader API) and `world` (changing blocks). Orbital Laser is the acceptance \
-test: it needs all four today through its author's fork (see 'Orbital Laser on the normal game')."""
-links = ["#1864"]
-
-[[item]]
-id = "modder-tools"
-title = "Tools for people who make mods"
-status = "now"
-area = "mods"
-plain = """Better tools for mod makers: a test runner that needs no game window, templates for each kind of mod, and \
-clear promises about what keeps working from one version to the next."""
-dev = """`cargo horizon-mod test` runs a mod's test scripts against a fake game snapshot (#1816) and, for server \
-mods, scripted server events (#1837); the content template and the guides are merged (#1859, #1810, \
-docs/api/stability.md). Left: templates for hud, server and machine mods, typed wrappers in the SDK, a \
-frozen 0.1 compatibility mod that every runtime must load, a CI check that fails when a stable reference \
-entry is removed without a new major version, and the SDK on crates.io once the API is stable."""
-links = ["#1816", "#1837", "docs/api/stability.md", "https://playhorizon.dev/docs/test-a-mod"]
-
-[[item]]
 id = "pregen"
 title = "Pre-generate an area with /pregen"
 status = "now"
@@ -290,19 +191,6 @@ links = ["#1805"]
 # ---------------------------------------------------------------------------------------------------- Next
 
 [[item]]
-id = "microsoft-sign-in"
-title = "Microsoft sign-in (coming soon)"
-status = "next"
-area = "launcher"
-announce = true
-plain = """Coming soon: sign in with your Microsoft account to play on online-mode servers. The code is ready; it \
-waits for Microsoft's approval."""
-dev = """Device-code sign-in in the launcher and online-mode login in the client (docs/microsoft-account.md). It is \
-turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows \
-"Coming soon"."""
-links = ["#1270"]
-
-[[item]]
 id = "benchmarks"
 title = "Fresh benchmarks against vanilla"
 status = "next"
@@ -313,8 +201,8 @@ dev = """Redo the comparison after the current performance work (#1073); reliabi
 (#1346); a scene must count as loaded only once its first chunk arrives (#1749). Next: a performance history \
 across releases (an automatic comparison of each release with the last, on a timeline), more report fields \
 (server TPS and MSPT, power, battery drain, temperature, throttling) and more hardware (a MacBook on \
-battery, low-end laptops, community reports). Players' reports come in through `--benchmark` and \
-`horizon-launcher data benchmark` (docs/benchmark.md)."""
+battery, low-end laptops, community reports). Reports come from `horizon-client --benchmark` \
+(docs/benchmark.md)."""
 links = ["#1073", "#1346", "#1749", "docs/benchmark.md"]
 
 [[item]]
@@ -325,7 +213,7 @@ area = "gameplay"
 plain = """Pistons and slime blocks will push players, mobs and items as in vanilla. Today moving blocks pass \
 through them."""
 dev = """Port `PistonMovingBlockEntity.moveCollidedEntities` and `moveStuckEntities` (honey), the slime bounce and \
-`Entity.limitPistonMovement` for `MoverType.PISTON`, in single player and for a server's players. Issues #1496, \
+`Entity.limitPistonMovement` for `MoverType.PISTON`, for a server's players. Issues #1496, \
 #1609, #1608, #1704, #1758."""
 links = ["#1496", "#1609", "#1608", "#1704", "#1758"]
 
@@ -334,8 +222,8 @@ id = "intel-mac"
 title = "Horizon on Intel Macs"
 status = "next"
 area = "platforms"
-plain = "Builds of the game and the launcher for Macs with an Intel processor."
-dev = """x86_64 game and launcher builds, picked per processor (#1171). Before it ships it needs a run on a real \
+plain = "Builds of the game for Macs with an Intel processor."
+dev = """x86_64 game builds, picked per processor (#1171). Before it ships it needs a run on a real \
 Intel Mac: Rosetta on Apple Silicon only proves the CPU code. Requests: #1161, #1792."""
 links = ["#1171", "#1161", "#1792"]
 
@@ -374,11 +262,11 @@ status = "next"
 area = "performance"
 plain = """Horizon should run well on small machines: integrated graphics, the Steam Deck, older Macs and 8 GB of \
 memory, with a battery mode that saves power on laptops."""
-dev = """Partly done: an opt-in 60 FPS cap with fewer workers on battery, Far Detail Reduced for integrated GPUs and \
-animated textures on the GPU (both shipped). Left: measured targets and fixes per class of machine (memory \
+dev = """Partly done: an opt-in 60 FPS cap with fewer workers on battery and animated textures on the \
+GPU (both shipped). Left: measured targets and fixes per class of machine (memory \
 use, worker counts, startup) on a Steam Deck, old Intel and Apple Silicon Macs and 8 GB computers, reported \
-on the Benchmarks page."""
-links = ["docs/benchmark.md", "https://playhorizon.dev/docs/performance"]
+in docs/benchmark.md."""
+links = ["docs/benchmark.md"]
 
 [[item]]
 id = "upscaling"
@@ -408,19 +296,6 @@ scenes (#1461). Profile first, keep what pays, show before and after numbers."""
 links = ["#1461", "docs/profiling.md"]
 
 [[item]]
-id = "code-mods"
-title = "Mods with code: machines, magic, mobs"
-status = "next"
-area = "modpacks"
-plain = """Making mods that add machines, magic and mobs work in Horizon, in steps, starting with machines. They are \
-most of what a big modpack is made of."""
-dev = """333 of the 496 mods in a big pack (ATM10) contain code. Issue #1854 ranks the API gaps (ticking block \
-entities, networking, rendering, menus, inventories) that unlock them in tiers, with machines first as the \
-recommended path and a furnace ported tick for tick as proof. The first API step is a draft (#1189, see \
-'Machines and blocks with inventories'). The path isn't started yet (docs/modpacks.md)."""
-links = ["#1854"]
-
-[[item]]
 id = "prepare-without-java"
 title = "Prepare a version without Java"
 status = "next"
@@ -443,34 +318,9 @@ API and an MCP server for AI agents."""
 dev = """`horizon-server console` (a text interface), `ban`, `pardon`, `ban-ip` and `mcp` over stdio. Admin API \
 additions: the player list, kick, ban, op and whitelist, an SSE stream of logs and events, a text metrics \
 endpoint, config GET and PATCH, backup delete and download. The panel's later features (bans, worlds, \
-server.properties import, logs and crash reports, modpacks) and vanilla's management protocol (the JSON-RPC \
+server.properties import, logs and crash reports) and vanilla's management protocol (the JSON-RPC \
 over WebSocket that the `management-server-*` keys configure), so vanilla's tools can manage a Horizon \
 server. docs/server.md, docs/api/server.md."""
-links = ["docs/server.md"]
-
-[[item]]
-id = "hosting-polish"
-title = "Hosting polish: Windows service, safe updates"
-status = "next"
-area = "servers"
-plain = """Smoother hosting: a real Windows service, a backup before every update, backups that keep the world and each \
-player's state, and a changed view distance or message without a restart."""
-dev = """A Windows service wrapper instead of the logon scheduled task; `backups.before_update`; hot reload of config \
-for view distance and the message of the day (needs engine support); backups that keep world and player \
-state (#1808, a contributor's draft, in review). docs/hosting.md, docs/server.md."""
-links = ["#1808"]
-
-[[item]]
-id = "tailscale-hosting"
-title = "Guided hosting with Tailscale and an invite button"
-status = "next"
-area = "servers"
-plain = """In the launcher, a guide and a button to host a server and invite friends over Tailscale, so nobody has to \
-open ports on a router."""
-dev = """On the Servers page (create, start, back up, update and invite are shipped) add a Tailscale setup that \
-explains and checks each step, and an invite button that hands friends what they need to join over the \
-tailnet. Buttons first, no docs needed, with the details in an Advanced section. Remote access over \
-Tailscale is already described in docs/server.md."""
 links = ["docs/server.md"]
 
 [[item]]
@@ -484,21 +334,8 @@ dev = """The repository has the Dockerfile (`packaging/server/Dockerfile`: a mul
 bookworm-slim, user `horizon`, volume `/data`, port 25565, game files mounted read-only, `HORIZON_EULA` and \
 friends answering the first-start questions), and anyone can build it (docs/hosting.md, section 9). Left: \
 publish the image to a public registry from the release workflow, tagged per release, so it follows the same \
-checks, and update the docs and the launcher. The image never holds Mojang's files."""
+checks, and update the docs. The image never holds Mojang's files."""
 links = ["docs/server.md"]
-
-[[item]]
-id = "one-single-player-path"
-title = "One single-player path: remove the in-frame world"
-status = "next"
-area = "gameplay"
-plain = """Single player will have one way to run, the server thread, so every fix works everywhere and there are fewer \
-bugs. The older in-frame mode goes once everything passes without it."""
-dev = """`--in-frame` (also `--no-server-thread` and `HORIZON_SERVER_THREAD=0`) still ticks the world inside the \
-window's `Game`, and most harnesses test that path. Delete it once `lan_e2e --server-thread` and the parity \
-harnesses pass on the server thread, which also halves the bug surface. See also 'Single player as a server' \
-and docs/server-levels.md."""
-links = ["docs/server-levels.md"]
 
 [[item]]
 id = "villages-combat-parity"
@@ -524,20 +361,6 @@ an older Windows computer had no sound at all, and a device choice is how such c
 links = ["#1035"]
 
 [[item]]
-id = "machines-api"
-title = "Machines and blocks with inventories (API 0.4)"
-status = "next"
-area = "mods"
-plain = """Mods that add machines: blocks that tick, hold items and have their own menus. This unlocks the technology \
-mods of big modpacks."""
-dev = """Block entities and menus: ticking machines with slots, server menu logic and the menu protocol to clients, \
-energy, item and fluid transfer, data attachments, accessory slots and custom recipe types, with a typed \
-client and server channel and typed config beside them. A draft (#1189) proves a furnace ported tick for \
-tick and holds the ATM10 code-mods plan; the design is redone through the API policy before it merges \
-(docs/modpacks.md, docs/api/stability.md)."""
-links = ["#1189"]
-
-[[item]]
 id = "shader-pack-examples"
 title = "Well-known shader looks, rewritten for Horizon"
 status = "next"
@@ -549,16 +372,6 @@ recorded: a pack is rewritten only if it is open source and compatible with Hori
 rewrite is written from the shader format's documentation and the look on screen, not from anyone's code. \
 Today only the Golden Hour example exists (`crates/horizon-shader-api/packs/golden_hour`)."""
 links = ["docs/shaders.md", "crates/horizon-shader-api/packs/golden_hour"]
-
-[[item]]
-id = "beta-label"
-title = "A visible beta label"
-status = "next"
-area = "launcher"
-plain = """A clear 'beta' label in the launcher and the game, so nobody is surprised that Horizon is still being built."""
-dev = """Show Beta in the launcher's header and about page, on the game's title screen and on the website, beside the \
-version number (docs/versioning.md)."""
-links = ["docs/versioning.md"]
 
 [[item]]
 id = "wayland-polish"
@@ -577,7 +390,7 @@ id = "agent-control-protocol"
 title = "A versioned agent-control protocol"
 status = "next"
 area = "ai"
-plain = """A stable, documented way for AI agents and scripts to drive the game and the launcher, with versions and an \
+plain = """A stable, documented way for AI agents and scripts to drive the game, with versions and an \
 event stream so tools keep working as Horizon changes."""
 dev = """`hello` answers with the API version, the release and the features; `horizon-ctl --api`; MCP serverInfo; \
 reply schemas generated into the reference; a `test.` namespace for hooks; transcript compatibility tests; \
@@ -585,29 +398,6 @@ reply schemas generated into the reference; a `test.` namespace for hooks; trans
 Agent control itself (`horizon-ctl`, both MCP servers, the No AI switch) is done: docs/agent-control.md, \
 docs/api/agent-control.md."""
 links = ["docs/agent-control.md", "docs/api/agent-control.md", "docs/api/stability.md"]
-
-[[item]]
-id = "own-agents-porting"
-title = "Port mods with your own AI agent"
-status = "next"
-area = "ai"
-plain = """You can port a mod to Horizon with your own AI agent on your own computer. Horizon documents how and gives \
-you the tools, but provides no hosted agents."""
-dev = """A player runs their own agent locally with `horizon-ctl` and the MCP servers (docs/agent-control.md), `cargo \
-horizon-mod`, `horizon-port-pack` and the parity harnesses as the check. Horizon writes the guide \
-(playhorizon.dev/docs/agents, docs/modpacks.md) and runs no agents, accounts or keys for players. The No AI \
-switch turns all of it off."""
-links = ["https://playhorizon.dev/docs/agents", "docs/agent-control.md"]
-
-[[item]]
-id = "x-account"
-title = "Horizon on X (coming soon)"
-status = "next"
-area = "community"
-plain = "Coming soon: an official Horizon account on X, used to announce releases and the weekly summary."
-dev = """Kira already posts the roadmap items marked `announce = true` when they ship, and the weekly summary, as \
-soon as the account's credentials exist (roadmap/README.md, 'The journal'). Waiting for the account itself."""
-links = ["roadmap/README.md"]
 
 [[item]]
 id = "agents-app"
@@ -620,19 +410,6 @@ dev = """`.github/CODEOWNERS` lists the workflows, the release and signing tools
 installers (#1015); the branch protection that makes it count waits for the `horizon-agent` GitHub App, \
 which reads and writes code, pull requests and issues but can't change settings, workflows, secrets or \
 members, and whose tokens last an hour. It needs the owner to create the App and switch the protection on \
-(docs/security.md)."""
-links = ["docs/security.md"]
-
-[[item]]
-id = "signed-installers"
-title = "Signed updates everywhere, installers included"
-status = "next"
-area = "project"
-plain = """Every download Horizon makes is checked against the project's signature, including the first install with \
-install.sh and install.ps1."""
-dev = """Releases carry signed checksums, and the launcher and `horizon-server update` refuse anything unsigned \
-(#1011, #1014). Left: the first install through `install.sh` and `install.ps1` still trusts only the \
-checksum GitHub publishes, because verifying Ed25519 signatures needs OpenSSL 3, which macOS doesn't ship \
 (docs/security.md)."""
 links = ["docs/security.md"]
 
@@ -667,76 +444,6 @@ writes a port report that becomes issues. The goal is as little human work as po
 or future. Detection and the first slices are merged; the scheduled agent that runs it every day isn't \
 installed yet. Two versions in one build are out of scope."""
 links = ["docs/version-ports.md"]
-
-[[item]]
-id = "exact-far-terrain"
-title = "Exact far terrain from real chunks"
-status = "later"
-area = "performance"
-plain = """Far terrain drawn from the world you really built and explored, caves and builds included, not only a \
-preview from the seed."""
-dev = """Keep a 3D mip store on disk built from real chunks, drawn by the GPU beside the seed preview for areas \
-nobody has visited. Written from scratch and measured before it is kept. Builds on Far Detail and the \
-far-terrain levels of detail already shipped; the open work on them is #718."""
-links = ["#718"]
-
-[[item]]
-id = "java-mod-bridge"
-title = "Running Java mods that aren't rewritten"
-status = "later"
-area = "modpacks"
-plain = """Run Java mods that nobody has rewritten for Horizon yet, through a bridge or a converter. Hard and not \
-started: the Convert button and native rewrites come first."""
-dev = """Earlier research (#527, closed) found that Java mods can't simply run, because they call Minecraft's own \
-classes. Options to look at again: a jar-to-WebAssembly backend, or a bridge for simple Fabric mods. \
-Whatever is chosen has to run inside the same sandbox and capability checks as native mods."""
-links = ["#527"]
-
-[[item]]
-id = "alt-accounts"
-title = "Ely.by and other sign-in providers"
-status = "later"
-area = "servers"
-plain = """Sign in with other account providers, such as Ely.by or any Yggdrasil-compatible one, beside Microsoft."""
-dev = """Issue #1270 asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher. It \
-builds on the Microsoft sign-in (docs/microsoft-account.md)."""
-links = ["#1270"]
-
-[[item]]
-id = "orbital-laser"
-title = "Orbital Laser on the normal game"
-status = "later"
-area = "mods"
-plain = """The community mod Orbital Laser, made for a fork of Horizon, running on the normal game and listed in the \
-registry as the showcase of the mod API."""
-dev = """A pull request on https://github.com/Stink-O/orbital-laser (MIT) once the input, ui, render and world \
-capabilities exist (see 'Screens, input and drawing for mods'): today the mod needs them through its \
-author's fork. Tested in the game, and listed in the registry."""
-links = ["https://github.com/Stink-O/orbital-laser"]
-
-[[item]]
-id = "client-mod-natives"
-title = "Native versions of popular client mods"
-status = "later"
-area = "mods"
-plain = """Built-in versions of the client mods players ask for: block info on hover, a recipe viewer like JEI, a world \
-map and schematic overlays."""
-dev = """Done as extras: a mod list and menu, a minimap and a zoom (docs/extras.md). Left: block info tooltips, a \
-recipe viewer (a contributor offered to port JEI if it becomes a native feature), a world map and a \
-schematic overlay. They need the read-only interfaces `inventory-read`, `recipes`, `world-read` and `render` \
-in the mod API, or they go into the game directly."""
-links = ["docs/extras.md"]
-
-[[item]]
-id = "create-physics"
-title = "Create-style physics as a native mod"
-status = "later"
-area = "mods"
-plain = """Contraptions and physics like the Create and Aeronautics mods, as a mod for Horizon rather than part of the \
-base game."""
-dev = """Issue #805 (porting QOL mods) closed with this answer: it would come as a native Horizon mod on the mod API. \
-It needs server mods, entities and rendering first."""
-links = ["#805"]
 
 [[item]]
 id = "light-default-pack"
@@ -797,15 +504,13 @@ links = ["docs/agent-control.md"]
 
 [[item]]
 id = "controllers"
-title = "Controllers: tested on real pads, and in the launcher"
+title = "Controllers: tested on real pads"
 status = "later"
 area = "gameplay"
-plain = """Make controller support solid: tested with real PlayStation and Xbox pads and a Steam Deck, and usable in \
-the launcher too."""
+plain = """Make controller support solid: tested with real PlayStation and Xbox pads and a Steam Deck."""
 dev = """The game side is merged (docs/controllers.md): pads read with gilrs, menus, rumble, glyphs, remapping and \
 DualSense adaptive triggers, lightbar and haptics, but not yet confirmed on real pads or a Steam Deck \
-(DualSense haptics stay behind a switch until then). Left: a test pass on real hardware, and the same focus \
-navigation in the GPUI launcher."""
+(DualSense haptics stay behind a switch until then). Left: a test pass on real hardware."""
 links = ["docs/controllers.md"]
 
 [[item]]
@@ -820,22 +525,12 @@ for the F3 editor)."""
 links = ["#562", "docs/native-client.md"]
 
 [[item]]
-id = "lean-installs"
-title = "Lean installs that use less disk"
-status = "later"
-area = "launcher"
-plain = """Smaller installs: Horizon keeps one shared copy of the prepared game files and removes what only the \
-preparation needed."""
-dev = """A shared resource store keyed by the preparer's digest, no prepare intermediates left behind, the current \
-and the previous version kept, and an automatic clean-up. Not started."""
-
-[[item]]
 id = "linux-arm64"
 title = "Horizon on Linux ARM64"
 status = "later"
 area = "platforms"
-plain = "Game and launcher builds for 64-bit ARM Linux computers."
-dev = """Issue #1709: aarch64 builds of the game and the launcher in the release workflow, tested on a real ARM \
+plain = "Game builds for 64-bit ARM Linux computers."
+dev = """Issue #1709: aarch64 builds of the game in the release workflow, tested on a real ARM \
 machine with its Vulkan driver. The server build already drops audio and controllers \
 (`--no-default-features`)."""
 links = ["#1709"]
@@ -867,15 +562,6 @@ compiling on iOS (#1813) and helper-thread limits on Android (#1751). Preparing 
 here too. Horizon ships none of Mojang's files on any platform."""
 links = ["#1813", "#1751"]
 
-[[item]]
-id = "video-series"
-title = "A video series about Horizon"
-status = "later"
-area = "community"
-plain = """A series of videos about how Horizon is made and what is new, with each upload announced on Discord."""
-dev = """Kira already shows new uploads in a read-only Discord channel (done). The series follows each stage of the \
-project: a script, edits, titles and a thumbnail per video."""
-
 # ---------------------------------------------------------------------------------------------------- Help wanted
 
 [[item]]
@@ -885,10 +571,9 @@ status = "help-wanted"
 area = "performance"
 plain = """Run Horizon's built-in benchmark and share the report: every new computer makes the performance work \
 more accurate. No coding needed."""
-dev = """`horizon-launcher play --arg=--benchmark --arg=standard` writes a JSON report; `horizon-launcher data \
-benchmark <report>` shows what would be sent and uploads it (playhorizon.dev/docs/performance). Results from three \
-installs with the same hardware appear on the Benchmarks page. Example: #1711."""
-links = ["https://playhorizon.dev/docs/performance", "#1711"]
+dev = """`horizon-client --benchmark standard` writes a JSON report (docs/benchmark.md); attach it to an issue. \
+Example: #1711."""
+links = ["docs/benchmark.md", "#1711"]
 
 [[item]]
 id = "end-city-banners"
@@ -978,18 +663,6 @@ and Server Resource Packs setting (#1569, #1570)."""
 links = ["#1562", "#1569", "#1570"]
 
 [[item]]
-id = "server-thread-default"
-title = "Single player on its own server thread"
-status = "shipped"
-shipped_in = "v0.2.39"
-area = "gameplay"
-plain = """Single player runs on a server thread, as vanilla does, so the world keeps ticking smoothly while the \
-window draws."""
-dev = """`game/integrated.rs` runs a second `Game` with one level per dimension; the window joins it through \
-memory like a LAN guest (#1514)."""
-links = ["#1514", "docs/server-levels.md"]
-
-[[item]]
 id = "metal-occlusion"
 title = "GPU occlusion culling on Macs"
 status = "shipped"
@@ -1012,39 +685,6 @@ dev = """Frames uploaded once, no per-tick CPU blend or copy (#1239)."""
 links = ["#1239"]
 
 [[item]]
-id = "far-detail"
-title = "Far Detail for integrated graphics"
-status = "shipped"
-shipped_in = "v0.2.5"
-area = "performance"
-plain = """An optional Reduced setting for far terrain, suggested on integrated graphics, that saves 2 to 4 ms of GPU \
-time per frame."""
-dev = """Opt-in reduced far terrain (#1199), on far-terrain chunk summaries built on the workers (#1029)."""
-links = ["#1199", "#1029"]
-
-[[item]]
-id = "mod-browser"
-title = "The launcher's mod browser"
-status = "shipped"
-shipped_in = "launcher@0.2.0"
-area = "modpacks"
-plain = """Search Modrinth for mods, modpacks and resource packs from the launcher; it says before installing what \
-works in Horizon."""
-dev = """The Mods page (#1154), Java mods checked before install (#1242), project pages, filters and galleries \
-(#1243), modpacks ported in the same step (#1246). docs/mod-browser.md."""
-links = ["#1154", "#1242", "#1243", "#1246"]
-
-[[item]]
-id = "launcher-look"
-title = "A blocky, Minecraft-like launcher"
-status = "shipped"
-shipped_in = "launcher@0.2.0"
-area = "launcher"
-plain = """The launcher got a new blocky look in Horizon's purple, in dark and light."""
-dev = """The Blocks look (#1269), from `horizon-theme` (docs/design-system.md)."""
-links = ["#1269", "docs/design-system.md"]
-
-[[item]]
 id = "dynamic-lights"
 title = "Dynamic lights"
 status = "shipped"
@@ -1053,27 +693,4 @@ area = "extras"
 plain = """An optional extra: torches you hold, drop or set on fire light up what is around them."""
 dev = """Held, dropped and burning light sources (#1162), in Horizon Extras, off by default."""
 links = ["#1162"]
-
-[[item]]
-id = "servers-page"
-title = "Host a server from the launcher"
-status = "shipped"
-shipped_in = "launcher-v0.15.0"
-area = "servers"
-plain = """The launcher's Servers page creates, starts, backs up and updates a Horizon server with buttons, and \
-invites friends."""
-dev = """The launcher's Servers page (#1026) over `horizon-server` (docs/hosting.md)."""
-links = ["#1026"]
-
-[[item]]
-id = "launcher-look-menus"
-title = "Game menus in the launcher's style"
-status = "later"
-area = "extras"
-plain = """An optional look for the game's own menus and options that matches the Horizon launcher. Off by default: \
-the vanilla menus stay as they are."""
-dev = """A player's idea (#horizon-ideas). A built-in resource pack or a Horizon setting that restyles the title, \
-pause and options screens with the launcher's design tokens (crates/horizon-theme), following \
-docs/design-system.md; off by default because it changes the vanilla look."""
-links = ["docs/design-system.md"]
 

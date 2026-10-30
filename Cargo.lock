@@ -1267,14 +1267,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "horizon-release-sign"
-version = "0.1.0"
-dependencies = [
- "base64",
- "ring",
-]
-
-[[package]]
 name = "horizon-server"
 version = "0.1.0"
 dependencies = [
@@ -4872,9 +4864,6 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 [[package]]
 name = "xtask"
 version = "0.1.0"
-dependencies = [
- "horizon-theme",
-]
 
 [[package]]
 name = "xxhash-rust"

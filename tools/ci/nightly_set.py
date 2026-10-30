@@ -37,8 +37,8 @@ from typing import Callable
 OWNER = "ludovic111"
 REVIEWERS = ".github/trusted-reviewers.txt"
 CODEOWNERS = ".github/CODEOWNERS"
-# What CODEOWNERS guards today, refused even if the file moved: what builds, signs and checks releases.
-ALWAYS_GUARDED = ["/.github/", "/tools/ci/", "/crates/horizon-release-sign/", "/crates/horizon-server/src/update.rs",
+# What CODEOWNERS guards today, refused even if the file moved: what builds and publishes releases.
+ALWAYS_GUARDED = ["/.github/", "/tools/ci/", "/crates/horizon-server/src/update.rs",
                   "/launcher/src/backend.rs", "/launcher/links.json"]
 STATE_BRANCH = "nightly-state"
 BUILD_PREFIX = "nightly/build-"

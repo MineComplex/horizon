@@ -167,14 +167,13 @@ class PruneBuildsTests(unittest.TestCase):
                     "feature/nightly/build-2026-10-01-1": "g", "nightly/build-2026-10-02-1": "n"}
         self.assertEqual(nightly.stale_builds(branches, set(), self.TODAY, 7), [])
 
-    def test_the_source_is_archived_from_git_signed_attached_and_tagged(self):
+    def test_the_source_is_archived_from_git_listed_attached_and_tagged(self):
         build = (WORKFLOWS / "nightly-build.yml").read_text()
         pick = build.split("\n  build:", 1)[0]
         self.assertIn('git archive --format=tar.gz --prefix="horizon-${SHA:0:7}/" -o horizon-source.tar.gz "$SHA"',
                       pick)
-        sign = build.split("\n  sign:", 1)[1].split("\n  publish:", 1)[0]
-        self.assertIn("dist/horizon-source.tar.gz", sign.split("sign_release.sh nightly", 1)[1])
         publish = build.split("\n  publish:", 1)[1].split("\n  answer:", 1)[0]
+        self.assertIn("horizon-source.tar.gz", publish.split("sha256sum", 1)[1].split("\n", 1)[0])
         self.assertIn('"dist/horizon-source.tar.gz#Source of this Nightly', publish)
         self.assertIn('nightly.py keep-source "$SHA" "$DATE"', publish)
 

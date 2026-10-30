@@ -16,7 +16,7 @@ class RustChangesTests(unittest.TestCase):
         for path in [
             "crates/horizon-client/src/game.rs", "xtask/src/main.rs", "Cargo.lock",
             ".cargo/config.toml", ".github/workflows/ci.yml", "tools/ci/rust_changes.py",
-            "research-lock.json", "crates/horizon-theme/tokens.css", "unknown-file",
+            "research-lock.json", "crates/horizon-theme/fonts/OFL-Geist.txt", "unknown-file",
         ]:
             with self.subTest(path=path):
                 self.assertTrue(needs_rust(["README.md", path]))

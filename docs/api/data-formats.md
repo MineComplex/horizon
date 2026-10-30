@@ -13,7 +13,7 @@ and worlds. Each entry names its version field, its documentation and its level 
 | Horizon settings | `horizon-graphics.txt`, `horizon-extras.txt` (`key:value`, as `options.txt`) | none: unknown keys fall back to defaults | preview | [graphics.md](../graphics.md), [extras.md](../extras.md#options-storage) |
 | Server settings | `server.toml` | its keys | stable | [server-reference.md](server-reference.md) |
 | Control endpoints | the game's socket file (TCP form), `.horizon/api.json` | none | preview | [agent-control.md](agent-control.md), [server-reference.md](server-reference.md) |
-| Release checksums | `SHA256SUMS`, `SHA256SUMS.sig` on releases since signing began (#1011) | the signed text names the tag | stable | [security.md](../security.md) |
+| Release checksums | `SHA256SUMS` on releases | none | stable | [security.md](../security.md) |
 | Worlds | the world folder | vanilla 26.3's (`DataVersion`) | vanilla's | [world-data.md](../world-data.md) |
 
 Worlds are vanilla's format, so any tool that reads a 26.3 world reads a Horizon world; Horizon adds itself to

@@ -9,7 +9,7 @@
 From the files the branch changes since its merge base with --base (committed or not) it decides what to run:
 rustfmt, and clippy with warnings denied exactly as CI's verify job runs it (the whole workspace, plus the server
 build when horizon-client is affected); the tests of the touched crates; the launcher (its own workspace) the same way when CI's launcher job would run
-(tools/ci/rust_changes.py --launcher); crates/horizon-theme/tokens.css against horizon-theme; Cargo.lock changing
+(tools/ci/rust_changes.py --launcher); Cargo.lock changing
 only with a Cargo.toml; the Python tests (always, as in CI) and the public-tree check; and the vanilla harnesses the
 changes can affect, picked as CI's parity job picks them (tools/parity.py --changed). Harnesses run where the
 vanilla data is (a prepared .local/ here, or the Mac mini); elsewhere they are listed for CI.
@@ -111,7 +111,7 @@ def area(path):
     if path.startswith((".github/", "tools/ci/")):
         return "CI"
     if path.startswith("crates/horizon-theme/"):
-        return None  # the design system feeds the game, the launcher and the website (its tokens.css) alike
+        return None  # the design system feeds the game and the launcher alike
     return "game"
 
 
@@ -307,9 +307,6 @@ def plan(args, base, changed, crates_of, libraries, dependencies):
              skip=test_skip, summary=tests_passed),
         Step("doc tests", f"cargo test --locked {doc_selection} --doc",
              skip=test_skip or (None if doc_crates else "no library touched"), summary=tests_passed),
-        Step("tokens.css up to date", "cargo test --locked -p horizon-theme --lib tokens_css_is_up_to_date",
-             skip=None if any(p.startswith(("crates/horizon-theme/", "xtask/")) for p in changed)
-             else "theme untouched"),
     ]
     launcher_skip = None if launcher else "launcher untouched"
     for name, command in [("launcher rustfmt", "cargo fmt --check"),
@@ -403,8 +400,6 @@ def run_windows(steps, verbose):
         elif step.name == "clippy":
             command = shlex.split(CI_CLIPPY)  # the server build's clippy runs in CI (Linux)
         elif step.name.startswith("tests"):
-            command = shlex.split(step.command)
-        elif step.name == "tokens.css up to date":
             command = shlex.split(step.command)
         elif step.name == "launcher rustfmt":
             command = ["cargo", "fmt", "--check"]

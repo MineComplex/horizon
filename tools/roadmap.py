@@ -35,7 +35,6 @@ SITE_DATA = ROOT / "roadmap" / "roadmap.json"
 JOURNAL = ROOT / "roadmap" / "journal"
 WEEK = re.compile(r"(\d{4})-(\d{2})\.md$")
 REPO = "horizon-rust/horizon"
-SITE = "https://playhorizon.dev/hub"
 
 STATUSES = {
     "now": "Now",
@@ -202,8 +201,7 @@ def render(data):
         "",
         "What is being done on Horizon, what comes next and where you can help. There are no dates: things are"
         " Now, Next or Later. Each item is said in plain words, with the technical picture folded under it."
-        f" The same roadmap, with a Simple / Technical switch, the board, the journal and how to help, is on"
-        f" [playhorizon.dev/hub]({SITE}). Pull requests carry the `roadmap:<id>` label of their item.",
+        " Pull requests carry the `roadmap:<id>` label of their item.",
         "",
         "## At a glance",
         "",

@@ -57,16 +57,10 @@ and some are waiting for Ludovic:
   install by themselves, so the release run publishes it only after its smoke test passed (the game started and
   drew a world on the Mac mini) and only while no issue labelled `release-blocker` is open; otherwise nothing is
   published.
-- **Signed updates.** Each release carries a list of its files' checksums, signed with Horizon's release key. The
-  launcher (for the game and for itself) and `horizon-server update` check that signature against the public key
-  built into them, then check the download against the list. Anything unsigned, signed with another key, signed
-  for another version, or changed in any way is refused with a message saying why. Releases from before signing
-  stay installable, for going back to an older version, but only with the exact files they had when signing
-  began: their checksums are built into the launcher and the server too. The private key exists only as
-  a secret of GitHub's `release` environment, which only real releases from main can use. The job that signs runs
-  nothing from the repository but a short script calling OpenSSL, so no pull request can read the key by changing
-  the code that gets built. Nobody, Ludovic included, ever needs to see it.
-- **The release machinery needs Ludovic.** The workflows, the release and signing tools, the update-checking code
+- **Checked updates.** The game reaches players only through MineComplex's launcher, from the Backend's signed
+  client manifest: the launcher checks the manifest's signature and every file's SHA-256 before it installs
+  anything (the Launcher's `docs/security.md`). GitHub releases carry `SHA256SUMS` only, unsigned.
+- **The release machinery needs Ludovic.** The workflows, the release tools, the update-checking code
   and the installers are listed in `.github/CODEOWNERS`. Once main's protection requires code owners' reviews, a
   change to any of them waits for Ludovic's approval. Everything else still merges as soon as its checks pass.
 - **Agents get their own, smaller identity** (prepared, switched on by Ludovic). The `horizon-agent` GitHub App

@@ -91,5 +91,5 @@ Deprecations and breaking changes are in bold. The release notes of the game rel
 | Benchmark report | stable | `"version": 1` |
 | Telemetry batch and consent | stable | `"schema": 1`, consent `2` |
 | `horizon-graphics.txt`, `horizon-extras.txt` | preview | none |
-| `SHA256SUMS` and `SHA256SUMS.sig` | stable | |
+| `SHA256SUMS` | stable | |
 

@@ -105,7 +105,7 @@ class AllowTests(unittest.TestCase):
 
 class RefusalTests(unittest.TestCase):
     def test_what_codeowners_guards_is_refused(self):
-        for path in (".github/workflows/x.yml", "tools/ci/nightly.py", "crates/horizon-release-sign/src/lib.rs",
+        for path in (".github/workflows/x.yml", "tools/ci/nightly.py",
                      "crates/horizon-server/src/update.rs", "launcher/src/backend.rs", "launcher/links.json",
                      "launcher/src/signed.rs", "tools/release_train.py"):
             self.assertTrue(ns.guarded(path, PATTERNS), path)
