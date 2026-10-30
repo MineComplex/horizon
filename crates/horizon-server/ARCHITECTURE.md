@@ -12,8 +12,11 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
 ## Scope (decisions made by the user)
 
 - One crate, `horizon-server`; it depends on no other Horizon crate.
-- Ported: Leaf's NMS, Leaf/Gale/Purpur/Pufferfish/Lithium/Moonrise server code, the Bukkit/Paper API (same shape
-  for plugin authors, implemented directly on the server's own state, no CraftBukkit wrapper layer).
+- Ported: Leaf's NMS and Leaf/Gale/Purpur/Pufferfish/Lithium/Moonrise server code, as native Rust designs.
+- **No plugins yet.** Java plugin compatibility is not required: no JVM plugin loading, class loaders or
+  reflection. A native plugin system comes later, by a separate decision: none is chosen now (no WASM, no
+  dynamic native plugins, no plugin framework); the server core keeps clean module boundaries for it.
+  The Bukkit/Paper API is not ported for now; its event points in Leaf's code are noted, not implemented.
 - Not ported (no Java library is ported; Rust crates or code taken from azalea instead):
   JDK -> std/tokio/rayon/chrono/...; netty -> tokio + `azalea::buf`; Gson -> `serde_json`; JOML -> `glam`;
   Guava/fastutil/Caffeine -> std/`moka`; YAML configs -> `serde_yaml`; log4j/slf4j -> `log`;
@@ -28,7 +31,7 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
 ## What gets ported, and what never does
 
 Before porting a Java class, classify it: (1) Minecraft server code (NMS), (2) Paper/Leaf/Purpur/Gale/
-Pufferfish/Lithium/Moonrise patches and code, (3) the Bukkit/Paper API — these are ported, as native Rust
+Pufferfish/Lithium/Moonrise patches and code, (3) the Bukkit/Paper API (deferred, see Scope) — these are ported, as native Rust
 designs; (4) the JDK/JVM, (5) third-party libraries, shaded or relocated (netty, fastutil, Guava, Gson, Log4j,
 SLF4J, Apache Commons, Caffeine, JCTools, Brigadier, DFU, Adventure, ASM, ByteBuddy, Configurate, jline,
 joptsimple, Spottedleaf's concurrentutil...), (6) generated or build-time code — these are **never
@@ -46,7 +49,7 @@ and thread-safety; logging is `tracing`.
 | Path | Origin | Why it is here | Used by | Status |
 |---|---|---|---|---|
 | `src/azalea/buf` | azalea-buf (Rust) | protocol primitives (VarInt, strings, UUIDs) | network codecs (to come) | kept; stable-Rust edits: no specialization, no simdnbt, no backtrace capture |
-| `src/azalea/chat` | azalea-chat (Rust) | text components (Adventure's role) | chat, commands, API (to come) | kept |
+| `src/azalea/chat` | azalea-chat (Rust) | text components (Adventure's role) | chat, commands (to come) | kept |
 | `src/azalea/language` | azalea-language (Rust) | translations; `en_us.json` read at run time | chat | kept |
 | `src/azalea/crypto` | azalea-crypto (Rust) | login encryption, AES/CFB8 | network login (to come) | kept |
 | `src/azalea/brigadier` | azalea-brigadier (Rust) | command parsing/suggestions | commands (to come) | kept; must be checked against Minecraft's command semantics |
@@ -96,5 +99,5 @@ and thread-safety; logging is `tracing`.
 Modules follow the server's subsystems, not Java packages: `core` (positions, directions, shapes math),
 `util` (mth, random, noise), `nbt`, `resources` (identifiers, registries, data loading), `block`, `item`,
 `world` (level, chunk, storage, generation, lighting), `entity`, `network` (tokio transport, protocol,
-packets), `server` (tick loop, players, commands, config: server.properties, paper/leaf YAML), `api`
-(Bukkit/Paper API for plugins), `azalea` (taken code).
+packets), `server` (tick loop, players, commands, config: server.properties, paper/leaf YAML), `azalea`
+(taken code). The full porting rules from the user are in PORTING_RULES.md.
