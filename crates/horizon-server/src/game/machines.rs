@@ -992,6 +992,12 @@ impl crate::game::Server<'_> {
             }
             return Ok(());
         };
+        // BlockDispenseEvent: a cancelled dispense keeps the item inside.
+        if let Some(stack) = self.containers().get(&view, slot).cloned()
+            && !self.plugin_dispense(pos, &stack)
+        {
+            return Ok(());
+        }
         let Some(facing) = self
             .containers()
             .prop(state, "facing")

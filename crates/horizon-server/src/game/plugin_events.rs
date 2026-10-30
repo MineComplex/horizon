@@ -25,6 +25,9 @@ pub(super) struct Watch {
     world: String,
     level: i32,
     points: i32,
+    food: i32,
+    health: f32,
+    vehicle: Option<u32>,
 }
 
 /// A game stack as plugins see it.
@@ -149,6 +152,54 @@ impl crate::game::Server<'_> {
                 self.plugin_resync.push(conn);
                 true
             }
+            // START_DESTROY_BLOCK: the dig begins.
+            S::PlayerAction(a)
+                if a.action == 0 && self.plugins_listen::<ev::BlockDamageEvent>() =>
+            {
+                let held = net
+                    .hub
+                    .player(conn)
+                    .and_then(|g| g.inventory.get(g.selected).cloned().flatten());
+                let event = ev::BlockDamageEvent {
+                    player,
+                    block: self.plugin_block_in(&world, a.pos),
+                    item: held.as_ref().map(stack_ref),
+                    cancelled: false,
+                };
+                if self.plugin_allows(Some(net), event) {
+                    return false;
+                }
+                net.hub.ack(conn, a.sequence);
+                let state = self.world.block(a.pos[0], a.pos[1], a.pos[2]);
+                self.plugin_resend.push((conn, a.pos, state.0 as i32));
+                true
+            }
+            // The result slot of a crafting grid: CraftItemEvent.
+            S::ContainerClick(p)
+                if p.slot == 0
+                    && self.plugins_listen::<ev::CraftItemEvent>()
+                    && matches!(
+                        net.hub.menu_view(conn).0.as_str(),
+                        "minecraft:crafting" | "minecraft:inventory"
+                    )
+                    && net.hub.menu_slot_item(conn, &self.world, 0).is_some() =>
+            {
+                let (kind, _, size) = net.hub.menu_view(conn);
+                let Some(result) = net.hub.menu_slot_item(conn, &self.world, 0) else {
+                    return false;
+                };
+                let event = ev::CraftItemEvent {
+                    player,
+                    view: ev::InventoryView { kind, size },
+                    result: stack_ref(&result),
+                    cancelled: false,
+                };
+                if self.plugin_allows(Some(net), event) {
+                    return false;
+                }
+                net.hub.resend_menu(conn, &self.world);
+                true
+            }
             S::ContainerClick(p) if self.plugins_listen::<ev::InventoryClickEvent>() => {
                 let (kind, _, size) = net.hub.menu_view(conn);
                 let current = (p.slot >= 0)
@@ -223,6 +274,10 @@ impl crate::game::Server<'_> {
             || self.plugins_listen::<ev::PlayerChangedWorldEvent>()
             || self.plugins_listen::<ev::PlayerLevelChangeEvent>()
             || self.plugins_listen::<ev::PlayerExpChangeEvent>()
+            || self.plugins_listen::<ev::FoodLevelChangeEvent>()
+            || self.plugins_listen::<ev::EntityRegainHealthEvent>()
+            || self.plugins_listen::<ev::VehicleEnterEvent>()
+            || self.plugins_listen::<ev::VehicleExitEvent>()
     }
     /// Once a tick: `PlayerToggleSneakEvent`, `PlayerToggleSprintEvent`,
     /// `PlayerToggleFlightEvent` (cancelled: back as they were),
@@ -255,6 +310,9 @@ impl crate::game::Server<'_> {
                 world: g.dimension.clone(),
                 level: g.xp_level,
                 points: g.xp_total,
+                food: g.food,
+                health: g.health,
+                vehicle: g.vehicle,
             };
             let Some(before) = self.plugin_watched.insert(conn, now.clone()) else {
                 continue;
@@ -312,6 +370,49 @@ impl crate::game::Server<'_> {
                     from: before.world.clone(),
                 };
                 self.plugin_fire(Some(net), &mut e);
+            }
+            if before.food != now.food {
+                let e = ev::FoodLevelChangeEvent {
+                    player: player.clone(),
+                    food_level: now.food,
+                    cancelled: false,
+                };
+                if !self.plugin_allows(Some(net), e) {
+                    net.hub.players[i].food = before.food;
+                    if let Some(w) = self.plugin_watched.get_mut(&conn) {
+                        w.food = before.food;
+                    }
+                }
+            }
+            if now.health > before.health && before.health > 0.0 {
+                let entity_id = net.hub.players[i].entity_id;
+                let e = ev::EntityRegainHealthEvent {
+                    entity: api::EntityRef::of_player(entity_id, player.clone()),
+                    amount: f64::from(now.health - before.health),
+                    cancelled: false,
+                };
+                if !self.plugin_allows(Some(net), e) {
+                    net.hub.players[i].health = before.health;
+                    if let Some(w) = self.plugin_watched.get_mut(&conn) {
+                        w.health = before.health;
+                    }
+                }
+            }
+            if before.vehicle != now.vehicle {
+                if let Some(id) = before.vehicle {
+                    let mut e = ev::VehicleExitEvent {
+                        vehicle: self.plugin_entity(Some(net), id as i32),
+                        exited: player.clone(),
+                    };
+                    self.plugin_fire(Some(net), &mut e);
+                }
+                if let Some(id) = now.vehicle {
+                    let mut e = ev::VehicleEnterEvent {
+                        vehicle: self.plugin_entity(Some(net), id as i32),
+                        entered: player.clone(),
+                    };
+                    self.plugin_fire(Some(net), &mut e);
+                }
             }
             if before.points != now.points {
                 let mut e = ev::PlayerExpChangeEvent {
@@ -900,5 +1001,400 @@ impl crate::game::Server<'_> {
         }
         self.plugin_reverting = was;
         result
+    }
+}
+
+/// What the plugins last saw of a mob: its target and whether it was tame.
+pub(super) type MobWatch = (Option<crate::hc::mobs::Who>, bool);
+
+impl crate::game::Server<'_> {
+    /// Whether plugins hear of mobs' targets and taming.
+    fn plugins_watch_mobs(&self) -> bool {
+        self.plugins_listen::<ev::EntityTargetLivingEntityEvent>()
+            || self.plugins_listen::<ev::EntityTameEvent>()
+    }
+    /// The entity a mob's `who` names: another mob, or the player it sees.
+    fn plugin_who(&self, mob: u32, who: crate::hc::mobs::Who) -> Option<api::EntityRef> {
+        match who {
+            crate::hc::mobs::Who::Mob(id) => Some(self.plugin_entity(None, id as i32)),
+            crate::hc::mobs::Who::Player => {
+                let net = self.network.as_ref()?;
+                let conn = net.mob_players.get(&mob)?;
+                let g = net.hub.player(*conn)?;
+                Some(api::EntityRef::of_player(
+                    g.entity_id,
+                    crate::game::Server::plugin_player(g),
+                ))
+            }
+        }
+    }
+    /// Once a tick, after the mobs ticked: `EntityTargetLivingEntityEvent`
+    /// for each mob whose target changed and `EntityTameEvent` for each mob
+    /// tamed; cancelled ones go back.
+    pub(super) fn plugin_watch_mobs(&mut self) {
+        if !self.plugins_watch_mobs() {
+            self.plugin_mob_watch.clear();
+            return;
+        }
+        let dim = self.dim;
+        let live: std::collections::HashSet<u32> = self.mobs.iter().map(|m| m.id).collect();
+        self.plugin_mob_watch
+            .retain(|(d, id), _| *d != dim || live.contains(id));
+        let now: Vec<(u32, MobWatch)> = self
+            .mobs
+            .iter()
+            .filter(|m| m.alive())
+            .map(|m| (m.id, (m.ai.target, m.extra.tame)))
+            .collect();
+        for (id, (target, tame)) in now {
+            let Some((old_target, old_tame)) =
+                self.plugin_mob_watch.insert((dim, id), (target, tame))
+            else {
+                continue;
+            };
+            if old_target != target {
+                let event = ev::EntityTargetLivingEntityEvent {
+                    entity: self.plugin_entity(None, id as i32),
+                    target: target.and_then(|t| self.plugin_who(id, t)),
+                    cancelled: false,
+                };
+                if !self.plugin_allows(None, event)
+                    && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
+                {
+                    m.ai.target = old_target;
+                    self.plugin_mob_watch.insert((dim, id), (old_target, tame));
+                }
+            }
+            if tame && !old_tame {
+                let owner = self
+                    .mobs
+                    .iter()
+                    .find(|m| m.id == id)
+                    .and_then(|m| m.extra.owner)
+                    .map(crate::hc::server_net::playerdata::ints_uuid)
+                    .and_then(|uuid| self.plugin_seen.iter().find(|p| p.uuid == uuid).cloned());
+                let event = ev::EntityTameEvent {
+                    entity: self.plugin_entity(None, id as i32),
+                    owner,
+                    cancelled: false,
+                };
+                if !self.plugin_allows(None, event)
+                    && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
+                {
+                    crate::hc::mobs::tame::set_tame(m, false);
+                    m.extra.owner = None;
+                    let target = m.ai.target;
+                    self.plugin_mob_watch.insert((dim, id), (target, false));
+                }
+            }
+        }
+    }
+    /// The entity that shot or threw projectile `p`.
+    fn plugin_shooter(&self, p: &crate::hc::projectiles::Projectile) -> Option<api::EntityRef> {
+        if let Some(conn) = p.player {
+            let net = self.network.as_ref()?;
+            let g = net.hub.player(conn)?;
+            return Some(api::EntityRef::of_player(
+                g.entity_id,
+                crate::game::Server::plugin_player(g),
+            ));
+        }
+        match p.owner? {
+            crate::hc::mobs::Who::Mob(id) => Some(self.plugin_entity(None, id as i32)),
+            crate::hc::mobs::Who::Player => None,
+        }
+    }
+    /// Before the projectiles tick: `ProjectileLaunchEvent` for each one new
+    /// since the last; cancelled ones are removed.
+    pub(super) fn plugin_projectiles_launched(&mut self) {
+        if !self.plugins_listen::<ev::ProjectileLaunchEvent>() {
+            self.plugin_projectiles_seen.clear();
+            return;
+        }
+        let dim = self.dim;
+        let live: std::collections::HashSet<u32> =
+            self.creatures.projectiles.iter().map(|p| p.id).collect();
+        self.plugin_projectiles_seen
+            .retain(|(d, id)| *d != dim || live.contains(id));
+        let fresh: Vec<crate::hc::projectiles::Projectile> = self
+            .creatures
+            .projectiles
+            .iter()
+            .filter(|p| p.id != 0 && !self.plugin_projectiles_seen.contains(&(dim, p.id)))
+            .cloned()
+            .collect();
+        let mut removed = Vec::new();
+        for p in fresh {
+            self.plugin_projectiles_seen.insert((dim, p.id));
+            let event = ev::ProjectileLaunchEvent {
+                entity: self.plugin_entity(None, p.id as i32),
+                shooter: self.plugin_shooter(&p),
+                cancelled: false,
+            };
+            if !self.plugin_allows(None, event) {
+                removed.push(p.id);
+            }
+        }
+        if !removed.is_empty() {
+            self.creatures
+                .projectiles
+                .retain(|p| !removed.contains(&p.id));
+        }
+    }
+    /// A projectile hit something: `ProjectileHitEvent`. False when a plugin
+    /// cancelled what the hit does.
+    pub(super) fn plugin_projectile_hit(
+        &mut self,
+        p: &crate::hc::projectiles::Projectile,
+        hit: crate::hc::projectiles::Hit,
+        victim: Option<u32>,
+    ) -> bool {
+        use crate::hc::projectiles::Hit;
+        if !self.plugins_listen::<ev::ProjectileHitEvent>() || matches!(hit, Hit::None) {
+            return true;
+        }
+        let (hit_block, hit_entity) = match hit {
+            Hit::Block { pos, .. } => (Some(self.plugin_block(pos)), None),
+            Hit::Entity { who, .. } => {
+                let entity = match (victim, who) {
+                    (Some(conn), _) => self.network.as_ref().and_then(|net| {
+                        let g = net.hub.player(conn)?;
+                        Some(api::EntityRef::of_player(
+                            g.entity_id,
+                            crate::game::Server::plugin_player(g),
+                        ))
+                    }),
+                    (None, crate::hc::mobs::Who::Mob(id)) => {
+                        Some(self.plugin_entity(None, id as i32))
+                    }
+                    (None, crate::hc::mobs::Who::Player) => None,
+                };
+                (None, entity)
+            }
+            Hit::None => (None, None),
+        };
+        let mut entity = self.plugin_entity(None, p.id as i32);
+        if entity.kind.is_empty() {
+            entity.kind = p.kind.id().to_owned();
+            entity.location =
+                Location::new(self.dim.id(), p.position.x, p.position.y, p.position.z);
+        }
+        let event = ev::ProjectileHitEvent {
+            entity,
+            shooter: self.plugin_shooter(p),
+            hit_block,
+            hit_entity,
+            cancelled: false,
+        };
+        self.plugin_allows(None, event)
+    }
+    /// A dropped item about to come into the world at `at`: `ItemSpawnEvent`.
+    /// False when cancelled.
+    pub(super) fn plugin_item_spawn(&mut self, stack: &ItemStack, at: [f64; 3]) -> bool {
+        if !self.plugins_listen::<ev::ItemSpawnEvent>() {
+            return true;
+        }
+        let event = ev::ItemSpawnEvent {
+            item: stack_ref(stack),
+            location: Location::new(self.dim.id(), at[0], at[1], at[2]),
+            cancelled: false,
+        };
+        self.plugin_allows(None, event)
+    }
+    /// The dispenser or dropper at `pos` is about to dispense `stack`:
+    /// `BlockDispenseEvent`. False when cancelled.
+    pub(super) fn plugin_dispense(&mut self, pos: Pos, stack: &ItemStack) -> bool {
+        if !self.plugins_listen::<ev::BlockDispenseEvent>() {
+            return true;
+        }
+        let event = ev::BlockDispenseEvent {
+            block: self.plugin_level_block(pos),
+            item: stack_ref(stack),
+            cancelled: false,
+        };
+        self.plugin_allows(None, event)
+    }
+    /// The animals `parent` and `partner` are about to breed:
+    /// `EntityBreedEvent`. False when cancelled.
+    pub(super) fn plugin_breed(&mut self, parent: u32, partner: u32, by: Option<[i32; 4]>) -> bool {
+        if !self.plugins_listen::<ev::EntityBreedEvent>() {
+            return true;
+        }
+        let breeder = by
+            .map(crate::hc::server_net::playerdata::ints_uuid)
+            .and_then(|uuid| self.plugin_seen.iter().find(|p| p.uuid == uuid).cloned());
+        let event = ev::EntityBreedEvent {
+            mother: self.plugin_entity(None, parent as i32),
+            father: self.plugin_entity(None, partner as i32),
+            breeder,
+            cancelled: false,
+        };
+        self.plugin_allows(None, event)
+    }
+    /// The player whose turn it is is about to shear the mob `id`:
+    /// `PlayerShearEntityEvent`. False when cancelled.
+    pub(super) fn plugin_shear(&mut self, id: u32) -> bool {
+        if !self.plugins_listen::<ev::PlayerShearEntityEvent>() {
+            return true;
+        }
+        let Some(player) = self.plugin_acting() else {
+            return true;
+        };
+        let event = ev::PlayerShearEntityEvent {
+            player,
+            entity: self.plugin_entity(None, id as i32),
+            cancelled: false,
+        };
+        let allowed = self.plugin_allows(None, event);
+        if !allowed {
+            self.plugin_resync_acting();
+        }
+        allowed
+    }
+    /// The player whose turn it is casts or reels in their rod:
+    /// `PlayerFishEvent`. False when cancelled.
+    pub(super) fn plugin_fish(&mut self, state: ev::FishState, caught: Option<u32>) -> bool {
+        if !self.plugins_listen::<ev::PlayerFishEvent>() {
+            return true;
+        }
+        let Some(player) = self.plugin_acting() else {
+            return true;
+        };
+        let event = ev::PlayerFishEvent {
+            player,
+            state,
+            caught: caught.map(|id| self.plugin_entity(None, id as i32)),
+            cancelled: false,
+        };
+        let allowed = self.plugin_allows(None, event);
+        if !allowed {
+            self.plugin_resync_acting();
+        }
+        allowed
+    }
+    /// The player of `conn` is about to enchant `item` with the offer
+    /// `button`: `EnchantItemEvent`. False when cancelled.
+    pub(super) fn plugin_enchant(
+        &mut self,
+        net: &Network,
+        conn: u32,
+        item: &ItemStack,
+        button: usize,
+    ) -> bool {
+        if !self.plugins_listen::<ev::EnchantItemEvent>() {
+            return true;
+        }
+        let Some(player) = Self::plugin_player_of(net, conn) else {
+            return true;
+        };
+        let event = ev::EnchantItemEvent {
+            player,
+            item: stack_ref(item),
+            button: button as u8,
+            level_cost: button as i32 + 1,
+            cancelled: false,
+        };
+        self.plugin_allows(Some(net), event)
+    }
+    /// The player of `conn` saved a book: `PlayerEditBookEvent`. The pages
+    /// and title to write, or None when cancelled.
+    pub(super) fn plugin_edit_book(
+        &mut self,
+        net: &Network,
+        conn: u32,
+        pages: Vec<String>,
+        title: Option<String>,
+    ) -> Option<(Vec<String>, Option<String>)> {
+        if !self.plugins_listen::<ev::PlayerEditBookEvent>() {
+            return Some((pages, title));
+        }
+        let Some(player) = Self::plugin_player_of(net, conn) else {
+            return Some((pages, title));
+        };
+        let mut event = ev::PlayerEditBookEvent {
+            player,
+            pages,
+            title,
+            cancelled: false,
+        };
+        self.plugin_fire(Some(net), &mut event);
+        if event.cancelled {
+            self.plugin_resync.push(conn);
+            return None;
+        }
+        Some((event.pages, event.title))
+    }
+    /// The player of `conn` is about to go through a portal to `to`:
+    /// `PlayerPortalEvent`. False when cancelled.
+    pub(super) fn plugin_portal(&mut self, net: &Network, conn: u32, to: &str) -> bool {
+        if !self.plugins_listen::<ev::PlayerPortalEvent>() {
+            return true;
+        }
+        let Some(player) = Self::plugin_player_of(net, conn) else {
+            return true;
+        };
+        let event = ev::PlayerPortalEvent {
+            from: player.location.clone(),
+            player,
+            to_world: to.to_owned(),
+            cancelled: false,
+        };
+        self.plugin_allows(Some(net), event)
+    }
+    /// Once a tick in each level: `WeatherChangeEvent` and
+    /// `ThunderChangeEvent` for what the weather did since the last; a
+    /// cancelled change is taken back.
+    pub(super) fn plugin_watch_weather(&mut self) {
+        let listens = self.plugins_listen::<ev::WeatherChangeEvent>()
+            || self.plugins_listen::<ev::ThunderChangeEvent>();
+        let dim = self.dim;
+        let now = (self.world.weather.raining, self.world.weather.thundering);
+        let Some(before) = self.plugin_weather.insert(dim, now) else {
+            return;
+        };
+        if !listens || before == now {
+            return;
+        }
+        let world = dim.id().to_owned();
+        if before.0 != now.0 {
+            let event = ev::WeatherChangeEvent {
+                world: world.clone(),
+                to_raining: now.0,
+                cancelled: false,
+            };
+            if !self.plugin_allows(None, event) {
+                self.world.weather.raining = before.0;
+            }
+        }
+        if before.1 != now.1 {
+            let event = ev::ThunderChangeEvent {
+                world,
+                to_thundering: now.1,
+                cancelled: false,
+            };
+            if !self.plugin_allows(None, event) {
+                self.world.weather.thundering = before.1;
+            }
+        }
+        let kept = (self.world.weather.raining, self.world.weather.thundering);
+        self.plugin_weather.insert(dim, kept);
+    }
+    /// The level is being saved: `WorldSaveEvent`.
+    pub(super) fn plugin_world_save(&mut self) {
+        if !self.plugins_listen::<ev::WorldSaveEvent>() {
+            return;
+        }
+        let mut event = ev::WorldSaveEvent {
+            world: self.dim.id().to_owned(),
+        };
+        self.plugin_fire(None, &mut event);
+    }
+    /// The server finished starting: `ServerLoadEvent`.
+    pub(super) fn plugin_server_loaded(&mut self) {
+        if !self.plugins_listen::<ev::ServerLoadEvent>() {
+            return;
+        }
+        let mut event = ev::ServerLoadEvent;
+        self.plugin_fire(None, &mut event);
     }
 }

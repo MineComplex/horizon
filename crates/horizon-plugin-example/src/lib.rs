@@ -5,6 +5,7 @@
 //! - diamonds nobody throws away, and a line when a player's game mode changes;
 //! - no fall damage for players: a line instead;
 //! - a line for each teleport, no phantoms, a line when a mob dies, explosions that break no blocks;
+//! - nobody goes hungry, no rain, and a log line once the server has started;
 //! - chat: `!` at the start shouts (gold, to everyone), `/mute` silences a player;
 //! - `/hello [name]`, `/heal` (operators: full food, a golden apple), `/mute <player>`;
 //! - every 5 minutes, a tip to everyone.
@@ -12,8 +13,9 @@ use horizon_server_api::{
     ItemStack, Plugin, PluginDescription, Plugins,
     event::{
         BlockBreakEvent, BlockPlaceEvent, CreatureSpawnEvent, EntityDamageEvent, EntityDeathEvent,
-        EntityExplodeEvent, EventPriority, PlayerChatEvent, PlayerDeathEvent, PlayerDropItemEvent,
-        PlayerGameModeChangeEvent, PlayerJoinEvent, PlayerTeleportEvent,
+        EntityExplodeEvent, EventPriority, FoodLevelChangeEvent, PlayerChatEvent, PlayerDeathEvent,
+        PlayerDropItemEvent, PlayerGameModeChangeEvent, PlayerJoinEvent, PlayerTeleportEvent,
+        ServerLoadEvent, WeatherChangeEvent,
     },
 };
 use std::{
@@ -124,6 +126,32 @@ impl Plugin for Example {
             false,
             |e: &mut EntityExplodeEvent, _| {
                 e.blocks.clear();
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut FoodLevelChangeEvent, _| {
+                if e.food_level < 20 {
+                    e.cancelled = true;
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut WeatherChangeEvent, server| {
+                if e.to_raining {
+                    e.cancelled = true;
+                    server.broadcast("§7Rain stays away.");
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Monitor,
+            false,
+            |_: &mut ServerLoadEvent, server| {
+                server.log("Server loaded.");
             },
         );
         let muted = self.muted.clone();

@@ -16,6 +16,9 @@ Checks, from the client's side:
   spawn     CreatureSpawnEvent: a summoned phantom never comes, a pig does
   death     EntityDeathEvent: a killed pig is announced
   explode   EntityExplodeEvent: TNT breaks no blocks
+  loaded    ServerLoadEvent: the plugin's line in the log once the server started
+  hunger    FoodLevelChangeEvent: a survival player under Hunger 255 keeps 20 food
+  weather   WeatherChangeEvent: /weather rain is taken back, and everyone is told
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -191,6 +194,25 @@ def main():
                     block = ctl('block', bx + dx, y - 1, z + dz)['block']
                     assert block == 'minecraft:stone', f'({bx + dx}, {y - 1}, {z + dz}) is {block}'
         check('explode', explode)
+
+        def loaded():
+            log = server_log.read_text(errors='replace')
+            assert '[Example] Server loaded.' in log, log[-2000:]
+        check('loaded', loaded)
+
+        def hunger():
+            ctl('command', 'gamemode survival')
+            ctl('command', 'effect give @s minecraft:hunger 10 255')
+            ctl('wait', 80)
+            food = ctl('state')['player']['food']
+            assert food == 20, f'food went down to {food}'
+            ctl('command', 'effect clear @s')
+        check('hunger', hunger)
+
+        def weather():
+            ctl('command', 'weather rain')
+            chat_until('Rain stays away.')
+        check('weather', weather)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60

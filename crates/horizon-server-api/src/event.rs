@@ -763,3 +763,259 @@ pub struct InventoryCloseEvent {
     pub view: InventoryView,
 }
 event!(InventoryCloseEvent, "InventoryCloseEvent");
+
+// ---------------------------------------------------------------------------
+// More of org.bukkit.event.player
+
+/// `FoodLevelChangeEvent`: a player's food level changed to `food_level`
+/// (eating, hunger; seen once a tick). Cancelling puts the old one back.
+#[derive(Clone, Debug)]
+pub struct FoodLevelChangeEvent {
+    pub player: PlayerRef,
+    pub food_level: i32,
+    pub cancelled: bool,
+}
+cancellable!(FoodLevelChangeEvent, "FoodLevelChangeEvent");
+
+/// `PlayerFishEvent.State`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FishState {
+    /// The rod was cast.
+    Fishing,
+    /// A fish bit and was pulled in.
+    CaughtFish,
+    /// An entity on the hook was pulled.
+    CaughtEntity,
+    /// Reeled in with nothing.
+    ReelIn,
+}
+
+/// `PlayerFishEvent`: a player casts or reels in a fishing rod. Cancelling
+/// keeps the hook as it was (no cast, no catch).
+#[derive(Clone, Debug)]
+pub struct PlayerFishEvent {
+    pub player: PlayerRef,
+    pub state: FishState,
+    /// The entity on the hook (`CaughtEntity`).
+    pub caught: Option<EntityRef>,
+    pub cancelled: bool,
+}
+cancellable!(PlayerFishEvent, "PlayerFishEvent");
+
+/// `PlayerEditBookEvent`: a player saved a book and quill (`title` set: they
+/// signed it). Changing `pages` or `title` writes those; cancelling keeps
+/// the book as it was.
+#[derive(Clone, Debug)]
+pub struct PlayerEditBookEvent {
+    pub player: PlayerRef,
+    pub pages: Vec<String>,
+    pub title: Option<String>,
+    pub cancelled: bool,
+}
+cancellable!(PlayerEditBookEvent, "PlayerEditBookEvent");
+
+/// `PlayerPortalEvent`: a player is about to go through a portal from
+/// `from` to the level `to_world`. Cancelling keeps them here.
+#[derive(Clone, Debug)]
+pub struct PlayerPortalEvent {
+    pub player: PlayerRef,
+    pub from: Location,
+    pub to_world: World,
+    pub cancelled: bool,
+}
+cancellable!(PlayerPortalEvent, "PlayerPortalEvent");
+
+/// `PlayerShearEntityEvent`: a player is about to shear a sheep, a
+/// mooshroom, a snow golem or a bogged. Cancelling keeps its wool.
+#[derive(Clone, Debug)]
+pub struct PlayerShearEntityEvent {
+    pub player: PlayerRef,
+    pub entity: EntityRef,
+    pub cancelled: bool,
+}
+cancellable!(PlayerShearEntityEvent, "PlayerShearEntityEvent");
+
+// ---------------------------------------------------------------------------
+// More of org.bukkit.event.block
+
+/// `BlockDamageEvent`: a player starts digging `block` with `item`.
+/// Cancelling stops the dig.
+#[derive(Clone, Debug)]
+pub struct BlockDamageEvent {
+    pub player: PlayerRef,
+    pub block: Block,
+    pub item: Option<ItemStack>,
+    pub cancelled: bool,
+}
+cancellable!(BlockDamageEvent, "BlockDamageEvent");
+
+/// `BlockDispenseEvent`: the dispenser or dropper `block` is about to
+/// dispense `item`. Cancelling keeps it inside.
+#[derive(Clone, Debug)]
+pub struct BlockDispenseEvent {
+    pub block: Block,
+    pub item: ItemStack,
+    pub cancelled: bool,
+}
+cancellable!(BlockDispenseEvent, "BlockDispenseEvent");
+
+// ---------------------------------------------------------------------------
+// More of org.bukkit.event.entity
+
+/// `EntityRegainHealthEvent`: a player's health went up by `amount`
+/// (regeneration, food, potions; seen once a tick). Cancelling takes it back.
+#[derive(Clone, Debug)]
+pub struct EntityRegainHealthEvent {
+    pub entity: EntityRef,
+    pub amount: f64,
+    pub cancelled: bool,
+}
+cancellable!(EntityRegainHealthEvent, "EntityRegainHealthEvent");
+
+/// `EntityTargetLivingEntityEvent` (`EntityTargetEvent`): a mob chose
+/// `target` (None: it forgot its target). Seen once a tick; cancelling puts
+/// the old target back.
+#[derive(Clone, Debug)]
+pub struct EntityTargetLivingEntityEvent {
+    pub entity: EntityRef,
+    pub target: Option<EntityRef>,
+    pub cancelled: bool,
+}
+cancellable!(
+    EntityTargetLivingEntityEvent,
+    "EntityTargetLivingEntityEvent"
+);
+
+/// `EntityTameEvent`: a wolf, cat, parrot, horse... was tamed by the player
+/// `owner` (seen once a tick). Cancelling makes it wild again.
+#[derive(Clone, Debug)]
+pub struct EntityTameEvent {
+    pub entity: EntityRef,
+    pub owner: Option<PlayerRef>,
+    pub cancelled: bool,
+}
+cancellable!(EntityTameEvent, "EntityTameEvent");
+
+/// `EntityBreedEvent`: two animals in love are about to make a baby
+/// (`breeder`: the player who fed them). Cancelling makes none.
+#[derive(Clone, Debug)]
+pub struct EntityBreedEvent {
+    pub mother: EntityRef,
+    pub father: EntityRef,
+    pub breeder: Option<PlayerRef>,
+    pub cancelled: bool,
+}
+cancellable!(EntityBreedEvent, "EntityBreedEvent");
+
+/// `ProjectileLaunchEvent`: an arrow, trident, snowball, egg, pearl, potion,
+/// wind charge or fireball came into the world (`shooter`: who threw or shot
+/// it). Cancelling removes it.
+#[derive(Clone, Debug)]
+pub struct ProjectileLaunchEvent {
+    pub entity: EntityRef,
+    pub shooter: Option<EntityRef>,
+    pub cancelled: bool,
+}
+cancellable!(ProjectileLaunchEvent, "ProjectileLaunchEvent");
+
+/// `ProjectileHitEvent`: a projectile hit a block or an entity. Cancelling
+/// skips what the hit would do (no damage, no pearl teleport, no splash).
+#[derive(Clone, Debug)]
+pub struct ProjectileHitEvent {
+    pub entity: EntityRef,
+    pub shooter: Option<EntityRef>,
+    pub hit_block: Option<Block>,
+    pub hit_entity: Option<EntityRef>,
+    pub cancelled: bool,
+}
+cancellable!(ProjectileHitEvent, "ProjectileHitEvent");
+
+/// `ItemSpawnEvent`: a dropped item is about to come into the world.
+/// Cancelling keeps it out.
+#[derive(Clone, Debug)]
+pub struct ItemSpawnEvent {
+    pub item: ItemStack,
+    pub location: Location,
+    pub cancelled: bool,
+}
+cancellable!(ItemSpawnEvent, "ItemSpawnEvent");
+
+// ---------------------------------------------------------------------------
+// More of org.bukkit.event.inventory and enchantment
+
+/// `CraftItemEvent`: a player takes `result` out of a crafting grid.
+/// Cancelling leaves it there.
+#[derive(Clone, Debug)]
+pub struct CraftItemEvent {
+    pub player: PlayerRef,
+    pub view: InventoryView,
+    pub result: ItemStack,
+    pub cancelled: bool,
+}
+cancellable!(CraftItemEvent, "CraftItemEvent");
+
+/// `EnchantItemEvent`: a player is about to enchant `item` at an enchanting
+/// table with the offer `button` (0..3), costing `level_cost` levels.
+/// Cancelling enchants nothing.
+#[derive(Clone, Debug)]
+pub struct EnchantItemEvent {
+    pub player: PlayerRef,
+    pub item: ItemStack,
+    pub button: u8,
+    pub level_cost: i32,
+    pub cancelled: bool,
+}
+cancellable!(EnchantItemEvent, "EnchantItemEvent");
+
+// ---------------------------------------------------------------------------
+// org.bukkit.event.vehicle, weather, world, server
+
+/// `VehicleEnterEvent`: a player got on `vehicle` (a boat, a minecart, a
+/// horse...; seen once a tick).
+#[derive(Clone, Debug)]
+pub struct VehicleEnterEvent {
+    pub vehicle: EntityRef,
+    pub entered: PlayerRef,
+}
+event!(VehicleEnterEvent, "VehicleEnterEvent");
+
+/// `VehicleExitEvent`: a player got off `vehicle` (seen once a tick).
+#[derive(Clone, Debug)]
+pub struct VehicleExitEvent {
+    pub vehicle: EntityRef,
+    pub exited: PlayerRef,
+}
+event!(VehicleExitEvent, "VehicleExitEvent");
+
+/// `WeatherChangeEvent`: rain starts (`to_raining`) or stops in `world`.
+/// Cancelling keeps the weather as it was.
+#[derive(Clone, Debug)]
+pub struct WeatherChangeEvent {
+    pub world: World,
+    pub to_raining: bool,
+    pub cancelled: bool,
+}
+cancellable!(WeatherChangeEvent, "WeatherChangeEvent");
+
+/// `ThunderChangeEvent`: a thunderstorm starts or stops in `world`.
+/// Cancelling keeps the weather as it was.
+#[derive(Clone, Debug)]
+pub struct ThunderChangeEvent {
+    pub world: World,
+    pub to_thundering: bool,
+    pub cancelled: bool,
+}
+cancellable!(ThunderChangeEvent, "ThunderChangeEvent");
+
+/// `WorldSaveEvent`: `world` is being saved.
+#[derive(Clone, Debug)]
+pub struct WorldSaveEvent {
+    pub world: World,
+}
+event!(WorldSaveEvent, "WorldSaveEvent");
+
+/// `ServerLoadEvent`: the server finished starting (the plugins are enabled,
+/// the worlds loaded, the players may join).
+#[derive(Clone, Debug, Default)]
+pub struct ServerLoadEvent;
+event!(ServerLoadEvent, "ServerLoadEvent");

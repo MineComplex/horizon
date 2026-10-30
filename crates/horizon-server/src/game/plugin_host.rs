@@ -91,6 +91,7 @@ impl crate::game::Server<'_> {
         }
         self.plugins = Some(net);
         self.plugin_log();
+        self.plugin_server_loaded();
     }
     /// `onDisable` as the server stops, with what they still asked for.
     pub(super) fn plugins_disable(&mut self) {

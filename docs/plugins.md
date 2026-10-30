@@ -100,6 +100,11 @@ cannot be cancelled.
 | `PlayerExpChangeEvent`, `PlayerLevelChangeEvent` | experience points or levels changed (once a tick) | |
 | `PlayerAdvancementDoneEvent` | a player completed an advancement | |
 | `PlayerResourcePackStatusEvent` | the client answered a resource pack | |
+| `FoodLevelChangeEvent` | the food level changed (once a tick) | `cancelled` (the old level is put back) |
+| `PlayerFishEvent` | a rod is cast or reeled in (`Fishing`, `CaughtFish`, `CaughtEntity`, `ReelIn`) | `cancelled` |
+| `PlayerEditBookEvent` | a book and quill is saved or signed | `pages`, `title`, `cancelled` |
+| `PlayerPortalEvent` | a player is about to go through a portal | `cancelled` |
+| `PlayerShearEntityEvent` | a sheep, mooshroom, snow golem or bogged is about to be sheared | `cancelled` |
 
 **Block**
 
@@ -114,6 +119,8 @@ cannot be cancelled.
 | `BlockSpreadEvent` | grass, mycelium, vines, mushrooms or fire spread | `cancelled` |
 | `BlockFormEvent` | snow, ice; stone, cobblestone, obsidian or basalt where lava meets water | `cancelled` |
 | `BlockFadeEvent` | ice or snow melting, coral dying, fire going out, grass or farmland to dirt | `cancelled` |
+| `BlockDamageEvent` | a player starts digging a block | `cancelled` |
+| `BlockDispenseEvent` | a dispenser or dropper is about to dispense | `cancelled` (the item stays inside) |
 | `BlockFertilizeEvent` | bone meal is about to be used (a player's or a dispenser's) | `cancelled` (the meal stays) |
 | `LeavesDecayEvent` | leaves are about to decay | `cancelled` |
 | `BlockBurnEvent` | fire is about to burn a block away | `cancelled` |
@@ -126,6 +133,13 @@ cannot be cancelled.
 | `CreatureSpawnEvent` | a mob is about to come into the world (natural, chunk generation, spawner, command or spawn egg, raid, patrol, golems built) | `cancelled` |
 | `EntityDeathEvent` | a mob died | |
 | `EntityExplodeEvent` | an explosion is about to break blocks and hurt | `blocks` (those removed are spared), `cancelled` |
+| `EntityRegainHealthEvent` | a player's health went up (once a tick) | `cancelled` (taken back) |
+| `EntityTargetLivingEntityEvent` | a mob chose or dropped its target (once a tick) | `cancelled` (the old target back) |
+| `EntityTameEvent` | a mob was tamed (once a tick) | `cancelled` (wild again) |
+| `EntityBreedEvent` | two animals are about to make a baby | `cancelled` |
+| `ProjectileLaunchEvent` | a projectile came into the world (once a tick) | `cancelled` (removed) |
+| `ProjectileHitEvent` | a projectile hit a block or an entity | `cancelled` (the hit does nothing) |
+| `ItemSpawnEvent` | a dropped item is about to come into the world | `cancelled` |
 
 **Inventory and server**
 
@@ -134,6 +148,12 @@ cannot be cancelled.
 | `InventoryOpenEvent` | a container, a workstation, a crafting table or trades are about to open | `cancelled` |
 | `InventoryClickEvent` | a click in a menu (the player's own inventory too) | `cancelled` (the menu is sent again) |
 | `InventoryCloseEvent` | a menu closed | |
+| `CraftItemEvent` | the result is taken out of a crafting grid | `cancelled` (the menu is sent again) |
+| `EnchantItemEvent` | an item is about to be enchanted at a table | `cancelled` |
+| `VehicleEnterEvent`, `VehicleExitEvent` | a player got on or off a boat, minecart or mount (once a tick) | |
+| `WeatherChangeEvent`, `ThunderChangeEvent` | rain or a thunderstorm starts or stops | `cancelled` (the weather goes back) |
+| `WorldSaveEvent` | a level is being saved | |
+| `ServerLoadEvent` | the server finished starting | |
 | `ServerCommandEvent` | a console command | `command`, `cancelled` |
 
 While a plugin listens to `EntityDamageEvent`, the damage of the surroundings (fire, lava, falls, drowning,
@@ -141,15 +161,16 @@ suffocation, the void, freezing, cactus, magma) is held back in the tick and dea
 (`defer_env_damage` on `PlayerMotion` and `MobWorld`); without one, it is dealt in vanilla's order. Blocks
 growing, decaying and burning, pistons and fluids go one at a time while their events have listeners.
 
-Not yet: hunger (`FoodLevelChangeEvent`), projectiles (`ProjectileLaunchEvent`, `ProjectileHitEvent`), mobs
-choosing targets (`EntityTargetEvent`), crafting, enchanting and anvils (`CraftItemEvent`, `EnchantItemEvent`,
-`PrepareAnvilEvent`), vehicles, weather and the world's chunks (`WeatherChangeEvent`, `ChunkLoadEvent`),
-redstone (`BlockRedstoneEvent`), dispensers (`BlockDispenseEvent`), ignition (`BlockIgniteEvent`).
+Not yet: redstone currents (`BlockRedstoneEvent`), fire
+lit by players and lightning (`BlockIgniteEvent`), anvils, smithing, furnaces and brewing (`PrepareAnvilEvent`,
+`FurnaceSmeltEvent`, `BrewEvent`), the world's chunks (`ChunkLoadEvent`, `ChunkUnloadEvent`), mobs picking
+up items or changing blocks (`EntityPickupItemEvent`, `EntityChangeBlockEvent`), statistics, recipes
+discovered and arm swings.
 
 ## Tests
 
 `cargo test -p horizon-server-api` (the manager: load order, priorities, cancellation, commands, timers,
 panics) and `python3 tools/test_plugins_e2e.py` (a horizon-server built with the example plugin and a
 horizon-client on it: join, commands, `/plugins`, chat, a cancelled break, a kept diamond, the game mode line,
-a fall that hurts nothing, a teleport's cause, a cancelled phantom, a mob's death, TNT that breaks no blocks,
-enable and disable in the log).
+a fall that hurts nothing, a teleport's cause, a cancelled phantom, a mob's death, TNT that breaks no blocks, the server-loaded line,
+food that never drops, rain taken back, enable and disable in the log).

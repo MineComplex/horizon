@@ -36,6 +36,6 @@ scripts that start the client themselves.
 
 ## Next
 
-- The plugin events still missing: hunger, projectiles, targets, crafting and enchanting, vehicles, weather,
-  chunks, redstone ([plugins.md](plugins.md)).
+- The plugin events still missing: redstone, ignition, anvils, furnaces and brewing, chunks
+  ([plugins.md](plugins.md)).
 - Leaf's touches: the `world_nether` / `world_the_end` layout, `/tps`, `/version`.

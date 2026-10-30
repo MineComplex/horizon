@@ -321,6 +321,10 @@ impl crate::game::Server<'_> {
         let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
+        // PlayerPortalEvent: a cancelled trip keeps the player here.
+        if !self.plugin_portal(net, conn, target.id()) {
+            return;
+        }
         let g = &net.hub.players[i];
         let from = Vec3::new(g.position[0], g.position[1], g.position[2]);
         let yaw = g.yaw;

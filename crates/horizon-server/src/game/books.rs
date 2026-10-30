@@ -61,9 +61,11 @@ impl crate::game::Server<'_> {
         if !((0..9).contains(&p.slot) || p.slot == super::shield::OFFHAND_SLOT as i32) {
             return;
         }
-        self.as_player(net, conn, |g| {
-            g.write_book(p.slot as usize, p.pages, p.title)
-        });
+        // PlayerEditBookEvent: a plugin may change the pages or keep the book.
+        let Some((pages, title)) = self.plugin_edit_book(net, conn, p.pages, p.title) else {
+            return;
+        };
+        self.as_player(net, conn, |g| g.write_book(p.slot as usize, pages, title));
     }
     fn set_lectern_powered(&mut self, key: (i32, i32, i32), powered: bool) {
         self.set_lectern_property(key, "powered", powered);

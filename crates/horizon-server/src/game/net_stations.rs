@@ -307,6 +307,10 @@ impl crate::game::Server<'_> {
             return;
         };
         let need = button as i32 + 1;
+        // EnchantItemEvent: a cancelled one enchants nothing.
+        if !self.plugin_enchant(net, conn, &item, button) {
+            return;
+        }
         // Player.onEnchantmentPerformed, and EnchantmentMenu's awardStat(ENCHANT_ITEM).
         self.as_player(net, conn, |game| {
             game.give_levels(-need);

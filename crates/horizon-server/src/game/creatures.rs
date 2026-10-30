@@ -673,6 +673,8 @@ impl crate::game::Server<'_> {
         // EntityDamageEvent for the damage the surroundings dealt in the
         // mob ticks, held back while plugins listen.
         self.plugin_mob_env_damage(&mut dead);
+        // EntityTargetLivingEntityEvent and EntityTameEvent for what the mobs did.
+        self.plugin_watch_mobs();
         // ... and entity event 60 goes out as it is: the poof.
         for (id, at, width, height) in gone {
             let at = [at.x, at.y, at.z];
@@ -702,6 +704,8 @@ impl crate::game::Server<'_> {
         }
         self.handle_mob_events(events)?;
         self.net_player_mob_events(player_events);
+        // ProjectileLaunchEvent for the projectiles new since the last tick.
+        self.plugin_projectiles_launched();
         self.tick_projectiles()?;
         self.tick_fangs();
         self.tick_allays();
@@ -1826,6 +1830,10 @@ impl crate::game::Server<'_> {
         let Some(p) = self.mobs.iter().find(|m| m.id == parent).cloned() else {
             return;
         };
+        // EntityBreedEvent: a cancelled one makes no baby.
+        if !self.plugin_breed(parent, partner, None) {
+            return;
+        }
         // Animal.finalizeSpawnChildFromBreeding: the player who fed them.
         if p.extra.love_player {
             self.stats.custom("animals_bred", 1);
@@ -2430,6 +2438,13 @@ impl crate::game::Server<'_> {
         }
         self.creatures.projectiles.append(&mut projectiles);
         for (p, hit) in hits {
+            // ProjectileHitEvent: a cancelled hit does nothing.
+            let victim_conn = self
+                .projectile_pvp_victim(&p, hit)
+                .map(|super::net_pvp::Victim::ServerPlayer(conn)| conn);
+            if !self.plugin_projectile_hit(&p, hit, victim_conn) {
+                continue;
+            }
             // A player's arrow on another player lands as the victim's hurt.
             if let Some(victim) = self.projectile_pvp_victim(&p, hit) {
                 self.projectile_hits_player(&p, hit, victim)?;
@@ -3425,6 +3440,16 @@ impl crate::game::Server<'_> {
             self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight);
         let held_damage = held.as_ref().map_or(0, |h| h.damage as i32);
         let held_extra = held.as_ref().and_then(|h| h.extra.clone());
+        // PlayerShearEntityEvent: a cancelled shearing keeps the wool.
+        if &*item == "minecraft:shears" {
+            let (id, kind) = (self.mobs[index].id, self.mobs[index].kind.id.clone());
+            let shearable = ["sheep", "mooshroom", "snow_golem", "bogged"]
+                .iter()
+                .any(|k| kind.ends_with(k));
+            if shearable && !self.plugin_shear(id) {
+                return Ok(true);
+            }
+        }
         let m = &mut self.mobs[index];
         if !m.alive() {
             return Ok(false);

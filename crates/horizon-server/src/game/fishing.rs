@@ -77,6 +77,18 @@ impl crate::game::Server<'_> {
         if &*stack.item != "minecraft:fishing_rod" {
             return false;
         }
+        // PlayerFishEvent: a cancelled cast or catch leaves the hook as it was.
+        let (state, caught) = match &self.hook {
+            None => (horizon_server_api::event::FishState::Fishing, None),
+            Some(h) => match h.state {
+                State::Hooked(id) => (horizon_server_api::event::FishState::CaughtEntity, Some(id)),
+                _ if h.nibble > 0 => (horizon_server_api::event::FishState::CaughtFish, None),
+                _ => (horizon_server_api::event::FishState::ReelIn, None),
+            },
+        };
+        if !self.plugin_fish(state, caught) {
+            return true;
+        }
         let Some(p) = self.player.as_ref() else {
             return false;
         };

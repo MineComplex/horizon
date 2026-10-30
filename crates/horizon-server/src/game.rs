@@ -1289,6 +1289,12 @@ struct Server<'a> {
     plugin_watched: HashMap<u32, plugin_events::Watch>,
     /// Blocks a plugin's cancelled change puts back: no events for those.
     plugin_reverting: bool,
+    /// What the plugins last saw of each mob (by level and id).
+    plugin_mob_watch: HashMap<(Dim, u32), plugin_events::MobWatch>,
+    /// The projectiles the plugins heard of (by level and id).
+    plugin_projectiles_seen: std::collections::HashSet<(Dim, u32)>,
+    /// Each level's rain and thunder as the plugins last saw them.
+    plugin_weather: HashMap<Dim, (bool, bool)>,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
     /// Players whose inventory a plugin kept as it was (a cancelled drop):
@@ -1758,6 +1764,10 @@ impl crate::game::Server<'_> {
         velocity: [f64; 3],
         pickup_delay: u32,
     ) {
+        // ItemSpawnEvent: a cancelled item never comes.
+        if !self.plugin_item_spawn(&stack, position) {
+            return;
+        }
         self.next_entity += 1;
         let p = Vec3::new(position[0], position[1], position[2]);
         // ItemEntity.bobOffs comes from the entity's own random, not the level's.
@@ -6608,6 +6618,8 @@ impl crate::game::Server<'_> {
         })
     }
     fn tick_weather_effects(&mut self) {
+        // WeatherChangeEvent and ThunderChangeEvent for what the weather did.
+        self.plugin_watch_weather();
         if self.flash > 0 {
             self.flash -= 1;
         }
@@ -6913,6 +6925,7 @@ impl crate::game::Server<'_> {
     /// generated chunk is saved, hundreds at a time, encoded and written on
     /// the region writer meanwhile.
     fn save_game_with(&mut self, wait: bool) -> Result<()> {
+        self.plugin_world_save();
         self.save_level(wait)?;
         self.save_parked_levels(wait)?;
         self.save_game_metadata()
@@ -7390,6 +7403,9 @@ impl<'a> Server<'a> {
             plugin_damage_override: None,
             plugin_watched: HashMap::new(),
             plugin_reverting: false,
+            plugin_mob_watch: HashMap::new(),
+            plugin_projectiles_seen: Default::default(),
+            plugin_weather: HashMap::new(),
             plugin_resend: Vec::new(),
             plugin_resync: Vec::new(),
             plugin_last_moves: HashMap::new(),
