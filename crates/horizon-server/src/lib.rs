@@ -13,3 +13,4 @@ pub mod registry;
 pub mod server;
 pub mod util;
 pub mod world;
+pub mod worldgen;

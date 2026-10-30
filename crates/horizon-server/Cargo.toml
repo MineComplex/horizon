@@ -25,8 +25,9 @@ rsa_public_encrypt_pkcs1 = "0.4.0"
 indexmap = "2"
 uuid = { version = "1", features = ["v3", "v4"] }
 serde = { version = "1", features = ["derive"] }
-# float_roundtrip: correctly rounded floats, as Java's parsers give (registry data: registry/nbt_json.rs).
-serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+# float_roundtrip: correctly rounded floats, as Java's parsers give (registry data: registry/nbt_json.rs);
+# raw_value: number tokens kept as text, so floats round once from the decimal as Gson's do (worldgen/codec.rs).
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip", "raw_value"] }
 rand = { version = "0.10.0", features = ["sys_rng"] }
 rsa = { version = "0.10.0-rc.17", features = ["sha2"] }
 aes = "0.8.4"

@@ -63,6 +63,85 @@ pub const SYNCHRONIZED: [&str; 30] = [
     "minecraft:worldgen/block_state_provider",
 ];
 
+/// `RegistryDataLoader.WORLDGEN_REGISTRIES`' data-driven registries that are not synchronized
+/// (`worldgen/biome` and `worldgen/block_state_provider` are): what world generation reads from
+/// the packs (`worldgen::data`).
+pub const WORLDGEN: [&str; 15] = [
+    "minecraft:worldgen/noise",
+    "minecraft:worldgen/density_function",
+    "minecraft:worldgen/noise_settings",
+    "minecraft:worldgen/material_rule",
+    "minecraft:worldgen/material_condition",
+    "minecraft:worldgen/carver",
+    "minecraft:worldgen/feature",
+    "minecraft:worldgen/placed_feature",
+    "minecraft:worldgen/structure",
+    "minecraft:worldgen/structure_set",
+    "minecraft:worldgen/processor_list",
+    "minecraft:worldgen/template_pool",
+    "minecraft:worldgen/world_preset",
+    "minecraft:worldgen/flat_level_generator_preset",
+    "minecraft:worldgen/multi_noise_biome_source_parameter_list",
+];
+
+/// Paper's patched vanilla data (`paper-server/patches/resources/data/minecraft/worldgen/
+/// material_rule/bedrock_{floor,roof}.json.patch`, Leaf's copies under
+/// `leaf-server/src/minecraft/resources`): the bedrock rules use
+/// `paper:optionally_flat_bedrock_material_condition` (`worldgen::anchor`). Paper patches the
+/// files of its jar's vanilla pack, so they replace the jar's files here too.
+const PAPER_BEDROCK_FLOOR: &str = r#"{
+  "type": "minecraft:condition",
+  "if_true": {
+    "type": "paper:optionally_flat_bedrock_material_condition",
+    "is_roof": false,
+    "false_at_and_above": {
+      "above_bottom": 5
+    },
+    "random_name": "minecraft:bedrock_floor",
+    "true_at_and_below": {
+      "above_bottom": 0
+    }
+  },
+  "then_run": {
+    "type": "minecraft:block",
+    "result_state": "minecraft:bedrock"
+  }
+}
+"#;
+const PAPER_BEDROCK_ROOF: &str = r#"{
+  "type": "minecraft:condition",
+  "if_true": {
+    "type": "minecraft:not",
+    "invert": {
+      "type": "paper:optionally_flat_bedrock_material_condition",
+      "is_roof": true,
+      "false_at_and_above": {
+        "below_top": 0
+      },
+      "random_name": "minecraft:bedrock_roof",
+      "true_at_and_below": {
+        "below_top": 5
+      }
+    }
+  },
+  "then_run": {
+    "type": "minecraft:block",
+    "result_state": "minecraft:bedrock"
+  }
+}
+"#;
+/// [`DataPack::vanilla`]'s replaced files (paths below `data/`).
+pub const PAPER_BEDROCK_FILES: [(&str, &str); 2] = [
+    (
+        "minecraft/worldgen/material_rule/bedrock_floor.json",
+        PAPER_BEDROCK_FLOOR,
+    ),
+    (
+        "minecraft/worldgen/material_rule/bedrock_roof.json",
+        PAPER_BEDROCK_ROOF,
+    ),
+];
+
 /// Built-in registries MineComplex's Cleanup patch removes from `BuiltInRegistries`.
 const REMOVED_BUILTIN: [&str; 5] = [
     "minecraft:test_environment_definition_type",
@@ -163,11 +242,13 @@ pub struct DataPack {
 
 impl DataPack {
     /// The vanilla datapack in the jar (`ServerPacksSource`'s `vanilla` pack, known pack
-    /// `minecraft:core`): the `minecraft` namespace's files this module reads (the synchronized
-    /// registries' directories and `tags/`).
+    /// `minecraft:core`) as Paper ships it: the `minecraft` namespace's files the server reads
+    /// (the synchronized and [`WORLDGEN`] registries' directories and `tags/`), with Paper's
+    /// [`PAPER_BEDROCK_FILES`].
     pub fn vanilla(jar: &mut VanillaJar) -> Result<Self, VanillaJarError> {
         let dirs: Vec<String> = SYNCHRONIZED
             .iter()
+            .chain(&WORLDGEN)
             .map(|r| format!("minecraft/{}/", registry_dir(r)))
             .chain(["minecraft/tags/".to_owned()])
             .collect();
@@ -180,6 +261,9 @@ impl DataPack {
                 let bytes = jar.read(&name)?.unwrap_or_default();
                 files.insert(path.to_owned(), bytes);
             }
+        }
+        for (path, json) in PAPER_BEDROCK_FILES {
+            files.insert(path.to_owned(), json.as_bytes().to_vec());
         }
         Ok(Self {
             id: "vanilla".into(),
@@ -217,6 +301,43 @@ impl DataPack {
             ))
         })
     }
+}
+
+/// A registry element's file as `RegistryDataLoader` picks it: the topmost pack's.
+#[derive(Clone, Copy, Debug)]
+pub struct ElementFile<'a> {
+    /// The element id (`ns:path` below the registry directory).
+    pub id: &'a str,
+    /// The file as an `Identifier` (`ns:<registry dir>/<id>.json`), for messages.
+    pub file: &'a str,
+    pub pack: &'a DataPack,
+    pub bytes: &'a [u8],
+}
+
+/// Every element of a registry across `packs` (bottom to top), the topmost pack's file for each
+/// id, in `Identifier` order of the files (path, then namespace) as `RegistryDataLoader` registers
+/// them.
+pub fn for_each_element<E>(
+    packs: &[DataPack],
+    registry: &str,
+    mut element: impl FnMut(ElementFile<'_>) -> Result<(), E>,
+) -> Result<(), E> {
+    let dir = registry_dir(registry);
+    let mut files = BTreeMap::new();
+    for pack in packs {
+        for (key, id, bytes) in pack.list(&dir) {
+            files.insert(key, (id, pack, bytes));
+        }
+    }
+    for ((path, ns), (id, pack, bytes)) in files {
+        element(ElementFile {
+            id: &id,
+            file: &format!("{ns}:{path}"),
+            pack,
+            bytes,
+        })?;
+    }
+    Ok(())
 }
 
 /// An entry of a synchronized registry.
@@ -303,31 +424,25 @@ impl Registries {
         let mut synced = Vec::with_capacity(SYNCHRONIZED.len());
         for name in SYNCHRONIZED {
             let dir = registry_dir(name);
-            // The topmost pack's file for each identifier, in `Identifier` order.
-            let mut files = BTreeMap::new();
-            for pack in packs {
-                for (key, id, bytes) in pack.list(&dir) {
-                    files.insert(key, (id, pack, bytes));
-                }
-            }
-            let mut entries = Vec::with_capacity(files.len());
-            for ((path, ns), (id, pack, bytes)) in files {
+            let mut entries = Vec::new();
+            for_each_element(packs, name, |file| {
                 let error = |message: String| RegistryError::Element {
-                    file: format!("{ns}:{path}"),
-                    pack: pack.id.clone(),
+                    file: file.file.to_owned(),
+                    pack: file.pack.id.clone(),
                     message,
                 };
                 let json: Value =
-                    serde_json::from_slice(bytes).map_err(|e| error(e.to_string()))?;
+                    serde_json::from_slice(file.bytes).map_err(|e| error(e.to_string()))?;
                 let mut nbt = Vec::new();
                 nbt_json::write_network(&json, &mut nbt).map_err(|e| error(e.to_string()))?;
                 entries.push(Entry {
-                    id,
-                    known_pack: pack.known_pack.clone(),
+                    id: file.id.to_owned(),
+                    known_pack: file.pack.known_pack.clone(),
                     json,
                     nbt: nbt.into(),
                 });
-            }
+                Ok::<(), RegistryError>(())
+            })?;
             let ids: HashMap<&str, i32> = entries
                 .iter()
                 .enumerate()
