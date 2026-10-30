@@ -624,6 +624,107 @@ pub fn write_network(tag: &Tag, limits: Limits) -> Result<Vec<u8>, Error> {
     Ok(writer.bytes)
 }
 
+/// `Tag.toString` (`StringTagVisitor`): compact SNBT, compound keys in Java's string order (the
+/// map's order). Error messages quote tags this way (`Not a map: 1b`, `MapLike[{...}]`).
+impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::util::number_text::{double_to_string, float_to_string};
+        fn join<T>(
+            f: &mut std::fmt::Formatter<'_>,
+            items: impl IntoIterator<Item = T>,
+            mut each: impl FnMut(&mut std::fmt::Formatter<'_>, T) -> std::fmt::Result,
+        ) -> std::fmt::Result {
+            for (i, item) in items.into_iter().enumerate() {
+                if i != 0 {
+                    f.write_str(",")?;
+                }
+                each(f, item)?;
+            }
+            Ok(())
+        }
+        match self {
+            Self::End => f.write_str("END"),
+            Self::Byte(v) => write!(f, "{v}b"),
+            Self::Short(v) => write!(f, "{v}s"),
+            Self::Int(v) => write!(f, "{v}"),
+            Self::Long(v) => write!(f, "{v}L"),
+            Self::Float(v) => write!(f, "{}f", float_to_string(f32::from_bits(*v))),
+            Self::Double(v) => write!(f, "{}d", double_to_string(f64::from_bits(*v))),
+            Self::String(s) => f.write_str(&quote_and_escape(&s.to_string_lossy())),
+            Self::ByteArray(a) => {
+                f.write_str("[B;")?;
+                join(f, a, |f, v| write!(f, "{}B", *v as i8))?;
+                f.write_str("]")
+            }
+            Self::IntArray(a) => {
+                f.write_str("[I;")?;
+                join(f, a, |f, v| write!(f, "{v}"))?;
+                f.write_str("]")
+            }
+            Self::LongArray(a) => {
+                f.write_str("[L;")?;
+                join(f, a, |f, v| write!(f, "{v}L"))?;
+                f.write_str("]")
+            }
+            Self::List(list) => {
+                f.write_str("[")?;
+                join(f, list, |f, t| write!(f, "{t}"))?;
+                f.write_str("]")
+            }
+            Self::Compound(map) => {
+                f.write_str("{")?;
+                join(f, map, |f, (key, value)| {
+                    let key = key.to_string_lossy();
+                    let mut chars = key.chars();
+                    // `[A-Za-z._]+[A-Za-z0-9._+-]*`, not `true`/`false`.
+                    let unquoted = !key.eq_ignore_ascii_case("true")
+                        && !key.eq_ignore_ascii_case("false")
+                        && chars
+                            .next()
+                            .is_some_and(|c| c.is_ascii_alphabetic() || matches!(c, '.' | '_'))
+                        && chars.all(|c| {
+                            c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '+' | '-')
+                        });
+                    if unquoted {
+                        write!(f, "{key}:{value}")
+                    } else {
+                        write!(f, "{}:{value}", quote_and_escape(&key))
+                    }
+                })?;
+                f.write_str("}")
+            }
+        }
+    }
+}
+
+/// `StringTag.quoteAndEscape`: double quotes unless a double quote comes before any single one.
+pub fn quote_and_escape(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() + 2);
+    let mut quote = None;
+    for c in input.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' | '\'' => {
+                let q = *quote.get_or_insert(if c == '"' { '\'' } else { '"' });
+                if q == c {
+                    out.push('\\');
+                }
+                out.push(c);
+            }
+            // `SnbtGrammar.escapeControlCharacters`.
+            '\u{8}' => out.push_str("\\b"),
+            '\t' => out.push_str("\\t"),
+            '\n' => out.push_str("\\n"),
+            '\u{c}' => out.push_str("\\f"),
+            '\r' => out.push_str("\\r"),
+            c if c < ' ' => out.push_str(&format!("\\x{:02x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    let quote = quote.unwrap_or('"');
+    format!("{quote}{out}{quote}")
+}
+
 /// SNBT (`TagParser`): compounds, lists, typed arrays, quoted and bare
 /// strings, booleans and suffixed numbers. Returns the tag and the bytes read.
 pub fn parse_snbt(text: &str) -> Result<(Tag, usize), String> {

@@ -75,7 +75,13 @@ flags and shapes (`block/flags.rs`, `LeafBlockStatesExporter.java` under
 order and log lines; the YAML settings read so far (`server/config`: Velocity, catch-up ticks,
 `tab-complete`/`send-namespaced`, the lagging threshold, Leaf's 5 s TPS; YAML typing checked against
 SnakeYAML 2.6, the libraries' coercions derived from their sources) and the vanilla jar with `en_us.json`
-and `deprecated.json` (`server/vanilla_jar.rs`).
+and `deprecated.json` (`server/vanilla_jar.rs`); chunk sections with
+Moonrise's block counting and ticking list, and the 26.3 chunk NBT with Paper's version guard and
+Moonrise's Starlight light tags (`world/chunk/section.rs`, `world/chunk/serial.rs`; block entities,
+entities, ticks, post-processing and structures stay raw NBT until their systems are ported); the
+network side up to the configuration state (`network/`: frames, compression, encryption, handshake,
+Velocity modern forwarding); Minecraft's registry-free command argument types; 26.3 text components
+in JSON and network NBT (`azalea/chat/codec.rs`).
 
 Next, in order:
 1. Run the tick thread over `TickClock` after `bootstrap` (more YAML settings as the code needing them is
@@ -84,8 +90,8 @@ Next, in order:
    login with Velocity modern forwarding; configuration and play states.
 3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
    `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
-4. Chunk sections over `world/chunk`
-   with `block::BlockState`, chunk NBT, then the entity arena, following "Data" below.
+4. The chunk itself (sections array, heightmaps, block entities) over `world/chunk`, then the entity
+   arena, following "Data" below.
 
 ## Ownership and threads
 
