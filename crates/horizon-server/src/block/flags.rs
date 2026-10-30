@@ -389,3 +389,12 @@ impl BlockStateData {
         self.shapes.len()
     }
 }
+
+/// A summary: the arrays hold an entry per block state.
+impl std::fmt::Debug for BlockStateData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlockStateData")
+            .field("shapes", &self.shape_count())
+            .finish_non_exhaustive()
+    }
+}

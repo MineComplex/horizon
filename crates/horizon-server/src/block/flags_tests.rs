@@ -33,7 +33,9 @@ fn record(
 
 /// Three states: air, a full block, a bottom slab (a 1x2x1 cube grid) and a dynamic-shape plant
 /// with a non-cube grid on Y.
-fn synthetic(count: u32) -> Vec<u8> {
+/// A `block_states.bin` with four state records (air, stone, a slab, a dynamic-shape fluid) whose
+/// header claims `count` states: it loads only when `count` is 4 (also used by the startup tests).
+pub(crate) fn synthetic(count: u32) -> Vec<u8> {
     let mut out = b"HZBS".to_vec();
     out.extend(VERSION.to_le_bytes());
     out.extend(count.to_le_bytes());

@@ -14,7 +14,7 @@
 
 pub mod flags;
 #[cfg(test)]
-mod flags_tests;
+pub(crate) mod flags_tests;
 mod report;
 #[cfg(test)]
 mod tests;
@@ -402,5 +402,15 @@ impl BlockStatesBuilder {
 
     pub fn finish(self) -> BlockStates {
         self.table
+    }
+}
+
+/// A summary: the table itself is tens of thousands of entries.
+impl std::fmt::Debug for BlockStates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlockStates")
+            .field("blocks", &self.block_count())
+            .field("states", &self.state_count())
+            .finish_non_exhaustive()
     }
 }

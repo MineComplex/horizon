@@ -155,6 +155,11 @@ fn main() -> std::process::ExitCode {
         tick_loop.catchup_ticks, tick_loop.lagging_threshold, yaml.leaf.including_5s_in_get_tps
     );
     println!("  language: {} translations", config.language.len());
+    println!(
+        "  blocks: {} blocks, {} states",
+        config.blocks.block_count(),
+        config.blocks.state_count()
+    );
     let _ = language::install(config.language);
     println!(
         "horizon-server: the levels, the tick loop and the network are not ported yet; exiting."
