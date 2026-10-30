@@ -14,6 +14,10 @@ name = "horizon-server"
 path = "src/main.rs"
 
 [dependencies]
+libm = "=0.2.16"
+xxhash-rust = { version = "0.8.19", features = ["xxh32"] }
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
+lz4_flex = { version = "0.14", default-features = false, features = ["std", "safe-encode", "safe-decode", "checked-decode"] }
 tracing = "0.1"
 thiserror = "2"
 compact_str = { version = "0.9.0", features = ["serde"] }

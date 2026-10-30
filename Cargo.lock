@@ -1450,7 +1450,10 @@ dependencies = [
  "byteorder",
  "cfb8",
  "compact_str",
+ "flate2",
  "indexmap",
+ "libm",
+ "lz4_flex",
  "md-5",
  "num-bigint",
  "parking_lot",
@@ -1464,6 +1467,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tracing",
  "uuid",
+ "xxhash-rust",
 ]
 
 [[package]]

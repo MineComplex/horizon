@@ -1,414 +1,332 @@
-//! The game's random number generators (`RandomSource` and its implementations).
-//!
-//! Behaviour follows Leaf's sources exactly: `LegacyRandomSource`/`SingleThreadedRandomSource` (Java's 48-bit
-//! LCG; the two differ only in Java's thread checks, which ownership makes unnecessary), `XoroshiroRandomSource`
-//! (Xoroshiro128++ with Mojang's bounded-int and float/double conversions), `MarsagliaPolarGaussian`,
-//! `RandomSupport` and the positional factories. Note Leaf's `nextFloat`/`nextDouble` multiply in `float`
-//! (`bits * 1.110223E-16F` with a `long`/`int` operand is a float multiplication in Java), so they do here too.
-//!
-//! A generator is a plain value owned by whatever uses it (`&mut self` to draw); the variants are an enum, not
-//! trait objects. Leaf's optional `FastRNG` (JDK `Xoroshiro128PlusPlus`, off by default) is not provided yet.
+//! Vanilla's two seeded random streams. No platform/default Rust RNG is used.
+mod hash;
+mod positional;
+mod worldgen;
+pub use hash::{seed_from_hash, seed_from_hash_utf16};
+pub use positional::{
+    LegacyPositionalRandom, PositionalRandom, XoroshiroPositionalRandom, java_string_hash,
+    position_seed,
+};
+pub use worldgen::{WorldgenPositional, WorldgenRandom, WorldgenSource, slime_chunk_random};
 
-/// Java's `String.hashCode` (UTF-16 code units), used by `fromHashOf`.
-pub fn java_string_hash(s: &str) -> i32 {
-    s.encode_utf16().fold(0i32, |h, c| h.wrapping_mul(31).wrapping_add(c as i32))
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidBound;
+
+impl std::fmt::Display for InvalidBound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("bound must be positive")
+    }
 }
 
-/// `Mth.getSeed(x, y, z)`: the per-position seed of positional randoms and block offsets.
-pub fn position_seed(x: i32, y: i32, z: i32) -> i64 {
-    let mut seed = (x.wrapping_mul(3129871) as i64) ^ (z as i64).wrapping_mul(116129781) ^ (y as i64);
-    seed = seed.wrapping_mul(seed).wrapping_mul(42317861).wrapping_add(seed.wrapping_mul(11));
-    seed >> 16
-}
+impl std::error::Error for InvalidBound {}
 
-const FLOAT_UNIT: f32 = 5.9604645E-8;
-const DOUBLE_UNIT: f32 = 1.110223E-16;
+pub trait RandomSource: Sized {
+    type Positional: PositionalRandom<Source = Self>;
+    fn set_seed(&mut self, seed: i64);
+    fn next_int(&mut self) -> i32;
+    fn next_int_bound(&mut self, bound: i32) -> Result<i32, InvalidBound>;
+    fn next_long(&mut self) -> i64;
+    fn next_boolean(&mut self) -> bool;
+    fn next_float(&mut self) -> f32;
+    fn next_double(&mut self) -> f64;
+    /// MarsagliaPolarGaussian over this source; the cached second value is
+    /// part of the source state (reset by `set_seed` where vanilla resets it).
+    fn next_gaussian(&mut self) -> f64;
+    fn fork_positional(&mut self) -> Self::Positional;
+    fn fork(&mut self) -> Self
+    where
+        Self: Sized;
 
-/// `RandomSupport.mixStafford13`.
-pub fn mix_stafford13(mut z: i64) -> i64 {
-    z = (z ^ ((z as u64) >> 30) as i64).wrapping_mul(-4658895280553007687);
-    z = (z ^ ((z as u64) >> 27) as i64).wrapping_mul(-7723592293110705685);
-    z ^ ((z as u64) >> 31) as i64
-}
-
-pub const GOLDEN_RATIO_64: i64 = -7046029254386353131;
-pub const SILVER_RATIO_64: i64 = 7640891576956012809;
-
-/// `RandomSupport.Seed128bit`.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Seed128 {
-    pub lo: i64,
-    pub hi: i64,
-}
-impl Seed128 {
-    /// `RandomSupport.upgradeSeedTo128bitUnmixed`.
-    pub fn upgrade_unmixed(legacy_seed: i64) -> Seed128 {
-        let lo = legacy_seed ^ SILVER_RATIO_64;
-        Seed128 { lo, hi: lo.wrapping_add(GOLDEN_RATIO_64) }
-    }
-    /// `RandomSupport.upgradeSeedTo128bit`.
-    pub fn upgrade(legacy_seed: i64) -> Seed128 {
-        Self::upgrade_unmixed(legacy_seed).mixed()
-    }
-    pub fn mixed(self) -> Seed128 {
-        Seed128 { lo: mix_stafford13(self.lo), hi: mix_stafford13(self.hi) }
-    }
-    pub fn xor(self, lo: i64, hi: i64) -> Seed128 {
-        Seed128 { lo: self.lo ^ lo, hi: self.hi ^ hi }
-    }
-    /// `RandomSupport.seedFromHashOf`: the MD5 of the UTF-8 string, big-endian halves.
-    pub fn from_hash_of(input: &str) -> Seed128 {
-        use md5::{Digest, Md5};
-        let h = Md5::digest(input.as_bytes());
-        Seed128 {
-            lo: i64::from_be_bytes(h[0..8].try_into().unwrap()),
-            hi: i64::from_be_bytes(h[8..16].try_into().unwrap()),
+    fn consume_count(&mut self, count: i32) {
+        for _ in 0..count {
+            self.next_int();
         }
     }
-}
-
-/// `RandomSupport.generateUniqueSeed`: a seed for randoms nobody reproduces (mob AI, particles...).
-pub fn generate_unique_seed() -> i64 {
-    use std::sync::atomic::{AtomicI64, Ordering};
-    // Shared counter across threads, as Java's AtomicLong: the one place a seed source is global.
-    static UNIQUIFIER: AtomicI64 = AtomicI64::new(8682522807148012);
-    let mut cur = UNIQUIFIER.load(Ordering::Relaxed);
-    let next = loop {
-        let n = cur.wrapping_mul(1181783497276652981);
-        match UNIQUIFIER.compare_exchange_weak(cur, n, Ordering::Relaxed, Ordering::Relaxed) {
-            Ok(_) => break n,
-            Err(c) => cur = c,
+    fn next_int_between_inclusive(&mut self, min: i32, max: i32) -> Result<i32, InvalidBound> {
+        self.next_int_bound(max.wrapping_sub(min).wrapping_add(1))
+            .map(|v| v.wrapping_add(min))
+    }
+    fn next_int_between(&mut self, origin: i32, bound: i32) -> Result<i32, InvalidBound> {
+        if origin >= bound {
+            return Err(InvalidBound);
         }
-    };
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as i64).unwrap_or(0);
-    next ^ nanos
+        self.next_int_bound(bound.wrapping_sub(origin))
+            .map(|v| v.wrapping_add(origin))
+    }
+    fn triangle(&mut self, mean: f64, deviation: f64) -> f64 {
+        mean + deviation * (self.next_double() - self.next_double())
+    }
+    fn triangle_float(&mut self, mean: f32, deviation: f32) -> f32 {
+        mean + deviation * (self.next_float() - self.next_float())
+    }
 }
 
-/// `MarsagliaPolarGaussian`'s cached second value.
-#[derive(Clone, Copy, Default, Debug)]
-struct Gaussian {
-    next: f64,
-    have_next: bool,
-}
-
-/// Java's 48-bit LCG (`LegacyRandomSource`, `SingleThreadedRandomSource`).
 #[derive(Clone, Debug)]
 pub struct LegacyRandom {
-    seed: i64,
-    gaussian: Gaussian,
+    state: u64,
+    gaussian: Option<f64>,
 }
-const MODULUS_MASK: i64 = (1 << 48) - 1;
-const MULTIPLIER: i64 = 25214903917;
+
 impl LegacyRandom {
+    const MULTIPLIER: u64 = 0x5_deec_e66d;
+    const MASK: u64 = (1 << 48) - 1;
+
     pub fn new(seed: i64) -> Self {
-        LegacyRandom { seed: (seed ^ MULTIPLIER) & MODULUS_MASK, gaussian: Gaussian::default() }
+        Self {
+            state: (seed as u64 ^ Self::MULTIPLIER) & Self::MASK,
+            gaussian: None,
+        }
     }
-    pub fn set_seed(&mut self, seed: i64) {
+
+    /// The 48-bit generator state (differential tests compare it).
+    pub fn state(&self) -> u64 {
+        self.state
+    }
+
+    fn bits(&mut self, count: u32) -> i32 {
+        self.state = self.state.wrapping_mul(Self::MULTIPLIER).wrapping_add(11) & Self::MASK;
+        let value = (self.state >> (48 - count)) as i32;
+        value
+    }
+}
+
+impl RandomSource for LegacyRandom {
+    type Positional = LegacyPositionalRandom;
+    fn fork_positional(&mut self) -> Self::Positional {
+        LegacyPositionalRandom::new(self.next_long())
+    }
+    fn set_seed(&mut self, seed: i64) {
         *self = Self::new(seed);
     }
-    /// `BitRandomSource.next(bits)`.
-    pub fn next(&mut self, bits: u32) -> i32 {
-        self.seed = self.seed.wrapping_mul(MULTIPLIER).wrapping_add(11) & MODULUS_MASK;
-        (self.seed >> (48 - bits)) as i32
+
+    fn next_int(&mut self) -> i32 {
+        self.bits(32)
     }
-    pub fn next_int(&mut self) -> i32 {
-        self.next(32)
-    }
-    pub fn next_int_bounded(&mut self, bound: i32) -> i32 {
-        assert!(bound > 0, "Bound must be positive");
+
+    fn next_int_bound(&mut self, bound: i32) -> Result<i32, InvalidBound> {
+        if bound <= 0 {
+            return Err(InvalidBound);
+        }
         if bound & (bound - 1) == 0 {
-            return ((bound as i64).wrapping_mul(self.next(31) as i64) >> 31) as i32;
+            return Ok(((i64::from(bound) * i64::from(self.bits(31))) >> 31) as i32);
         }
         loop {
-            let sample = self.next(31);
-            let modulo = sample % bound;
-            if sample.wrapping_sub(modulo).wrapping_add(bound - 1) >= 0 {
-                return modulo;
+            let bits = self.bits(31);
+            let value = bits % bound;
+            // Java's signed overflow is part of the rejection rule.
+            if bits.wrapping_sub(value).wrapping_add(bound - 1) >= 0 {
+                return Ok(value);
             }
         }
     }
-    pub fn next_long(&mut self) -> i64 {
-        let upper = self.next(32) as i64;
-        let lower = self.next(32) as i64;
-        (upper << 32).wrapping_add(lower)
+
+    fn next_long(&mut self) -> i64 {
+        let high = i64::from(self.bits(32)) << 32;
+        // Java sign-extends the low int before addition; concatenation differs.
+        high.wrapping_add(i64::from(self.bits(32)))
     }
-    pub fn next_boolean(&mut self) -> bool {
-        self.next(1) != 0
+
+    fn next_boolean(&mut self) -> bool {
+        self.bits(1) != 0
     }
-    pub fn next_float(&mut self) -> f32 {
-        self.next(24) as f32 * FLOAT_UNIT
+    fn next_float(&mut self) -> f32 {
+        self.bits(24) as f32 * (1.0 / 16_777_216.0)
     }
-    pub fn next_double(&mut self) -> f64 {
-        let upper = self.next(26) as i64;
-        let lower = self.next(27) as i64;
-        let combined = (upper << 27).wrapping_add(lower);
-        (combined as f32 * DOUBLE_UNIT) as f64
+    fn next_double(&mut self) -> f64 {
+        let value = (i64::from(self.bits(26)) << 27) + i64::from(self.bits(27));
+        value as f64 * (1.0 / 9_007_199_254_740_992.0)
+    }
+    fn next_gaussian(&mut self) -> f64 {
+        let mut cache = self.gaussian.take();
+        let value = marsaglia_polar(&mut cache, || self.next_double());
+        self.gaussian = cache;
+        value
+    }
+
+    fn fork(&mut self) -> Self {
+        Self::new(self.next_long())
     }
 }
 
-/// Mojang's Xoroshiro128++ (`Xoroshiro128PlusPlus`).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Xoroshiro128 {
-    lo: i64,
-    hi: i64,
-}
-impl Xoroshiro128 {
-    pub fn new(lo: i64, hi: i64) -> Self {
-        if lo | hi == 0 { Xoroshiro128 { lo: GOLDEN_RATIO_64, hi: SILVER_RATIO_64 } } else { Xoroshiro128 { lo, hi } }
-    }
-    pub fn next_long(&mut self) -> i64 {
-        let s0 = self.lo;
-        let mut s1 = self.hi;
-        let result = s0.wrapping_add(s1).rotate_left(17).wrapping_add(s0);
-        s1 ^= s0;
-        self.lo = s0.rotate_left(49) ^ s1 ^ (s1 << 21);
-        self.hi = s1.rotate_left(28);
-        result
-    }
-    pub fn seeds(&self) -> (i64, i64) {
-        (self.lo, self.hi)
-    }
-}
-
-/// `XoroshiroRandomSource`.
 #[derive(Clone, Debug)]
 pub struct XoroshiroRandom {
-    rng: Xoroshiro128,
-    gaussian: Gaussian,
+    lo: u64,
+    hi: u64,
+    gaussian: Option<f64>,
 }
+
 impl XoroshiroRandom {
+    const GOLDEN_RATIO: u64 = 0x9e37_79b9_7f4a_7c15;
+    const SILVER_RATIO: u64 = 0x6a09_e667_f3bc_c909;
+
     pub fn new(seed: i64) -> Self {
-        Self::from_seed128(Seed128::upgrade(seed))
+        let lo = seed as u64 ^ Self::SILVER_RATIO;
+        Self::from_state(
+            mix_stafford13(lo),
+            mix_stafford13(lo.wrapping_add(Self::GOLDEN_RATIO)),
+        )
     }
-    pub fn from_seed128(s: Seed128) -> Self {
-        Self::from_parts(s.lo, s.hi)
+
+    /// The generator's two state words (`Xoroshiro128PlusPlus.CODEC`).
+    pub fn state_words(&self) -> (u64, u64) {
+        (self.lo, self.hi)
     }
-    pub fn from_parts(lo: i64, hi: i64) -> Self {
-        XoroshiroRandom { rng: Xoroshiro128::new(lo, hi), gaussian: Gaussian::default() }
+
+    pub fn from_state(lo: u64, hi: u64) -> Self {
+        if lo | hi == 0 {
+            Self {
+                lo: Self::GOLDEN_RATIO,
+                hi: Self::SILVER_RATIO,
+                gaussian: None,
+            }
+        } else {
+            Self {
+                lo,
+                hi,
+                gaussian: None,
+            }
+        }
     }
-    pub fn set_seed(&mut self, seed: i64) {
+}
+
+impl RandomSource for XoroshiroRandom {
+    type Positional = XoroshiroPositionalRandom;
+    fn fork_positional(&mut self) -> Self::Positional {
+        let lo = self.next_long() as u64;
+        let hi = self.next_long() as u64;
+        XoroshiroPositionalRandom::new(lo, hi)
+    }
+    fn set_seed(&mut self, seed: i64) {
         *self = Self::new(seed);
     }
-    pub fn next_long(&mut self) -> i64 {
-        self.rng.next_long()
-    }
-    pub fn next_int(&mut self) -> i32 {
-        self.rng.next_long() as i32
-    }
-    pub fn next_int_bounded(&mut self, bound: i32) -> i32 {
-        assert!(bound > 0, "Bound must be positive");
-        let bound64 = bound as u64;
-        let mut bits = self.next_int() as u32 as u64;
-        let mut multiplied = bits * bound64;
-        let mut fractional = multiplied & 0xFFFF_FFFF;
-        if fractional < bound64 {
-            let unbiased_start = ((!bound).wrapping_add(1) as u32 % bound as u32) as u64;
-            while fractional < unbiased_start {
-                bits = self.next_int() as u32 as u64;
-                multiplied = bits * bound64;
-                fractional = multiplied & 0xFFFF_FFFF;
-            }
-        }
-        (multiplied >> 32) as i32
-    }
-    fn next_bits(&mut self, bits: u32) -> i64 {
-        ((self.rng.next_long() as u64) >> (64 - bits)) as i64
-    }
-    pub fn next_boolean(&mut self) -> bool {
-        self.rng.next_long() & 1 != 0
-    }
-    pub fn next_float(&mut self) -> f32 {
-        self.next_bits(24) as f32 * FLOAT_UNIT
-    }
-    pub fn next_double(&mut self) -> f64 {
-        (self.next_bits(53) as f32 * DOUBLE_UNIT) as f64
-    }
-}
-
-/// A game random: the `RandomSource` implementations Leaf creates.
-#[derive(Clone, Debug)]
-pub enum RandomSource {
-    Legacy(LegacyRandom),
-    Xoroshiro(XoroshiroRandom),
-}
-
-impl RandomSource {
-    /// `RandomSource.create(seed)` (Leaf's default: the legacy LCG).
-    pub fn create(seed: i64) -> Self {
-        RandomSource::Legacy(LegacyRandom::new(seed))
-    }
-    /// `RandomSource.create()`: a fresh unique seed.
-    pub fn create_unseeded() -> Self {
-        Self::create(generate_unique_seed())
-    }
-    pub fn xoroshiro(seed: i64) -> Self {
-        RandomSource::Xoroshiro(XoroshiroRandom::new(seed))
+    fn next_int(&mut self) -> i32 {
+        self.next_long() as i32
     }
 
-    pub fn set_seed(&mut self, seed: i64) {
-        match self {
-            RandomSource::Legacy(r) => r.set_seed(seed),
-            RandomSource::Xoroshiro(r) => r.set_seed(seed),
+    fn next_int_bound(&mut self, bound: i32) -> Result<i32, InvalidBound> {
+        if bound <= 0 {
+            return Err(InvalidBound);
         }
-    }
-    pub fn next_int(&mut self) -> i32 {
-        match self {
-            RandomSource::Legacy(r) => r.next_int(),
-            RandomSource::Xoroshiro(r) => r.next_int(),
-        }
-    }
-    /// `nextInt(bound)`; panics on a non-positive bound as Java throws.
-    pub fn next_int_bounded(&mut self, bound: i32) -> i32 {
-        match self {
-            RandomSource::Legacy(r) => r.next_int_bounded(bound),
-            RandomSource::Xoroshiro(r) => r.next_int_bounded(bound),
-        }
-    }
-    /// `nextIntBetweenInclusive(min, max)`.
-    pub fn next_int_between_inclusive(&mut self, min: i32, max_inclusive: i32) -> i32 {
-        self.next_int_bounded(max_inclusive.wrapping_sub(min).wrapping_add(1)).wrapping_add(min)
-    }
-    /// `nextInt(origin, bound)`.
-    pub fn next_int_range(&mut self, origin: i32, bound: i32) -> i32 {
-        assert!(origin < bound, "bound - origin is non positive");
-        origin.wrapping_add(self.next_int_bounded(bound.wrapping_sub(origin)))
-    }
-    pub fn next_long(&mut self) -> i64 {
-        match self {
-            RandomSource::Legacy(r) => r.next_long(),
-            RandomSource::Xoroshiro(r) => r.next_long(),
-        }
-    }
-    pub fn next_boolean(&mut self) -> bool {
-        match self {
-            RandomSource::Legacy(r) => r.next_boolean(),
-            RandomSource::Xoroshiro(r) => r.next_boolean(),
-        }
-    }
-    pub fn next_float(&mut self) -> f32 {
-        match self {
-            RandomSource::Legacy(r) => r.next_float(),
-            RandomSource::Xoroshiro(r) => r.next_float(),
-        }
-    }
-    pub fn next_double(&mut self) -> f64 {
-        match self {
-            RandomSource::Legacy(r) => r.next_double(),
-            RandomSource::Xoroshiro(r) => r.next_double(),
-        }
-    }
-    /// `MarsagliaPolarGaussian.nextGaussian`.
-    pub fn next_gaussian(&mut self) -> f64 {
-        let cached = match self {
-            RandomSource::Legacy(r) => &mut r.gaussian,
-            RandomSource::Xoroshiro(r) => &mut r.gaussian,
-        };
-        if cached.have_next {
-            cached.have_next = false;
-            return cached.next;
-        }
+        let bound = bound as u32;
+        let threshold = bound.wrapping_neg() % bound;
         loop {
-            let x = 2.0 * self.next_double() - 1.0;
-            let y = 2.0 * self.next_double() - 1.0;
-            let r2 = x * x + y * y;
-            if r2 < 1.0 && r2 != 0.0 {
-                let m = (-2.0 * r2.ln() / r2).sqrt();
-                let g = match self {
-                    RandomSource::Legacy(r) => &mut r.gaussian,
-                    RandomSource::Xoroshiro(r) => &mut r.gaussian,
-                };
-                g.next = y * m;
-                g.have_next = true;
-                return x * m;
+            let product = u64::from(self.next_int() as u32) * u64::from(bound);
+            if product as u32 >= threshold {
+                return Ok((product >> 32) as i32);
             }
         }
     }
-    /// `triangle(mean, spread)` (double).
-    pub fn triangle(&mut self, mean: f64, spread: f64) -> f64 {
-        mean + spread * (self.next_double() - self.next_double())
+
+    fn next_long(&mut self) -> i64 {
+        let lo = self.lo;
+        let hi = self.hi ^ lo;
+        let result = lo.wrapping_add(self.hi).rotate_left(17).wrapping_add(lo);
+        self.lo = lo.rotate_left(49) ^ hi ^ (hi << 21);
+        self.hi = hi.rotate_left(28);
+        result as i64
     }
-    /// `triangle(mean, spread)` (float).
-    pub fn triangle_f32(&mut self, mean: f32, spread: f32) -> f32 {
-        mean + spread * (self.next_float() - self.next_float())
+
+    fn next_boolean(&mut self) -> bool {
+        self.next_long() & 1 != 0
     }
-    pub fn consume_count(&mut self, rounds: i32) {
-        for _ in 0..rounds.max(0) {
-            match self {
-                RandomSource::Legacy(r) => {
-                    r.next_int();
-                }
-                RandomSource::Xoroshiro(r) => {
-                    r.next_long();
-                }
-            }
-        }
+    fn next_float(&mut self) -> f32 {
+        ((self.next_long() as u64) >> 40) as f32 * (1.0 / 16_777_216.0)
     }
-    /// `fork()`: an independent generator of the same kind, seeded from this one.
-    pub fn fork(&mut self) -> RandomSource {
-        match self {
-            RandomSource::Legacy(r) => RandomSource::Legacy(LegacyRandom::new(r.next_long())),
-            RandomSource::Xoroshiro(r) => {
-                let lo = r.next_long();
-                let hi = r.next_long();
-                RandomSource::Xoroshiro(XoroshiroRandom::from_parts(lo, hi))
-            }
-        }
+    fn next_double(&mut self) -> f64 {
+        ((self.next_long() as u64) >> 11) as f64 * (1.0 / 9_007_199_254_740_992.0)
     }
-    /// `forkPositional()`.
-    pub fn fork_positional(&mut self) -> PositionalRandomFactory {
-        match self {
-            RandomSource::Legacy(r) => PositionalRandomFactory::Legacy { seed: r.next_long() },
-            RandomSource::Xoroshiro(r) => {
-                let lo = r.next_long();
-                let hi = r.next_long();
-                PositionalRandomFactory::Xoroshiro { lo, hi }
-            }
-        }
+    fn next_gaussian(&mut self) -> f64 {
+        let mut cache = self.gaussian.take();
+        let value = marsaglia_polar(&mut cache, || self.next_double());
+        self.gaussian = cache;
+        value
+    }
+    fn fork(&mut self) -> Self {
+        let lo = self.next_long() as u64;
+        let hi = self.next_long() as u64;
+        Self::from_state(lo, hi)
     }
 }
 
-/// `PositionalRandomFactory`: deterministic randoms per position or name, from a world seed.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum PositionalRandomFactory {
-    Legacy { seed: i64 },
-    Xoroshiro { lo: i64, hi: i64 },
+/// MarsagliaPolarGaussian.nextGaussian with an external second-value cache.
+pub fn marsaglia_polar(cache: &mut Option<f64>, mut next_double: impl FnMut() -> f64) -> f64 {
+    if let Some(value) = cache.take() {
+        return value;
+    }
+    loop {
+        let x = 2.0 * next_double() - 1.0;
+        let y = 2.0 * next_double() - 1.0;
+        let radius = x * x + y * y;
+        if radius >= 1.0 || radius == 0.0 {
+            continue;
+        }
+        let multiplier = (-2.0 * crate::util::jmath::log(radius) / radius).sqrt();
+        *cache = Some(y * multiplier);
+        return x * multiplier;
+    }
 }
-impl PositionalRandomFactory {
-    pub fn at(&self, x: i32, y: i32, z: i32) -> RandomSource {
-        let p = position_seed(x, y, z);
-        match *self {
-            PositionalRandomFactory::Legacy { seed } => RandomSource::Legacy(LegacyRandom::new(p ^ seed)),
-            PositionalRandomFactory::Xoroshiro { lo, hi } => RandomSource::Xoroshiro(XoroshiroRandom::from_parts(p ^ lo, hi)),
-        }
-    }
-    pub fn from_hash_of(&self, name: &str) -> RandomSource {
-        match *self {
-            PositionalRandomFactory::Legacy { seed } => RandomSource::Legacy(LegacyRandom::new(java_string_hash(name) as i64 ^ seed)),
-            PositionalRandomFactory::Xoroshiro { lo, hi } => {
-                RandomSource::Xoroshiro(XoroshiroRandom::from_seed128(Seed128::from_hash_of(name).xor(lo, hi)))
-            }
-        }
-    }
-    pub fn from_seed(&self, seed: i64) -> RandomSource {
-        match *self {
-            PositionalRandomFactory::Legacy { .. } => RandomSource::Legacy(LegacyRandom::new(seed)),
-            PositionalRandomFactory::Xoroshiro { lo, hi } => RandomSource::Xoroshiro(XoroshiroRandom::from_parts(seed ^ lo, seed ^ hi)),
-        }
-    }
+
+pub const fn mix_stafford13(mut value: u64) -> u64 {
+    value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    value ^ (value >> 31)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Draws in the order of the Java fixture program (Leaf's algorithms run on the JVM):
-    /// nextInt, nextInt(10), nextInt(100), nextInt(16), nextLong, nextFloat bits, nextDouble bits[, 2 gaussians].
-    fn draws(r: &mut RandomSource, gaussians: bool) -> Vec<i64> {
+    #[test]
+    fn legacy_jdk_sequence_and_sign_extended_low_word() {
+        let mut rng = LegacyRandom::new(0);
+        assert_eq!(rng.next_int(), -1_155_484_576);
+        assert_eq!(rng.next_int(), -723_955_400);
+        assert_eq!(LegacyRandom::new(0).next_long(), -4_962_768_465_676_381_896);
+    }
+
+    fn invalid_bounds_do_not_consume_state<R: RandomSource + Clone>(mut rng: R) {
+        let mut reference = rng.clone();
+        for bound in [0, -1, i32::MIN] {
+            assert_eq!(rng.next_int_bound(bound), Err(InvalidBound));
+        }
+        rng.consume_count(-1);
+        assert_eq!(rng.next_long(), reference.next_long());
+    }
+
+    #[test]
+    fn invalid_inputs_preserve_both_streams() {
+        invalid_bounds_do_not_consume_state(LegacyRandom::new(0));
+        invalid_bounds_do_not_consume_state(XoroshiroRandom::new(0));
+    }
+
+    #[test]
+    fn zero_state_fallback_and_reseed() {
+        let mut a = XoroshiroRandom::from_state(0, 0);
+        let mut b = XoroshiroRandom::from_state(
+            XoroshiroRandom::GOLDEN_RATIO,
+            XoroshiroRandom::SILVER_RATIO,
+        );
+        for _ in 0..100 {
+            assert_eq!(a.next_long(), b.next_long());
+        }
+        a.set_seed(-1);
+        assert_eq!(a.next_long(), XoroshiroRandom::new(-1).next_long());
+    }
+}
+
+/// The random algorithms run on the JVM against these ports. `nextDouble` multiplies in `double`, as the
+/// Minecraft 26.3 bytecode does (`l2d; dmul 1.1102230246251565E-16`); Leaf's decompiled source reads
+/// `combined * 1.110223E-16F`, which javac would compile to a float multiply — a decompiler artifact.
+#[cfg(test)]
+mod jvm_fixtures {
+    use super::*;
+
+    fn draws<R: RandomSource>(r: &mut R, gaussians: bool) -> Vec<i64> {
         let mut v = vec![
             r.next_int() as i64,
-            r.next_int_bounded(10) as i64,
-            r.next_int_bounded(100) as i64,
-            r.next_int_bounded(16) as i64,
+            r.next_int_bound(10).unwrap() as i64,
+            r.next_int_bound(100).unwrap() as i64,
+            r.next_int_bound(16).unwrap() as i64,
             r.next_long(),
             r.next_float().to_bits() as i64,
             r.next_double().to_bits() as i64,
@@ -421,30 +339,25 @@ mod tests {
     }
 
     #[test]
-    fn matches_leaf_on_the_jvm() {
+    fn legacy_and_xoroshiro_match_leaf() {
         let legacy: [(i64, [i64; 9]); 3] = [
-            (0, [-1155484576, 8, 29, 9, -6688467811848818630, 1057810800, 4593095635275612160, 4605446429949404853, -4618811753571811926]),
-            (42, [-1170105035, 3, 48, 0, 5694868678511409995, 1049484602, 4604549709611139072, -4617305470428694839, -4631177999741404598]),
-            (-1234567890123, [7952977, 3, 97, 2, 1535756699810059369, 1065171527, 4592000097566326784, 4593499449827161127, 4607052895455958281]),
+            (0, [-1155484576, 8, 29, 9, -6688467811848818630, 1057810800, 4593095635380350600, 4605446429350204123, -4618811754311938114]),
+            (42, [-1170105035, 3, 48, 0, 5694868678511409995, 1049484602, 4604549709834685269, -4617305470574960102, -4631177998454507738]),
+            (-1234567890123, [7952977, 3, 97, 2, 1535756699810059369, 1065171527, 4592000097652777376, 4593499447810100453, 4607052894281342472]),
         ];
         for (seed, want) in legacy {
-            assert_eq!(draws(&mut RandomSource::create(seed), true), want.to_vec(), "legacy seed {seed}");
+            assert_eq!(draws(&mut LegacyRandom::new(seed), true), want.to_vec(), "legacy seed {seed}");
         }
         let xoro: [(i64, [i64; 7]); 3] = [
-            (0, [-160476802, 1, 15, 4, 1839370574944072389, 1061270979, 4605131736735547392]),
-            (42, [1774573855, 3, 85, 7, 8419651034331256779, 1059448835, 4601757022554161152]),
-            (-1234567890123, [-707066730, 3, 71, 7, -6798054903569452960, 1061103350, 4592619162341212160]),
+            (0, [-160476802, 1, 15, 4, 1839370574944072389, 1061270979, 4605131736876223663]),
+            (42, [1774573855, 3, 85, 7, 8419651034331256779, 1059448835, 4601757022432242642]),
+            (-1234567890123, [-707066730, 3, 71, 7, -6798054903569452960, 1061103350, 4592619162083585864]),
         ];
         for (seed, want) in xoro {
-            assert_eq!(draws(&mut RandomSource::xoroshiro(seed), false), want.to_vec(), "xoroshiro seed {seed}");
+            assert_eq!(draws(&mut XoroshiroRandom::new(seed), false), want.to_vec(), "xoroshiro seed {seed}");
         }
-    }
-
-    #[test]
-    fn seeds_match_leaf() {
-        assert_eq!(position_seed(12, -5, 300), -3976170102258);
-        assert_eq!(position_seed(-100000, 64, 77777), -63304526991014);
-        assert_eq!(Seed128::from_hash_of("minecraft:test"), Seed128 { lo: 1885711875966874721, hi: 3357099975631595687 });
-        assert_eq!(java_string_hash("hello"), 99162322);
+        assert_eq!(position_seed(crate::core::position::BlockPos::new(12, -5, 300)), -3976170102258);
+        assert_eq!(position_seed(crate::core::position::BlockPos::new(-100000, 64, 77777)), -63304526991014);
+        assert_eq!(java_string_hash("hello".encode_utf16()), 99162322);
     }
 }

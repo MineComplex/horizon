@@ -1,2 +1,3 @@
-//! Game utilities: random numbers (more of Leaf's `util` comes here as it is ported).
+//! Game utilities: `java.lang.Math` as HotSpot computes it, and the game's random number generators.
+pub mod jmath;
 pub mod random;

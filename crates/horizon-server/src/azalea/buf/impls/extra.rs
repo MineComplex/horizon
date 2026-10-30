@@ -8,7 +8,7 @@ use std::{
 use indexmap::IndexMap;
 
 use crate::azalea::buf::{
-    AzBuf, AzBufLimited, AzBufVar, BufReadError, MAX_STRING_LENGTH, UnsizedByteArray, read_bytes,
+    AzBuf, AzBufLimited, AzBufVar, BufReadError, MAX_STRING_LENGTH, UnsizedByteArray,
     read_utf_with_len, write_utf_with_len,
 };
 
