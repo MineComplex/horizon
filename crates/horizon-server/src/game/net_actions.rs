@@ -476,6 +476,8 @@ impl crate::game::Server<'_> {
     /// The second half of `as_player`: the player's state back into their
     /// record, the game's back in place, and what the turn changed sent.
     pub(super) fn leave_player(&mut self, net: &mut Network, swap: PlayerSwap) {
+        // PlayerStatisticIncrementEvent for what the turn counted.
+        self.plugin_statistics();
         // A totem that saved the player this turn (its hurt set it off).
         let totem = self.apply_totem();
         let PlayerSwap {
@@ -869,6 +871,8 @@ impl crate::game::Server<'_> {
             };
             (menu, title, Slots::Block(pos))
         };
+        // LootGenerateEvent: a container's roll, the first time it is opened.
+        self.plugin_container_loot(net, conn, &slots);
         let Some(items) = net
             .hub
             .player(conn)
@@ -1023,6 +1027,16 @@ impl crate::game::Server<'_> {
         // The plugins' events for the packet first: a cancelled one is dropped.
         let mut packet = packet;
         if self.plugin_packet(net, conn, &mut packet) {
+            return;
+        }
+        // PlayerInteractAtEntityEvent and PlayerAnimationEvent.
+        if self.plugin_world_packet(net, conn, &packet) {
+            return;
+        }
+        // InventoryDragEvent: a drag's last packet, dropped when cancelled.
+        if let S::ContainerClick(p) = &packet
+            && self.plugin_drag(net, conn, p)
+        {
             return;
         }
         let spectator = net.hub.players[gi].spectator();
@@ -2010,6 +2024,8 @@ impl crate::game::Server<'_> {
         let ((start, end), suggestions) =
             d.suggestions(&parse, command.len(), &self.world_data.registries);
         self.world_data.registries.permission = level;
+        // AsyncTabCompleteEvent and TabCompleteEvent: a plugin may change them.
+        let suggestions = self.plugin_tab_complete(net, conn, &text, (start, end), suggestions);
         let utf16 = |byte: usize| command[..byte.min(command.len())].encode_utf16().count() as i32;
         let mut w = horizon_protocol::buf::Writer::new();
         w.varint(id);
@@ -2178,7 +2194,11 @@ impl crate::game::Server<'_> {
     /// Per tick, for every player: dig, use items, pick up drops, die.
     pub(super) fn tick_players(&mut self, net: &mut Network) {
         self.plugin_moves(net);
-        self.plugin_watch(net);
+        // PlayerLocaleChangeEvent, PlayerChangedMainHandEvent, PlayerCommandSendEvent.
+        self.plugin_watch_world(net);
+        // EntityCombustEvent, EntityAirChangeEvent, EntityToggleGlideEvent...
+        // for what changed about the players.
+        self.plugin_watch_player_bodies(net);
         self.net_merchant_tick(net);
         self.net_stations_tick(net);
         self.net_tables_tick(net);
@@ -2309,6 +2329,10 @@ impl crate::game::Server<'_> {
             self.player_orbs(net, gi);
             self.player_die(net, gi, conn);
         }
+        // After the players' turns, before their state goes out: what
+        // changed about them this tick (food, health, toggles...), so a
+        // cancelled change never reaches their client.
+        self.plugin_watch(net);
     }
     /// `ServerPlayer.die` for a player whose health has run out: the death
     /// message, the loot and experience, the death screen.
@@ -2782,12 +2806,8 @@ impl crate::game::Server<'_> {
                 _ => {}
             }
         }
-        if let (Some(v), Some(g)) = (marked, net.hub.player(conn)) {
-            g.send(&C::SetEntityMotion(play::SetEntityMotion {
-                id: g.entity_id,
-                velocity: [v.x, v.y, v.z],
-            }));
-        }
+        // PlayerVelocityEvent on the way.
+        self.send_player_motion(net, conn, marked);
     }
     /// ServerGamePacketListenerImpl.handlePlayerCommand START_FALL_FLYING:
     /// `Player.tryToStartFallFlying`, or else `stopFallFlying` (a second
@@ -3136,7 +3156,9 @@ impl crate::game::Server<'_> {
         } else {
             self.orbs[touching[pick]].count -= 1;
         }
-        play.xp_delay = 2;
+        // PlayerExpCooldownChangeEvent: a plugin may change the cooldown.
+        let cooldown = self.plugin_exp_cooldown(net, conn, 2);
+        net.play.entry(conn).or_default().xp_delay = cooldown;
         net.hub.take_item(orb.id as i32, id, 1, at);
         // ClientPacketListener.handleTakeItemEntity's sound, at the orb.
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.35 + 0.9;

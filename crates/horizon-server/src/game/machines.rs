@@ -682,6 +682,11 @@ impl crate::game::Server<'_> {
             let Some(one) = self.take_one(hopper, slot) else {
                 continue;
             };
+            // InventoryMoveItemEvent: cancelled, the item stays in the hopper.
+            if !self.plugin_move_item(hopper.parts[0].0, target.parts[0].0, &one, true) {
+                self.put_back(hopper, slot, one);
+                return false;
+            }
             match self.add_item(Some(pos), target, one, Some(face)) {
                 None => {
                     self.view_changed(target);
@@ -782,6 +787,11 @@ impl crate::game::Server<'_> {
             let Some(one) = self.take_one(source, slot) else {
                 continue;
             };
+            // InventoryMoveItemEvent: cancelled, the item stays where it was.
+            if !self.plugin_move_item(source.parts[0].0, hopper.parts[0].0, &one, false) {
+                self.put_back(source, slot, one);
+                return false;
+            }
             match self.add_item(source_hopper, hopper, one, None) {
                 None => {
                     self.view_changed(source);
@@ -903,6 +913,11 @@ impl crate::game::Server<'_> {
                 && hi.y > min[1]
                 && lo.z < max[2]
                 && hi.z > min[2];
+            // InventoryPickupItemEvent: cancelled, the hopper leaves this item.
+            if inside && !self.plugin_hopper_pickup(hopper.parts[0].0, i) {
+                i += 1;
+                continue;
+            }
             if inside {
                 let stack = self.dropped[i].stack.clone();
                 match self.add_item(None, hopper, stack, None) {
@@ -1017,6 +1032,10 @@ impl crate::game::Server<'_> {
                         count: 1,
                         ..stack.clone()
                     };
+                    // InventoryMoveItemEvent: cancelled, the dropper keeps it.
+                    if !self.plugin_move_item(key, into.parts[0].0, &one, true) {
+                        return Ok(());
+                    }
                     if self
                         .add_item(None, &into, one, Some(facing.opposite()))
                         .is_none()

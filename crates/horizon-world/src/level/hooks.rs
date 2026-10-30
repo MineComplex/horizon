@@ -435,7 +435,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         }
         // TntBlock.playerWillDestroy: unstable TNT primes unless instabuild.
         if !creative && data.is(Class::Tnt) && b.table.bool(state, p.unstable) {
-            self.prime_tnt(pos);
+            // TNTPrimeEvent (BLOCK_BREAK).
+            self.prime_tnt_by(pos, super::TntCause::BlockBreak);
         }
         // BaseFireBlock emits extinguish and suppresses generic destroy particles/sound.
         if data.is(Class::BaseFire) {
@@ -521,16 +522,29 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     }
     /// `SpongeBlock.tryAbsorbWater`.
     pub(crate) fn sponge_try_absorb(&mut self, start: BlockPos) {
-        if self.sponge_remove_water(start) {
-            let b = self.b;
-            self.set_block(start, b.default_of(b.named.wet_sponge), 2);
-            self.emit(super::LevelEvent::Sound {
-                pos: start,
-                sound: "minecraft:block.sponge.absorb".into(),
-                volume: 1.0,
-                pitch: 1.0,
-            });
+        // SpongeAbsorbEvent: the plugins hear what it would soak up first.
+        if self.level.plugins_ask(super::PluginAskKind::SpongeAbsorb) {
+            let blocks = self.sponge_preview(start);
+            if !blocks.is_empty() {
+                self.level
+                    .hold_for_plugins(super::PluginAsk::SpongeAbsorb { pos: start, blocks });
+            }
+            return;
         }
+        if self.sponge_remove_water(start) {
+            self.sponge_turn_wet(start);
+        }
+    }
+    /// The sponge at `start` soaked up water: a wet sponge, with its sound.
+    pub(crate) fn sponge_turn_wet(&mut self, start: BlockPos) {
+        let b = self.b;
+        self.set_block(start, b.default_of(b.named.wet_sponge), 2);
+        self.emit(super::LevelEvent::Sound {
+            pos: start,
+            sound: "minecraft:block.sponge.absorb".into(),
+            volume: 1.0,
+            pitch: 1.0,
+        });
     }
     fn sponge_remove_water(&mut self, start: BlockPos) -> bool {
         use std::collections::{HashSet, VecDeque};

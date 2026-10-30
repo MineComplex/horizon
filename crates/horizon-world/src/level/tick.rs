@@ -653,6 +653,17 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         {
                             let spread_age = 15.min(age + self.rand_int(5) / 4);
                             let next = self.fire_state_with_age(test, spread_age);
+                            // BlockIgniteEvent (SPREAD), then BlockSpreadEvent.
+                            if self.held_for_plugins(super::PluginAskKind::Ignite, |_| {
+                                super::PluginAsk::Ignite {
+                                    pos: test,
+                                    cause: super::IgniteCause::Spread,
+                                    source: pos,
+                                    fire: next,
+                                }
+                            }) {
+                                continue;
+                            }
                             self.changed(
                                 super::BlockChange::Spread { source: pos },
                                 &[test],
@@ -713,7 +724,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 }
             }
             if b.instance_of(old, Class::Tnt) {
-                self.prime_tnt(pos);
+                // TNTPrimeEvent (FIRE).
+                self.prime_tnt_by(pos, super::TntCause::Fire);
             }
         }
     }
@@ -858,7 +870,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     }
                 }
                 if self.b.instance_of(state, Class::Tnt) {
-                    self.prime_tnt(pos);
+                    // TNTPrimeEvent (FIRE).
+                    self.prime_tnt_by(pos, super::TntCause::Fire);
                 }
             }
             P::Form { into, .. } => {
@@ -1059,20 +1072,24 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 }
             }
         }
+        // MoistureChangeEvent: the plugins may keep it as it is.
+        let moisten = |s: &mut Self, into: BlockStateId| {
+            if !s.held_for_plugins(super::PluginAskKind::Moisture, |_| {
+                super::PluginAsk::Moisture { pos, state, into }
+            }) {
+                s.set_block(pos, into, 2);
+            }
+        };
         if !near_water && !self.level.is_raining_at(above(pos)) {
             if moisture > 0 {
-                self.set_block(
-                    pos,
-                    b.table.set_int(state, b.props.moisture, moisture - 1),
-                    2,
-                );
+                moisten(self, b.table.set_int(state, b.props.moisture, moisture - 1));
             } else if !b.in_set(self.above_state(pos), &b.tags.maintains_farmland) {
                 self.changed(super::BlockChange::Fade, &[pos], |s| {
                     s.turn_to_base_block(pos, state);
                 });
             }
         } else if moisture < 7 {
-            self.set_block(pos, b.table.set_int(state, b.props.moisture, 7), 2);
+            moisten(self, b.table.set_int(state, b.props.moisture, 7));
         }
     }
     /// `SaplingBlock.advanceTree`.
@@ -1591,8 +1608,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     } else {
                         b.named.powder_snow_cauldron
                     };
-                    self.set_block_and_update(below_pos, b.default_of(next));
-                    self.game_event(below_pos, "minecraft:block_change");
+                    self.cauldron_fill(below_pos, below_state, b.default_of(next), None);
                 }
             } else if data.is(Class::LayeredCauldron) && self.random().next_float() < chance {
                 let matches = (info.kind == PrecipitationKind::Rain
@@ -1600,8 +1616,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     || (info.kind == PrecipitationKind::Snow
                         && b.is_block(below_state, b.named.powder_snow_cauldron));
                 if b.table.int(below_state, p.level) != 3 && matches {
-                    self.set_block_and_update(below_pos, b.table.cycle(below_state, p.level));
-                    self.game_event(below_pos, "minecraft:block_change");
+                    let next = b.table.cycle(below_state, p.level);
+                    self.cauldron_fill(below_pos, below_state, next, None);
                 }
             }
         }
@@ -1878,6 +1894,28 @@ impl Behaviours {
             return None;
         }
         sim.fluid_flow_preview(tick.pos)
+    }
+    /// The next due fluid tick's change of level (`FluidLevelChangeEvent`),
+    /// before `scheduled_step` runs it: the fluid's block, its state and the
+    /// new one. None when it keeps its level or none is due.
+    pub fn scheduled_fluid_level<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+    ) -> Option<(BlockPos, BlockStateId, BlockStateId)> {
+        let tick = ticks.fluids.peek_tick()?;
+        let sim = self.sim(level, ticks);
+        let fluid = self.fluid(sim.state(tick.pos)).kind();
+        if TickTypeId(fluid as u32) != tick.kind {
+            return None;
+        }
+        let (old, new) = sim.fluid_level_preview(tick.pos)?;
+        Some((tick.pos, old, new))
+    }
+    /// What the plugins made of the next fluid tick's new level at `pos`:
+    /// `into` instead, or None to keep it from changing and spreading.
+    pub fn answer_fluid_level(&self, ticks: &mut Ticks, pos: BlockPos, into: Option<BlockStateId>) {
+        ticks.fluid_level = Some((pos, into));
     }
     /// Make a change held back as `LevelEvent::Pending` (the plugins let it
     /// happen), if the block it names is still as it was.

@@ -43,6 +43,11 @@ pub struct Ticks {
     /// Where the next fluid tick may not flow (plugins cancelled it), set by
     /// `Behaviours::veto_flow` and cleared once the tick ran.
     pub(crate) flow_vetoes: Vec<BlockPos>,
+    /// What the plugins made of the next fluid tick's new level
+    /// (`FluidLevelChangeEvent`): the fluid's block and the state it takes
+    /// instead, None when they cancelled it. Set by
+    /// `Behaviours::answer_fluid_level`, taken by the tick.
+    pub(crate) fluid_level: Option<(BlockPos, Option<crate::registry::BlockStateId>)>,
     /// `ServerLevel.isHandlingTick` (true while scheduled ticks run).
     pub(crate) handling_tick: bool,
     /// Worldgen shape updates collect the ticks they schedule here, for the
@@ -81,6 +86,7 @@ impl Ticks {
             block_events: Vec::new(),
             block_events_later: Vec::new(),
             flow_vetoes: Vec::new(),
+            fluid_level: None,
             handling_tick: false,
             capture: None,
         }

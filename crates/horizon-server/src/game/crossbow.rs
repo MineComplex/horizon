@@ -119,6 +119,11 @@ impl crate::game::Server<'_> {
         let Some(eye) = self.eye_position() else {
             return;
         };
+        // EntityShootBowEvent: cancelled, the crossbow stays charged.
+        let bow = self.held().cloned();
+        if !self.plugin_shoot_bow_acting(bow.as_ref(), None, 1.0) {
+            return;
+        }
         let Some(bow) = self.held_mut().as_mut() else {
             return;
         };

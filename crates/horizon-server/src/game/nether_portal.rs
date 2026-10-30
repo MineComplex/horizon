@@ -385,10 +385,15 @@ impl crate::game::Server<'_> {
         }
         let logical = if to_nether { 128 } else { 384 };
         let (approximate, x_axis) = (plan.approximate, plan.entry_x_axis);
+        // PortalCreateEvent (NETHER_PAIR): a cancelled portal is taken back.
+        let mark = self.plugin_portal_pair_begin();
         let created = self.with_level(|b, level, ticks| {
             b.create_portal(level, ticks, approximate, x_axis, &border, logical)
         });
         let _ = self.process_level_events();
+        if created.is_some() && !self.plugin_portal_pair_end(mark) {
+            return None;
+        }
         created
     }
     /// `NetherPortalBlock.createDimensionTransition`: the arrival position
@@ -483,6 +488,10 @@ impl crate::game::Server<'_> {
             }
         }
         for (id, entry) in leaving {
+            // EntityPortalEvent: a plugin may keep it here.
+            if !self.plugin_entity_portal(id) {
+                continue;
+            }
             // `Entity.teleportCrossDimension` carries the passengers: a
             // vehicle server players ride takes them along.
             if self.player_rides(id) {

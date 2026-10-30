@@ -124,6 +124,12 @@ impl crate::game::Server<'_> {
             if !griefing || !close {
                 continue;
             }
+            // EntityPickupItemEvent: a plugin may leave it on the ground.
+            let id = self.mobs[i].id;
+            if !self.plugin_mob_pickup(id, j, 1) {
+                continue;
+            }
+            let e = &self.dropped[j];
             let item = e.stack.item.clone();
             let thrown_by_player = e
                 .thrower

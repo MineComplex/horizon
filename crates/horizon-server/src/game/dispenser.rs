@@ -1277,7 +1277,13 @@ impl crate::game::Server<'_> {
                 None,
             );
         } else if &*name == "minecraft:tnt" {
-            if self.world_data.rules.bool("tnt_explodes") {
+            // TNTPrimeEvent: a plugin may keep it a block.
+            let at = [target.0, target.1, target.2];
+            let from = Some([pos.0, pos.1, pos.2]);
+            let cause = horizon_server_api::event::PrimeCause::Dispenser;
+            if self.world_data.rules.bool("tnt_explodes")
+                && self.plugin_tnt_prime(at, cause, None, from)
+            {
                 self.spawn_primed_tnt(target_pos, false);
                 self.with_level(|b, level, ticks| b.remove_block(level, ticks, target_pos, false));
                 self.process_level_events()?;
@@ -1351,6 +1357,13 @@ impl crate::game::Server<'_> {
         let front = offset(pos, facing);
         if self.sulfur_cube_swallow(front, &stack) {
             return (shrink(stack), optional_event("tnt"));
+        }
+        // TNTPrimeEvent: a plugin may keep the TNT in the dispenser.
+        let at = [front.0, front.1, front.2];
+        let cause = horizon_server_api::event::PrimeCause::Dispenser;
+        if !self.plugin_tnt_prime(at, cause, None, Some([pos.0, pos.1, pos.2])) {
+            set_success("tnt", false);
+            return (Some(stack), FAIL);
         }
         set_success("tnt", true);
         // new PrimedTnt(level, x + 0.5, y, z + 0.5, null), its sound and ENTITY_PLACE.
@@ -1610,7 +1623,7 @@ impl crate::game::Server<'_> {
         stack: ItemStack,
     ) -> Result<Dispensed> {
         let target = offset(pos, facing);
-        let sheared = self.shear_beehive(target)? || self.shear_entity(target)?;
+        let sheared = self.shear_beehive(target)? || self.shear_entity(pos, target)?;
         if sheared {
             return Ok((self.hurt_and_break(stack, 1), CLICK));
         }
@@ -1730,7 +1743,7 @@ impl crate::game::Server<'_> {
     }
     /// `ShearsDispenseItemBehavior.tryShearEntity`: the first live, ready
     /// `Shearable` in the block is sheared.
-    fn shear_entity(&mut self, target: Pos) -> Result<bool> {
+    fn shear_entity(&mut self, dispenser: Pos, target: Pos) -> Result<bool> {
         let shears = ItemStack::new("minecraft:shears", 1);
         for t in self.targets_at(target) {
             // Entity.shearOffAllLeashConnections comes first, for any entity.
@@ -1738,10 +1751,14 @@ impl crate::game::Server<'_> {
                 return Ok(true);
             }
             let Target::Mob(i) = t else { continue };
-            let m = &self.mobs[i];
-            if !m.alive() {
+            if !self.mobs[i].alive() {
                 continue;
             }
+            // BlockShearEntityEvent: a plugin may keep the dispenser off it.
+            if !self.plugin_dispenser_shear(dispenser, i) {
+                continue;
+            }
+            let m = &self.mobs[i];
             let at = m.position;
             let sound_at = Some([at.x, at.y, at.z]);
             match m.species() {

@@ -174,9 +174,15 @@ impl crate::game::Server<'_> {
             .take()
             .unwrap_or_else(|| Box::new(Menu::new(Kind::Inventory)));
         let grid = net.hub.players[gi].craft_grid.clone();
-        let changed = self.player_menu_op(net, gi, &mut menu, |menu, env| {
+        // PrepareItemCraftEvent: the grid before, and the result a plugin gave it.
+        let craft = self.plugin_craft_before(conn, &menu, Some(&grid));
+        let kept = craft.as_ref().and_then(|c| c.kept.clone());
+        let mut changed = self.player_menu_op(net, gi, &mut menu, |menu, env| {
             for (k, s) in grid.into_iter().enumerate() {
                 menu.set_slot(env, 1 + k, s);
+            }
+            if let Some(result) = kept {
+                menu.set_slot(env, 0, result);
             }
             let before: Vec<_> = (0..menu.slot_count())
                 .map(|s| menu.slot(s).cloned())
@@ -186,6 +192,9 @@ impl crate::game::Server<'_> {
                 .filter(|&s| menu.slot(s) != before[s].as_ref())
                 .collect::<Vec<_>>()
         });
+        if self.plugin_craft_after(net, conn, &mut menu, craft) && !changed.contains(&0) {
+            changed.push(0);
+        }
         let g = &mut net.hub.players[gi];
         for k in 0..4 {
             g.craft_grid[k] = menu.slot(1 + k).cloned();
@@ -296,7 +305,13 @@ impl crate::game::Server<'_> {
         let count = |s: Option<&ItemStack>| s.map_or(0, |s| s.count);
         if furnace && count(menu.slot(2)) < count(items[2].as_ref()) {
             let at = net.hub.players[gi].position;
-            self.award_furnace_recipes(pos, at);
+            // FurnaceExtractEvent: what was taken; a plugin may change the experience.
+            let left = count(menu.slot(2));
+            let taken = items[2].clone().map(|mut s| {
+                s.count -= left;
+                s
+            });
+            self.plugin_furnace_extract(net, conn, pos, at, taken);
         }
         // Slot.setChanged on a changed container slot: BlockEntity.setChanged,
         // so the chunk is saved and comparators read the block again.
@@ -366,6 +381,10 @@ impl crate::game::Server<'_> {
         else {
             return;
         };
+        // PlayerRecipeBookClickEvent: cancelled, nothing is placed; a plugin may pick another recipe.
+        let Some(id) = self.plugin_recipe_book_click(net, conn, id, p.use_max) else {
+            return;
+        };
         // An unknown or impossible recipe is refused outright.
         if !g.recipe_book.knows(&id)
             || self
@@ -385,12 +404,19 @@ impl crate::game::Server<'_> {
                 .take()
                 .unwrap_or_else(|| Box::new(Menu::new(Kind::Inventory)));
             let grid = net.hub.players[gi].craft_grid.clone();
+            // PrepareItemCraftEvent: the grid before, and the result a plugin gave it.
+            let craft = self.plugin_craft_before(conn, &menu, Some(&grid));
+            let kept = craft.as_ref().and_then(|c| c.kept.clone());
             let placed = self.player_menu_op(net, gi, &mut menu, |menu, env| {
                 for (k, s) in grid.into_iter().enumerate() {
                     menu.set_slot(env, 1 + k, s);
                 }
+                if let Some(result) = kept {
+                    menu.set_slot(env, 0, result);
+                }
                 menu.place_recipe(env, &id, p.use_max, creative, None)
             });
+            self.plugin_craft_after(net, conn, &mut menu, craft);
             let g = &mut net.hub.players[gi];
             for k in 0..4 {
                 g.craft_grid[k] = menu.slot(1 + k).cloned();
@@ -407,9 +433,12 @@ impl crate::game::Server<'_> {
             else {
                 return;
             };
+            // PrepareItemCraftEvent: the grid before.
+            let craft = self.plugin_craft_before(conn, &menu, None);
             let placed = self.player_menu_op(net, gi, &mut menu, |menu, env| {
                 menu.place_recipe(env, &id, p.use_max, creative, None)
             });
+            self.plugin_craft_after(net, conn, &mut menu, craft);
             net.play.entry(conn).or_default().crafting.table = Some((window, state, menu, pos));
             self.net_send_table_content(net, conn);
             placed
@@ -458,9 +487,12 @@ impl crate::game::Server<'_> {
             && !net.hub.players[gi].spectator()
             && self.net_table_valid(&net.hub.players[gi], pos)
         {
+            // PrepareItemCraftEvent: the grid before.
+            let craft = self.plugin_craft_before(conn, &menu, None);
             self.player_menu_op(net, gi, &mut menu, |menu, env| {
                 let _ = menu.click(env, i32::from(p.slot), i32::from(p.button), input(p.input));
             });
+            self.plugin_craft_after(net, conn, &mut menu, craft);
         }
         net.play.entry(conn).or_default().crafting.table = Some((window, state, menu, pos));
         self.net_send_table_content(net, conn);

@@ -97,8 +97,12 @@ mod pick_entity;
 mod piglins;
 mod piston_push;
 mod player_equip;
+mod plugin_blocks;
+mod plugin_entities;
 mod plugin_events;
 mod plugin_host;
+mod plugin_inventories;
+mod plugin_world;
 mod postprocess;
 mod potions;
 mod powder_snow;
@@ -394,6 +398,10 @@ struct GameLevel<'w> {
     lid_openers: &'w HashMap<(i32, i32, i32), i32>,
     /// Plugins hear of blocks changing by themselves (`LevelEvent::Changed`).
     change_events: bool,
+    /// The `PluginAskKind`s plugins are asked about first, and the changes
+    /// held back for them (plugin_blocks.rs).
+    plugin_asks: u32,
+    asked: &'w mut Vec<horizon_world::level::PluginAsk>,
 }
 struct PlayerCollision {
     y: f64,
@@ -585,6 +593,20 @@ impl LevelAccess for GameLevel<'_> {
     }
     fn reports_changes(&self) -> bool {
         self.change_events
+    }
+    fn plugins_ask(&self, kind: horizon_world::level::PluginAskKind) -> bool {
+        self.plugin_asks & kind.bit() != 0
+    }
+    fn hold_for_plugins(&mut self, ask: horizon_world::level::PluginAsk) {
+        let pos = ask.pos();
+        let state = self.block_state(pos);
+        self.asked.push(ask);
+        // The plugins hear it in its turn (plugin_blocks.rs).
+        self.events.push(LevelEvent::BlockEvent {
+            pos,
+            state,
+            kind: "plugin_ask",
+        });
     }
     fn world_surface(&self, x: i32, z: i32) -> i32 {
         self.world.world_surface(x, z, |s| self.facts.is_air(s))
@@ -1295,6 +1317,11 @@ struct Server<'a> {
     plugin_projectiles_seen: std::collections::HashSet<(Dim, u32)>,
     /// Each level's rain and thunder as the plugins last saw them.
     plugin_weather: HashMap<Dim, (bool, bool)>,
+    /// What each group of plugin events keeps between ticks.
+    plugin_blocks: plugin_blocks::State,
+    plugin_entities: plugin_entities::State,
+    plugin_inventories: plugin_inventories::State,
+    plugin_world: plugin_world::State,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
     /// Players whose inventory a plugin kept as it was (a cancelled drop):
@@ -1898,6 +1925,10 @@ impl crate::game::Server<'_> {
             |stack: &ItemStack| catalog.get(&stack.item).map_or(64, |i| i.max_stack).max(1);
         // A player only shows the game's items.
         let merging = true;
+        // ItemMergeEvent: with plugins listening, the merges wait for the end
+        // of the ticks, where each pair is asked first.
+        let merge_later = self.plugin_merges_later();
+        let mut merges_due = Vec::new();
         for i in 0..items.len() {
             if removed[i] {
                 continue;
@@ -1945,13 +1976,17 @@ impl crate::game::Server<'_> {
                 && (alive || item.age == 6000 && item.position.y > -128.0)
                 && item.ticks.is_multiple_of(rate)
             {
-                crate::hc::entities::merge_with_neighbours(
-                    &mut items,
-                    &mut removed,
-                    &mut cells,
-                    i,
-                    &max_stack,
-                );
+                if merge_later {
+                    merges_due.push(i);
+                } else {
+                    crate::hc::entities::merge_with_neighbours(
+                        &mut items,
+                        &mut removed,
+                        &mut cells,
+                        i,
+                        &max_stack,
+                    );
+                }
             }
             let item = &mut items[i];
             if !alive || removed[i] {
@@ -1980,6 +2015,9 @@ impl crate::game::Server<'_> {
                 cells.remove(i, item.position);
             }
         }
+        self.plugin_merge_items(&mut items, &mut removed, &mut cells, merges_due);
+        // ItemDespawnEvent: a cancelled one lives on.
+        self.plugin_items_despawn(&mut items, &mut removed);
         let mut removed = removed.into_iter();
         items.retain(|_| !removed.next().unwrap_or(false));
         let Some(p) = self.player.as_ref() else {
@@ -2143,6 +2181,7 @@ impl crate::game::Server<'_> {
             falling: &self.falling,
         };
         let change_events = self.plugin_change_events();
+        let plugin_asks = self.plugin_block_asks();
         let mut level = GameLevel {
             cart_boxes,
             item_frames: &self.item_frames,
@@ -2187,8 +2226,12 @@ impl crate::game::Server<'_> {
             random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
             change_events,
+            plugin_asks,
+            asked: &mut self.plugin_blocks.asked,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
+        // PlayerHarvestBlockEvent for a harvest under way.
+        self.plugin_harvest_drops();
         self.flush_spill();
         result
     }
@@ -2495,6 +2538,10 @@ impl crate::game::Server<'_> {
                     if !vetoes.is_empty() {
                         self.with_level(|b, _, ticks| b.veto_flow(ticks, vetoes));
                     }
+                }
+                // FluidLevelChangeEvent.
+                if fluids {
+                    self.plugin_fluid_level();
                 }
                 let more =
                     self.with_level(|b, level, ticks| b.scheduled_step(level, ticks, fluids));
@@ -2901,6 +2948,13 @@ impl crate::game::Server<'_> {
                 LevelEvent::Changed { cause, changes } => {
                     self.plugin_block_changed(cause, &changes)?;
                 }
+                // TNTPrime, NotePlay, BellRing, BlockIgnite, SpongeAbsorb,
+                // MoistureChange, CauldronLevelChange and BlockRedstoneEvent.
+                LevelEvent::BlockEvent {
+                    pos,
+                    kind: "plugin_ask",
+                    ..
+                } => self.plugin_block_ask(pos)?,
                 LevelEvent::BlockEntityEvent { pos, a, b, .. } => {
                     self.block_entity_event([pos.x, pos.y, pos.z], a, b)
                 }
@@ -3051,7 +3105,12 @@ impl crate::game::Server<'_> {
                 Ok(FallStep::Falling) => kept.push(f),
                 Ok(FallStep::Gone) => {}
                 Ok(FallStep::Dropped(at)) => self.drop_falling_block(f.state, at),
-                Ok(FallStep::Landed(pos)) => self.finish_falling_block(f, pos),
+                Ok(FallStep::Landed(pos)) => {
+                    // EntityChangeBlockEvent: cancelled, it goes without a block.
+                    if self.plugin_falling_lands(f.id, f.state, f.position, pos) {
+                        self.finish_falling_block(f, pos);
+                    }
+                }
                 Err(error) => {
                     kept.push(original);
                     collision_error.get_or_insert(error);
@@ -3620,6 +3679,8 @@ impl crate::game::Server<'_> {
                 let player = self.use_context();
                 let at = Vec3::new(hit.point[0], hit.point[1], hit.point[2]);
                 let item = held.as_ref().map(|s| s.item.to_string());
+                // PlayerHarvestBlockEvent: a berry plant's drops wait for the plugins.
+                self.plugin_harvest_begin(hit.pos);
                 let result = self.with_level(|b, level, ticks| {
                     b.use_item_on(
                         level,
@@ -3798,6 +3859,8 @@ impl crate::game::Server<'_> {
                 (next, self.world.block(next[0], next[1], next[2])),
             ]
         };
+        // BlockMultiPlaceEvent: the blocks the other parts may go in, as they are.
+        let parts_before = self.plugin_multi_place_before(hit.pos, hit.face);
         let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
         // BlockPlaceEvent (a server's player): a plugin may take the block back.
         if let PlaceOutcome::Placed { pos, state } = &outcome {
@@ -3810,6 +3873,10 @@ impl crate::game::Server<'_> {
             if !self.plugin_block_place(target, *state, replaced, item) {
                 let at = BlockPos::new(target[0], target[1], target[2]);
                 self.with_level(|b, level, ticks| b.set_block(level, ticks, at, replaced, 3));
+                return Ok(true);
+            }
+            // BlockMultiPlaceEvent: beds, doors, tall flowers take all their parts back.
+            if !self.plugin_multi_place(target, *state, parts_before, &stack) {
                 return Ok(true);
             }
         }
@@ -4400,8 +4467,10 @@ impl crate::game::Server<'_> {
     /// `RecipeCraftingHolder.awardUsedRecipes`: a crafted recipe becomes known
     /// (special ones never do).
     fn award_crafted(&mut self, recipes: &[String]) {
+        // PlayerRecipeDiscoverEvent: the recipes a plugin lets the player learn.
+        let recipes = self.plugin_recipe_discover(recipes);
         let index = &self.res.stations().recipe_index;
-        let (_, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
+        let (_, unlocked) = self.level.recipe_book.add_recipes(index, &recipes);
         self.recipe_unlocked(&unlocked);
     }
     /// `AbstractContainerScreen` keeps `isQuickCrafting` and the drag it
@@ -5522,6 +5591,17 @@ impl crate::game::Server<'_> {
                     .properties
                     .insert("axis".into(), if x_axis { "x" } else { "z" }.into());
                 let id = registry.resolve(&portal).unwrap_or(default);
+                // PortalCreateEvent (FIRE): a cancelled portal stays unlit.
+                let blocks: Vec<[i32; 3]> = (0..height)
+                    .flat_map(|h| {
+                        (0..width).map(move |w| {
+                            [origin[0] + d[0] * w, origin[1] + h, origin[2] + d[2] * w]
+                        })
+                    })
+                    .collect();
+                if !self.plugin_portal_light(&blocks, id) {
+                    return Ok(false);
+                }
                 for h in 0..height {
                     for w in 0..width {
                         self.world.set(
@@ -5769,16 +5849,20 @@ impl crate::game::Server<'_> {
         let under_water = registry
             .state(above)
             .is_some_and(|s| s.name == "minecraft:water");
+        // CauldronLevelChangeEvent: the hand as it was, should a plugin cancel.
+        let before = self.plugin_cauldron_before();
         let result = cauldron::interact(&state, under_water, removes_dye, &mut Hand(self));
         if result.outcome == Outcome::Pass {
             return Ok(false);
         }
+        let mut new = result.block.and_then(|block| registry.resolve(&block).ok());
+        if !self.plugin_cauldron_use(pos, before, &mut new) {
+            return Ok(true);
+        }
         if let Some(stat) = result.stat {
             self.stats.custom(stat, 1);
         }
-        if let Some(block) = result.block
-            && let Ok(new) = registry.resolve(&block)
-        {
+        if let Some(new) = new {
             self.level_set(pos, new)?;
         }
         if let Some(sound) = result.sound {
@@ -5949,9 +6033,13 @@ impl crate::game::Server<'_> {
         else {
             return;
         };
-        let Ok(new) = registry.resolve(&crate::hc::cauldron::extinguished(&old)) else {
+        let Ok(mut new) = registry.resolve(&crate::hc::cauldron::extinguished(&old)) else {
             return;
         };
+        // CauldronLevelChangeEvent (EXTINGUISH).
+        if !self.plugin_cauldron_extinguish(at, &mut new) {
+            return;
+        }
         if self.level_set(at, new).is_ok() {
             self.post_block_game_event("minecraft:block_change", at, None, Some(new));
         }
@@ -5997,7 +6085,9 @@ impl crate::game::Server<'_> {
         let Some(held) = self.held().cloned() else {
             return;
         };
-        let amount = self.durability_loss(&held, amount);
+        let loss = self.unbreaking_loss(&held, amount);
+        // PlayerItemDamageEvent: the stack never breaks here.
+        let amount = self.plugin_item_damage(&held, amount, loss, false);
         let max = self.res.items().get(&held.item).map_or(0, |i| i.max_damage);
         if amount == 0 || max == 0 {
             return;
@@ -6193,7 +6283,16 @@ impl crate::game::Server<'_> {
                 return Ok(UseResult::Fail);
             }
             let name = self.res.facts().get(clicked).name.clone();
+            let cause = if item == "fire_charge" {
+                horizon_server_api::event::IgniteCause::Fireball
+            } else {
+                horizon_server_api::event::IgniteCause::FlintAndSteel
+            };
             if self.can_light(clicked, &name) {
+                // BlockIgniteEvent: a plugin may keep the campfire or candle unlit.
+                if !self.plugin_ignite(hit.pos, cause, None, true) {
+                    return Ok(UseResult::Fail);
+                }
                 let registry = self.pack.assets.registry;
                 let mut state = registry
                     .state(clicked)
@@ -6227,6 +6326,10 @@ impl crate::game::Server<'_> {
                 hit.pos[2] + hit.face[2],
             ];
             if self.can_place_used_fire(target) {
+                // BlockIgniteEvent: a plugin may keep the fire out.
+                if !self.plugin_ignite(target, cause, None, true) {
+                    return Ok(UseResult::Fail);
+                }
                 if !self.try_light_portal(target)? {
                     self.place_used_fire(target)?;
                 }
@@ -6511,6 +6614,11 @@ impl crate::game::Server<'_> {
         let ammo = arrow_slot
             .and_then(|i| self.stack_in(i).cloned())
             .unwrap_or_else(|| ItemStack::new("minecraft:arrow", 1));
+        // EntityShootBowEvent: cancelled, no arrow and no ammo used.
+        let bow = self.held().cloned();
+        if !self.plugin_shoot_bow_acting(bow.as_ref(), Some(&ammo), power) {
+            return;
+        }
         let (power_bonus, infinity) = self.bow_enchantments(&ammo.item);
         let kind = crate::hc::projectiles::ProjectileKind::Arrow {
             base_damage: 2.0 + power_bonus,
@@ -6810,7 +6918,12 @@ impl crate::game::Server<'_> {
         if self.enough_slept() {
             if self.world_data.rules.bool("advance_time") {
                 let t = self.world.day_time;
-                self.world.day_time = t + 24000 - t.rem_euclid(24000);
+                // TimeSkipEvent (NIGHT_SKIP): a plugin may change or cancel the skip.
+                let skip = 24000 - t.rem_euclid(24000);
+                let reason = horizon_server_api::event::TimeSkipReason::NightSkip;
+                if let Some(skip) = self.plugin_time_skip(reason, skip) {
+                    self.world.day_time = t + skip;
+                }
             }
             // Level.isRaining: the rain level is above 0.2.
             if self.world_data.rules.bool("advance_weather")
@@ -6988,6 +7101,8 @@ impl crate::game::Server<'_> {
         let (uploads, unloaded) =
             crate::hc::spans::time("streaming", || self.streaming.update(&mut self.world));
         self.streaming.extra.truncate(areas);
+        // ChunkLoadEvent, ChunkUnloadEvent and ChunkPopulateEvent.
+        self.plugin_watch_chunks();
         let dirty: Vec<_> = unloaded
             .iter()
             .filter(|c| self.world.modified.remove(&(c.x, c.z)))
@@ -7406,6 +7521,10 @@ impl<'a> Server<'a> {
             plugin_mob_watch: HashMap::new(),
             plugin_projectiles_seen: Default::default(),
             plugin_weather: HashMap::new(),
+            plugin_blocks: Default::default(),
+            plugin_entities: Default::default(),
+            plugin_inventories: Default::default(),
+            plugin_world: Default::default(),
             plugin_resend: Vec::new(),
             plugin_resync: Vec::new(),
             plugin_last_moves: HashMap::new(),

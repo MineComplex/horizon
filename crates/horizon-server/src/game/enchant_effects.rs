@@ -52,6 +52,12 @@ impl crate::game::Server<'_> {
     }
     /// `EnchantmentHelper.processDurabilityChange` (unbreaking) for `amount` points.
     pub(super) fn durability_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
+        let loss = self.unbreaking_loss(stack, amount);
+        // PlayerItemDamageEvent, and PlayerItemBreakEvent when it wears out.
+        self.plugin_item_damage(stack, amount, loss, true)
+    }
+    /// `durability_loss` without the plugins' events.
+    pub(super) fn unbreaking_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
         let e = &self.res.stations().enchantments;
         if !e.has_component(stack, "minecraft:item_damage") {
             return amount;
@@ -508,6 +514,11 @@ impl crate::game::Server<'_> {
                 amount as f32,
             ) as u32;
             let repaired = to_repair_xp.min(stack.damage);
+            // PlayerItemMendEvent: a plugin may change the repair or cancel it.
+            let Some(repaired) = self.plugin_item_mend(&stack, repaired) else {
+                return amount;
+            };
+            let repaired = repaired.min(stack.damage);
             if let Some(s) = self.mend_slot_mut(slot).as_mut() {
                 s.damage -= repaired;
             }

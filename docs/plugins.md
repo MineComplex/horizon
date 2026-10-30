@@ -161,11 +161,84 @@ suffocation, the void, freezing, cactus, magma) is held back in the tick and dea
 (`defer_env_damage` on `PlayerMotion` and `MobWorld`); without one, it is dealt in vanilla's order. Blocks
 growing, decaying and burning, pistons and fluids go one at a time while their events have listeners.
 
-Not yet: redstone currents (`BlockRedstoneEvent`), fire
-lit by players and lightning (`BlockIgniteEvent`), anvils, smithing, furnaces and brewing (`PrepareAnvilEvent`,
-`FurnaceSmeltEvent`, `BrewEvent`), the world's chunks (`ChunkLoadEvent`, `ChunkUnloadEvent`), mobs picking
-up items or changing blocks (`EntityPickupItemEvent`, `EntityChangeBlockEvent`), statistics, recipes
-discovered and arm swings.
+**More block events** (`event/blocks.rs`; the level's own changes are held back and asked first while a
+plugin listens: `horizon-world/src/level/plugin_asks.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `BlockRedstoneEvent` | a wire, lever, button, torch or lamp changed its power | (heard after the change) |
+| `BlockIgniteEvent` | flint and steel, fire charges, lightning, fireballs, explosions, End crystals, lava, fire spreading | `cancelled` |
+| `BlockExplodeEvent` | a bed or respawn anchor explodes | `blocks`, `cancelled` |
+| `NotePlayEvent`, `BellRingEvent` | a note block plays, a bell rings | `cancelled` |
+| `TNTPrimeEvent` (`TntPrimeEvent`) | TNT is lit (redstone, fire, a player, a dispenser, a flaming arrow, an explosion) | `cancelled` |
+| `SpongeAbsorbEvent` | a sponge is about to soak up water | `blocks`, `cancelled` |
+| `BlockMultiPlaceEvent` | a bed, door or tall plant placed (after `BlockPlaceEvent`) | `cancelled` |
+| `CauldronLevelChangeEvent` | a cauldron is filled or emptied (players, rain, dripstone, a burning player) | `new_state`, `cancelled` |
+| `MoistureChangeEvent`, `FluidLevelChangeEvent` | farmland's moisture, a fluid's level | `new_state`, `cancelled` |
+| `BlockShearEntityEvent` | a dispenser shears a mob | `cancelled` |
+| `BlockCookEvent` | a campfire finished cooking | `result`, `cancelled` |
+
+**More inventory events** (`event/inventories.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `PrepareItemCraftEvent` | a crafting grid's result is worked out | `result` |
+| `PrepareAnvilEvent`, `PrepareSmithingEvent`, `PrepareGrindstoneEvent`, `PrepareInventoryResultEvent` | an anvil's, smithing table's, grindstone's, loom's, stonecutter's or cartography table's result | `result` (anvils: `repair_cost`) |
+| `SmithItemEvent` | the smithing result is taken | `cancelled` |
+| `FurnaceBurnEvent`, `FurnaceSmeltEvent`, `FurnaceExtractEvent` | a furnace lights fuel, smelts an item, a player takes the output | `burn_time`; `result`; `exp`; `cancelled` |
+| `BrewingStandFuelEvent`, `BrewEvent` | a brewing stand takes blaze powder, finishes a brew | `fuel_power`, `results`, `cancelled` |
+| `CrafterCraftEvent` | a crafter crafts | `result`, `cancelled` |
+| `InventoryMoveItemEvent`, `InventoryPickupItemEvent` | a hopper or dropper moves an item, a hopper picks one up | `cancelled` |
+| `InventoryDragEvent` | a drag spreads items over slots | `cancelled` |
+| `TradeSelectEvent` | a trade is selected | `cancelled` |
+| `PlayerRecipeDiscoverEvent`, `PlayerRecipeBookClickEvent` | a recipe is unlocked, the recipe book places one | `recipe`, `cancelled` |
+| `PlayerTakeLecternBookEvent` | the book is taken from a lectern | `cancelled` |
+
+**More entity events** (`event/entities.rs`; "once a tick" ones compare the mobs and players with the last tick)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `EntityPickupItemEvent` | a mob picks up an item | `cancelled` |
+| `EntityChangeBlockEvent`, `EntityBreakDoorEvent`, `EntityInteractEvent` | a mob changes a block (endermen, sheep, silverfish, ravagers...), a falling block lands, a door is broken, farmland is trampled | `cancelled` |
+| `EntityCombustEvent`, `EntityAirChangeEvent` | catching fire, air changing (once a tick) | duration, `amount`, `cancelled` |
+| `ExplosionPrimeEvent` | a creeper, wither, sulfur cube or TNT is about to explode | radius, `fire`, `cancelled` |
+| `EntityShootBowEvent` | a mob or a player shoots a bow or crossbow | `cancelled` |
+| `EntityPotionEffectEvent` | an effect is added, changed, removed or cleared (once a tick) | `cancelled` |
+| `EntityTeleportEvent`, `EntityPortalEvent` | an enderman or shulker teleports, an entity goes through a portal | `to`, `cancelled` |
+| `EntityTransformEvent` | strays, drowned, zombified piglins, frogs, cured villagers, infections, lightning | `cancelled` |
+| `EntityResurrectEvent` | a totem of undying | `cancelled` |
+| `EntityToggleGlideEvent`, `EntityToggleSwimEvent` | gliding or swimming starts or stops (once a tick) | |
+| `EntityMountEvent`, `EntityDismountEvent` | an entity gets on or off another (once a tick) | `cancelled` (mobs) |
+| `CreeperPowerEvent`, `PigZapEvent`, `LightningStrikeEvent` | lightning powers a creeper, strikes a pig, strikes | `cancelled` |
+| `SheepDyeWoolEvent`, `SheepRegrowWoolEvent`, `SlimeSplitEvent` | a sheep is dyed or regrows wool, a slime splits | colour, count, `cancelled` |
+| `VillagerAcquireTradeEvent`, `VillagerReplenishTradeEvent`, `PiglinBarterEvent` | a villager gets or restocks a trade, a piglin barters | `result`, `max_uses`, outcome, `cancelled` |
+| `ItemDespawnEvent`, `ItemMergeEvent` | a dropped item despawns, two merge | `cancelled` |
+| `PotionSplashEvent`, `LingeringPotionSplashEvent`, `AreaEffectCloudApplyEvent` | a potion splashes, a cloud applies | the entities hit, `cancelled` |
+| `FireworkExplodeEvent`, `HorseJumpEvent`, `EntityEnterLoveModeEvent`, `BatToggleSleepEvent` | | power, ticks, `cancelled` |
+| `EntityDropItemEvent`, `EntitySpellCastEvent` | a mob drops an item (eggs, scutes, gifts), an evoker casts | `cancelled` |
+
+**More player, world and server events** (`event/world.rs`)
+
+| Event | Fires | May change |
+| --- | --- | --- |
+| `PlayerStatisticIncrementEvent` | a statistic goes up | `cancelled` |
+| `PlayerItemDamageEvent`, `PlayerItemBreakEvent`, `PlayerItemMendEvent` | an item wears, breaks, is mended | damage, repair amount, `cancelled` |
+| `PlayerRiptideEvent`, `PlayerHarvestBlockEvent` | a riptide trident, sweet berries or glow berries picked | the items, `cancelled` |
+| `PlayerArmorStandManipulateEvent`, `PlayerLeashEntityEvent`, `PlayerUnleashEntityEvent`, `PlayerBucketEntityEvent`, `PlayerSignOpenEvent`, `PlayerInteractAtEntityEvent`, `PlayerAnimationEvent` | | `cancelled` |
+| `PlayerChangedMainHandEvent`, `PlayerLocaleChangeEvent` | the client's settings changed | |
+| `PlayerCommandSendEvent` | the command tree is sent | the commands |
+| `PlayerVelocityEvent`, `PlayerEggThrowEvent`, `PlayerExpCooldownChangeEvent` | | velocity, hatching, cooldown |
+| `AsyncPlayerPreLoginEvent`, `AsyncTabCompleteEvent`, `TabCompleteEvent`, `BroadcastMessageEvent` | | the result, completions, message |
+| `ChunkLoadEvent`, `ChunkUnloadEvent`, `ChunkPopulateEvent` | chunks of a level load, unload, are generated | |
+| `WorldInitEvent`, `WorldLoadEvent`, `WorldUnloadEvent` | a level opens or closes | `cancelled` (unload) |
+| `StructureGrowEvent` | bone meal grows a tree or fungus | `blocks`, `cancelled` |
+| `PortalCreateEvent`, `SpawnChangeEvent`, `TimeSkipEvent` | a portal is lit or made on arrival, the world spawn moves, the night is slept or `/time` jumps | `skip_amount`, `cancelled` |
+| `RaidTriggerEvent`, `RaidSpawnWaveEvent`, `RaidFinishEvent`, `RaidStopEvent` | raids | `cancelled` (trigger) |
+| `GenericGameEvent` | a vanilla game event (vibrations) | radius, `cancelled` |
+| `LootGenerateEvent` | a container's or a mob's loot | the loot, `cancelled` |
+
+Not covered: `BlockCanBuildEvent` (placement is decided in one pass in horizon-world), natural tree growth in
+`StructureGrowEvent` (bone meal only), and `BlockPhysicsEvent` (left out on purpose).
 
 ## Tests
 
@@ -173,4 +246,5 @@ discovered and arm swings.
 panics) and `python3 tools/test_plugins_e2e.py` (a horizon-server built with the example plugin and a
 horizon-client on it: join, commands, `/plugins`, chat, a cancelled break, a kept diamond, the game mode line,
 a fall that hurts nothing, a teleport's cause, a cancelled phantom, a mob's death, TNT that breaks no blocks, the server-loaded line,
-food that never drops, rain taken back, enable and disable in the log).
+food that never drops, rain taken back, a cancelled time jump, a dry sponge, TNT that redstone doesn't light, a
+refused effect, a furnace that smelts gold, falling sand that never lands, enable and disable in the log).

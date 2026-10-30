@@ -1019,3 +1019,12 @@ event!(WorldSaveEvent, "WorldSaveEvent");
 #[derive(Clone, Debug, Default)]
 pub struct ServerLoadEvent;
 event!(ServerLoadEvent, "ServerLoadEvent");
+
+mod blocks;
+mod entities;
+mod inventories;
+mod world;
+pub use blocks::*;
+pub use entities::*;
+pub use inventories::*;
+pub use world::*;

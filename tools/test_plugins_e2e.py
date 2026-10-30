@@ -19,6 +19,12 @@ Checks, from the client's side:
   loaded    ServerLoadEvent: the plugin's line in the log once the server started
   hunger    FoodLevelChangeEvent: a survival player under Hunger 255 keeps 20 food
   weather   WeatherChangeEvent: /weather rain is taken back, and everyone is told
+  time      TimeSkipEvent: /time add 1000 leaves the time as it was
+  sponge    SpongeAbsorbEvent: a sponge set in water stays dry, the water stays
+  tnt       TNTPrimeEvent: a redstone block next to TNT lights nothing
+  effect    EntityPotionEffectEvent: Speed is refused, and the player is told
+  furnace   FurnaceSmeltEvent: raw iron smelts into a gold ingot
+  falling   EntityChangeBlockEvent: falling sand lands as nothing
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -213,6 +219,68 @@ def main():
             ctl('command', 'weather rain')
             chat_until('Rain stays away.')
         check('weather', weather)
+
+        def daytime():
+            return ctl('status')['day_time']
+
+        def time_skip():
+            before = daytime()
+            ctl('command', 'time add 1000', check=False)
+            ctl('wait', 2)
+            after = daytime()
+            assert abs(after - before) < 100, f'the time moved: {before} -> {after}'
+        check('time', time_skip)
+
+        x, y, z = ctl('state')['player']['block_pos']
+
+        def sponge():
+            sx = x - 8
+            ctl('command', f'fill {sx - 2} {y} {z - 2} {sx + 2} {y} {z + 2} minecraft:water')
+            ctl('wait', 5)
+            ctl('command', f'setblock {sx} {y} {z} minecraft:sponge')
+            chat_until('The sponge stays dry (')
+            ctl('wait', 5)
+            assert ctl('block', sx, y, z)['block'] == 'minecraft:sponge'
+            assert ctl('block', sx + 1, y, z)['block'].startswith('minecraft:water')
+            ctl('command', f'fill {sx - 2} {y} {z - 2} {sx + 2} {y} {z + 2} minecraft:air')
+        check('sponge', sponge)
+
+        def tnt():
+            tz = z + 8
+            ctl('command', f'setblock {x} {y} {tz} minecraft:tnt')
+            ctl('command', f'setblock {x + 1} {y} {tz} minecraft:redstone_block')
+            ctl('wait', 20)
+            assert ctl('block', x, y, tz)['block'] == 'minecraft:tnt', 'the TNT went'
+            ctl('command', f'fill {x} {y} {tz} {x + 1} {y} {tz} minecraft:air')
+        check('tnt', tnt)
+
+        def effect():
+            ctl('command', 'effect give @s minecraft:speed 30')
+            chat_until('No speed here.')
+        check('effect', effect)
+
+        def furnace():
+            fz = z - 8
+            items = '[{Slot:0b,id:"minecraft:raw_iron",count:1},{Slot:1b,id:"minecraft:coal",count:1}]'
+            ctl('command', f'setblock {x} {y} {fz} minecraft:furnace{{Items:{items}}}')
+            chat = []
+            for _ in range(30):
+                ctl('wait', 20)
+                chat = ctl('command', f'data get block {x} {y} {fz} Items', check=False).get('chat', [])
+                if any('gold_ingot' in line for line in chat):
+                    return
+            raise AssertionError(f'no gold ingot: {chat}')
+        check('furnace', furnace)
+
+        def falling():
+            fx = x + 4
+            ctl('command', f'setblock {fx} {y - 1} {z} minecraft:stone')
+            ctl('command', f'setblock {fx} {y} {z} minecraft:air')
+            ctl('command', f'summon minecraft:falling_block {fx} {y + 5} {z} {{BlockState:{{Name:"minecraft:sand"}}}}')
+            ctl('wait', 60)
+            block = ctl('block', fx, y, z)['block']
+            assert block != 'minecraft:sand', 'the sand landed'
+        check('falling', falling)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60

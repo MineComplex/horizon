@@ -181,6 +181,10 @@ impl crate::game::Server<'_> {
         }
         if self.mobs[index].extra.leash == Some(Holder::Player) {
             let creative = self.creative;
+            // PlayerUnleashEntityEvent: a plugin may keep the lead on.
+            if !self.plugin_leash(id, false, !creative) {
+                return true;
+            }
             self.break_leash(id, !creative, false);
             self.lead_sound("untied", at);
             return true;
@@ -188,6 +192,10 @@ impl crate::game::Server<'_> {
         if item == "minecraft:lead" {
             let center = self.player_center();
             if self.can_attach_lead(index, center) {
+                // PlayerLeashEntityEvent: a plugin may keep the lead in hand.
+                if !self.plugin_leash(id, true, false) {
+                    return true;
+                }
                 if self.mobs[index].extra.leash.is_some() {
                     self.break_leash(id, true, false);
                 }

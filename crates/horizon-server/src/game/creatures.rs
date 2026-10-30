@@ -528,6 +528,8 @@ impl crate::game::Server<'_> {
         let mut player_events = Vec::new();
         // The mobs whose bodies go this tick: (id, feet, width, height).
         let mut gone = Vec::new();
+        // Bukkit's entity events: what each mob's tick did.
+        let mut noted = self.plugin_noted();
         let level_random;
         {
             // The level random, lent to the mobs (brain behaviours draw from
@@ -601,6 +603,7 @@ impl crate::game::Server<'_> {
                 }
                 crate::hc::mobs::apply_mob_pushes(m, &mut pushes);
                 let from = events.len();
+                noted.before(m);
                 let kept = m.tick(&w, &mut scratch, &mut events);
                 // A killed mob's body is removed: its effects that act on
                 // death run (`LivingEntity.remove` with KILLED).
@@ -650,6 +653,7 @@ impl crate::game::Server<'_> {
                 snapshot[i].alive &= kept;
                 grid.update(i, snapshot[i].bounds);
                 crate::hc::mobs::apply_brain_events(&mut mobs, &mut events, from);
+                noted.after(&mobs[i], kept, &events);
             }
             let mut flags = keep.into_iter();
             mobs.retain(|_| flags.next().unwrap_or(true));
@@ -675,6 +679,9 @@ impl crate::game::Server<'_> {
         self.plugin_mob_env_damage(&mut dead);
         // EntityTargetLivingEntityEvent and EntityTameEvent for what the mobs did.
         self.plugin_watch_mobs();
+        // EntityCombustEvent, EntityPotionEffectEvent, SheepDyeWoolEvent... for
+        // what changed about the mobs.
+        self.plugin_watch_entities();
         // ... and entity event 60 goes out as it is: the poof.
         for (id, at, width, height) in gone {
             let at = [at.x, at.y, at.z];
@@ -702,6 +709,9 @@ impl crate::game::Server<'_> {
             let bounds = m.bounds();
             self.effects_on_death(&names, bounds, false, Some(m.id), Some(&mut m.random));
         }
+        // EntityChangeBlockEvent, ExplosionPrimeEvent, EntityTransformEvent...
+        // for what the mobs did: cancelled events go.
+        self.plugin_mob_events(noted, &mut events);
         self.handle_mob_events(events)?;
         self.net_player_mob_events(player_events);
         // ProjectileLaunchEvent for the projectiles new since the last tick.
@@ -808,6 +818,8 @@ impl crate::game::Server<'_> {
             let size = m.extra.size;
             if size > 1 {
                 let n = 2 + self.world.random.next_int_bound(3).unwrap_or(0);
+                // SlimeSplitEvent: the plugins may change how many.
+                let n = self.plugin_slime_split(m, n);
                 for k in 0..n {
                     let off = |kk: i32| (f64::from(kk % 2) - 0.5) * f64::from(size) / 4.0;
                     let at = [
@@ -937,6 +949,8 @@ impl crate::game::Server<'_> {
             world_seed: self.level.seed,
         };
         let (items, skulls) = drops::die(m, &death, &mut self.rand_sequences);
+        // LootGenerateEvent: a plugin may change the mob's loot.
+        let items = self.plugin_mob_loot(m, items);
         if skulls && let Some(Who::Mob(id)) = m.last_damage.and_then(|(d, _)| d.attacker) {
             // Creeper.droppedSkulls: one head per charged explosion.
             self.combat.charged_exploders.retain(|c| *c != id);
@@ -1063,7 +1077,10 @@ impl crate::game::Server<'_> {
                 .loot_table(table, false, None, &mut self.world.random),
         };
         for d in stacks {
-            self.spawn_item(d, at, [0.0, 0.2, 0.0], 10);
+            // EntityDropItemEvent: a chicken's egg, a sniffer's seed...
+            if self.plugin_entity_drop_item(mob, &d, at) {
+                self.spawn_item(d, at, [0.0, 0.2, 0.0], 10);
+            }
         }
     }
     /// Adds a projectile, giving it an id from the entity counter
@@ -2603,6 +2620,11 @@ impl crate::game::Server<'_> {
             }
             ArrowEvent::Block { pos, reaction } => match reaction {
                 BlockReaction::PrimeTnt => {
+                    // TNTPrimeEvent: a plugin may keep it a block.
+                    let cause = horizon_server_api::event::PrimeCause::Projectile;
+                    if !self.plugin_tnt_prime([pos.x, pos.y, pos.z], cause, None, None) {
+                        return;
+                    }
                     self.spawn_primed_tnt(pos, false);
                     self.with_level(|b, level, ticks| b.remove_block(level, ticks, pos, false));
                     let _ = self.process_level_events();
@@ -2975,14 +2997,17 @@ impl crate::game::Server<'_> {
                     m.damage(0.0, source);
                 }
                 // ThrownEgg.onHit: 1/8 chance of a chick, 1/32 of four.
-                if self.world.random.next_int_bound(8).unwrap_or(1) == 0 {
-                    let n = if self.world.random.next_int_bound(32).unwrap_or(1) == 0 {
-                        4
-                    } else {
-                        1
-                    };
+                let hatching = self.world.random.next_int_bound(8).unwrap_or(1) == 0;
+                let n = if hatching && self.world.random.next_int_bound(32).unwrap_or(1) == 0 {
+                    4
+                } else {
+                    1
+                };
+                // PlayerEggThrowEvent: a plugin may change what hatches.
+                let (hatching, n, kind) = self.plugin_egg(p, hatching, n);
+                if hatching {
                     for _ in 0..n {
-                        if let Some(id) = self.spawn_mob("minecraft:chicken", atp, true)
+                        if let Some(id) = self.spawn_mob(&kind, atp, true)
                             && let Some(c) = self.mobs.iter_mut().find(|m| m.id == id)
                         {
                             c.extra.age = -24000;
@@ -3064,11 +3089,18 @@ impl crate::game::Server<'_> {
                     // ticks, ages and goes out where it can't stay).
                     let fire = [pos[0] + face[0], pos[1] + face[1], pos[2] + face[2]];
                     let mob = matches!(p.owner, Some(Who::Mob(_)));
+                    // BlockIgniteEvent (FIREBALL): a plugin may keep the fire out.
+                    let shooter = match p.owner {
+                        Some(Who::Mob(id)) => Some(id),
+                        _ => None,
+                    };
+                    let cause = horizon_server_api::event::IgniteCause::Fireball;
                     if (!mob || self.world_data.rules.bool("mob_griefing"))
                         && self
                             .res
                             .facts()
                             .is_air(self.world.block(fire[0], fire[1], fire[2]))
+                        && self.plugin_ignite(fire, cause, shooter, false)
                     {
                         let at = BlockPos::new(fire[0], fire[1], fire[2]);
                         let state =
@@ -3329,6 +3361,10 @@ impl crate::game::Server<'_> {
             filled.extra = Some(Box::new(crate::hc::entity_nbt::bucket_components(
                 &self.mobs[index],
             )));
+            // PlayerBucketEntityEvent: a plugin may leave the mob in the water.
+            if !self.plugin_bucket_entity(self.mobs[index].id, held.as_ref(), &filled) {
+                return Ok(true);
+            }
             self.sounds
                 .play(sound, Some(self.mobs[index].center()), 1.0, 1.0);
             self.trigger_item("minecraft:filled_bucket", &filled);

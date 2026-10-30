@@ -202,6 +202,10 @@ impl crate::game::Server<'_> {
         Some([x, top.y, z])
     }
     pub(super) fn spawn_bolt(&mut self, at: [f64; 3], visual_only: bool) {
+        // LightningStrikeEvent: cancelled, no bolt.
+        if !self.plugin_lightning(at, visual_only) {
+            return;
+        }
         if !visual_only {
             let ctx = crate::hc::sculk::Context::default();
             self.post_game_event("minecraft:lightning_strike", at, ctx);
@@ -250,7 +254,11 @@ impl crate::game::Server<'_> {
                 let fire = b.fire_state_for(level, ticks, at);
                 b.can_survive(level, ticks, at, fire).then_some(fire)
             });
-            if let Some(fire) = fire {
+            // BlockIgniteEvent (LIGHTNING): a plugin may keep the fire out.
+            let cause = horizon_server_api::event::IgniteCause::Lightning;
+            if let Some(fire) = fire
+                && self.plugin_ignite(p, cause, None, false)
+            {
                 let _ = self.level_set(p, fire);
                 set += 1;
             }
@@ -417,6 +425,10 @@ impl crate::game::Server<'_> {
         };
         let mut events = Vec::new();
         let peaceful = self.world_data.difficulty == 0;
+        // PigZapEvent, EntityTransformEvent and CreeperPowerEvent: the
+        // struck mobs the plugins keep as they are (they only burn and hurt).
+        let ids: Vec<u32> = struck.iter().map(|(id, _)| *id).collect();
+        let as_is = self.plugin_thunder_vetoes(&ids, peaceful);
         for m in self.mobs.iter_mut().filter(|m| m.alive()) {
             if !inside([m.position.x, m.position.y, m.position.z]) {
                 continue;
@@ -428,7 +440,7 @@ impl crate::game::Server<'_> {
             };
             let at = [m.position.x, m.position.y, m.position.z];
             match m.species() {
-                Species::Pig if !peaceful => {
+                Species::Pig if !peaceful && !as_is.contains(&m.id) => {
                     m.removed = true;
                     events.push(MobEvent::SpawnKind {
                         kind: "minecraft:zombified_piglin".into(),
@@ -437,7 +449,7 @@ impl crate::game::Server<'_> {
                     });
                     continue;
                 }
-                Species::Villager if !peaceful => {
+                Species::Villager if !peaceful && !as_is.contains(&m.id) => {
                     m.removed = true;
                     events.push(MobEvent::SpawnKind {
                         kind: "minecraft:witch".into(),
@@ -459,7 +471,7 @@ impl crate::game::Server<'_> {
                     m.damage(f32::MAX, damage);
                     continue;
                 }
-                Species::Creeper => m.extra.charged = true,
+                Species::Creeper if !as_is.contains(&m.id) => m.extra.charged = true,
                 // CopperGolem.thunderHit (after Entity.thunderHit's fire and
                 // damage): once per bolt, an oxidized golem goes back one step
                 // and its weathering timer (or wax, -2) is reset to -1.

@@ -317,6 +317,18 @@ impl crate::game::Server<'_> {
     }
     /// ServerboundSelectTradePacket: the selection hint, then tryMoveItems.
     pub(super) fn net_select_trade(&mut self, net: &mut Network, conn: u32, index: i32) {
+        // TradeSelectEvent: cancelled, the client gets the trade slots back.
+        let merchant = net
+            .play
+            .get(&conn)
+            .and_then(|play| play.merchant.as_ref())
+            .map(|m| m.merchant.mob);
+        if let Some(mob) = merchant
+            && !self.plugin_trade_select(net, conn, mob, index)
+        {
+            self.net_merchant_op(net, conn, None, |_, _| {});
+            return;
+        }
         let Ok(index) = usize::try_from(index) else {
             return;
         };

@@ -61,22 +61,22 @@ impl crate::game::Server<'_> {
     pub(super) fn plugin_block(&self, pos: [i32; 3]) -> api::Block {
         self.plugin_block_in(self.dim.id(), pos)
     }
-    fn plugin_level_block(&self, pos: Pos) -> api::Block {
+    pub(super) fn plugin_level_block(&self, pos: Pos) -> api::Block {
         self.plugin_block([pos.x, pos.y, pos.z])
     }
     /// The player of `conn`, from the hub in hand.
-    fn plugin_player_of(net: &Network, conn: u32) -> Option<PlayerRef> {
+    pub(super) fn plugin_player_of(net: &Network, conn: u32) -> Option<PlayerRef> {
         net.hub.player(conn).map(crate::game::Server::plugin_player)
     }
     /// The player whose turn it is gets their inventory again (a cancelled
     /// action their client predicted).
-    fn plugin_resync_acting(&mut self) {
+    pub(super) fn plugin_resync_acting(&mut self) {
         if let Some(conn) = self.net_acting {
             self.plugin_resync.push(conn);
         }
     }
     /// `callEvent` for an event that may be cancelled: whether it went ahead.
-    fn plugin_allows<E: Event>(&mut self, net: Option<&Network>, mut event: E) -> bool {
+    pub(super) fn plugin_allows<E: Event>(&mut self, net: Option<&Network>, mut event: E) -> bool {
         self.plugin_fire(net, &mut event);
         !event.cancelled()
     }
@@ -1014,7 +1014,7 @@ impl crate::game::Server<'_> {
             || self.plugins_listen::<ev::EntityTameEvent>()
     }
     /// The entity a mob's `who` names: another mob, or the player it sees.
-    fn plugin_who(&self, mob: u32, who: crate::hc::mobs::Who) -> Option<api::EntityRef> {
+    pub(super) fn plugin_who(&self, mob: u32, who: crate::hc::mobs::Who) -> Option<api::EntityRef> {
         match who {
             crate::hc::mobs::Who::Mob(id) => Some(self.plugin_entity(None, id as i32)),
             crate::hc::mobs::Who::Player => {
@@ -1090,7 +1090,10 @@ impl crate::game::Server<'_> {
         }
     }
     /// The entity that shot or threw projectile `p`.
-    fn plugin_shooter(&self, p: &crate::hc::projectiles::Projectile) -> Option<api::EntityRef> {
+    pub(super) fn plugin_shooter(
+        &self,
+        p: &crate::hc::projectiles::Projectile,
+    ) -> Option<api::EntityRef> {
         if let Some(conn) = p.player {
             let net = self.network.as_ref()?;
             let g = net.hub.player(conn)?;

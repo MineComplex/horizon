@@ -124,7 +124,13 @@ impl crate::game::Server<'_> {
         if let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn)
             && !net.hub.players[gi].spectator()
         {
+            // PrepareAnvilEvent, PrepareSmithingEvent, PrepareGrindstoneEvent and
+            // PrepareInventoryResultEvent: the result after the inputs changed.
+            let prepared = self.plugin_station_before(&gs.menu);
             self.player_menu_op(net, gi, &mut gs.menu, op);
+            if let Some((menu_type, _, inputs)) = menu_of(gs.kind) {
+                self.plugin_station_after(net, conn, menu_type, inputs, &mut gs.menu, prepared);
+            }
             self.net_station_sounds(&mut gs);
             if let Some(amount) = gs.menu.ground.take() {
                 self.grindstone_taken(gs.pos, amount);
@@ -373,6 +379,20 @@ impl crate::game::Server<'_> {
         conn: u32,
         p: &play::ContainerClick,
     ) -> bool {
+        // SmithItemEvent: taking the smithing table's result; cancelled, it stays.
+        let result = net
+            .play
+            .get(&conn)
+            .and_then(|play| play.station.as_ref())
+            .filter(|s| s.window == p.container && s.kind == StationKind::Smithing)
+            .filter(|_| p.slot == 3 && !matches!(p.input, 3 | 5))
+            .and_then(|s| s.menu.slot(3).cloned());
+        if let Some(result) = result
+            && !self.plugin_smith_item(net, conn, &result)
+        {
+            self.net_send_station(net, conn);
+            return true;
+        }
         self.net_station_op(net, conn, Some(p.container), |menu, env| {
             let _ = menu.click(env, i32::from(p.slot), i32::from(p.button), input(p.input));
         })
@@ -386,6 +406,19 @@ impl crate::game::Server<'_> {
         window: i32,
         id: i32,
     ) {
+        // PlayerTakeLecternBookEvent: Take Book (LecternMenu.BUTTON_TAKE_BOOK) cancelled.
+        if id == 3
+            && let Some(key) = net
+                .play
+                .get(&conn)
+                .and_then(|play| play.lectern.as_ref())
+                .filter(|l| l.window == window)
+                .map(|l| l.key)
+            && !self.plugin_take_lectern_book(net, conn, key)
+        {
+            self.net_send_lectern(net, conn, true);
+            return;
+        }
         // LecternMenu's page buttons and Take Book.
         if self.net_lectern_op(net, conn, window, |menu, env| {
             menu.button(env, id);

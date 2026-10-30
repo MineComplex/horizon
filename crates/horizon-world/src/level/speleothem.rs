@@ -354,16 +354,39 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             } else {
                 (b.named.lava_cauldron, 1046)
             };
-            self.set_block_and_update(pos, b.default_of(next));
-            self.game_event(pos, "minecraft:block_change");
-            self.level_event(event, pos, 0);
+            self.cauldron_fill(pos, state, b.default_of(next), Some(event));
         } else if data.is(Class::LayeredCauldron) {
             let level = b.table.int(state, b.props.level);
             if level < 3 {
-                self.set_block_and_update(pos, b.table.set_int(state, b.props.level, level + 1));
-                self.game_event(pos, "minecraft:block_change");
-                self.level_event(1047, pos, 0);
+                let next = b.table.set_int(state, b.props.level, level + 1);
+                self.cauldron_fill(pos, state, next, Some(1047));
             }
+        }
+    }
+    /// A cauldron fills by itself: `state` into `into`, a `block_change`
+    /// and the level event `sound`, unless the plugins are asked first
+    /// (`CauldronLevelChangeEvent`).
+    pub(crate) fn cauldron_fill(
+        &mut self,
+        pos: BlockPos,
+        state: BlockStateId,
+        into: BlockStateId,
+        sound: Option<i32>,
+    ) {
+        if self.held_for_plugins(super::PluginAskKind::Cauldron, |_| {
+            super::PluginAsk::Cauldron {
+                pos,
+                state,
+                into,
+                sound,
+            }
+        }) {
+            return;
+        }
+        self.set_block_and_update(pos, into);
+        self.game_event(pos, "minecraft:block_change");
+        if let Some(id) = sound {
+            self.level_event(id, pos, 0);
         }
     }
 }

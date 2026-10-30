@@ -53,6 +53,14 @@ impl crate::game::Server<'_> {
         if !infects(difficulty, || random.next_boolean()) {
             return;
         }
+        // EntityTransformEvent: cancelled, the villager just dies.
+        if !self.plugin_transform(
+            victim,
+            "minecraft:zombie_villager",
+            horizon_server_api::event::TransformReason::Infection,
+        ) {
+            return;
+        }
         // The villager is gone without dying: no drops, no death animation.
         let old = self.mobs[v].clone();
         self.mobs[v].removed = true;
@@ -112,6 +120,14 @@ impl crate::game::Server<'_> {
             return;
         };
         if self.mobs[i].removed || zombie_villager::cure(&self.mobs[i]).is_none() {
+            return;
+        }
+        // EntityTransformEvent: a plugin may keep the zombie villager.
+        if !self.plugin_transform(
+            id,
+            "minecraft:villager",
+            horizon_server_api::event::TransformReason::Cured,
+        ) {
             return;
         }
         let old = self.mobs[i].clone();

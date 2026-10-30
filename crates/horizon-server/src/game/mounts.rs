@@ -326,6 +326,8 @@ impl crate::game::Server<'_> {
             _ => false,
         };
         let jump = self.charge_mount_jump(i, keys);
+        // HorseJumpEvent: the plugins may change the jump or call it off.
+        let jump = self.plugin_horse_jump(i, jump);
         let m = &mut self.mobs[i];
         if jump > 0.0 {
             // onPlayerJump: rear while jumping (horses).

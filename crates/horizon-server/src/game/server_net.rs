@@ -1327,7 +1327,13 @@ impl crate::game::Server<'_> {
                 HostEvent::Joined(conn) => {
                     // Before the join saves the player: whether they had played here.
                     let first_join = self.plugin_first_join(&net, conn);
+                    // AsyncPlayerPreLoginEvent (in the tick here), before the placement.
+                    let allowed = self.plugin_pre_login(&net, conn);
                     self.net_player_joined(&mut net, conn, entities, spawn);
+                    if !allowed {
+                        self.plugin_turn_away(&mut net, conn);
+                        continue;
+                    }
                     self.plugin_joined(&mut net, conn, first_join);
                     if let Some(g) = net.hub.player(conn) {
                         // PlayerList.placeNewPlayer, then the broadcast join message.

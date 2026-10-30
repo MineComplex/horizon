@@ -36,6 +36,12 @@ impl crate::game::Server<'_> {
                     .dropped
                     .iter()
                     .position(|e| wants(self, e) && reach.intersects(e.bounds()));
+                // EntityPickupItemEvent: a plugin may leave it on the ground.
+                let id = m.id;
+                let taken = taken.filter(|&j| {
+                    let count = self.dropped[j].stack.count;
+                    self.plugin_mob_pickup(id, j, count)
+                });
                 if let Some(j) = taken {
                     let e = self.dropped.remove(j);
                     panda::hold(&mut self.mobs[i], &e.stack.item, e.stack.count, true);

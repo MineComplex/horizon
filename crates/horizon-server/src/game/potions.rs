@@ -36,7 +36,7 @@ pub(super) const LINGERING_WAIT: i32 = 10;
 const REAPPLICATION_DELAY: i32 = 20;
 /// An entity a cloud has affected (`AreaEffectCloud.victims`).
 #[derive(Clone, Copy, PartialEq)]
-enum Victim {
+pub(super) enum Victim {
     Mob(u32),
     Player(FightWho),
 }
@@ -113,7 +113,7 @@ fn mob_can_be_affected(
 /// box at the hit point to an entity's box grown by the hit margin
 /// (`ProjectileUtil.computeMargin`), for entities that meet the potion's box
 /// grown by (4, 2, 4); none when it is 16 or more.
-fn splash_distance_sqr(at: Vec3, age: u32, bounds: Aabb) -> Option<f64> {
+pub(super) fn splash_distance_sqr(at: Vec3, age: u32, bounds: Aabb) -> Option<f64> {
     let potion = Aabb::new(
         Vec3::new(at.x - 0.125, at.y, at.z - 0.125),
         Vec3::new(at.x + 0.125, at.y + 0.25, at.z + 0.125),
@@ -847,6 +847,10 @@ impl crate::game::Server<'_> {
         }) {
             inside.push((Victim::Mob(m.id), m.position.x, m.position.z));
         }
+        // AreaEffectCloudApplyEvent: the plugins may spare some or all.
+        if !self.plugin_cloud_apply(c.at, c.radius, &potion.victims, &mut inside) {
+            return true;
+        }
         for (victim, x, z) in inside {
             let (dx, dz) = (x - c.at[0], z - c.at[2]);
             if potion.victims.iter().any(|(v, _)| *v == victim)
@@ -1043,7 +1047,8 @@ impl crate::game::Server<'_> {
             // The cloud sits at the mob it hit (its feet), else the impact;
             // radius 3, wait 10, 600 ticks, shrinking to nothing, and a
             // potion with no effects leaves none.
-            if !def.effects.is_empty() {
+            // LingeringPotionSplashEvent: a plugin may leave no cloud.
+            if !def.effects.is_empty() && self.plugin_lingering_splash(stack, at) {
                 let at = mob.unwrap_or(at);
                 self.breath_clouds.push(Breath {
                     id: 0,
@@ -1070,12 +1075,18 @@ impl crate::game::Server<'_> {
         // message names by the owner, else by the potion.
         let source =
             owner.unwrap_or_else(|| Text::translate("entity.minecraft.splash_potion", &[]));
+        // PotionSplashEvent: cancelled, nobody is affected; the mobs a
+        // plugin took off the list are spared.
+        let Some(spared) = self.plugin_potion_splash(stack, at, age) else {
+            return;
+        };
         self.for_each_player(|g| g.splash_on_player(def.effects, at, age, &source));
         // Mobs take the instant effects (undead invert healing and harming).
         let undead = &self.res.stations().enchantments.entity_tags;
         let mut hits = Vec::new();
         for (i, m) in self.mobs.iter().enumerate() {
             if m.alive()
+                && !spared.contains(&m.id)
                 && let Some(d2) = splash_distance_sqr(at, age, m.bounds())
             {
                 let inverted = undead

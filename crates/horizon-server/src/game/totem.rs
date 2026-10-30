@@ -26,6 +26,20 @@ impl crate::game::Server<'_> {
             return None;
         }
         p.health.totem_used = false;
+        // EntityResurrectEvent: cancelled, the totem stays and the player dies.
+        let main = self.held().is_some_and(|s| &*s.item == TOTEM);
+        let hand = if main {
+            horizon_server_api::event::Hand::Main
+        } else {
+            horizon_server_api::event::Hand::Off
+        };
+        if !self.plugin_resurrect_acting(hand) {
+            if let Some(p) = self.player.as_mut() {
+                let _ = p.set_health(0.0, false);
+            }
+            return None;
+        }
+        let p = self.player.as_mut()?;
         let _ = p.set_health(1.0, false);
         let body = Body {
             at: [p.position.x, p.position.y, p.position.z],

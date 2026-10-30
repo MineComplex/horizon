@@ -849,6 +849,10 @@ impl crate::game::Server<'_> {
                 // SayCommand from the console: a system chat message of
                 // type say_command (no `[Not Secure]` marker: no chat is signed).
                 let message = rest.join(" ");
+                // BroadcastMessageEvent: a plugin may change or cancel it.
+                let Some(message) = self.plugin_broadcast(message) else {
+                    return;
+                };
                 log("INFO", &format!("[Server] {message}"));
                 if let Some(h) = &self.network {
                     h.hub.say("Server", &message);

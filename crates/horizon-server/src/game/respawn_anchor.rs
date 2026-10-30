@@ -222,6 +222,8 @@ impl crate::game::Server<'_> {
     /// explosion (`badRespawnPointExplosion`, `ExplosionInteraction.BLOCK`)
     /// whose centre resists like water when water would flow into it.
     fn explode_anchor(&mut self, pos: [i32; 3], _state: BlockStateId) -> Result<()> {
+        // BlockExplodeEvent names the anchor as it was.
+        self.plugin_note_exploding_block(pos);
         self.level_set(pos, self.world.air)?;
         let horizontal = [[0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]]
             .into_iter()
@@ -280,6 +282,8 @@ impl crate::game::Server<'_> {
             "west" => [1, 0, 0],
             _ => [-1, 0, 0],
         };
+        // BlockExplodeEvent names the bed as it was.
+        self.plugin_note_exploding_block(head);
         self.level_set(head, self.world.air)?;
         let foot = [head[0] + back[0], head[1], head[2] + back[2]];
         if self

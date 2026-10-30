@@ -176,10 +176,16 @@ impl crate::game::Server<'_> {
                     t.position.y + PrimedTnt::SIZE * 0.0625,
                     t.position.z,
                 ];
-                self.tnts.remove(i);
+                let gone = self.tnts.remove(i);
                 count -= 1;
+                // ExplosionPrimeEvent: the plugins may change the blast or call it off.
+                let Some((radius, fire)) =
+                    self.plugin_explosion_prime(gone.id, "minecraft:tnt", center, 4.0, false)
+                else {
+                    continue;
+                };
                 self.with_hive_emptying_blast(|g| {
-                    g.server_explode(center, 4.0, BlockInteraction::Destroy, false)
+                    g.server_explode(center, radius, BlockInteraction::Destroy, fire)
                 })?;
             } else {
                 i += 1;
@@ -201,6 +207,11 @@ impl crate::game::Server<'_> {
             return Ok(false);
         }
         let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
+        // TNTPrimeEvent: a plugin may keep it a block.
+        let cause = horizon_server_api::event::PrimeCause::Player;
+        if !self.plugin_tnt_prime(hit.pos, cause, None, None) {
+            return Ok(true);
+        }
         self.spawn_primed_tnt(pos, false);
         let air = self.world.air;
         self.with_level(|b, level, ticks| {

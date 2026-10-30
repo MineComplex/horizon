@@ -79,12 +79,15 @@ impl crate::game::Server<'_> {
     /// many recipe book displays changed (a transmute recipe has one per
     /// material count).
     fn change_recipes(&mut self, give: bool, recipes: &[String]) -> i32 {
-        let index = &self.res.stations().recipe_index;
         if give {
-            let (count, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
+            // PlayerRecipeDiscoverEvent: the recipes a plugin lets the player learn.
+            let recipes = self.plugin_recipe_discover(recipes);
+            let index = &self.res.stations().recipe_index;
+            let (count, unlocked) = self.level.recipe_book.add_recipes(index, &recipes);
             self.recipe_unlocked(&unlocked);
             return count as i32;
         }
+        let index = &self.res.stations().recipe_index;
         let removed = self.level.recipe_book.remove_recipes(index, recipes);
         let count = removed.len() as i32;
         // A network player's client drops them from its book.

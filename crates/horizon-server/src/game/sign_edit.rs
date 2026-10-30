@@ -166,6 +166,10 @@ impl crate::game::Server<'_> {
     /// the block, then the editor, on its client, and the player may write on it.
     pub(super) fn net_open_sign_editor(&mut self, net: &mut Network, conn: u32, edit: SignEditor) {
         let pos = [edit.pos.0, edit.pos.1, edit.pos.2];
+        // PlayerSignOpenEvent: a plugin may keep the editor shut.
+        if !self.plugin_sign_open(net, conn, pos, edit.front) {
+            return;
+        }
         let state = self.world.block(pos[0], pos[1], pos[2]).0 as i32;
         net.hub
             .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));

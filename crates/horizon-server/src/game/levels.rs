@@ -272,6 +272,8 @@ impl crate::game::Server<'_> {
             if opened {
                 // The new streaming's radius and meshing options.
                 self.apply_streaming_settings();
+                // WorldInitEvent and WorldLoadEvent.
+                self.plugin_world_opened(target);
             }
         }
         let net = match net {
@@ -443,6 +445,13 @@ impl crate::game::Server<'_> {
         }
         let back = self.dim;
         for dim in closing {
+            // WorldUnloadEvent: a plugin may keep the level open.
+            if !self.plugin_world_unload(dim) {
+                if let Some(p) = self.levels.parked_mut(dim) {
+                    p.idle = 0;
+                }
+                continue;
+            }
             self.enter_level(None, dim)?;
             self.save_level(true)?;
             self.enter_level(None, back)?;

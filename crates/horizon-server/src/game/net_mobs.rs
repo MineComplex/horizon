@@ -314,7 +314,9 @@ impl crate::game::Server<'_> {
         Some(result)
     }
     /// ClientboundSetEntityMotionPacket to a player about themselves.
-    pub(super) fn send_player_motion(&self, net: &Network, conn: u32, velocity: Option<Vec3>) {
+    pub(super) fn send_player_motion(&mut self, net: &Network, conn: u32, velocity: Option<Vec3>) {
+        // PlayerVelocityEvent: a plugin may change the velocity or not send it.
+        let velocity = velocity.and_then(|v| self.plugin_velocity(net, conn, v));
         if let (Some(v), Some(g)) = (velocity, net.hub.player(conn)) {
             g.send(&C::SetEntityMotion(play::SetEntityMotion {
                 id: g.entity_id,

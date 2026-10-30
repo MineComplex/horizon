@@ -97,6 +97,10 @@ impl crate::game::Server<'_> {
             self.dispenser_event(1050, key, 0);
             return Ok(());
         };
+        // CrafterCraftEvent: cancelled, nothing is crafted; a plugin may change the result.
+        let Some(result) = self.plugin_crafter_craft(key, &recipe, result) else {
+            return Ok(());
+        };
         let Some(facing) = self
             .containers()
             .prop(state, "orientation")

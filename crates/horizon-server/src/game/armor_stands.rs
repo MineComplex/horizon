@@ -168,6 +168,10 @@ impl crate::game::Server<'_> {
         if held.is_none() && current.is_none() {
             return false;
         }
+        // PlayerArmorStandManipulateEvent: a plugin may stop the swap.
+        if !self.plugin_armor_stand(i, held.as_ref(), current.as_ref(), slot) {
+            return true;
+        }
         // ArmorStand.swapItem.
         match held {
             // A player with infinite materials puts a copy of one on an empty

@@ -6,6 +6,8 @@
 //! - no fall damage for players: a line instead;
 //! - a line for each teleport, no phantoms, a line when a mob dies, explosions that break no blocks;
 //! - nobody goes hungry, no rain, and a log line once the server has started;
+//! - `/time add 1000` does nothing, sponges stay dry, redstone lights no TNT, no Speed, furnaces
+//!   smelt gold, and falling blocks land as nothing;
 //! - chat: `!` at the start shouts (gold, to everyone), `/mute` silences a player;
 //! - `/hello [name]`, `/heal` (operators: full food, a golden apple), `/mute <player>`;
 //! - every 5 minutes, a tip to everyone.
@@ -144,6 +146,65 @@ impl Plugin for Example {
                 if e.to_raining {
                     e.cancelled = true;
                     server.broadcast("§7Rain stays away.");
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::TimeSkipEvent, _| {
+                if e.skip_reason == horizon_server_api::event::TimeSkipReason::Command
+                    && e.skip_amount == 1000
+                {
+                    e.cancelled = true;
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::SpongeAbsorbEvent, server| {
+                e.cancelled = true;
+                server.broadcast(&format!("§7The sponge stays dry ({}).", e.blocks.len()));
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::TntPrimeEvent, _| {
+                if e.cause == horizon_server_api::event::PrimeCause::Redstone {
+                    e.cancelled = true;
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::EntityPotionEffectEvent, server| {
+                if e.new_effect
+                    .as_ref()
+                    .is_some_and(|n| n.kind == "minecraft:speed")
+                {
+                    e.cancelled = true;
+                    if let Some(p) = &e.entity.player {
+                        server.send_message(p, "§7No speed here.");
+                    }
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::FurnaceSmeltEvent, _| {
+                e.result = ItemStack::new("gold_ingot", e.result.count);
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut horizon_server_api::event::EntityChangeBlockEvent, _| {
+                if e.entity.kind == "minecraft:falling_block" {
+                    e.cancelled = true;
                 }
             },
         );

@@ -337,6 +337,12 @@ impl crate::game::Server<'_> {
                     j += 1;
                     continue;
                 }
+                // EntityPickupItemEvent: a plugin may leave it on the ground.
+                let id = self.mobs[i].id;
+                if !self.plugin_mob_pickup(id, j, stack.count) {
+                    j += 1;
+                    continue;
+                }
                 let rest = villager::ext_mut(&mut self.mobs[i]).add_item(stack, max);
                 match rest {
                     None => {

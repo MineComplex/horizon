@@ -559,9 +559,14 @@ impl crate::game::Server<'_> {
         let ctx = crate::hc::sculk::Context::default();
         self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.exploded_positions(center, radius, resists);
-        // EntityExplodeEvent: plugins may cancel it or spare blocks.
+        // EntityExplodeEvent (BlockExplodeEvent for a bed or an anchor):
+        // plugins may cancel it or spare blocks.
         let exploding = self.combat.explosion_source;
-        if !self.plugin_explosion(center, exploding, &mut targets) {
+        let allowed = match self.plugin_block_explode(&mut targets) {
+            Some(allowed) => allowed,
+            None => self.plugin_explosion(center, exploding, &mut targets),
+        };
+        if !allowed {
             return Ok(());
         }
         self.explosion_hurt_entities(center, radius, damage_type);
@@ -591,6 +596,13 @@ impl crate::game::Server<'_> {
                         .facts()
                         .get(self.world.block(pos[0], pos[1] - 1, pos[2]))
                         .solid_render
+                    // BlockIgniteEvent (EXPLOSION).
+                    && self.plugin_ignite(
+                        pos,
+                        horizon_server_api::event::IgniteCause::Explosion,
+                        None,
+                        false,
+                    )
                 {
                     // BaseFireBlock.getState: soul fire on its base blocks,
                     // fire shaped by its neighbours elsewhere.
@@ -692,7 +704,16 @@ impl crate::game::Server<'_> {
         }
         // TntBlock.wasExploded: new PrimedTnt (its push drawn first), then
         // getRandomShortFuse(80); no game event.
-        if is_tnt && self.world_data.rules.bool("tnt_explodes") {
+        // TNTPrimeEvent: a plugin may keep it from going off (it goes all the same).
+        if is_tnt
+            && self.world_data.rules.bool("tnt_explodes")
+            && self.plugin_tnt_prime(
+                pos,
+                horizon_server_api::event::PrimeCause::Explosion,
+                None,
+                None,
+            )
+        {
             let r = &mut self.world.random;
             let rot = r.next_double() * f64::from(std::f32::consts::TAU);
             let fuse = r.next_int_bound(20).unwrap_or(0) + 10;

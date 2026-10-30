@@ -183,6 +183,14 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     pub fn emit(&mut self, event: LevelEvent) {
         self.level.emit(event);
     }
+    /// `prime_tnt`, unless the plugins are asked first (`TNTPrimeEvent`).
+    pub(crate) fn prime_tnt_by(&mut self, pos: BlockPos, cause: super::TntCause) {
+        if !self.held_for_plugins(super::PluginAskKind::TntPrime, |_| {
+            super::PluginAsk::TntPrime { pos, cause }
+        }) {
+            self.prime_tnt(pos);
+        }
+    }
     /// `TntBlock.prime` without a source: `new PrimedTnt` draws its push angle
     /// from the level random, then the primed sound and `prime_fuse` event.
     pub fn prime_tnt(&mut self, pos: BlockPos) {

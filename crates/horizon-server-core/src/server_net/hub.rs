@@ -915,6 +915,11 @@ impl Hub {
 
     /// Commands.sendCommands: the command tree for this player.
     fn send_commands(&self, i: usize) {
+        self.players[i].send(&C::Commands(self.commands_packet(i)));
+    }
+    /// The command tree `send_commands` sends the player at `i` (the
+    /// plugins' `PlayerCommandSendEvent` may send it again with fewer).
+    pub fn commands_packet(&self, i: usize) -> play::Commands {
         let g = &self.players[i];
         let mut packet = match &self.sync.commands {
             Some(tree) => tree.packet_with(g.permission, &self.sync.builtin, &self.mod_commands.0),
@@ -933,7 +938,7 @@ impl Hub {
             },
         };
         add_extra_commands(&mut packet, &self.extra_commands, &self.sync.builtin);
-        g.send(&C::Commands(packet));
+        packet
     }
 
     /// ServerGamePacketListenerImpl.teleport: move the client and wait for its confirmation.

@@ -111,6 +111,7 @@ mod hooks;
 mod interact;
 pub mod pistons;
 mod place;
+mod plugin_asks;
 mod portal;
 pub mod portal_travel;
 mod query;
@@ -141,6 +142,7 @@ pub use fluids::FluidFlow;
 pub use interact::{InteractionResult, PlayerContext, PlayerEffect, hit_slot};
 pub use pistons::{BlockEventData, MovingPiston, PistonMove};
 pub use place::{PlaceContext, PlaceOutcome};
+pub use plugin_asks::{IgniteCause, PluginAsk, PluginAskKind, TntCause};
 pub use states::{BlockId, PropKey, StateTable};
 pub use tick::{Precipitation, PrecipitationKind};
 pub use ticks::Ticks;
@@ -498,6 +500,14 @@ pub trait LevelAccess {
     fn reports_changes(&self) -> bool {
         false
     }
+    /// Whether a server's plugins are asked before changes of `kind`
+    /// (`PluginAsk`): the level then holds them back with `hold_for_plugins`.
+    fn plugins_ask(&self, _kind: PluginAskKind) -> bool {
+        false
+    }
+    /// Take a change held back for the plugins (or a report);
+    /// `Behaviours::answer_plugin_ask` makes it once they let it.
+    fn hold_for_plugins(&mut self, _ask: PluginAsk) {}
     /// `LevelChunk.setBlockState` replaced a block that had a block entity by
     /// another block: run `BlockEntity.preRemoveSideEffects` when
     /// `side_effects` (containers spill their contents, a jukebox pops its

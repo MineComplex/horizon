@@ -36,7 +36,10 @@ impl crate::game::Server<'_> {
         {
             return Ok(true);
         }
+        // StructureGrowEvent: what a sapling, mushroom or fungus grew into.
+        let grow = self.plugin_grow_begin(hit.pos);
         let used = self.with_level(|b, level, ticks| b.use_bone_meal(level, ticks, pos, face));
+        self.plugin_grow_end(grow, hit.pos);
         // ItemStack.causeUseVibration at the player, after the meal is used
         // up (shrunk even in creative): an emptied stack has no use effects.
         if used

@@ -229,6 +229,8 @@ impl crate::game::Server<'_> {
                 p.auto_spin_attack_ticks = 20;
                 p.auto_spin_attack_dmg = 8.0;
             }
+            // PlayerRiptideEvent.
+            self.plugin_riptide(&stack);
             // `player.move(SELF, (0, 1.1999999, 0))` when on the ground: the lift
             // stops at a ceiling.
             let lift = self

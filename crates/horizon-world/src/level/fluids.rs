@@ -570,9 +570,33 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if kind == FluidKind::Empty {
             return;
         }
+        // FluidLevelChangeEvent: what the plugins made of the new level.
+        let answer = self.ticks.fluid_level.take().filter(|(at, _)| *at == pos);
         if !fluid.is_source() {
             let new_fluid = self.new_liquid(kind, pos, state);
             let delay = self.spread_delay(kind, pos, fluid, new_fluid);
+            let changes = new_fluid.kind() == FluidKind::Empty || new_fluid != fluid;
+            if let Some((_, answer)) = answer
+                && changes
+            {
+                // Cancelled: it neither changes nor spreads this tick.
+                let Some(into) = answer else {
+                    return;
+                };
+                let into_fluid = self.b.fluid(into);
+                let same = into_fluid.kind() == FluidKind::Empty
+                    || source_of(into_fluid.kind()) == source_of(kind);
+                if same && into != self.b.legacy_block(new_fluid) {
+                    fluid = into_fluid;
+                    state = into;
+                    self.set_block_and_update(pos, state);
+                    if fluid.kind() != FluidKind::Empty {
+                        self.schedule_fluid_tick(pos, fluid.kind(), delay);
+                    }
+                    self.spread(kind, pos, state, fluid);
+                    return;
+                }
+            }
             if new_fluid.kind() == FluidKind::Empty {
                 fluid = new_fluid;
                 state = self.b.air();
@@ -585,6 +609,28 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             }
         }
         self.spread(kind, pos, state, fluid);
+    }
+    /// The level `fluid_tick` at `pos` would give the fluid, without
+    /// changing it (`FluidLevelChangeEvent`): its state and the new one, None
+    /// when it keeps its level.
+    pub(crate) fn fluid_level_preview(
+        &self,
+        pos: BlockPos,
+    ) -> Option<(BlockStateId, BlockStateId)> {
+        let state = self.state(pos);
+        let fluid = self.b.fluid(state);
+        let kind = fluid.kind();
+        if kind == FluidKind::Empty || fluid.is_source() {
+            return None;
+        }
+        let new_fluid = self.new_liquid(kind, pos, state);
+        if new_fluid.kind() == FluidKind::Empty {
+            Some((state, self.b.air()))
+        } else if new_fluid != fluid {
+            Some((state, self.b.legacy_block(new_fluid)))
+        } else {
+            None
+        }
     }
     /// Where `fluid_tick` at `pos` would flow now, without flowing: its new
     /// state there, then `spread`'s targets. None when it flows nowhere.
@@ -736,7 +782,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         .any(|d| self.lava_flammable(rel(test, d)))
                     {
                         let fire = self.fire_state_for(test);
-                        self.set_block_and_update(test, fire);
+                        self.lava_ignite(test, pos, fire);
                         return;
                     }
                 } else if self
@@ -757,9 +803,21 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 }
                 if self.is_empty_block(above(test)) && self.lava_flammable(test) {
                     let fire = self.fire_state_for(test);
-                    self.set_block_and_update(above(test), fire);
+                    self.lava_ignite(above(test), pos, fire);
                 }
             }
+        }
+    }
+    /// The lava at `source` sets `pos` on fire, unless the plugins are asked
+    /// first (`BlockIgniteEvent`, `LAVA`).
+    fn lava_ignite(&mut self, pos: BlockPos, source: BlockPos, fire: BlockStateId) {
+        if !self.held_for_plugins(super::PluginAskKind::Ignite, |_| super::PluginAsk::Ignite {
+            pos,
+            cause: super::IgniteCause::Lava,
+            source,
+            fire,
+        }) {
+            self.set_block_and_update(pos, fire);
         }
     }
     fn lava_flammable(&self, pos: BlockPos) -> bool {

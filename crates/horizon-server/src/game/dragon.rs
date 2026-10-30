@@ -875,9 +875,16 @@ impl crate::game::Server<'_> {
             self.crystals[i].time += 1;
             let p = self.crystals[i].position;
             let b = [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32];
+            // BlockIgniteEvent (ENDER_CRYSTAL).
             if let Some(fire) = fire
                 && self.res.facts().is_air(self.world.block(b[0], b[1], b[2]))
                 && self.world.loaded(b[0], b[2])
+                && self.plugin_ignite(
+                    b,
+                    horizon_server_api::event::IgniteCause::EnderCrystal,
+                    None,
+                    false,
+                )
             {
                 let _ = self.level_set(b, fire);
             }

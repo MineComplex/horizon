@@ -240,6 +240,10 @@ impl crate::game::Server<'_> {
     /// `FireworkRocketEntity.explode` and `dealExplosionDamage`.
     fn explode_rocket(&mut self, r: &Rocket) {
         let at = [r.position.x, r.position.y, r.position.z];
+        // FireworkExplodeEvent: cancelled, the rocket goes without a burst.
+        if !self.plugin_firework_explode(r.id, at) {
+            return;
+        }
         // FireworkRocketEntity.explode broadcasts before discard. Send now:
         // tick_lan removes missing tracked entities before flushing effects.
         if r.id != 0

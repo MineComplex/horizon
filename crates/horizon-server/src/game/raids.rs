@@ -427,6 +427,19 @@ impl crate::game::Server<'_> {
         let center = raid::raid_center(at, &self.village_pois());
         let seed = self.world.random.next_long();
         let difficulty = self.difficulty_id();
+        // RaidTriggerEvent: a plugin may keep the omen from starting a raid.
+        if amplifier.is_some() {
+            let existing = self.raiding.raids.nearby(center).map(|(id, _)| id);
+            let existing =
+                existing.and_then(|id| self.raiding.raids.get(id).map(|r| (id, r.clone())));
+            let grows = existing
+                .as_ref()
+                .is_none_or(|(_, r)| !r.started || r.omen_level < raid::MAX_OMEN_LEVEL);
+            if grows && !self.plugin_raid_trigger(center, existing.as_ref().map(|(id, r)| (*id, r)))
+            {
+                return None;
+            }
+        }
         let (id, triggered) = self
             .raiding
             .raids
@@ -605,6 +618,17 @@ impl crate::game::Server<'_> {
         for (id, action) in actions {
             self.apply_raid_action(id, action);
         }
+        // RaidStopEvent for the raids that ended.
+        if self.plugins.is_some() {
+            let raids = std::mem::take(&mut self.raiding.raids);
+            let list = raids
+                .ids()
+                .into_iter()
+                .filter_map(|id| raids.get(id).map(|r| (id, r)))
+                .collect();
+            self.plugin_watch_raids(list);
+            self.raiding.raids = raids;
+        }
         self.sync_raiders(&centers);
         let infos = self.raider_infos();
         self.sync_villager_raids(&infos);
@@ -626,16 +650,25 @@ impl crate::game::Server<'_> {
                 }
             }
             // Raid.tick on a victory: each hero who is still alive.
-            Action::Victory { heroes, amplifier } => self.for_each_player(|g| {
-                if heroes.contains(&g.acting_uuid()) && !g.spectator() {
-                    let mut effect =
-                        EffectInstance::new("hero_of_the_village", raid::HERO_DURATION, amplifier);
-                    effect.visible = false;
-                    g.potions.effects.add(effect);
-                    g.stats.custom("raid_win", 1);
-                    g.trigger_player("minecraft:hero_of_the_village");
-                }
-            }),
+            Action::Victory { heroes, amplifier } => {
+                // RaidFinishEvent.
+                let raids = std::mem::take(&mut self.raiding.raids);
+                self.plugin_raid_finish(id, raids.get(id), &heroes);
+                self.raiding.raids = raids;
+                self.for_each_player(|g| {
+                    if heroes.contains(&g.acting_uuid()) && !g.spectator() {
+                        let mut effect = EffectInstance::new(
+                            "hero_of_the_village",
+                            raid::HERO_DURATION,
+                            amplifier,
+                        );
+                        effect.visible = false;
+                        g.potions.effects.add(effect);
+                        g.stats.custom("raid_win", 1);
+                        g.trigger_player("minecraft:hero_of_the_village");
+                    }
+                })
+            }
         }
     }
     /// `Raid.playSound`: the horn, 13 blocks away from the player toward the
@@ -662,10 +695,12 @@ impl crate::game::Server<'_> {
             .raids
             .get(raid_id)
             .map_or(0.0, raid::Raid::enchant_odds);
+        let mut wave_raiders = Vec::new();
         for sp in spawns {
             let Some(id) = self.spawn_raider(sp.kind, pos, raid_id, wave, sp.leader, odds) else {
                 continue;
             };
+            wave_raiders.push(id);
             if sp.leader
                 && let Some(r) = self.raiding.raids.get_mut(raid_id)
             {
@@ -675,8 +710,16 @@ impl crate::game::Server<'_> {
                 && let Some(rider) = self.spawn_raider(kind, pos, raid_id, wave, false, odds)
             {
                 self.mount_mob(rider, id);
+                wave_raiders.push(rider);
             }
         }
+        // RaidSpawnWaveEvent.
+        let raids = std::mem::take(&mut self.raiding.raids);
+        let leader = raids
+            .get(raid_id)
+            .and_then(|r| r.leaders.get(&wave).copied());
+        self.plugin_raid_wave(raid_id, raids.get(raid_id), leader, &wave_raiders);
+        self.raiding.raids = raids;
     }
     /// `Raid.joinRaid` for a new raider: placed at the block's centre one
     /// above, finalized for an event, its raid buffs applied.

@@ -260,6 +260,10 @@ impl crate::game::Server<'_> {
                 }
             }
             Action::Broadcast(text) => {
+                // BroadcastMessageEvent: a plugin may change it or send none.
+                let Some(text) = self.plugin_broadcast(text) else {
+                    return;
+                };
                 super::dedicated::log("INFO", &api::strip_colors(&text));
                 if let Some(h) = self.network.as_ref() {
                     h.hub.system_message(legacy_nbt(&text));

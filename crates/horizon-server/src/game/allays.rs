@@ -64,8 +64,11 @@ impl crate::game::Server<'_> {
             let b = self.mobs[i]
                 .bounds()
                 .inflate(horizon_core::geometry::Vec3::new(1.0, 1.0, 1.0));
-            if b.contains(e.position) {
-                let take = (max - carried).min(e.stack.count as i32);
+            let take = (max - carried).min(e.stack.count as i32);
+            // EntityPickupItemEvent: a plugin may leave it on the ground.
+            let id = self.mobs[i].id;
+            let (inside, spot) = (b.contains(e.position), e.position);
+            if inside && self.plugin_mob_pickup(id, j, take as u32) {
                 self.mobs[i].extra.ints[1] += take;
                 let e = &mut self.dropped[j];
                 e.stack.count -= take as u32;
@@ -79,7 +82,7 @@ impl crate::game::Server<'_> {
                     .play("minecraft:entity.item.pickup", Some(at), 0.2, pitch);
                 self.mobs[i].extra.point = None;
             } else {
-                self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
+                self.mobs[i].extra.point = Some([spot.x, spot.y, spot.z]);
             }
         }
     }

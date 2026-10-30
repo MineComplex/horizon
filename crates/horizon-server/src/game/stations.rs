@@ -428,6 +428,8 @@ impl crate::game::Server<'_> {
     /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
     /// its place among the level's block entity tickers.
     pub(super) fn tick_brewing_stand(&mut self, pos: (i32, i32, i32)) -> crate::hc::Result<()> {
+        // BrewingStandFuelEvent and BrewEvent: the stand before its tick.
+        let before = self.plugin_brewing_before(pos);
         let Some(BlockEntity::Brewing(b)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
@@ -436,6 +438,7 @@ impl crate::game::Server<'_> {
             self.res.items(),
             self.res.providers(),
         );
+        let out = self.plugin_brewing_ticked(pos, before, out);
         if out != brewing::BrewTick::default() {
             let (x, y, z) = pos;
             self.world.modified.insert((x >> 4, z >> 4));

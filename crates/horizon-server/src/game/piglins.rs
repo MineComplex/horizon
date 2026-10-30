@@ -221,6 +221,16 @@ impl crate::game::Server<'_> {
             }
             // Nuggets come whole, anything else one at a time.
             let item = e.stack.item.clone();
+            // EntityPickupItemEvent: a plugin may leave it on the ground.
+            let taking = if &*item == "minecraft:gold_nugget" {
+                e.stack.count
+            } else {
+                1
+            };
+            let id = self.mobs[i].id;
+            if !self.plugin_mob_pickup(id, j, taking) {
+                continue;
+            }
             let stack = if &*item == "minecraft:gold_nugget" {
                 self.dropped.remove(j).stack
             } else {
@@ -304,6 +314,10 @@ impl crate::game::Server<'_> {
         // (NEAREST_VISIBLE_PLAYER: within 16, alive, no spectators; the
         // players count as much as the game), else nearby.
         let at = m.position;
+        // PiglinBarterEvent: the plugins may change what it throws, or keep it.
+        let Some(items) = self.plugin_barter(mob, &item, items) else {
+            return;
+        };
         let net = self
             .player
             .as_ref()

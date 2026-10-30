@@ -418,6 +418,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if self.b.table.int(state, self.b.props.power) != target {
             if self.state(pos) == state {
                 let next = self.b.table.set_int(state, self.b.props.power, target);
+                // BlockRedstoneEvent (a report).
+                let old = self.b.table.int(state, self.b.props.power);
+                self.report_redstone(pos, old, target);
                 self.set_block(pos, next, 2);
             }
             // Vanilla iterates a HashSet of the position and its six
@@ -737,6 +740,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if b.table.bool(state, b.props.lit) {
             if signal {
                 self.set_block_and_update(pos, b.table.set_bool(state, b.props.lit, false));
+                // BlockRedstoneEvent (a report).
+                self.report_redstone(pos, 15, 0);
                 if self.torch_toggled_too_frequently(pos, true) {
                     self.level_event(1502, pos, 0);
                     let block = b.block(self.state(pos));
@@ -745,6 +750,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             }
         } else if !signal && !self.torch_toggled_too_frequently(pos, false) {
             self.set_block_and_update(pos, b.table.set_bool(state, b.props.lit, true));
+            // BlockRedstoneEvent (a report).
+            self.report_redstone(pos, 0, 15);
         }
     }
 
@@ -881,6 +888,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let b = self.b;
         self.set_block_and_update(pos, b.table.set_bool(state, b.props.powered, true));
         self.attached_update_neighbours(pos, state);
+        // BlockRedstoneEvent (a report).
+        self.report_redstone(pos, 0, 15);
         let data = b.data(state);
         self.schedule_tick(pos, b.block(state), data.ticks_to_stay_pressed);
         if let Some(set) = data.set_type.clone() {
@@ -913,6 +922,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 b.table.set_bool(state, b.props.powered, should_be_pressed),
             );
             self.attached_update_neighbours(pos, state);
+            // BlockRedstoneEvent (a report).
+            let power = if should_be_pressed { 15 } else { 0 };
+            self.report_redstone(pos, 15 - power, power);
             if let Some(set) = data.set_type.clone() {
                 let sound = if should_be_pressed {
                     &set.button_on
@@ -999,6 +1011,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         self.set_block_and_update(pos, state);
         self.attached_update_neighbours(pos, state);
         let powered = b.table.bool(state, b.props.powered);
+        // BlockRedstoneEvent (a report).
+        let power = if powered { 15 } else { 0 };
+        self.report_redstone(pos, 15 - power, power);
         self.emit(LevelEvent::Sound {
             pos,
             sound: "minecraft:block.lever.click".into(),
@@ -1134,6 +1149,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 self.schedule_tick(pos, b.block(state), 4);
             } else {
                 self.set_block(pos, b.table.cycle(state, b.props.lit), 2);
+                // BlockRedstoneEvent (a report).
+                self.report_redstone(pos, 0, 15);
             }
         }
     }
@@ -1141,6 +1158,8 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let b = self.b;
         if b.table.bool(state, b.props.lit) && !self.has_neighbor_signal(pos) {
             self.set_block(pos, b.table.cycle(state, b.props.lit), 2);
+            // BlockRedstoneEvent (a report).
+            self.report_redstone(pos, 15, 0);
         }
     }
     /// `CopperBulbBlock.checkAndFlip`.
@@ -1167,8 +1186,17 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             self.set_block(pos, b.table.set_bool(next, p.powered, signal), 3);
         }
     }
-    /// `NoteBlock.playNote`: queues the block event and emits the game event.
+    /// `NoteBlock.playNote`, unless the plugins are asked first
+    /// (`NotePlayEvent`).
     pub(crate) fn note_play(&mut self, pos: BlockPos, state: BlockStateId) {
+        if !self.held_for_plugins(super::PluginAskKind::NotePlay, |_| {
+            super::PluginAsk::NotePlay { pos, state }
+        }) {
+            self.note_play_now(pos, state);
+        }
+    }
+    /// `NoteBlock.playNote`: queues the block event and emits the game event.
+    pub(crate) fn note_play_now(&mut self, pos: BlockPos, state: BlockStateId) {
         let b = self.b;
         let instrument = b.table.text(state, b.props.instrument);
         let mob_head = super::data::INSTRUMENTS
@@ -1227,6 +1255,15 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     /// `TntBlock.prime` then `removeBlock`.
     pub(crate) fn tnt_check(&mut self, pos: BlockPos) {
         if self.has_neighbor_signal(pos) {
+            // TNTPrimeEvent: the plugins may keep it from priming.
+            if self.held_for_plugins(super::PluginAskKind::TntPrime, |_| {
+                super::PluginAsk::TntPrime {
+                    pos,
+                    cause: super::TntCause::Redstone,
+                }
+            }) {
+                return;
+            }
             self.prime_tnt(pos);
             self.remove_block(pos, false);
         }
@@ -1294,6 +1331,23 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     /// `BellBlock.attemptToRing`: `BellBlockEntity.onHit` queues block event 1
     /// with the struck direction, then the sound and game event.
     pub(crate) fn bell_ring(&mut self, pos: BlockPos, state: BlockStateId, direction: Direction) {
+        // BellRingEvent: the plugins may keep it quiet.
+        if !self.held_for_plugins(super::PluginAskKind::BellRing, |_| {
+            super::PluginAsk::BellRing {
+                pos,
+                state,
+                direction,
+            }
+        }) {
+            self.bell_ring_now(pos, state, direction);
+        }
+    }
+    pub(crate) fn bell_ring_now(
+        &mut self,
+        pos: BlockPos,
+        state: BlockStateId,
+        direction: Direction,
+    ) {
         self.block_event(pos, self.b.block(state), 1, direction as i32);
         self.emit(LevelEvent::Sound {
             pos,

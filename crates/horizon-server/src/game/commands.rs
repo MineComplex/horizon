@@ -1532,6 +1532,12 @@ impl crate::game::Server<'_> {
                 if total == t {
                     return Err(err("commands.time.set.already_at_time", &[&clock, &t]));
                 }
+                // TimeSkipEvent (COMMAND): a plugin may change or cancel the jump.
+                let reason = horizon_server_api::event::TimeSkipReason::Command;
+                let Some(skip) = self.plugin_time_skip(reason, t - total) else {
+                    return Ok(0);
+                };
+                let t = total + skip;
                 self.world.day_time = t;
                 self.world_data.clock.partial = 0.0;
                 self.feedback(Text::tr("commands.time.set.absolute", &[&clock, &t]));
@@ -1553,7 +1559,12 @@ impl crate::game::Server<'_> {
                         &[&clock, &marker],
                     ));
                 }
-                self.world.day_time = m.resolve(total);
+                // TimeSkipEvent (COMMAND).
+                let reason = horizon_server_api::event::TimeSkipReason::Command;
+                let Some(skip) = self.plugin_time_skip(reason, m.resolve(total) - total) else {
+                    return Ok(0);
+                };
+                self.world.day_time = total + skip;
                 self.world_data.clock.partial = 0.0;
                 self.feedback(Text::tr(
                     "commands.time.set.time_marker",
@@ -1563,6 +1574,11 @@ impl crate::game::Server<'_> {
             }
             "time.add" => {
                 let t = i64::from(crate::game::Server::int(ctx, "time").unwrap_or(0));
+                // TimeSkipEvent (COMMAND).
+                let reason = horizon_server_api::event::TimeSkipReason::Command;
+                let Some(t) = self.plugin_time_skip(reason, t) else {
+                    return Ok(0);
+                };
                 self.world.day_time = (total + t).max(0);
                 let now = self.world.day_time;
                 self.feedback(Text::tr("commands.time.set.absolute", &[&clock, &now]));
@@ -2622,6 +2638,8 @@ impl crate::game::Server<'_> {
         // LevelData.setRespawnData: the world's spawn (level.dat `spawn`).
         let old = self.level.world_spawn.replace(pos);
         self.level.world_spawn_angle = rot;
+        // SpawnChangeEvent.
+        self.plugin_spawn_change(old, pos);
         // A player whose fallback is the world spawn (no spawnpoint of its
         // own; a bed or an anchor that is gone falls back to it) respawns at
         // the new one.

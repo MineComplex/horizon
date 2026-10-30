@@ -435,7 +435,12 @@ impl crate::game::Server<'_> {
             return;
         }
         let at = block_of(pos);
-        let radius = sculk::notification_radius(event).min(16);
+        // GenericGameEvent: a plugin may change its reach or silence it.
+        let radius = sculk::notification_radius(event);
+        let Some(radius) = self.plugin_game_event(event, pos, &ctx, radius) else {
+            return;
+        };
+        let radius = radius.min(16);
         let near: Vec<(i32, i32, i32)> = self
             .sculk
             .index

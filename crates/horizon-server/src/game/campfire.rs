@@ -90,12 +90,16 @@ impl crate::game::Server<'_> {
             return Ok(());
         };
         let done = c.cook_tick();
-        for (_, item) in done {
+        for (slot, item) in done {
             let result = self
                 .res
                 .recipes()
                 .cook(KIND, &item)
                 .map_or_else(|| item.clone(), |r| r.result.clone());
+            // BlockCookEvent: a plugin may change what drops, or keep it cooking.
+            let Some(result) = self.plugin_campfire_cook(pos, slot, &item, result) else {
+                continue;
+            };
             self.campfire_drop(pos, result);
             self.mark_block_entity_updated(pos);
             self.post_block_game_event(
