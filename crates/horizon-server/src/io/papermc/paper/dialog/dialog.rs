@@ -3,12 +3,11 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::dialog::dialog_registry_entry::DialogRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::net::kyori::adventure::dialog::DialogLike;
 use crate::org::bukkit::keyed::Keyed;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.dialog.Dialog (paper-api/src/main/java/io/papermc/paper/dialog/Dialog.java:21)
-pub trait Dialog: Keyed + DialogLike {
+pub trait Dialog: Keyed {
 }
 pub static CUSTOM_OPTIONS: LazyLock<JRef<dyn Dialog>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/dialog/Dialog.java:35
 pub static QUICK_ACTIONS: LazyLock<JRef<dyn Dialog>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/dialog/Dialog.java:37

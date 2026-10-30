@@ -4,25 +4,24 @@ use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::dialog::input::boolean_dialog_input::BooleanDialogInput;
 use crate::io::papermc::paper::registry::data::dialog::input::boolean_dialog_input::BooleanDialogInputBuilder;
 use crate::io::papermc::paper::registry::data::dialog::input::dialog_input::DialogInput;
-use crate::net::kyori::adventure::text::Component;
 
 // ---- record io.papermc.paper.registry.data.dialog.input.BooleanDialogInputImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:7)
 #[derive(Clone)]
 pub struct BooleanDialogInputImpl {
     pub key: String,
-    pub label: Component,
+    pub label: crate::text::Text,
     pub initial: bool,
     pub on_true: String,
     pub on_false: String,
 }
 impl BooleanDialogInputImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:7
-    pub fn new_5(key: &str, label: Component, initial: bool, on_true: &str, on_false: &str) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:7
+    pub fn new_5(key: &str, label: crate::text::Text, initial: bool, on_true: &str, on_false: &str) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:7
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl BooleanDialogInput for BooleanDialogInputImpl {
-    fn label(&self) -> Component { todo!("abstract BooleanDialogInput.label") }
+    fn label(&self) -> crate::text::Text { todo!("abstract BooleanDialogInput.label") }
     fn initial(&self) -> bool { todo!("abstract BooleanDialogInput.initial") }
     fn on_true(&self) -> String { todo!("abstract BooleanDialogInput.onTrue") }
     fn on_false(&self) -> String { todo!("abstract BooleanDialogInput.onFalse") }
@@ -35,14 +34,14 @@ crate::jobject!(BooleanDialogInputImpl: dyn BooleanDialogInput, dyn DialogInput)
 pub struct BooleanDialogInputImplBuilderImpl {
     pub this: Weak<Self>,
     pub key: String, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:11
-    pub label: Component, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:12
+    pub label: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:12
     pub initial: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:13
     pub on_true: Mut<String>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:14
     pub on_false: Mut<String>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:15
 }
 impl BooleanDialogInputImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: &str, label: Component) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:17
+    pub fn new(key: &str, label: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:17
     pub fn initial(&self, initial: bool) -> JRef<dyn BooleanDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:23
     pub fn on_true(&self, on_true: &str) -> JRef<dyn BooleanDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:29
     pub fn on_false(&self, on_false: &str) -> JRef<dyn BooleanDialogInputBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/input/BooleanDialogInputImpl.java:35

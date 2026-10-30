@@ -5,7 +5,6 @@ use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::writable_book_content::WritableBookContentBuilder;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::inventory::Book;
 use crate::net::minecraft::server::network::filterable::Filterable;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperWritableBookContent (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:17)
@@ -18,7 +17,7 @@ impl PaperWritableBookContent {
     pub fn new_1(impl_: crate::net::minecraft::world::item::component::writable_book_content::WritableBookContent) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:17
     pub fn get_handle(&self) -> crate::net::minecraft::world::item::component::writable_book_content::WritableBookContent { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:21
     pub fn pages(&self) -> Vec<JRef<dyn Filtered<String>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:26
-    pub fn as_book(&self) -> Book { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:31
+    pub fn as_book(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWritableBookContent.java:31
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -9,8 +9,6 @@ use crate::io::papermc::paper::datacomponent::item::resolvable_profile::Resolvab
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileBuilder;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileSkinPatch;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileSkinPatchBuilder;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsBuilder;
 use crate::net::minecraft::world::entity::player::player_skin::PlayerSkinPatch;
 use crate::net::minecraft::world::item::component::resolvable_profile::ResolvableProfileTrait;
 use crate::org::bukkit::profile::player_textures::PlayerTexturesSkinModel;
@@ -31,7 +29,7 @@ impl PaperResolvableProfile {
     pub fn resolve(&self) -> crate::rt::CompletableFuture<JRef<dyn PlayerProfile>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:69
     pub fn skin_patch(&self) -> JRef<dyn ResolvableProfileSkinPatch> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:75
     pub fn to_api(profile: JRef<dyn PlayerProfile>) -> PaperResolvableProfile { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:37
-    pub fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:80
+    pub fn apply_skin_to_player_head_contents(&self, builder: ()) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:80
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -50,49 +48,49 @@ crate::jobject!(PaperResolvableProfile: dyn ResolvableProfile);
 // ---- record io.papermc.paper.datacomponent.item.PaperResolvableProfile.PaperSkinPatch (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:104)
 #[derive(Clone)]
 pub struct PaperResolvableProfilePaperSkinPatch {
-    pub body: Option<JRef<dyn Key>>,
-    pub cape: Option<JRef<dyn Key>>,
-    pub elytra: Option<JRef<dyn Key>>,
+    pub body: Option<crate::net::minecraft::resources::identifier::Identifier>,
+    pub cape: Option<crate::net::minecraft::resources::identifier::Identifier>,
+    pub elytra: Option<crate::net::minecraft::resources::identifier::Identifier>,
     pub model: PlayerTexturesSkinModel,
 }
 impl PaperResolvableProfilePaperSkinPatch {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:104
-    pub fn new_4(body: Option<JRef<dyn Key>>, cape: Option<JRef<dyn Key>>, elytra: Option<JRef<dyn Key>>, model: PlayerTexturesSkinModel) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:104
+    pub fn new_4(body: Option<crate::net::minecraft::resources::identifier::Identifier>, cape: Option<crate::net::minecraft::resources::identifier::Identifier>, elytra: Option<crate::net::minecraft::resources::identifier::Identifier>, model: PlayerTexturesSkinModel) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:104
     pub fn as_paper(patch: PlayerSkinPatch) -> PaperResolvableProfilePaperSkinPatch { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:110
     pub fn as_vanilla(&self) -> PlayerSkinPatch { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:122
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResolvableProfileSkinPatch for PaperResolvableProfilePaperSkinPatch {
-    fn body(&self) -> Option<JRef<dyn Key>> { todo!("abstract SkinPatch.body") }
-    fn cape(&self) -> Option<JRef<dyn Key>> { todo!("abstract SkinPatch.cape") }
-    fn elytra(&self) -> Option<JRef<dyn Key>> { todo!("abstract SkinPatch.elytra") }
+    fn body(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!("abstract SkinPatch.body") }
+    fn cape(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!("abstract SkinPatch.cape") }
+    fn elytra(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!("abstract SkinPatch.elytra") }
     fn model(&self) -> PlayerTexturesSkinModel { todo!("abstract SkinPatch.model") }
 }
 crate::jobject!(PaperResolvableProfilePaperSkinPatch: dyn ResolvableProfileSkinPatch);
 // ---- class io.papermc.paper.datacomponent.item.PaperResolvableProfile.SkinPatchBuilderImpl (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:132)
 pub struct PaperResolvableProfileSkinPatchBuilderImpl {
     pub this: Weak<Self>,
-    pub body: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:133
-    pub cape: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:134
-    pub elytra: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:135
+    pub body: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:133
+    pub cape: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:134
+    pub elytra: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:135
     pub model: Mut<PlayerTexturesSkinModel>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:136
 }
 impl PaperResolvableProfileSkinPatchBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:132
-    pub fn body(&self, body: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:138
-    pub fn cape(&self, cape: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:144
-    pub fn elytra(&self, elytra: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:150
+    pub fn body(&self, body: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:138
+    pub fn cape(&self, cape: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:144
+    pub fn elytra(&self, elytra: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:150
     pub fn model(&self, model: PlayerTexturesSkinModel) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:156
     pub fn build(&self) -> JRef<dyn ResolvableProfileSkinPatch> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:162
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResolvableProfileSkinPatchBuilder for PaperResolvableProfileSkinPatchBuilderImpl {
-    fn body(&self, body: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::body(self, body) }
-    fn cape(&self, cape: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::cape(self, cape) }
-    fn elytra(&self, elytra: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::elytra(self, elytra) }
+    fn body(&self, body: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::body(self, body) }
+    fn cape(&self, cape: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::cape(self, cape) }
+    fn elytra(&self, elytra: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::elytra(self, elytra) }
     fn model(&self, model: PlayerTexturesSkinModel) -> JRef<dyn ResolvableProfileSkinPatchBuilder> { PaperResolvableProfileSkinPatchBuilderImpl::model(self, model) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperResolvableProfileSkinPatchBuilderImpl {

@@ -6,9 +6,6 @@ use crate::io::papermc::paper::registry::registry_access;
 use crate::io::papermc::paper::registry::registry_access::RegistryAccess;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::registry_key;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::translation::Translatable;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
 use crate::org::bukkit::registry::Registry;
@@ -19,11 +16,11 @@ use crate::prelude::*;
 pub struct MusicInstrument {
     pub this: Weak<dyn MusicInstrumentTrait>,
 }
-pub trait MusicInstrumentTrait: Keyed + Translatable {
+pub trait MusicInstrumentTrait: Keyed {
     fn as_music_instrument(&self) -> &MusicInstrument;
     fn get_duration(&self) -> f32; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:80
     fn get_range(&self) -> f32; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:87
-    fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:94
+    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:94
     fn get_sound(&self) -> JRef<dyn Sound>; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:101
     fn translation_key(&self) -> String; // paper-api/src/main/java/org/bukkit/MusicInstrument.java:125
 }
@@ -56,7 +53,7 @@ impl MusicInstrument {
     pub fn new_base<S: MusicInstrumentTrait + 'static>(this: &Weak<S>) -> Self {
         MusicInstrument { this: this.clone() }
     } // paper-api/src/main/java/org/bukkit/MusicInstrument.java:16
-    pub fn key(&self) -> JRef<dyn Key> {
+    pub fn key(&self) -> crate::net::minecraft::resources::identifier::Identifier {
         // Keyed.super.key()
         self.this().get_key()
     } // paper-api/src/main/java/org/bukkit/MusicInstrument.java:115
@@ -74,11 +71,11 @@ impl MusicInstrument {
             .create_instrument(value)
     } // paper-api/src/main/java/org/bukkit/MusicInstrument.java:25
     pub fn get_instrument(key: &str) -> JRef<dyn MusicInstrumentTrait> {
-        // PORT: Adventure's `Key.key(String, String)` (Rust name per the Adventure port)
+        // PORT: Adventure's `crate::net::minecraft::resources::identifier::Identifier.key(String, String)` (Rust name per the Adventure port)
         registry_access::registry_access()
             .get_registry_1(registry_key::INSTRUMENT.clone())
             .get_or_throw(crate::net::kyori::adventure::key::key::key_2(
-                crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+                (),
                 key,
             ))
     } // paper-api/src/main/java/org/bukkit/MusicInstrument.java:47

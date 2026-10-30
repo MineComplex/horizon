@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::provider::configuration::load_order_configuration::LoadOrderConfiguration;
 use crate::io::papermc::paper::plugin::provider::entrypoint::dependency_context::DependencyContext;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 
 // ---- interface io.papermc.paper.plugin.provider.PluginProvider (paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:29)
 pub trait PluginProvider<T: JGeneric>: JObject {
@@ -14,7 +13,7 @@ pub trait PluginProvider<T: JGeneric>: JObject {
     fn file(&self) -> (); // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:43
     fn create_instance(&self) -> T; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:45
     fn get_meta(&self) -> JRef<dyn PluginMeta>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:47
-    fn get_logger(&self) -> ComponentLogger; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:49
+    fn get_logger(&self) -> (); // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:49
     fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:51
     fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:54
 }

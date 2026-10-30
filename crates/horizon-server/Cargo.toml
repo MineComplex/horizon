@@ -48,6 +48,7 @@ rayon = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "time", "sync", "macros"] }
 lz4_flex = "0.11"
 itertools = "0.13"
+azalea-brigadier = "0.16.0"
 
 # Java's int arithmetic wraps; the port writes it with plain operators.
 # (overflow-checks is off for this crate in the workspace's profiles.)

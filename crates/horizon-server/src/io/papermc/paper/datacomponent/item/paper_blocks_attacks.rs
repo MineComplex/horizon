@@ -7,7 +7,6 @@ use crate::io::papermc::paper::datacomponent::item::blocks_attacks::BlocksAttack
 use crate::io::papermc::paper::datacomponent::item::blocksattacks::damage_reduction::DamageReduction;
 use crate::io::papermc::paper::datacomponent::item::blocksattacks::item_damage_function::ItemDamageFunction;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::damage::damage_type::DamageType;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperBlocksAttacks (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:24)
@@ -24,8 +23,8 @@ impl PaperBlocksAttacks {
     pub fn damage_reductions(&self) -> Vec<JRef<dyn DamageReduction>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:43
     pub fn item_damage(&self) -> JRef<dyn ItemDamageFunction> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:48
     pub fn bypassed_by(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:53
-    pub fn block_sound(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:58
-    pub fn disable_sound(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:63
+    pub fn block_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:58
+    pub fn disable_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -35,8 +34,8 @@ impl crate::io::papermc::paper::datacomponent::item::blocks_attacks::BlocksAttac
     fn damage_reductions(&self) -> Vec<JRef<dyn DamageReduction>> { PaperBlocksAttacks::damage_reductions(self) }
     fn item_damage(&self) -> JRef<dyn ItemDamageFunction> { PaperBlocksAttacks::item_damage(self) }
     fn bypassed_by(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>> { PaperBlocksAttacks::bypassed_by(self) }
-    fn block_sound(&self) -> Option<JRef<dyn Key>> { PaperBlocksAttacks::block_sound(self) }
-    fn disable_sound(&self) -> Option<JRef<dyn Key>> { PaperBlocksAttacks::disable_sound(self) }
+    fn block_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperBlocksAttacks::block_sound(self) }
+    fn disable_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperBlocksAttacks::disable_sound(self) }
 }
 impl Handleable<crate::net::minecraft::world::item::component::blocks_attacks::BlocksAttacks> for PaperBlocksAttacks {
     fn get_handle(&self) -> M { PaperBlocksAttacks::get_handle(self) }
@@ -50,8 +49,8 @@ pub struct PaperBlocksAttacksBuilderImpl {
     pub damage_reductions: Mut<Vec<JRef<dyn DamageReduction>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:72
     pub item_damage: Mut<JRef<dyn ItemDamageFunction>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:73
     pub bypassed_by: Mut<Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:74
-    pub block_sound: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:75
-    pub disable_sound: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:76
+    pub block_sound: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:75
+    pub disable_sound: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:76
 }
 impl PaperBlocksAttacksBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -62,8 +61,8 @@ impl PaperBlocksAttacksBuilderImpl {
     pub fn damage_reductions(&self, reductions: &Vec<JRef<dyn DamageReduction>>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:96
     pub fn item_damage(&self, function: JRef<dyn ItemDamageFunction>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:102
     pub fn bypassed_by(&self, bypassed_by: Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:108
-    pub fn block_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:114
-    pub fn disable_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:120
+    pub fn block_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:114
+    pub fn disable_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:120
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::blocks_attacks::BlocksAttacks> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperBlocksAttacks.java:126
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -75,8 +74,8 @@ impl BlocksAttacksBuilder for PaperBlocksAttacksBuilderImpl {
     fn damage_reductions(&self, reductions: &Vec<JRef<dyn DamageReduction>>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::damage_reductions(self, reductions) }
     fn item_damage(&self, function: JRef<dyn ItemDamageFunction>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::item_damage(self, function) }
     fn bypassed_by(&self, bypassed_by: Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::bypassed_by(self, bypassed_by) }
-    fn block_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::block_sound(self, sound) }
-    fn disable_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::disable_sound(self, sound) }
+    fn block_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::block_sound(self, sound) }
+    fn disable_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder> { PaperBlocksAttacksBuilderImpl::disable_sound(self, sound) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperBlocksAttacksBuilderImpl {
     fn build(&self) -> C { PaperBlocksAttacksBuilderImpl::build(self) }

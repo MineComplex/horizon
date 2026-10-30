@@ -138,7 +138,7 @@ impl GameRules {
         crate::org::bukkit::game_rule::unchecked_cast(
             crate::org::bukkit::registry::GAME_RULE.get_or_throw(
                 crate::net::kyori::adventure::key::key::key_2(
-                    crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+                    (),
                     key,
                 ),
             ),

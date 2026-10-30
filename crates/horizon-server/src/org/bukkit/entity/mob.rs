@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::entity::pathfinder::Pathfinder;
 use crate::io::papermc::paper::entity::leashable::Leashable;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::entity::entity::Entity;
 use crate::org::bukkit::entity::living_entity::LivingEntity;
 use crate::org::bukkit::location::Location;
@@ -14,8 +13,8 @@ use crate::prelude::*;
 // ---- interface org.bukkit.entity.Mob (paper-api/src/main/java/org/bukkit/entity/Mob.java:17)
 pub trait Mob: LivingEntity + Lootable + Leashable {
     fn should_despawn_in_peaceful(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Mob.java:25
-    fn set_despawn_in_peaceful_override(&self, state: TriState); // paper-api/src/main/java/org/bukkit/entity/Mob.java:37
-    fn get_despawn_in_peaceful_override(&self) -> TriState; // paper-api/src/main/java/org/bukkit/entity/Mob.java:50
+    fn set_despawn_in_peaceful_override(&self, state: Option<bool>); // paper-api/src/main/java/org/bukkit/entity/Mob.java:37
+    fn get_despawn_in_peaceful_override(&self) -> Option<bool>; // paper-api/src/main/java/org/bukkit/entity/Mob.java:50
     fn get_pathfinder(&self) -> JRef<dyn Pathfinder>; // paper-api/src/main/java/org/bukkit/entity/Mob.java:59
     fn look_at_1(&self, location: JRef<Location>); // paper-api/src/main/java/org/bukkit/entity/Mob.java:75
     fn look_at_1_2(&self, entity: JRef<dyn Entity>); // paper-api/src/main/java/org/bukkit/entity/Mob.java:97

@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::block::block_type::BlockType;
 use crate::prelude::*;
 
@@ -20,7 +19,7 @@ pub fn tool() -> JRef<dyn ToolBuilder> {
 pub fn rule(
     blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>,
     speed: Option<f32>,
-    correct_for_drops: TriState,
+    correct_for_drops: Option<bool>,
 ) -> JRef<dyn ToolRule> {
     crate::io::papermc::paper::datacomponent::item::item_component_types_bridge::bridge().tool_rule(
         blocks,
@@ -32,7 +31,7 @@ pub fn rule(
 pub trait ToolRule: JObject {
     fn blocks(&self) -> JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/Tool.java:88
     fn speed(&self) -> Option<f32>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/Tool.java:95
-    fn correct_for_drops(&self) -> TriState; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/Tool.java:104
+    fn correct_for_drops(&self) -> Option<bool>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/Tool.java:104
 }
 // ---- interface io.papermc.paper.datacomponent.item.Tool.Builder (paper-api/src/main/java/io/papermc/paper/datacomponent/item/Tool.java:110)
 pub trait ToolBuilder: DataComponentBuilder<JRef<dyn Tool>> {

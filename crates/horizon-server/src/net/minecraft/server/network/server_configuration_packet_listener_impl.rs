@@ -5,7 +5,6 @@ use crate::io::papermc::paper::connection::disconnection_reason::DisconnectionRe
 use crate::io::papermc::paper::connection::paper_common_connection::PaperCommonConnectionTrait;
 use crate::io::papermc::paper::connection::paper_player_configuration_connection::PaperPlayerConfigurationConnection;
 use crate::io::papermc::paper::connection::player_common_connection::PlayerCommonConnection;
-use crate::net::kyori::adventure::audience::Audience;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::connection::Connection;
 use crate::net::minecraft::network::connection_protocol::ConnectionProtocol;
@@ -62,7 +61,7 @@ impl ServerConfigurationPacketListenerImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(server: JRef<dyn MinecraftServerTrait>, connection: JRef<Connection>, cookie: CommonListenerCookie) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:56
     pub fn get_api_connection(&self) -> JRef<dyn PlayerCommonConnection> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:64
-    pub fn get_audience(&self) -> JRef<dyn Audience> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:69
+    pub fn get_audience(&self) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:69
     pub fn player_profile(&self) -> crate::rt::GameProfile { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:75
     pub fn on_disconnect(&self, details: DisconnectionDetails) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:80
     pub fn is_accepting_messages(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java:91
@@ -86,7 +85,7 @@ impl ServerConfigurationPacketListenerImpl {
 impl ServerCommonPacketListenerImplTrait for ServerConfigurationPacketListenerImpl {
     fn as_server_common_packet_listener_impl(&self) -> &ServerCommonPacketListenerImpl { self }
     fn get_api_connection(&self) -> JRef<dyn PlayerCommonConnection> { ServerConfigurationPacketListenerImpl::get_api_connection(self) }
-    fn get_audience(&self) -> JRef<dyn Audience> { ServerConfigurationPacketListenerImpl::get_audience(self) }
+    fn get_audience(&self) -> () { ServerConfigurationPacketListenerImpl::get_audience(self) }
     fn keep_connection_alive(&self) { ServerCommonPacketListenerImpl::keep_connection_alive(self) }
     fn suspend_flushing(&self) { ServerCommonPacketListenerImpl::suspend_flushing(self) }
     fn resume_flushing(&self) { ServerCommonPacketListenerImpl::resume_flushing(self) }

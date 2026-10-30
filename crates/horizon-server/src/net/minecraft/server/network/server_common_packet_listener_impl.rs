@@ -5,8 +5,6 @@ use crate::io::papermc::paper::connection::disconnection_reason::DisconnectionRe
 use crate::io::papermc::paper::connection::paper_common_connection::PaperCommonConnectionTrait;
 use crate::io::papermc::paper::connection::player_common_connection::PlayerCommonConnection;
 use crate::io::papermc::paper::util::keep_alive::KeepAlive;
-use crate::net::kyori::adventure::audience::Audience;
-use crate::net::kyori::adventure::resource::ResourcePackCallback;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::connection::Connection;
 use crate::net::minecraft::network::disconnection_details::DisconnectionDetails;
@@ -38,14 +36,14 @@ pub struct ServerCommonPacketListenerImpl {
     pub keep_alive: JRef<KeepAlive>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:48
     pub suspend_flushing_on_server_thread: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:49
     pub cserver: JRef<dyn Server>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:51
-    pub pack_callbacks: Mut<HashMap<Uuid, ResourcePackCallback>>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:53
+    pub pack_callbacks: Mut<HashMap<Uuid, ()>>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:53
     pub client_brand: Mut<Option<String>>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:60
     pub plugin_messager_channels: Mut<HashSet<String>>, // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:61
 }
 pub trait ServerCommonPacketListenerImplTrait: ServerCommonPacketListener {
     fn as_server_common_packet_listener_impl(&self) -> &ServerCommonPacketListenerImpl;
     fn get_api_connection(&self) -> JRef<dyn PlayerCommonConnection>; // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:79
-    fn get_audience(&self) -> JRef<dyn Audience>; // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:81
+    fn get_audience(&self) -> (); // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:81
     fn keep_connection_alive(&self); // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:268
     fn suspend_flushing(&self); // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:323
     fn resume_flushing(&self); // leaf-server/src/minecraft/java/net/minecraft/server/network/ServerCommonPacketListenerImpl.java:327

@@ -11,7 +11,6 @@ use crate::io::papermc::paper::registry::data::dialog::input::single_option_dial
 use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input::TextDialogInput;
 use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input::TextDialogInputBuilder;
 use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input::TextDialogInputMultilineOptions;
-use crate::net::kyori::adventure::text::Component;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.input.DialogInput (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:14)
@@ -21,11 +20,11 @@ pub trait DialogInput: Send + Sync + 'static {
 impl<F: Fn() -> String + Send + Sync + 'static> DialogInput for F {
     fn key(&self) -> String { self() }
 }
-pub fn bool(key: &str, label: Component) -> JRef<dyn BooleanDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:42
-pub fn bool_5(key: &str, label: Component, initial: bool, on_true: &str, on_false: &str) -> JRef<dyn BooleanDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:26
-pub fn number_range(key: &str, label: Component, start: f32, end: f32) -> JRef<dyn NumberRangeDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:83
-pub fn number_range_8(key: &str, width: i32, label: Component, label_format: &str, start: f32, end: f32, initial: Option<f32>, step: Option<f32>) -> JRef<dyn NumberRangeDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:60
-pub fn single_option(key: &str, label: Component, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>) -> JRef<dyn SingleOptionDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:117
-pub fn single_option_5(key: &str, width: i32, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: Component, label_visible: bool) -> JRef<dyn SingleOptionDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:98
-pub fn text(key: &str, label: Component) -> JRef<dyn TextDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:154
-pub fn text_7(key: &str, width: i32, label: Component, label_visible: bool, initial: &str, max_length: i32, multiline_options: JRef<dyn TextDialogInputMultilineOptions>) -> JRef<dyn TextDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:134
+pub fn bool(key: &str, label: crate::text::Text) -> JRef<dyn BooleanDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:42
+pub fn bool_5(key: &str, label: crate::text::Text, initial: bool, on_true: &str, on_false: &str) -> JRef<dyn BooleanDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:26
+pub fn number_range(key: &str, label: crate::text::Text, start: f32, end: f32) -> JRef<dyn NumberRangeDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:83
+pub fn number_range_8(key: &str, width: i32, label: crate::text::Text, label_format: &str, start: f32, end: f32, initial: Option<f32>, step: Option<f32>) -> JRef<dyn NumberRangeDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:60
+pub fn single_option(key: &str, label: crate::text::Text, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>) -> JRef<dyn SingleOptionDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:117
+pub fn single_option_5(key: &str, width: i32, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>, label: crate::text::Text, label_visible: bool) -> JRef<dyn SingleOptionDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:98
+pub fn text(key: &str, label: crate::text::Text) -> JRef<dyn TextDialogInputBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:154
+pub fn text_7(key: &str, width: i32, label: crate::text::Text, label_visible: bool, initial: &str, max_length: i32, multiline_options: JRef<dyn TextDialogInputMultilineOptions>) -> JRef<dyn TextDialogInput> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/input/DialogInput.java:134

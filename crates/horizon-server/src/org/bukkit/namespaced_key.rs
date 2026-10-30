@@ -110,7 +110,7 @@ impl NamespacedKey {
         // Leaf end - Cache namespacedKey toString and hash
     } // paper-api/src/main/java/org/bukkit/NamespacedKey.java:115
     pub fn equals(&self, obj: JObjectRef) -> bool {
-        let Some(key) = cast::<dyn crate::net::kyori::adventure::key::Key, _>(&obj) else {
+        let Some(key) = cast::<dyn crate::net::minecraft::resources::identifier::Identifier, _>(&obj) else {
             return false;
         };
         self.namespace == key.namespace() && self.key == key.value()
@@ -221,7 +221,7 @@ impl std::hash::Hash for NamespacedKey {
 }
 // `implements net.kyori.adventure.key.Key`: namespace(), value(), asString() above.
 // PORT: fill in the trait methods once the Adventure `Key` port defines them.
-impl crate::net::kyori::adventure::key::Key for NamespacedKey {}
+impl crate::net::minecraft::resources::identifier::Identifier for NamespacedKey {}
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl Namespaced for NamespacedKey {

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::enchantments::enchantment_rarity::EnchantmentRarity;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::enchantments::enchantment_target::EnchantmentTarget;
 use crate::org::bukkit::entity::entity_category::EntityCategory;
 use crate::org::bukkit::entity::entity_type::EntityType;
@@ -19,7 +18,7 @@ use crate::api_prelude::*;
 pub struct Enchantment {
     pub this: Weak<dyn EnchantmentTrait>,
 }
-pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable {
+pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatable {
     fn as_enchantment(&self) -> &Enchantment;
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:285
     fn get_translated_name(&self) -> String; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:294
@@ -30,7 +29,7 @@ pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatab
     fn is_cursed(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:340
     fn conflicts_with(&self, other: JRef<dyn EnchantmentTrait>) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:348
     fn can_enchant_item(&self, item: JRef<ItemStack>) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:360
-    fn display_name(&self, level: i32) -> Component; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:372
+    fn display_name(&self, level: i32) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:372
     fn is_tradeable(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:381
     fn is_discoverable(&self) -> bool; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:389
     fn get_min_modified_cost(&self, level: i32) -> i32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:401
@@ -41,7 +40,7 @@ pub trait EnchantmentTrait: Keyed + crate::org::bukkit::translatable::Translatab
     fn get_damage_increase_2(&self, level: i32, entity_type: EntityType) -> f32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:456
     fn get_active_slots(&self) -> HashSet<EquipmentSlot>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:466
     fn get_active_slot_groups(&self) -> HashSet<JRef<EquipmentSlotGroup>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:483
-    fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:494
+    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:494
     fn get_supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:501
     fn get_primary_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:514
     fn get_weight(&self) -> i32; // paper-api/src/main/java/org/bukkit/enchantments/Enchantment.java:523

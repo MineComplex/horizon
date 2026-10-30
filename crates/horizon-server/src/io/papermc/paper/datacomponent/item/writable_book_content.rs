@@ -3,11 +3,10 @@
 use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::inventory::BookLike;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.WritableBookContent (paper-api/src/main/java/io/papermc/paper/datacomponent/item/WritableBookContent.java:15)
-pub trait WritableBookContent: BookLike {
+pub trait WritableBookContent: JObject {
     fn pages(&self) -> Vec<JRef<dyn Filtered<String>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WritableBookContent.java:28
 }
 pub fn writeable_book_content() -> JRef<dyn WritableBookContentBuilder> {

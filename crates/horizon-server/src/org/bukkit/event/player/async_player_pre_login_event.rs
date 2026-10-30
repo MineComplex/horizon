@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::io::papermc::paper::connection::player_login_connection::PlayerLoginConnection;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::event::event::Event;
 use crate::org::bukkit::event::event::EventTrait;
 use crate::org::bukkit::event::handler_list::HandlerList;
@@ -19,7 +18,7 @@ pub struct AsyncPlayerPreLoginEvent {
     pub hostname: String, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:35
     pub transferred: bool, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:36
     pub result: Mut<AsyncPlayerPreLoginEventResult>, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:37
-    pub message: Mut<Component>, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:38
+    pub message: Mut<crate::text::Text>, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:38
     pub profile: Mut<JRef<dyn PlayerProfile>>, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:39
     pub player_login_connection: JRef<dyn PlayerLoginConnection>, // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:40
 }
@@ -41,10 +40,10 @@ impl AsyncPlayerPreLoginEvent {
     pub fn get_result(&self) -> PlayerPreLoginEventResult { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:102
     pub fn set_login_result(&self, result: AsyncPlayerPreLoginEventResult) { self.result.set(result) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:113
     pub fn set_result(&self, result: PlayerPreLoginEventResult) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:125
-    pub fn kick_message(&self) -> Component { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:135
-    pub fn kick_message_1(&self, message: Component) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:145
-    pub fn disallow(&self, result: AsyncPlayerPreLoginEventResult, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:155
-    pub fn disallow_2(&self, result: PlayerPreLoginEventResult, message: Component) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:169
+    pub fn kick_message(&self) -> crate::text::Text { self.message.get() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:135
+    pub fn kick_message_1(&self, message: crate::text::Text) { self.message.set(message) } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:145
+    pub fn disallow(&self, result: AsyncPlayerPreLoginEventResult, message: crate::text::Text) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:155
+    pub fn disallow_2(&self, result: PlayerPreLoginEventResult, message: crate::text::Text) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:169
     pub fn disallow_2_2(&self, result: AsyncPlayerPreLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:213
     pub fn disallow_2_3(&self, result: PlayerPreLoginEventResult, message: &str) { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:228
     pub fn get_kick_message(&self) -> String { todo!() } // paper-api/src/main/java/org/bukkit/event/player/AsyncPlayerPreLoginEvent.java:181

@@ -7,7 +7,6 @@ use crate::io::papermc::paper::connection::player_login_connection::PlayerLoginC
 use crate::io::papermc::paper::connection::readable_player_cookie_connection::ReadablePlayerCookieConnection;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImpl;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImplTrait;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::network::protocol::cookie::serverbound_cookie_response_packet::ServerboundCookieResponsePacket;
 use crate::net::minecraft::server::network::server_login_packet_listener_impl::ServerLoginPacketListenerImpl;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
@@ -31,7 +30,7 @@ impl PaperPlayerLoginConnection {
     pub fn get_client_address(&self) -> std::net::SocketAddr { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:40
     pub fn get_virtual_host(&self) -> Option<std::net::SocketAddr> { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:45
     pub fn is_transferred(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:50
-    pub fn disconnect(&self, component: Component) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:55
+    pub fn disconnect(&self, component: crate::text::Text) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:55
     pub fn is_connected(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerLoginConnection.java:60
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -49,7 +48,7 @@ impl ReadablePlayerCookieConnection for PaperPlayerLoginConnection {
     fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> crate::rt::CompletableFuture<Vec<i8>> { ReadablePlayerCookieConnectionImpl::retrieve_cookie(self, key) }
 }
 impl PlayerConnection for PaperPlayerLoginConnection {
-    fn disconnect(&self, component: Component) { PaperPlayerLoginConnection::disconnect(self, component) }
+    fn disconnect(&self, component: crate::text::Text) { PaperPlayerLoginConnection::disconnect(self, component) }
     fn is_connected(&self) -> bool { PaperPlayerLoginConnection::is_connected(self) }
     fn is_transferred(&self) -> bool { PaperPlayerLoginConnection::is_transferred(self) }
     fn get_address(&self) -> std::net::SocketAddr { PaperPlayerLoginConnection::get_address(self) }

@@ -5,7 +5,6 @@ use crate::io::papermc::paper::datacomponent::data_component_builder::DataCompon
 use crate::io::papermc::paper::datacomponent::item::blocksattacks::damage_reduction::DamageReduction;
 use crate::io::papermc::paper::datacomponent::item::blocksattacks::item_damage_function::ItemDamageFunction;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::damage::damage_type::DamageType;
 use crate::prelude::*;
 
@@ -16,8 +15,8 @@ pub trait BlocksAttacks: JObject {
     fn damage_reductions(&self) -> Vec<JRef<dyn DamageReduction>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:51
     fn item_damage(&self) -> JRef<dyn ItemDamageFunction>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:59
     fn bypassed_by(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:67
-    fn block_sound(&self) -> Option<JRef<dyn Key>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:75
-    fn disable_sound(&self) -> Option<JRef<dyn Key>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:83
+    fn block_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:75
+    fn disable_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:83
 }
 pub fn blocks_attacks() -> JRef<dyn BlocksAttacksBuilder> {
     crate::io::papermc::paper::datacomponent::item::item_component_types_bridge::bridge()
@@ -41,6 +40,6 @@ pub trait BlocksAttacksBuilder: DataComponentBuilder<JRef<dyn BlocksAttacks>> {
         &self,
         bypassed_by: Option<JRef<dyn RegistryKeySet<JRef<dyn DamageType>>>>,
     ) -> JRef<dyn BlocksAttacksBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:107
-    fn block_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:110
-    fn disable_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn BlocksAttacksBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:113
+    fn block_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:110
+    fn disable_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn BlocksAttacksBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/BlocksAttacks.java:113
 }

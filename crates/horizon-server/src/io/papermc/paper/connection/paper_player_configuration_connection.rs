@@ -13,11 +13,6 @@ use crate::io::papermc::paper::connection::readable_player_cookie_connection::Re
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImpl;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImplTrait;
 use crate::io::papermc::paper::connection::writable_player_cookie_connection::WritablePlayerCookieConnection;
-use crate::net::kyori::adventure::audience::Audience;
-use crate::net::kyori::adventure::dialog::DialogLike;
-use crate::net::kyori::adventure::pointer::Pointers;
-use crate::net::kyori::adventure::resource::ResourcePackRequest;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::network::protocol::cookie::serverbound_cookie_response_packet::ServerboundCookieResponsePacket;
 use crate::net::minecraft::server::level::client_information::ClientInformation;
 use crate::net::minecraft::server::level::server_player::ServerPlayer;
@@ -31,7 +26,7 @@ use crate::org::bukkit::server_links::ServerLinks;
 pub struct PaperPlayerConfigurationConnection {
     pub base: PaperCommonConnection<JRef<ServerConfigurationPacketListenerImpl>>,
     pub this: Weak<Self>,
-    pub adventure_pointers: Mut<Option<Pointers>>, // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:43
+    pub adventure_pointers: Mut<Option<()>>, // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:43
     pub internal_plugin_defined_entity_id: Mut<Option<i32>>, // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:44
 }
 impl std::ops::Deref for PaperPlayerConfigurationConnection {
@@ -42,7 +37,7 @@ impl PaperPlayerConfigurationConnection {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(packet_listener: JRef<ServerConfigurationPacketListenerImpl>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:46
     pub fn get_client_information(&self) -> ClientInformation { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:71
-    pub fn get_audience(&self) -> JRef<dyn Audience> { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:126
+    pub fn get_audience(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:126
     pub fn get_profile(&self) -> JRef<dyn PlayerProfile> { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:131
     pub fn clear_chat(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:136
     pub fn complete_reconfiguration(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:141
@@ -52,12 +47,12 @@ impl PaperPlayerConfigurationConnection {
     pub fn is_connected(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:175
     pub fn set_internal_plugin_defined_entity_id(&self, entity_id: i32) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:60
     pub fn apply_pending_entity_id(&self, player: JRef<ServerPlayer>) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:65
-    pub fn send_resource_packs(&self, request: ResourcePackRequest) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:76
+    pub fn send_resource_packs(&self, request: ()) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:76
     pub fn remove_resource_packs(&self, id: Uuid, others: &Vec<Uuid>) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:93
     pub fn clear_resource_packs(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:98
-    pub fn show_dialog(&self, dialog: JRef<dyn DialogLike>) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:103
+    pub fn show_dialog(&self, dialog: ()) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:103
     pub fn close_dialog(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:108
-    pub fn pointers(&self) -> Pointers { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:113
+    pub fn pointers(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/connection/PaperPlayerConfigurationConnection.java:113
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -71,7 +66,7 @@ impl ReadablePlayerCookieConnectionImplTrait for PaperPlayerConfigurationConnect
     fn is_awaiting_cookies(&self) -> bool { ReadablePlayerCookieConnectionImpl::is_awaiting_cookies(self) }
 }
 impl PlayerConfigurationConnection for PaperPlayerConfigurationConnection {
-    fn get_audience(&self) -> JRef<dyn Audience> { PaperPlayerConfigurationConnection::get_audience(self) }
+    fn get_audience(&self) -> () { PaperPlayerConfigurationConnection::get_audience(self) }
     fn get_profile(&self) -> JRef<dyn PlayerProfile> { PaperPlayerConfigurationConnection::get_profile(self) }
     fn clear_chat(&self) { PaperPlayerConfigurationConnection::clear_chat(self) }
     fn complete_reconfiguration(&self) { PaperPlayerConfigurationConnection::complete_reconfiguration(self) }
@@ -87,7 +82,7 @@ impl WritablePlayerCookieConnection for PaperPlayerConfigurationConnection {
     fn store_cookie(&self, key: JRef<NamespacedKey>, value: &Vec<i8>) { PaperCommonConnection::store_cookie(self, key, value) }
 }
 impl PlayerConnection for PaperPlayerConfigurationConnection {
-    fn disconnect(&self, component: Component) { PaperCommonConnection::disconnect(self, component) }
+    fn disconnect(&self, component: crate::text::Text) { PaperCommonConnection::disconnect(self, component) }
     fn is_connected(&self) -> bool { PaperPlayerConfigurationConnection::is_connected(self) }
     fn is_transferred(&self) -> bool { PaperCommonConnection::is_transferred(self) }
     fn get_address(&self) -> std::net::SocketAddr { PaperCommonConnection::get_address(self) }

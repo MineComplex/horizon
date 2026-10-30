@@ -4,7 +4,6 @@ use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayDefault;
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayHidden;
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayOverrideText;
-use crate::net::kyori::adventure::text::ComponentLike;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.attribute.AttributeModifierDisplayBridge (paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridge.java:7)
@@ -13,7 +12,7 @@ pub trait AttributeModifierDisplayBridge: JObject {
     fn hidden(&self) -> JRef<dyn AttributeModifierDisplayHidden>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridge.java:17
     fn override_(
         &self,
-        text: JRef<dyn ComponentLike>,
+        text: crate::text::Text,
     ) -> JRef<dyn AttributeModifierDisplayOverrideText>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/attribute/AttributeModifierDisplayBridge.java:19
 }
 pub static BRIDGE: LazyLock<Option<JRef<dyn AttributeModifierDisplayBridge>>> = LazyLock::new(

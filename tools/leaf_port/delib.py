@@ -142,6 +142,64 @@ T = {
     'com::mojang::datafixers::util::Either': lambda a: f'either::Either<{A(0)(a)}, {A(1)(a)}>',
     'com::mojang::datafixers::util::Unit': U,
 }
+AZ = 'azalea_brigadier::'
+CSE = AZ + 'errors::CommandSyntaxError'
+a0 = lambda a: A(0)(a)
+PHASE2 = {
+    'com::mojang::brigadier::CommandDispatcher': lambda a: f'{AZ}command_dispatcher::CommandDispatcher<{a0(a)}>',
+    **{f'com::mojang::brigadier::tree::{n}': (lambda a: f'Arc<parking_lot::RwLock<{AZ}tree::CommandNode<{a0(a)}>>>')
+       for n in ('CommandNode', 'CommandNodeTrait', 'LiteralCommandNode', 'ArgumentCommandNode', 'RootCommandNode')},
+    **{f'com::mojang::brigadier::builder::{n}': (lambda a: f'{AZ}builder::argument_builder::ArgumentBuilder<{a0(a)}>')
+       for n in ('ArgumentBuilder', 'ArgumentBuilderTrait', 'LiteralArgumentBuilder', 'RequiredArgumentBuilder')},
+    'com::mojang::brigadier::context::CommandContext': lambda a: f'{AZ}context::CommandContext<{a0(a)}>',
+    'com::mojang::brigadier::context::CommandContextBuilder': lambda a: f"{AZ}context::CommandContextBuilder<'static, {a0(a)}>",
+    'com::mojang::brigadier::context::ContextChain': lambda a: f'{AZ}context::ContextChain<{a0(a)}>',
+    'com::mojang::brigadier::context::ParsedArgument': AZ + 'context::ParsedArgument',
+    'com::mojang::brigadier::context::StringRange': AZ + 'context::StringRange',
+    'com::mojang::brigadier::exceptions::CommandSyntaxException': CSE,
+    'com::mojang::brigadier::exceptions::CommandSyntaxExceptionTrait': CSE,
+    'com::mojang::brigadier::suggestion::SuggestionTrait': AZ + 'suggestion::Suggestion',
+    'com::mojang::brigadier::tree::LiteralCommandNodeTrait': lambda a: f'Arc<parking_lot::RwLock<{AZ}tree::CommandNode<{a0(a)}>>>',
+    'com::mojang::brigadier::exceptions::SimpleCommandExceptionType': f'Arc<dyn Fn() -> {CSE} + Send + Sync>',
+    'com::mojang::brigadier::exceptions::DynamicCommandExceptionType': f'Arc<dyn Fn(JObjectRef) -> {CSE} + Send + Sync>',
+    'com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType': f'Arc<dyn Fn(JObjectRef, JObjectRef) -> {CSE} + Send + Sync>',
+    'com::mojang::brigadier::exceptions::Dynamic3CommandExceptionType': f'Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef) -> {CSE} + Send + Sync>',
+    'com::mojang::brigadier::exceptions::Dynamic4CommandExceptionType': f'Arc<dyn Fn(JObjectRef, JObjectRef, JObjectRef, JObjectRef) -> {CSE} + Send + Sync>',
+    'com::mojang::brigadier::exceptions::CommandExceptionType': U,
+    'com::mojang::brigadier::Command': lambda a: f'{AZ}tree::Command<{a0(a)}>',
+    'com::mojang::brigadier::RedirectModifier': lambda a: f'{AZ}modifier::RedirectModifier<{a0(a)}>',
+    'com::mojang::brigadier::SingleRedirectModifier': lambda a: f'{AZ}modifier::RedirectModifier<{a0(a)}>',
+    'com::mojang::brigadier::ResultConsumer': lambda a: f'Arc<dyn {AZ}result_consumer::ResultConsumer<{a0(a)}> + Send + Sync>',
+    'com::mojang::brigadier::AmbiguityConsumer': U, 'com::mojang::brigadier::Message': 'String',
+    'com::mojang::brigadier::StringReader': AZ + 'string_reader::StringReader',
+    'com::mojang::brigadier::ImmutableStringReader': AZ + 'string_reader::StringReader',
+    'com::mojang::brigadier::ParseResults': lambda a: f"{AZ}parse_results::ParseResults<'static, {a0(a)}>",
+    **{f'com::mojang::brigadier::arguments::{n}': f'Arc<dyn {AZ}arguments::ArgumentType + Send + Sync>'
+       for n in ('ArgumentType', 'IntegerArgumentType', 'LongArgumentType', 'FloatArgumentType', 'DoubleArgumentType',
+                 'BoolArgumentType', 'StringArgumentType')},
+    'com::mojang::brigadier::arguments::StringArgumentTypeStringType': AZ + 'arguments::string_argument_type::StringArgument',
+    'com::mojang::brigadier::suggestion::SuggestionProvider': lambda a: f'Arc<dyn {AZ}suggestion::suggestion_provider::SuggestionProvider<{a0(a)}> + Send + Sync>',
+    'com::mojang::brigadier::suggestion::Suggestions': AZ + 'suggestion::suggestions::Suggestions',
+    'com::mojang::brigadier::suggestion::SuggestionsBuilder': AZ + 'suggestion::suggestions_builder::SuggestionsBuilder',
+    'com::mojang::brigadier::suggestion::Suggestion': AZ + 'suggestion::Suggestion',
+    'com::mojang::brigadier::suggestion::IntegerSuggestion': AZ + 'suggestion::Suggestion',
+    # Adventure -> the copied Horizon text
+    **{f'net::kyori::adventure::text::{n}': 'crate::text::Text' for n in (
+        'Component', 'TextComponent', 'TranslatableComponent', 'ComponentLike', 'KeybindComponent', 'ScoreComponent',
+        'SelectorComponent', 'ObjectComponent', 'NBTComponent', 'TranslationArgument', 'TextComponentBuilder', 'NBTComponentBuilder')},
+    'net::kyori::adventure::text::format::Style': 'crate::text::Style', 'net::kyori::adventure::text::format::StyleBuilder': 'crate::text::Style',
+    'net::kyori::adventure::text::format::TextColor': 'u32', 'net::kyori::adventure::text::format::NamedTextColor': 'u32',
+    'net::kyori::adventure::text::format::ShadowColor': 'u32', 'net::kyori::adventure::text::event::ClickEvent': 'crate::text::ClickEvent',
+    'net::kyori::adventure::key::Key': 'crate::net::minecraft::resources::identifier::Identifier',
+    'net::kyori::adventure::util::TriState': 'Option<bool>', 'net::kyori::adventure::identity::Identity': 'Uuid',
+    'net::kyori::adventure::nbt::api::BinaryTagHolder': 'String',
+    'net::kyori::adventure::util::Index': lambda a: f'IndexMap<{A(0)(a)}, {A(1)(a)}>',
+    **{f'net::kyori::adventure::{n}': DROP for n in (
+        'key::Keyed', 'key::Namespaced', 'audience::Audience', 'audience::ForwardingAudience', 'audience::ForwardingAudienceSingle',
+        'identity::Identified', 'text::event::HoverEventSource', 'translation::Translatable', 'text::format::StyleBuilderApplicable',
+        'dialog::DialogLike', 'inventory::BookLike', 'text::object::ObjectContentsLike', 'sound::SoundEmitter', 'pointer::Pointered')},
+}
+PHASE2_REMOVE = ['com/mojang/brigadier', 'net/kyori']
 DROP_IF_IFACE = {'java::lang::AutoCloseable', 'java::lang::Comparable', 'java::lang::Cloneable', 'java::lang::Iterable'}
 # packages removed entirely (stubs + anything left under them)
 REMOVE = ['java', 'javax', 'com/google', 'it', 'org/spongepowered', 'org/apache', 'io/netty', 'org/joml', 'org/yaml/snakeyaml',
@@ -326,6 +384,12 @@ def split_plus(s):
 
 
 def main():
+    global REMOVE, PATH_RE, USE_RE, PKG_RE
+    if '--phase2' in sys.argv:
+        T.clear(); T.update(PHASE2); REMOVE[:] = PHASE2_REMOVE
+        PKG_RE = '|'.join(re.escape(p.replace('/', '::')) for p in REMOVE)
+        PATH_RE = re.compile(r'crate::((?:' + PKG_RE + r')(?:::[a-z_0-9]+)*)::([A-Z]\w*)')
+        USE_RE = re.compile(r'^use crate::((?:' + PKG_RE + r')(?:::[a-z_0-9]+)*)::([A-Z]\w*);\n', re.M)
     removed_dirs = [os.path.join(SRC, p) for p in REMOVE]
     n = 0
     for dp, dn, fn_ in os.walk(SRC):

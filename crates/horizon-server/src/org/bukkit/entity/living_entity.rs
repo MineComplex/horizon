@@ -6,7 +6,6 @@ use crate::com::destroystokyo::paper::block::target_block_info::TargetBlockInfoF
 use crate::com::destroystokyo::paper::entity::target_entity_info::TargetEntityInfo;
 use crate::io::papermc::paper::entity::frictional::Frictional;
 use crate::io::papermc::paper::world::damagesource::combat_tracker::CombatTracker;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::attribute::attributable::Attributable;
 use crate::org::bukkit::block::block::Block;
 use crate::org::bukkit::block::block_face::BlockFace;
@@ -282,9 +281,9 @@ pub trait LivingEntity: Attributable + Damageable + ProjectileSource + Frictiona
     fn set_body_yaw(&self, body_yaw: f32); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1502
     fn can_use_equipment_slot(&self, slot: EquipmentSlot) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1513
     fn get_combat_tracker(&self) -> JRef<dyn CombatTracker>; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1521
-    fn set_waypoint_style(&self, key: Option<JRef<dyn Key>>); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1531
+    fn set_waypoint_style(&self, key: Option<crate::net::minecraft::resources::identifier::Identifier>); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1531
     fn set_waypoint_color(&self, color: Option<Color>); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1540
-    fn get_waypoint_style(&self) -> JRef<dyn Key>; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1549
+    fn get_waypoint_style(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1549
     fn get_waypoint_color(&self) -> Option<Color>; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1560
     fn should_burn_in_day(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1569
     fn set_should_burn_in_day(&self, should_burn_in_day: bool); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:1576

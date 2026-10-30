@@ -9,7 +9,6 @@ use crate::io::papermc::paper::plugin::bootstrap::bootstrap_context::BootstrapCo
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::paper_registrar::PaperRegistrar;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar::Registrar;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::server::packs::repository::pack::Pack;
 use crate::net::minecraft::server::packs::repository::pack::PackPosition;
 use crate::net::minecraft::server::packs::repository::pack::PackResourcesSupplier;
@@ -57,22 +56,22 @@ crate::jobject!(PaperDatapackRegistrar: dyn Registrar, dyn DatapackRegistrar);
 // ---- class io.papermc.paper.datapack.PaperDatapackRegistrar.ConfigurerImpl (paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:134)
 pub struct PaperDatapackRegistrarConfigurerImpl {
     pub this: Weak<Self>,
-    pub title: Mut<Component>, // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:136
+    pub title: Mut<crate::text::Text>, // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:136
     pub auto_enable_on_server_start: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:137
     pub fixed_position: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:138
     pub position: Mut<PackPosition>, // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:139
 }
 impl PaperDatapackRegistrarConfigurerImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(title: Component) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:141
-    pub fn title(&self, title: Component) -> JRef<dyn DatapackRegistrarConfigurer> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:145
+    pub fn new(title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:141
+    pub fn title(&self, title: crate::text::Text) -> JRef<dyn DatapackRegistrarConfigurer> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:145
     pub fn auto_enable_on_server_start(&self, auto_enable_on_server_start: bool) -> JRef<dyn DatapackRegistrarConfigurer> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:151
     pub fn position(&self, fixed: bool, position: DatapackPosition) -> JRef<dyn DatapackRegistrarConfigurer> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:157
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DatapackRegistrarConfigurer for PaperDatapackRegistrarConfigurerImpl {
-    fn title(&self, title: Component) -> JRef<dyn DatapackRegistrarConfigurer> { PaperDatapackRegistrarConfigurerImpl::title(self, title) }
+    fn title(&self, title: crate::text::Text) -> JRef<dyn DatapackRegistrarConfigurer> { PaperDatapackRegistrarConfigurerImpl::title(self, title) }
     fn auto_enable_on_server_start(&self, auto_enable_on_server_start: bool) -> JRef<dyn DatapackRegistrarConfigurer> { PaperDatapackRegistrarConfigurerImpl::auto_enable_on_server_start(self, auto_enable_on_server_start) }
     fn position(&self, fixed: bool, position: DatapackPosition) -> JRef<dyn DatapackRegistrarConfigurer> { PaperDatapackRegistrarConfigurerImpl::position(self, fixed, position) }
 }

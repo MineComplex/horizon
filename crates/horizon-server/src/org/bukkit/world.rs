@@ -7,8 +7,6 @@ use crate::io::papermc::paper::entity::poi::poi_type::PoiTypeOccupancy;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::raytracing::positioned_ray_trace_configuration_builder::PositionedRayTraceConfigurationBuilder;
 use crate::io::papermc::paper::world::chunk::chunk_generation_state::ChunkGenerationState;
-use crate::net::kyori::adventure::audience::Audience;
-use crate::net::kyori::adventure::audience::ForwardingAudience;
 use crate::org::bukkit::block::biome::Biome;
 use crate::org::bukkit::block::block::Block;
 use crate::org::bukkit::block::data::block_data::BlockData;
@@ -66,7 +64,7 @@ use crate::org::bukkit::world_type::WorldType;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.World (paper-api/src/main/java/org/bukkit/World.java:60)
-pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatable + PersistentDataHolder + Keyed + ForwardingAudience {
+pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatable + PersistentDataHolder + Keyed {
     fn is_void_damage_enabled(&self) -> bool; // paper-api/src/main/java/org/bukkit/World.java:68
     fn set_void_damage_enabled(&self, enabled: bool); // paper-api/src/main/java/org/bukkit/World.java:75
     fn get_void_damage_amount(&self) -> f32; // paper-api/src/main/java/org/bukkit/World.java:84
@@ -313,8 +311,8 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
         self.get_chunk_at_async_4_2(x, z, true, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1676
     fn get_players(&self) -> Vec<JRef<dyn Player>>; // paper-api/src/main/java/org/bukkit/World.java:1712
-    fn audiences(&self) -> Vec<JRef<dyn Audience>> {
-        self.get_players().into_iter().map(|p| -> JRef<dyn Audience> { p }).collect()
+    fn audiences(&self) -> Vec<()> {
+        self.get_players().into_iter().map(|p| -> () { p }).collect()
     } // default, paper-api/src/main/java/org/bukkit/World.java:1716
     fn get_nearby_entities(&self, bounding_box: JRef<BoundingBox>) -> Vec<JRef<dyn Entity>> {
         self.get_nearby_entities_2(bounding_box, None)
@@ -570,10 +568,10 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
             self.play_sound_5(loc, sound, SoundCategory::RECORDS, 3f32, note.get_pitch());
         }
     } // default, paper-api/src/main/java/org/bukkit/World.java:3651
-    fn play_sound(&self, sound: crate::net::kyori::adventure::sound::Sound, pos: JRef<dyn Position>) {
-        // Audience.playSound(Sound, double, double, double).
-        // PORT: adventure's Audience port names this overload; World's own `play_sound_4` is another method.
-        crate::net::kyori::adventure::audience::Audience::play_sound_4(self, sound, pos.x(), pos.y(), pos.z());
+    fn play_sound(&self, sound: (), pos: JRef<dyn Position>) {
+        // ().playSound(Sound, double, double, double).
+        // PORT: adventure's () port names this overload; World's own `play_sound_4` is another method.
+        crate::rt::Unported::play_sound_4(self, sound, pos.x(), pos.y(), pos.z());
     } // default, paper-api/src/main/java/org/bukkit/World.java:3837
     fn play_sound_4(&self, location: JRef<Location>, sound: JRef<dyn crate::org::bukkit::sound::Sound>, volume: f32, pitch: f32) {
         self.play_sound_5(location, sound, SoundCategory::MASTER, volume, pitch);

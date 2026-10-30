@@ -3,17 +3,16 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::block::pot::pot_pattern_type::PotPatternType;
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
-use crate::net::kyori::adventure::key::Key;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.DecoratedPotPatternRegistryEntry (paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:12)
 pub trait DecoratedPotPatternRegistryEntry: Send + Sync + 'static {
-    fn asset_id(&self) -> JRef<dyn Key>; // paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:20
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier; // paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:20
 }
-impl<F: Fn() -> JRef<dyn Key> + Send + Sync + 'static> DecoratedPotPatternRegistryEntry for F {
-    fn asset_id(&self) -> JRef<dyn Key> { self() }
+impl<F: Fn() -> crate::net::minecraft::resources::identifier::Identifier + Send + Sync + 'static> DecoratedPotPatternRegistryEntry for F {
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { self() }
 }
 // ---- interface io.papermc.paper.registry.data.DecoratedPotPatternRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:30)
 pub trait DecoratedPotPatternRegistryEntryBuilder: DecoratedPotPatternRegistryEntry + RegistryBuilder<JRef<dyn PotPatternType>> {
-    fn asset_id_1(&self, asset_id: JRef<dyn Key>) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:40
+    fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/DecoratedPotPatternRegistryEntry.java:40
 }

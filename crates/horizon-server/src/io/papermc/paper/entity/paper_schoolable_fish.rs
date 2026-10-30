@@ -19,9 +19,6 @@ use crate::io::papermc::paper::persistence::persistent_data_container_view::Pers
 use crate::io::papermc::paper::persistence::persistent_data_view_holder::PersistentDataViewHolder;
 use crate::io::papermc::paper::threadedregions::scheduler::entity_scheduler::EntityScheduler;
 use crate::io::papermc::paper::world::damagesource::combat_tracker::CombatTracker;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::world::entity::animal::fish::abstract_schooling_fish::AbstractSchoolingFishTrait;
 use crate::org::bukkit::attribute::attributable::Attributable;
 use crate::org::bukkit::attribute::attribute::Attribute;
@@ -114,8 +111,8 @@ impl Creature for PaperSchoolableFish {
 }
 impl Mob for PaperSchoolableFish {
     fn should_despawn_in_peaceful(&self) -> bool { todo!("abstract Mob.shouldDespawnInPeaceful") }
-    fn set_despawn_in_peaceful_override(&self, state: TriState) { todo!("abstract Mob.setDespawnInPeacefulOverride") }
-    fn get_despawn_in_peaceful_override(&self) -> TriState { todo!("abstract Mob.getDespawnInPeacefulOverride") }
+    fn set_despawn_in_peaceful_override(&self, state: Option<bool>) { todo!("abstract Mob.setDespawnInPeacefulOverride") }
+    fn get_despawn_in_peaceful_override(&self) -> Option<bool> { todo!("abstract Mob.getDespawnInPeacefulOverride") }
     fn get_pathfinder(&self) -> JRef<dyn Pathfinder> { todo!("abstract Mob.getPathfinder") }
     fn look_at_1(&self, location: JRef<Location>) { todo!("abstract Mob.lookAt") }
     fn look_at_1_2(&self, entity: JRef<dyn Entity>) { todo!("abstract Mob.lookAt") }
@@ -251,9 +248,9 @@ impl LivingEntity for PaperSchoolableFish {
     fn set_body_yaw(&self, body_yaw: f32) { todo!("abstract LivingEntity.setBodyYaw") }
     fn can_use_equipment_slot(&self, slot: EquipmentSlot) -> bool { todo!("abstract LivingEntity.canUseEquipmentSlot") }
     fn get_combat_tracker(&self) -> JRef<dyn CombatTracker> { todo!("abstract LivingEntity.getCombatTracker") }
-    fn set_waypoint_style(&self, key: Option<JRef<dyn Key>>) { todo!("abstract LivingEntity.setWaypointStyle") }
+    fn set_waypoint_style(&self, key: Option<crate::net::minecraft::resources::identifier::Identifier>) { todo!("abstract LivingEntity.setWaypointStyle") }
     fn set_waypoint_color(&self, color: Option<Color>) { todo!("abstract LivingEntity.setWaypointColor") }
-    fn get_waypoint_style(&self) -> JRef<dyn Key> { todo!("abstract LivingEntity.getWaypointStyle") }
+    fn get_waypoint_style(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!("abstract LivingEntity.getWaypointStyle") }
     fn get_waypoint_color(&self) -> Option<Color> { todo!("abstract LivingEntity.getWaypointColor") }
     fn should_burn_in_day(&self) -> bool { todo!("abstract LivingEntity.shouldBurnInDay") }
     fn set_should_burn_in_day(&self, should_burn_in_day: bool) { todo!("abstract LivingEntity.setShouldBurnInDay") }
@@ -302,9 +299,9 @@ impl Entity for PaperSchoolableFish {
     fn get_max_fire_ticks(&self) -> i32 { todo!("abstract Entity.getMaxFireTicks") }
     fn set_fire_ticks(&self, ticks: i32) { todo!("abstract Entity.setFireTicks") }
     fn set_visual_fire(&self, fire: bool) { todo!("abstract Entity.setVisualFire") }
-    fn set_visual_fire_1(&self, fire: TriState) { todo!("abstract Entity.setVisualFire") }
+    fn set_visual_fire_1(&self, fire: Option<bool>) { todo!("abstract Entity.setVisualFire") }
     fn is_visual_fire(&self) -> bool { todo!("abstract Entity.isVisualFire") }
-    fn get_visual_fire(&self) -> TriState { todo!("abstract Entity.getVisualFire") }
+    fn get_visual_fire(&self) -> Option<bool> { todo!("abstract Entity.getVisualFire") }
     fn get_freeze_ticks(&self) -> i32 { todo!("abstract Entity.getFreezeTicks") }
     fn get_max_freeze_ticks(&self) -> i32 { todo!("abstract Entity.getMaxFreezeTicks") }
     fn set_freeze_ticks(&self, ticks: i32) { todo!("abstract Entity.setFreezeTicks") }
@@ -383,7 +380,7 @@ impl Entity for PaperSchoolableFish {
     fn create_snapshot(&self) -> Option<JRef<dyn EntitySnapshot>> { todo!("abstract Entity.createSnapshot") }
     fn copy(&self) -> JRef<dyn Entity> { todo!("abstract Entity.copy") }
     fn copy_1(&self, to: JRef<Location>) -> JRef<dyn Entity> { todo!("abstract Entity.copy") }
-    fn team_display_name(&self) -> Component { todo!("abstract Entity.teamDisplayName") }
+    fn team_display_name(&self) -> crate::text::Text { todo!("abstract Entity.teamDisplayName") }
     fn get_origin(&self) -> Option<JRef<Location>> { todo!("abstract Entity.getOrigin") }
     fn from_mob_spawner(&self) -> bool { todo!("abstract Entity.fromMobSpawner") }
     fn get_entity_spawn_reason(&self) -> CreatureSpawnEventSpawnReason { todo!("abstract Entity.getEntitySpawnReason") }
@@ -426,7 +423,7 @@ impl CommandSender for PaperSchoolableFish {
     fn get_server(&self) -> JRef<dyn Server> { todo!("abstract CommandSender.getServer") }
     fn get_name(&self) -> String { todo!("abstract CommandSender.getName") }
     fn spigot(&self) -> JRef<dyn CommandSenderSpigotTrait> { todo!("abstract CommandSender.spigot") }
-    fn name(&self) -> Component { todo!("abstract CommandSender.name") }
+    fn name(&self) -> crate::text::Text { todo!("abstract CommandSender.name") }
 }
 impl Permissible for PaperSchoolableFish {
     fn is_permission_set(&self, name: &str) -> bool { todo!("abstract Permissible.isPermissionSet") }
@@ -446,8 +443,8 @@ impl ServerOperator for PaperSchoolableFish {
     fn set_op(&self, value: bool) { todo!("abstract ServerOperator.setOp") }
 }
 impl Nameable for PaperSchoolableFish {
-    fn custom_name(&self) -> Component { todo!("abstract Nameable.customName") }
-    fn custom_name_1(&self, custom_name: Component) { todo!("abstract Nameable.customName") }
+    fn custom_name(&self) -> crate::text::Text { todo!("abstract Nameable.customName") }
+    fn custom_name_1(&self, custom_name: crate::text::Text) { todo!("abstract Nameable.customName") }
     fn get_custom_name(&self) -> Option<String> { todo!("abstract Nameable.getCustomName") }
     fn set_custom_name(&self, name: Option<String>) { todo!("abstract Nameable.setCustomName") }
 }
@@ -465,8 +462,8 @@ impl ProjectileSource for PaperSchoolableFish {
     fn launch_projectile_3<T: JGeneric>(&self, projectile: crate::rt::Class, velocity: Option<JRef<dyn VectorTrait>>, function: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> T where Self: Sized { todo!("abstract ProjectileSource.launchProjectile") }
 }
 impl Frictional for PaperSchoolableFish {
-    fn get_friction_state(&self) -> TriState { todo!("abstract Frictional.getFrictionState") }
-    fn set_friction_state(&self, state: TriState) { todo!("abstract Frictional.setFrictionState") }
+    fn get_friction_state(&self) -> Option<bool> { todo!("abstract Frictional.getFrictionState") }
+    fn set_friction_state(&self, state: Option<bool>) { todo!("abstract Frictional.setFrictionState") }
 }
 impl Lootable for PaperSchoolableFish {
     fn set_loot_table(&self, table: Option<JRef<dyn LootTable>>) { todo!("abstract Lootable.setLootTable") }

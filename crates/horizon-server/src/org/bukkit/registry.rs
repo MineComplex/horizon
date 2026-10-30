@@ -10,7 +10,6 @@ use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::tag::tag::Tag;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::art::Art;
 use crate::org::bukkit::attribute::attribute::Attribute;
@@ -56,7 +55,7 @@ pub trait Registry<T: JGeneric>: JObject {
     /// `Iterable<T>.iterator()` (Registry extends Iterable).
     fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send>;
     fn get(&self, key: JRef<NamespacedKey>) -> Option<T>; // paper-api/src/main/java/org/bukkit/Registry.java:392
-    fn get_1(&self, key: JRef<dyn Key>) -> Option<T> {
+    fn get_1(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> Option<T> {
         // Paper start
         match cast::<NamespacedKey, _>(&key) {
             Some(ns_key) => self.get(ns_key),
@@ -67,7 +66,7 @@ pub trait Registry<T: JGeneric>: JObject {
         // Preconditions.checkArgument(typedKey != null, "typedKey cannot be null"): never null here
         self.get_1(typed_key.key())
     } // default, paper-api/src/main/java/org/bukkit/Registry.java:411
-    fn get_or_throw(&self, key: JRef<dyn Key>) -> T {
+    fn get_or_throw(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> T {
         // Paper start - improve Registry
         // Preconditions.checkArgument(key != null, "key cannot be null"): never null here
         let value = self.get_1(key.clone());
@@ -92,7 +91,7 @@ pub trait Registry<T: JGeneric>: JObject {
         }
     } // default, paper-api/src/main/java/org/bukkit/Registry.java:442
     fn get_or_throw_1_2(&self, key: JRef<NamespacedKey>) -> T {
-        self.get_or_throw(key) // (Key) key
+        self.get_or_throw(key) // (crate::net::minecraft::resources::identifier::Identifier) key
     } // default, paper-api/src/main/java/org/bukkit/Registry.java:540
     fn get_key_or_throw(&self, value: T) -> JRef<NamespacedKey> {
         let key = self.get_key(value);

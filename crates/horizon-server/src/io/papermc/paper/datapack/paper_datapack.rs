@@ -7,7 +7,6 @@ use crate::io::papermc::paper::datapack::datapack_source::DatapackSource;
 use crate::io::papermc::paper::datapack::discovered_datapack::DiscoveredDatapack;
 use crate::io::papermc::paper::datapack::paper_discovered_datapack::PaperDiscoveredDatapack;
 use crate::io::papermc::paper::datapack::paper_discovered_datapack::PaperDiscoveredDatapackTrait;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::server::packs::repository::pack::Pack;
 use crate::org::bukkit::feature_flag::FeatureFlag;
 
@@ -27,7 +26,7 @@ impl PaperDatapack {
     pub fn new(pack: JRef<Pack>, enabled: bool) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapack.java:18
     pub fn is_enabled(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapack.java:24
     pub fn set_enabled(&self, enabled: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapack.java:29
-    pub fn compute_display_name(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapack.java:48
+    pub fn compute_display_name(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapack.java:48
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -37,12 +36,12 @@ impl PaperDiscoveredDatapackTrait for PaperDatapack {
 impl Datapack for PaperDatapack {
     fn is_enabled(&self) -> bool { PaperDatapack::is_enabled(self) }
     fn set_enabled(&self, enabled: bool) { PaperDatapack::set_enabled(self, enabled) }
-    fn compute_display_name(&self) -> Component { PaperDatapack::compute_display_name(self) }
+    fn compute_display_name(&self) -> crate::text::Text { PaperDatapack::compute_display_name(self) }
 }
 impl DiscoveredDatapack for PaperDatapack {
     fn get_name(&self) -> String { PaperDiscoveredDatapack::get_name(self) }
-    fn get_title(&self) -> Component { PaperDiscoveredDatapack::get_title(self) }
-    fn get_description(&self) -> Component { PaperDiscoveredDatapack::get_description(self) }
+    fn get_title(&self) -> crate::text::Text { PaperDiscoveredDatapack::get_title(self) }
+    fn get_description(&self) -> crate::text::Text { PaperDiscoveredDatapack::get_description(self) }
     fn is_required(&self) -> bool { PaperDiscoveredDatapack::is_required(self) }
     fn get_compatibility(&self) -> DatapackCompatibility { PaperDiscoveredDatapack::get_compatibility(self) }
     fn get_required_features(&self) -> HashSet<JRef<dyn FeatureFlag>> { PaperDiscoveredDatapack::get_required_features(self) }

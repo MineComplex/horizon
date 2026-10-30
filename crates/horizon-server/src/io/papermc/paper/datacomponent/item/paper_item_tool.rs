@@ -5,7 +5,6 @@ use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::tool::ToolBuilder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::block::block_type::BlockType;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperItemTool (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:23)
@@ -40,19 +39,19 @@ crate::jobject!(PaperItemTool: dyn crate::io::papermc::paper::datacomponent::ite
 pub struct PaperItemToolPaperRule {
     pub blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>,
     pub speed: Option<f32>,
-    pub correct_for_drops: TriState,
+    pub correct_for_drops: Option<bool>,
 }
 impl PaperItemToolPaperRule {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:60
-    pub fn new_3(blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: TriState) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:60
-    pub fn from_unsafe(blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: TriState) -> PaperItemToolPaperRule { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:62
+    pub fn new_3(blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: Option<bool>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:60
+    pub fn from_unsafe(blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: Option<bool>) -> PaperItemToolPaperRule { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl crate::io::papermc::paper::datacomponent::item::tool::ToolRule for PaperItemToolPaperRule {
     fn blocks(&self) -> JRef<dyn RegistryKeySet<JRef<dyn BlockType>>> { todo!("abstract Rule.blocks") }
     fn speed(&self) -> Option<f32> { todo!("abstract Rule.speed") }
-    fn correct_for_drops(&self) -> TriState { todo!("abstract Rule.correctForDrops") }
+    fn correct_for_drops(&self) -> Option<bool> { todo!("abstract Rule.correctForDrops") }
 }
 crate::jobject!(PaperItemToolPaperRule: dyn crate::io::papermc::paper::datacomponent::item::tool::ToolRule);
 // ---- class io.papermc.paper.datacomponent.item.PaperItemTool.BuilderImpl (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperItemTool.java:67)

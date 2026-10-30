@@ -3,22 +3,20 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::dialog::body::dialog_body::DialogBody;
 use crate::io::papermc::paper::registry::data::dialog::input::dialog_input::DialogInput;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::util::Index;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.DialogBase (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:16)
 pub trait DialogBase: JObject {
-    fn title(&self) -> Component; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:60
-    fn external_title(&self) -> Option<Component>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:69
+    fn title(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:60
+    fn external_title(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:69
     fn can_close_with_escape(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:77
     fn pause(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:85
     fn after_action(&self) -> DialogBaseDialogAfterAction; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:93
     fn body(&self) -> Vec<JRef<dyn DialogBody>>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:103
     fn inputs(&self) -> Vec<JRef<dyn DialogInput>>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:113
 }
-pub fn create(title: Component, external_title: Option<Component>, can_close_with_escape: bool, pause: bool, after_action: DialogBaseDialogAfterAction, body: &Vec<JRef<dyn DialogBody>>, inputs: &Vec<JRef<dyn DialogInput>>) -> JRef<dyn DialogBase> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:31
-pub fn builder(title: Component) -> JRef<dyn DialogBaseBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:50
+pub fn create(title: crate::text::Text, external_title: Option<crate::text::Text>, can_close_with_escape: bool, pause: bool, after_action: DialogBaseDialogAfterAction, body: &Vec<JRef<dyn DialogBody>>, inputs: &Vec<JRef<dyn DialogInput>>) -> JRef<dyn DialogBase> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:31
+pub fn builder(title: crate::text::Text) -> JRef<dyn DialogBaseBuilder> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:50
 // ---- enum io.papermc.paper.registry.data.dialog.DialogBase.DialogAfterAction (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:119)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum DialogBaseDialogAfterAction {
@@ -30,7 +28,7 @@ pub enum DialogBaseDialogAfterAction {
 pub struct DialogBaseDialogAfterActionData {
     pub name: String,
 }
-pub static DIALOG_AFTER_ACTION_NAMES: LazyLock<Index<String, DialogBaseDialogAfterAction>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:133
+pub static DIALOG_AFTER_ACTION_NAMES: LazyLock<IndexMap<String, DialogBaseDialogAfterAction>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:133
 impl DialogBaseDialogAfterAction {
     pub const VALUES: [DialogBaseDialogAfterAction; 3] = [DialogBaseDialogAfterAction::CLOSE, DialogBaseDialogAfterAction::NONE, DialogBaseDialogAfterAction::WAIT_FOR_RESPONSE];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -44,7 +42,7 @@ impl DialogBaseDialogAfterAction {
 crate::jobject!(DialogBaseDialogAfterAction);
 // ---- interface io.papermc.paper.registry.data.dialog.DialogBase.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:145)
 pub trait DialogBaseBuilder: JObject {
-    fn external_title(&self, external_title: Option<Component>) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:155
+    fn external_title(&self, external_title: Option<crate::text::Text>) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:155
     fn can_close_with_escape(&self, can_close_with_escape: bool) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:164
     fn pause(&self, pause: bool) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:173
     fn after_action(&self, after_action: DialogBaseDialogAfterAction) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogBase.java:182

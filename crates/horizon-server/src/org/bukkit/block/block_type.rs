@@ -128,7 +128,7 @@ use crate::org::bukkit::world::World;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.BlockType (paper-api/src/main/java/org/bukkit/block/BlockType.java:137)
-pub trait BlockType: Keyed + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable + FeatureDependant {
+pub trait BlockType: Keyed + crate::org::bukkit::translatable::Translatable + FeatureDependant {
     fn typed(&self) -> JRef<dyn BlockTypeTyped<JRef<dyn BlockData>>>; // paper-api/src/main/java/org/bukkit/block/BlockType.java:2783
     fn typed_1<B: JGeneric>(&self, block_data_type: crate::rt::Class) -> JRef<dyn BlockTypeTyped<B>> where Self: Sized; // paper-api/src/main/java/org/bukkit/block/BlockType.java:2792
     fn has_item_type(&self) -> bool; // paper-api/src/main/java/org/bukkit/block/BlockType.java:2800

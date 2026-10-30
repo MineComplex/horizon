@@ -7,7 +7,6 @@ use crate::io::papermc::paper::configuration::paper_configurations::PaperConfigu
 use crate::io::papermc::paper::event::server::server_resources_reloaded_event::ServerResourcesReloadedEventCause;
 use crate::io::papermc::paper::threadedregions::entity_scheduler::EntitySchedulerEntitySchedulerTickList;
 use crate::io::papermc::paper::world::paper_world_loader::PaperWorldLoaderWorldLoadingInfoAndData;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::net::minecraft::commands::command_source::CommandSource;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::commands::commands::Commands;
@@ -364,7 +363,7 @@ impl std::ops::Deref for dyn MinecraftServerTrait {
     fn deref(&self) -> &MinecraftServer { self.as_minecraft_server() }
 }
 pub static SERVER: LazyLock<Mut<JRef<dyn MinecraftServerTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:166
-pub static COMPONENT_LOGGER: LazyLock<ComponentLogger> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:168
+pub static COMPONENT_LOGGER: LazyLock<()> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:168
 pub const VANILLA_BRAND: &str = "vanilla"; // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:169
 pub const AVERAGE_TICK_TIME_SMOOTHING: f32 = 0.8; // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:170
 pub const TICK_STATS_SPAN: i32 = 100; // leaf-server/src/minecraft/java/net/minecraft/server/MinecraftServer.java:171

@@ -3,9 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::scoreboard::numbers::fixed_format::FixedFormat;
 use crate::io::papermc::paper::scoreboard::numbers::styled_format::StyledFormat;
-use crate::net::kyori::adventure::text::ComponentLike;
-use crate::net::kyori::adventure::text::format::Style;
-use crate::net::kyori::adventure::text::format::StyleBuilderApplicable;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.scoreboard.numbers.NumberFormat (paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:11)
@@ -13,6 +10,6 @@ pub trait NumberFormat: JObject {
 }
 pub fn blank() -> JRef<dyn NumberFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:19
 pub fn no_style() -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:28
-pub fn styled(style: Style) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:38
-pub fn styled_1(style_builder_applicables: &Vec<JRef<dyn StyleBuilderApplicable>>) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:48
-pub fn fixed(component: JRef<dyn ComponentLike>) -> JRef<dyn FixedFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:58
+pub fn styled(style: crate::text::Style) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:38
+pub fn styled_1(style_builder_applicables: &Vec<()>) -> JRef<dyn StyledFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:48
+pub fn fixed(component: crate::text::Text) -> JRef<dyn FixedFormat> { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/NumberFormat.java:58

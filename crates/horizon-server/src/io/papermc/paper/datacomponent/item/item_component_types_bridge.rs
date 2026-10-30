@@ -57,8 +57,6 @@ use crate::io::papermc::paper::datacomponent::item::writable_book_content::Writa
 use crate::io::papermc::paper::datacomponent::item::written_book_content::WrittenBookContentBuilder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::block::block_type::BlockType;
 use crate::org::bukkit::damage::damage_type::DamageType;
 use crate::org::bukkit::entity::entity_type::EntityType;
@@ -92,7 +90,7 @@ pub trait ItemComponentTypesBridge: JObject {
     ) -> JRef<dyn MapDecorationsDecorationEntry>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridge.java:51
     fn seeded_container_loot(
         &self,
-        loot_table_key: JRef<dyn Key>,
+        loot_table_key: crate::net::minecraft::resources::identifier::Identifier,
     ) -> JRef<dyn SeededContainerLootBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridge.java:53
     fn written_book_content(
         &self,
@@ -117,7 +115,7 @@ pub trait ItemComponentTypesBridge: JObject {
         &self,
         blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>,
         speed: Option<f32>,
-        correct_for_drops: TriState,
+        correct_for_drops: Option<bool>,
     ) -> JRef<dyn ToolRule>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridge.java:83
     fn item_adventure_predicate(&self) -> JRef<dyn ItemAdventurePredicateBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridge.java:85
     fn custom_model_data(&self) -> JRef<dyn CustomModelDataBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridge.java:87

@@ -3,12 +3,11 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::server_build_info::ServerBuildInfo;
 use crate::io::papermc::paper::server_build_info::ServerBuildInfoStringRepresentation;
-use crate::net::kyori::adventure::key::Key;
 
 // ---- record io.papermc.paper.ServerBuildInfoImpl (paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16)
 #[derive(Clone)]
 pub struct ServerBuildInfoImpl {
-    pub brand_id: JRef<dyn Key>,
+    pub brand_id: crate::net::minecraft::resources::identifier::Identifier,
     pub brand_name: String,
     pub minecraft_version_id: String,
     pub minecraft_version_name: String,
@@ -32,16 +31,16 @@ pub const BUILD_DEV: &str = "DEV"; // paper-server/src/main/java/io/papermc/pape
 impl ServerBuildInfoImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:43
     pub fn new_1(manifest: ()) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:47
-    pub fn new_8(brand_id: JRef<dyn Key>, brand_name: &str, minecraft_version_id: &str, minecraft_version_name: &str, build_number: Option<i32>, build_time: std::time::SystemTime, git_branch: Option<String>, git_commit: Option<String>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16
-    pub fn is_brand_compatible(&self, brand_id: JRef<dyn Key>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:68
+    pub fn new_8(brand_id: crate::net::minecraft::resources::identifier::Identifier, brand_name: &str, minecraft_version_id: &str, minecraft_version_name: &str, build_number: Option<i32>, build_time: std::time::SystemTime, git_branch: Option<String>, git_commit: Option<String>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16
+    pub fn is_brand_compatible(&self, brand_id: crate::net::minecraft::resources::identifier::Identifier) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:68
     pub fn as_string(&self, representation: ServerBuildInfoStringRepresentation) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:79
     pub fn get_manifest_attribute(manifest: (), name: &str) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:112
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ServerBuildInfo for ServerBuildInfoImpl {
-    fn brand_id(&self) -> JRef<dyn Key> { todo!("abstract ServerBuildInfo.brandId") }
-    fn is_brand_compatible(&self, brand_id: JRef<dyn Key>) -> bool { ServerBuildInfoImpl::is_brand_compatible(self, brand_id) }
+    fn brand_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!("abstract ServerBuildInfo.brandId") }
+    fn is_brand_compatible(&self, brand_id: crate::net::minecraft::resources::identifier::Identifier) -> bool { ServerBuildInfoImpl::is_brand_compatible(self, brand_id) }
     fn brand_name(&self) -> String { todo!("abstract ServerBuildInfo.brandName") }
     fn minecraft_version_id(&self) -> String { todo!("abstract ServerBuildInfo.minecraftVersionId") }
     fn minecraft_version_name(&self) -> String { todo!("abstract ServerBuildInfo.minecraftVersionName") }

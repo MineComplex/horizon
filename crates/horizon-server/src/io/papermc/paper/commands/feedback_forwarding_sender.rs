@@ -17,9 +17,9 @@ impl FeedbackForwardingSender {
     pub fn new(feedback: Arc<dyn Fn(JObjectRef) + Send + Sync>, server: JRef<dyn Server>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:25
     pub fn send_message(&self, message: &str) { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:31
     pub fn send_message_1(&self, messages: &Vec<String>) { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:36
-    pub fn send_message_1_2(&self, message: crate::net::kyori::adventure::text::Component) { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:43
+    pub fn send_message_1_2(&self, message: crate::text::Text) { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:43
     pub fn get_name(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:48
-    pub fn name(&self) -> crate::net::kyori::adventure::text::Component { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:53
+    pub fn name(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:53
     pub fn is_op(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:58
     pub fn set_op(&self, value: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:63
     pub fn as_vanilla(&self) -> JRef<CommandSourceStack> { todo!() } // paper-server/src/main/java/io/papermc/paper/commands/FeedbackForwardingSender.java:68

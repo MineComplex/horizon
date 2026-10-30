@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::command::brigadier::argument::vanilla_argument_provider::provider;
 use crate::io::papermc::paper::command::brigadier::argument::vanilla_argument_provider_impl::VanillaArgumentProviderImpl;
-use crate::com::mojang::brigadier::arguments::ArgumentType;
 use crate::io::papermc::paper::command::brigadier::argument::axis_set::AxisSet;
 use crate::io::papermc::paper::command::brigadier::argument::predicate::block_in_world_predicate::BlockInWorldPredicate;
 use crate::io::papermc::paper::command::brigadier::argument::predicate::item_stack_predicate::ItemStackPredicate;
@@ -22,11 +21,6 @@ use crate::io::papermc::paper::command::brigadier::argument::signed_message_reso
 use crate::io::papermc::paper::entity::look_anchor::LookAnchor;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::format::NamedTextColor;
-use crate::net::kyori::adventure::text::format::Style;
-use crate::net::kyori::adventure::text::format::TextColor;
 use crate::org::bukkit::block::block_state::BlockState;
 use crate::org::bukkit::block::structure::mirror::Mirror;
 use crate::org::bukkit::block::structure::structure_rotation::StructureRotation;
@@ -50,128 +44,128 @@ impl ArgumentTypes {
     pub fn new() -> JRef<Self> {
         Arc::new_cyclic(|this| Self { this: this.clone() })
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:455
-    pub fn entity() -> JRef<dyn ArgumentType<JRef<dyn EntitySelectorArgumentResolver>>> {
+    pub fn entity() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().entity()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:58
-    pub fn entities() -> JRef<dyn ArgumentType<JRef<dyn EntitySelectorArgumentResolver>>> {
+    pub fn entities() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().entities()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:68
-    pub fn player() -> JRef<dyn ArgumentType<JRef<dyn PlayerSelectorArgumentResolver>>> {
+    pub fn player() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().player()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:78
-    pub fn players() -> JRef<dyn ArgumentType<JRef<dyn PlayerSelectorArgumentResolver>>> {
+    pub fn players() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().players()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:88
-    pub fn player_profiles() -> JRef<dyn ArgumentType<JRef<dyn PlayerProfileListResolver>>> {
+    pub fn player_profiles() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().player_profiles()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:98
-    pub fn block_position() -> JRef<dyn ArgumentType<JRef<dyn BlockPositionResolver>>> {
+    pub fn block_position() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().block_position()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:107
-    pub fn column_block_position() -> JRef<dyn ArgumentType<JRef<dyn ColumnBlockPositionResolver>>>
+    pub fn column_block_position() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync>
     {
         provider().column_block_position()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:116
-    pub fn block_in_world_predicate() -> JRef<dyn ArgumentType<JRef<dyn BlockInWorldPredicate>>> {
+    pub fn block_in_world_predicate() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().block_in_world_predicate()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:126
-    pub fn fine_position() -> JRef<dyn ArgumentType<JRef<dyn FinePositionResolver>>> {
+    pub fn fine_position() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         Self::fine_position_1(false)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:137
     pub fn fine_position_1(
         center_integers: bool,
-    ) -> JRef<dyn ArgumentType<JRef<dyn FinePositionResolver>>> {
+    ) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().fine_position(center_integers)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:147
-    pub fn column_fine_position() -> JRef<dyn ArgumentType<JRef<dyn ColumnFinePositionResolver>>> {
+    pub fn column_fine_position() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         Self::column_fine_position_1(false)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:157
     pub fn column_fine_position_1(
         center_integers: bool,
-    ) -> JRef<dyn ArgumentType<JRef<dyn ColumnFinePositionResolver>>> {
+    ) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().column_fine_position(center_integers)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:168
-    pub fn rotation() -> JRef<dyn ArgumentType<JRef<dyn RotationResolver>>> {
+    pub fn rotation() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().rotation()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:178
-    pub fn angle() -> JRef<dyn ArgumentType<JRef<dyn AngleResolver>>> {
+    pub fn angle() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().angle()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:187
-    pub fn axes() -> JRef<dyn ArgumentType<JRef<dyn AxisSet>>> {
+    pub fn axes() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().axes()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:198
-    pub fn block_state() -> JRef<dyn ArgumentType<JRef<dyn BlockState>>> {
+    pub fn block_state() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().block_state()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:209
-    pub fn item_stack() -> JRef<dyn ArgumentType<JRef<ItemStack>>> {
+    pub fn item_stack() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().item_stack()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:219
-    pub fn item_predicate() -> JRef<dyn ArgumentType<JRef<dyn ItemStackPredicate>>> {
+    pub fn item_predicate() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().item_stack_predicate()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:228
-    pub fn named_color() -> JRef<dyn ArgumentType<NamedTextColor>> {
+    pub fn named_color() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().named_color()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:237
-    pub fn hex_color() -> JRef<dyn ArgumentType<TextColor>> {
+    pub fn hex_color() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().hex_color()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:246
-    pub fn component() -> JRef<dyn ArgumentType<Component>> {
+    pub fn component() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().component()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:255
-    pub fn style() -> JRef<dyn ArgumentType<Style>> {
+    pub fn style() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().style()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:264
-    pub fn signed_message() -> JRef<dyn ArgumentType<JRef<dyn SignedMessageResolver>>> {
+    pub fn signed_message() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().signed_message()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:275
-    pub fn scoreboard_display_slot() -> JRef<dyn ArgumentType<DisplaySlot>> {
+    pub fn scoreboard_display_slot() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().scoreboard_display_slot()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:284
-    pub fn namespaced_key() -> JRef<dyn ArgumentType<JRef<NamespacedKey>>> {
+    pub fn namespaced_key() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().namespaced_key()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:293
-    pub fn key() -> JRef<dyn ArgumentType<JRef<dyn Key>>> {
+    pub fn key() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().key()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:303
-    pub fn integer_range() -> JRef<dyn ArgumentType<JRef<dyn IntegerRangeProvider>>> {
+    pub fn integer_range() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().integer_range()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:312
-    pub fn double_range() -> JRef<dyn ArgumentType<JRef<dyn DoubleRangeProvider>>> {
+    pub fn double_range() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().double_range()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:321
-    pub fn world() -> JRef<dyn ArgumentType<JRef<dyn World>>> {
+    pub fn world() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().world()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:330
-    pub fn game_mode() -> JRef<dyn ArgumentType<GameMode>> {
+    pub fn game_mode() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().game_mode()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:339
-    pub fn height_map() -> JRef<dyn ArgumentType<HeightMap>> {
+    pub fn height_map() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().height_map()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:348
-    pub fn uuid() -> JRef<dyn ArgumentType<Uuid>> {
+    pub fn uuid() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().uuid()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:357
-    pub fn objective_criteria() -> JRef<dyn ArgumentType<JRef<dyn Criteria>>> {
+    pub fn objective_criteria() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().objective_criteria()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:366
-    pub fn entity_anchor() -> JRef<dyn ArgumentType<LookAnchor>> {
+    pub fn entity_anchor() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().entity_anchor()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:375
-    pub fn time() -> JRef<dyn ArgumentType<i32>> {
+    pub fn time() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         Self::time_1(0)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:391
-    pub fn time_1(mintime: i32) -> JRef<dyn ArgumentType<i32>> {
+    pub fn time_1(mintime: i32) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().time(mintime)
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:408
-    pub fn template_mirror() -> JRef<dyn ArgumentType<Mirror>> {
+    pub fn template_mirror() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().template_mirror()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:418
-    pub fn template_rotation() -> JRef<dyn ArgumentType<StructureRotation>> {
+    pub fn template_rotation() -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         provider().template_rotation()
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:428
     pub fn resource<T: JGeneric>(
         registry_key: JRef<dyn RegistryKey<T>>,
-    ) -> JRef<dyn ArgumentType<T>> {
+    ) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         // <T> resource(...) is generic, so not callable on the trait object: call the provider's class
         cast::<VanillaArgumentProviderImpl, _>(&provider())
             .expect("VanillaArgumentProviderImpl")
@@ -179,7 +173,7 @@ impl ArgumentTypes {
     } // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/ArgumentTypes.java:439
     pub fn resource_key<T: JGeneric>(
         registry_key: JRef<dyn RegistryKey<T>>,
-    ) -> JRef<dyn ArgumentType<JRef<dyn TypedKey<T>>>> {
+    ) -> Arc<dyn azalea_brigadier::arguments::ArgumentType + Send + Sync> {
         // <T> resourceKey(...) is generic, so not callable on the trait object: call the provider's class
         cast::<VanillaArgumentProviderImpl, _>(&provider())
             .expect("VanillaArgumentProviderImpl")

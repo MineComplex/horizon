@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::advancement::advancement_display::AdvancementDisplay;
 use crate::io::papermc::paper::advancement::advancement_display::AdvancementDisplayFrame;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::advancements::advancement_type::AdvancementType;
 use crate::net::minecraft::advancements::display_info::DisplayInfo;
 use crate::org::bukkit::inventory::item_stack::ItemStack;
@@ -18,27 +17,27 @@ impl PaperAdvancementDisplay {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:15
     pub fn new_1(handle: DisplayInfo) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:15
     pub fn frame(&self) -> AdvancementDisplayFrame { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:17
-    pub fn title(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:22
-    pub fn description(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:27
+    pub fn title(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:22
+    pub fn description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:27
     pub fn icon(&self) -> JRef<ItemStack> { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:32
     pub fn does_show_toast(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:37
     pub fn does_announce_to_chat(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:42
     pub fn is_hidden(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:47
     pub fn background_path(&self) -> Option<JRef<NamespacedKey>> { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:52
-    pub fn display_name(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:57
+    pub fn display_name(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:57
     pub fn as_paper_frame(frame_type: AdvancementType) -> AdvancementDisplayFrame { todo!() } // paper-server/src/main/java/io/papermc/paper/advancement/PaperAdvancementDisplay.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl AdvancementDisplay for PaperAdvancementDisplay {
     fn frame(&self) -> AdvancementDisplayFrame { PaperAdvancementDisplay::frame(self) }
-    fn title(&self) -> Component { PaperAdvancementDisplay::title(self) }
-    fn description(&self) -> Component { PaperAdvancementDisplay::description(self) }
+    fn title(&self) -> crate::text::Text { PaperAdvancementDisplay::title(self) }
+    fn description(&self) -> crate::text::Text { PaperAdvancementDisplay::description(self) }
     fn icon(&self) -> JRef<ItemStack> { PaperAdvancementDisplay::icon(self) }
     fn does_show_toast(&self) -> bool { PaperAdvancementDisplay::does_show_toast(self) }
     fn does_announce_to_chat(&self) -> bool { PaperAdvancementDisplay::does_announce_to_chat(self) }
     fn is_hidden(&self) -> bool { PaperAdvancementDisplay::is_hidden(self) }
     fn background_path(&self) -> Option<JRef<NamespacedKey>> { PaperAdvancementDisplay::background_path(self) }
-    fn display_name(&self) -> Component { PaperAdvancementDisplay::display_name(self) }
+    fn display_name(&self) -> crate::text::Text { PaperAdvancementDisplay::display_name(self) }
 }
 crate::jobject!(PaperAdvancementDisplay: dyn AdvancementDisplay);

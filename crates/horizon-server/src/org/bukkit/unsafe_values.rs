@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::entity::entity_serialization_flag::EntitySerializationFlag;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::event::HoverEventShowItem;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::block::data::block_data::BlockData;
 use crate::org::bukkit::entity::entity::Entity;
@@ -33,8 +31,8 @@ pub trait UnsafeValues: JObject {
     fn load_advancement(&self, key: JRef<NamespacedKey>, advancement: &str) -> Option<JRef<dyn Advancement>> {
         self.load_advancement_3(key, advancement, true)
     } // default, paper-api/src/main/java/org/bukkit/UnsafeValues.java:67
-    fn load_advancement_3(&self, key: JRef<dyn Key>, advancement: &str, persist: bool) -> Option<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:85
-    fn load_advancements(&self, advancements: &HashMap<JRef<dyn Key>, String>, persist: bool) -> Vec<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:102
+    fn load_advancement_3(&self, key: crate::net::minecraft::resources::identifier::Identifier, advancement: &str, persist: bool) -> Option<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:85
+    fn load_advancements(&self, advancements: &HashMap<crate::net::minecraft::resources::identifier::Identifier, String>, persist: bool) -> Vec<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:102
     fn remove_advancement(&self, key: JRef<NamespacedKey>) -> bool; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:115
     fn get_internal_potion_data(&self, key: JRef<NamespacedKey>) -> JRef<dyn PotionTypeInternalPotionData>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:123
     fn get(&self, element_class: crate::rt::Class, value: &str) -> String; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:127
@@ -57,7 +55,7 @@ pub trait UnsafeValues: JObject {
     fn get_main_level_name(&self) -> String; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:260
     fn get_protocol_version(&self) -> i32; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:267
     fn deserialize_stack(&self, args: &HashMap<String, JObjectRef>) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:270
-    fn deserialize_item_hover(&self, item_hover: HoverEventShowItem) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:278
+    fn deserialize_item_hover(&self, item_hover: ()) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/UnsafeValues.java:278
 }
 pub fn is_legacy_plugin(plugin: JRef<dyn Plugin>) -> bool {
     !crate::org::bukkit::bukkit::Bukkit::get_unsafe().is_supported_api_version(plugin.get_description().get_api_version().as_deref())

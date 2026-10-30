@@ -8,7 +8,6 @@ use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::
 use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffectRemoveStatusEffects;
 use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffectTeleportRandomly;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::potion::potion_effect::PotionEffect;
 use crate::org::bukkit::potion::potion_effect_type::PotionEffectTypeTrait;
 
@@ -22,7 +21,7 @@ impl ConsumableTypesBridgeImpl {
     pub fn apply_status_effects(&self, effect_list: &Vec<JRef<PotionEffect>>, probability: f32) -> JRef<dyn ConsumeEffectApplyStatusEffects> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:23
     pub fn remove_status_effects(&self, effect_types: JRef<dyn RegistryKeySet<JRef<dyn PotionEffectTypeTrait>>>) -> JRef<dyn ConsumeEffectRemoveStatusEffects> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:33
     pub fn clear_all_status_effects(&self) -> JRef<dyn ConsumeEffectClearAllStatusEffects> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:42
-    pub fn play_sound_effect(&self, sound: JRef<dyn Key>) -> JRef<dyn ConsumeEffectPlaySound> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:47
+    pub fn play_sound_effect(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn ConsumeEffectPlaySound> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:47
     pub fn teleport_randomly_effect(&self, diameter: f32, directional_particles: bool) -> JRef<dyn ConsumeEffectTeleportRandomly> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridgeImpl.java:54
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -31,7 +30,7 @@ impl ConsumableTypesBridge for ConsumableTypesBridgeImpl {
     fn apply_status_effects(&self, effect_list: &Vec<JRef<PotionEffect>>, probability: f32) -> JRef<dyn ConsumeEffectApplyStatusEffects> { ConsumableTypesBridgeImpl::apply_status_effects(self, effect_list, probability) }
     fn remove_status_effects(&self, effect_types: JRef<dyn RegistryKeySet<JRef<dyn PotionEffectTypeTrait>>>) -> JRef<dyn ConsumeEffectRemoveStatusEffects> { ConsumableTypesBridgeImpl::remove_status_effects(self, effect_types) }
     fn clear_all_status_effects(&self) -> JRef<dyn ConsumeEffectClearAllStatusEffects> { ConsumableTypesBridgeImpl::clear_all_status_effects(self) }
-    fn play_sound_effect(&self, sound: JRef<dyn Key>) -> JRef<dyn ConsumeEffectPlaySound> { ConsumableTypesBridgeImpl::play_sound_effect(self, sound) }
+    fn play_sound_effect(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn ConsumeEffectPlaySound> { ConsumableTypesBridgeImpl::play_sound_effect(self, sound) }
     fn teleport_randomly_effect(&self, diameter: f32, directional_particles: bool) -> JRef<dyn ConsumeEffectTeleportRandomly> { ConsumableTypesBridgeImpl::teleport_randomly_effect(self, diameter, directional_particles) }
 }
 crate::jobject!(ConsumableTypesBridgeImpl: dyn ConsumableTypesBridge);

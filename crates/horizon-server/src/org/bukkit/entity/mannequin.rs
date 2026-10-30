@@ -4,7 +4,6 @@ use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::skin_parts::SkinParts;
 use crate::com::destroystokyo::paper::skin_parts::SkinPartsMutable;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfile;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::entity::living_entity::LivingEntity;
 use crate::org::bukkit::entity::pose::Pose;
 use crate::org::bukkit::inventory::main_hand::MainHand;
@@ -18,8 +17,8 @@ pub trait Mannequin: LivingEntity {
     fn set_skin_parts(&self, parts: JRef<dyn SkinParts>); // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:69
     fn is_immovable(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:76
     fn set_immovable(&self, immovable: bool); // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:83
-    fn get_description(&self) -> Option<Component>; // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:90
-    fn set_description(&self, description: Option<Component>); // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:98
+    fn get_description(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:90
+    fn set_description(&self, description: Option<crate::text::Text>); // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:98
     fn get_main_hand(&self) -> MainHand; // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:105
     fn set_main_hand(&self, hand: MainHand); // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:112
 }
@@ -29,6 +28,6 @@ pub fn valid_poses() -> HashSet<Pose> {
 pub fn default_profile() -> JRef<dyn ResolvableProfile> {
     crate::io::papermc::paper::internal_api_bridge::get().default_mannequin_profile()
 } // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:30
-pub fn default_description() -> Component {
+pub fn default_description() -> crate::text::Text {
     crate::io::papermc::paper::internal_api_bridge::get().default_mannequin_description()
 } // paper-api/src/main/java/org/bukkit/entity/Mannequin.java:39

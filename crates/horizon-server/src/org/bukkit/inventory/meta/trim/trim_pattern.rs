@@ -3,14 +3,13 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::trim_pattern_registry_entry::TrimPatternRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::translatable::Translatable;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.meta.trim.TrimPattern (paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:21)
 pub trait TrimPattern: Keyed + Translatable {
-    fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:82
+    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:82
 }
 pub static BOLT: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("bolt")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:35
 pub static COAST: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("coast")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:37
@@ -37,7 +36,7 @@ pub fn get_trim_pattern(key: &str) -> JRef<dyn TrimPattern> {
     crate::io::papermc::paper::registry::registry_access::registry_access()
         .get_registry_1(crate::io::papermc::paper::registry::registry_key::TRIM_PATTERN.clone())
         .get_or_throw(crate::net::kyori::adventure::key::key::key_2(
-            crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+            (),
             key,
         ))
 } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:72

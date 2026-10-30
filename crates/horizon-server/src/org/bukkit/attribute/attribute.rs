@@ -11,7 +11,7 @@ use crate::org::bukkit::util::old_enum::OldEnum;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.attribute.Attribute (paper-api/src/main/java/org/bukkit/attribute/Attribute.java:20)
-pub trait Attribute: OldEnum<JRef<dyn Attribute>> + Keyed + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable {
+pub trait Attribute: OldEnum<JRef<dyn Attribute>> + Keyed + crate::org::bukkit::translatable::Translatable {
     fn get_sentiment(&self) -> AttributeSentiment; // paper-api/src/main/java/org/bukkit/attribute/Attribute.java:191
     fn get_default_value(&self) -> f64; // paper-api/src/main/java/org/bukkit/attribute/Attribute.java:199
 }

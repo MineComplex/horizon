@@ -3,17 +3,14 @@
 use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::inventory::BookLike;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::ComponentLike;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.WrittenBookContent (paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:18)
-pub trait WrittenBookContent: BookLike {
+pub trait WrittenBookContent: JObject {
     fn title(&self) -> JRef<dyn Filtered<String>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:36
     fn author(&self) -> String; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:44
     fn generation(&self) -> i32; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:52
-    fn pages(&self) -> Vec<JRef<dyn Filtered<Component>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:60
+    fn pages(&self) -> Vec<JRef<dyn Filtered<crate::text::Text>>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:60
     fn resolved(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:69
 }
 pub fn written_book_content(title: &str, author: &str) -> JRef<dyn WrittenBookContentBuilder> {
@@ -39,15 +36,15 @@ pub trait WrittenBookContentBuilder: DataComponentBuilder<JRef<dyn WrittenBookCo
     fn author(&self, author: &str) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:105
     fn generation(&self, generation: i32) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:115
     fn resolved(&self, resolved: bool) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:126
-    fn add_page(&self, page: JRef<dyn ComponentLike>) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:136
-    fn add_pages(&self, page: &Vec<JRef<dyn ComponentLike>>)
+    fn add_page(&self, page: crate::text::Text) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:136
+    fn add_pages(&self, page: &Vec<crate::text::Text>)
     -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:146
     fn add_filtered_page(
         &self,
-        page: JRef<dyn Filtered<JRef<dyn ComponentLike>>>,
+        page: JRef<dyn Filtered<crate::text::Text>>,
     ) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:156
     fn add_filtered_pages(
         &self,
-        pages: &Vec<JRef<dyn Filtered<JRef<dyn ComponentLike>>>>,
+        pages: &Vec<JRef<dyn Filtered<crate::text::Text>>>,
     ) -> JRef<dyn WrittenBookContentBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/WrittenBookContent.java:166
 }

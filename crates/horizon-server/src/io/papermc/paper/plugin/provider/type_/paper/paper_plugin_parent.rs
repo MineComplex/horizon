@@ -13,7 +13,6 @@ use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider
 use crate::io::papermc::paper::plugin::provider::provider_status::ProviderStatus;
 use crate::io::papermc::paper::plugin::provider::provider_status_holder::ProviderStatusHolder;
 use crate::io::papermc::paper::plugin::provider::type_::plugin_type_factory::PluginTypeFactory;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::org::bukkit::plugin::java::java_plugin::JavaPluginTrait;
 
 // ---- class io.papermc.paper.plugin.provider.type.paper.PaperPluginParent (paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:27)
@@ -24,7 +23,7 @@ pub struct PaperPluginParent {
     pub description: JRef<PaperPluginMeta>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:32
     pub class_loader: JRef<PaperPluginClassLoader>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:33
     pub context: JRef<dyn PluginProviderContext>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:34
-    pub logger: ComponentLogger, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:35
+    pub logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:35
 }
 pub static FACTORY: LazyLock<JRef<dyn PluginTypeFactory<JRef<PaperPluginParent>, JRef<PaperPluginMeta>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:29
 impl PaperPluginParent {
@@ -51,7 +50,7 @@ impl PaperPluginParentPaperBootstrapProvider {
     pub fn file(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:68
     pub fn create_instance(&self) -> JRef<dyn PluginBootstrap> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:73
     pub fn get_meta(&self) -> JRef<PaperPluginMeta> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:82
-    pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:87
+    pub fn get_logger(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:87
     pub fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:92
     pub fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:97
     pub fn get_last_provided_status(&self) -> ProviderStatus { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:110
@@ -67,7 +66,7 @@ impl PluginProvider<JRef<dyn PluginBootstrap>> for PaperPluginParentPaperBootstr
     fn file(&self) -> () { PaperPluginParentPaperBootstrapProvider::file(self) }
     fn create_instance(&self) -> T { PaperPluginParentPaperBootstrapProvider::create_instance(self) }
     fn get_meta(&self) -> JRef<dyn PluginMeta> { PaperPluginParentPaperBootstrapProvider::get_meta(self) }
-    fn get_logger(&self) -> ComponentLogger { PaperPluginParentPaperBootstrapProvider::get_logger(self) }
+    fn get_logger(&self) -> () { PaperPluginParentPaperBootstrapProvider::get_logger(self) }
     fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { PaperPluginParentPaperBootstrapProvider::create_configuration(self, to_load) }
     fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { PaperPluginParentPaperBootstrapProvider::validate_dependencies(self, context) }
 }
@@ -94,7 +93,7 @@ impl PaperPluginParentPaperServerPluginProvider {
     pub fn file(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:154
     pub fn create_instance(&self) -> JRef<dyn JavaPluginTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:159
     pub fn get_meta(&self) -> JRef<PaperPluginMeta> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:188
-    pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:193
+    pub fn get_logger(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:193
     pub fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:198
     pub fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:203
     pub fn get_last_provided_status(&self) -> ProviderStatus { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/paper/PaperPluginParent.java:216
@@ -110,7 +109,7 @@ impl PluginProvider<JRef<dyn JavaPluginTrait>> for PaperPluginParentPaperServerP
     fn file(&self) -> () { PaperPluginParentPaperServerPluginProvider::file(self) }
     fn create_instance(&self) -> T { PaperPluginParentPaperServerPluginProvider::create_instance(self) }
     fn get_meta(&self) -> JRef<dyn PluginMeta> { PaperPluginParentPaperServerPluginProvider::get_meta(self) }
-    fn get_logger(&self) -> ComponentLogger { PaperPluginParentPaperServerPluginProvider::get_logger(self) }
+    fn get_logger(&self) -> () { PaperPluginParentPaperServerPluginProvider::get_logger(self) }
     fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { PaperPluginParentPaperServerPluginProvider::create_configuration(self, to_load) }
     fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { PaperPluginParentPaperServerPluginProvider::validate_dependencies(self, context) }
 }

@@ -4,13 +4,11 @@ use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::com::destroystokyo::paper::profile::profile_property::ProfileProperty;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsSkinSource;
 use crate::org::bukkit::profile::player_textures::PlayerTexturesSkinModel;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.ResolvableProfile (paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:24)
-pub trait ResolvableProfile: PlayerHeadObjectContentsSkinSource {
+pub trait ResolvableProfile: JObject {
     fn uuid(&self) -> Option<Uuid>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:37
     fn name(&self) -> Option<String>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:41
     fn properties(&self) -> Vec<ProfileProperty>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:45
@@ -28,9 +26,9 @@ pub fn resolvable_profile_1(profile: JRef<dyn PlayerProfile>) -> JRef<dyn Resolv
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:27
 // ---- interface io.papermc.paper.datacomponent.item.ResolvableProfile.SkinPatch (paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:115)
 pub trait ResolvableProfileSkinPatch: JObject {
-    fn body(&self) -> Option<JRef<dyn Key>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:145
-    fn cape(&self) -> Option<JRef<dyn Key>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:152
-    fn elytra(&self) -> Option<JRef<dyn Key>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:159
+    fn body(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:145
+    fn cape(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:152
+    fn elytra(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:159
     fn model(&self) -> Option<PlayerTexturesSkinModel>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:166
     fn is_empty(&self) -> bool {
         self.body().is_none()
@@ -55,9 +53,9 @@ pub fn skin_patch_skin_patch() -> JRef<dyn ResolvableProfileSkinPatchBuilder> {
 pub trait ResolvableProfileSkinPatchBuilder:
     DataComponentBuilder<JRef<dyn ResolvableProfileSkinPatch>>
 {
-    fn body(&self, body: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:189
-    fn cape(&self, cape: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:198
-    fn elytra(&self, elytra: Option<JRef<dyn Key>>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:207
+    fn body(&self, body: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:189
+    fn cape(&self, cape: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:198
+    fn elytra(&self, elytra: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn ResolvableProfileSkinPatchBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:207
     fn model(
         &self,
         model: Option<PlayerTexturesSkinModel>,

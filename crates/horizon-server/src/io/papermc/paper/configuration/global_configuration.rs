@@ -9,7 +9,6 @@ use crate::io::papermc::paper::configuration::type_::number::int_or::IntOrDisabl
 use crate::io::papermc::paper::util::sanitizer::item_obfuscation_binding::ItemObfuscationBinding;
 use crate::io::papermc::paper::util::sanitizer::item_obfuscation_binding::ItemObfuscationBindingAssetObfuscationConfiguration;
 use crate::io::papermc::paper::util::sanitizer::oversized_item_component_sanitizer::OversizedItemComponentSanitizerAssetOversizedItemComponentSanitizerConfiguration;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::resources::identifier::Identifier;
 
 // ---- class io.papermc.paper.configuration.GlobalConfiguration (paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:28)
@@ -109,7 +108,7 @@ pub struct GlobalConfigurationMessages {
     /// The enclosing instance (Java inner class).
     pub outer: Weak<GlobalConfiguration>,
     pub kick: Mut<JRef<GlobalConfigurationMessagesKick>>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:85
-    pub no_permission: Mut<Component>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:92
+    pub no_permission: Mut<crate::text::Text>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:92
     pub use_display_name_in_quit_message: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:93
 }
 impl std::ops::Deref for GlobalConfigurationMessages {
@@ -132,8 +131,8 @@ pub struct GlobalConfigurationMessagesKick {
     pub this: Weak<Self>,
     /// The enclosing instance (Java inner class).
     pub outer: Weak<GlobalConfigurationMessages>,
-    pub authentication_servers_down: Mut<Component>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:88
-    pub connection_throttle: Mut<Component>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:89
+    pub authentication_servers_down: Mut<crate::text::Text>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:88
+    pub connection_throttle: Mut<crate::text::Text>, // paper-server/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java:89
 }
 impl std::ops::Deref for GlobalConfigurationMessagesKick {
     type Target = ConfigurationPart;

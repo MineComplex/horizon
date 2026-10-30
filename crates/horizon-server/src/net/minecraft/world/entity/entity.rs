@@ -9,7 +9,6 @@ use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_en
 use crate::com::mojang::serialization::Codec;
 use crate::io::papermc::paper::entity::activation::activation_type::ActivationType;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_source::CommandSource;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -189,7 +188,7 @@ pub struct Entity {
     pub has_visual_fire: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:353
     pub last_known_speed: Mut<Vec3>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:354
     pub last_known_position: Mut<Option<Vec3>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:355
-    pub visual_fire: Mut<TriState>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:356
+    pub visual_fire: Mut<Option<bool>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:356
     pub in_block_state: Mut<Option<JRef<BlockState>>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:357
     pub movement_this_tick: Mut<VecDeque<EntityMovement>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:359
     pub final_movements_this_tick: Mut<Vec<EntityMovement>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:360

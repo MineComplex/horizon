@@ -3,14 +3,12 @@
 use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::buildable_data_component::BuildableDataComponent;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::ComponentLike;
 use crate::org::bukkit::dye_color::DyeColor;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datacomponent.item.SignText (paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:18)
 pub trait SignText: BuildableDataComponent<JRef<dyn SignText>, JRef<dyn SignTextBuilder>> {
-    fn lines(&self) -> Vec<Component>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:36
+    fn lines(&self) -> Vec<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:36
     fn color(&self) -> DyeColor; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:44
     fn has_glowing_text(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:52
 }
@@ -18,13 +16,13 @@ pub fn sign_text() -> JRef<dyn SignTextBuilder> {
     crate::io::papermc::paper::datacomponent::item::item_component_types_bridge::bridge()
         .sign_text()
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:26
-pub fn sign_text_1(lines: &Vec<JRef<dyn ComponentLike>>) -> JRef<dyn SignText> {
+pub fn sign_text_1(lines: &Vec<crate::text::Text>) -> JRef<dyn SignText> {
     sign_text().lines(lines).build()
 } // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:21
 // ---- interface io.papermc.paper.datacomponent.item.SignText.Builder (paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:58)
 pub trait SignTextBuilder: DataComponentBuilder<JRef<dyn SignText>> {
-    fn lines(&self, lines: &Vec<JRef<dyn ComponentLike>>) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:67
-    fn line(&self, index: i32, line: JRef<dyn ComponentLike>) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:78
+    fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:67
+    fn line(&self, index: i32, line: crate::text::Text) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:78
     fn color(&self, color: DyeColor) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:87
     fn has_glowing_text(&self, has_glowing_text: bool) -> JRef<dyn SignTextBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/SignText.java:96
 }

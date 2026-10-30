@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::connection::player_common_connection::PlayerCommonConnection;
 use crate::io::papermc::paper::dialog::dialog_response_view::DialogResponseView;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::nbt::api::BinaryTagHolder;
 use crate::org::bukkit::event::event::Event;
 use crate::org::bukkit::event::event::EventTrait;
 use crate::org::bukkit::event::handler_list::HandlerList;
@@ -14,7 +12,7 @@ use crate::api_prelude::*;
 pub struct PlayerCustomClickEvent {
     pub base: Event,
     pub this: Weak<dyn PlayerCustomClickEventTrait>,
-    pub identifier: JRef<dyn Key>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:26
+    pub identifier: crate::net::minecraft::resources::identifier::Identifier, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:26
     pub common_connection: JRef<dyn PlayerCommonConnection>, // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:27
 }
 impl std::ops::Deref for PlayerCustomClickEvent {
@@ -23,7 +21,7 @@ impl std::ops::Deref for PlayerCustomClickEvent {
 }
 pub trait PlayerCustomClickEventTrait: EventTrait {
     fn as_player_custom_click_event(&self) -> &PlayerCustomClickEvent;
-    fn get_tag(&self) -> Option<BinaryTagHolder>; // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:49
+    fn get_tag(&self) -> Option<String>; // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:49
     fn get_dialog_response_view(&self) -> Option<JRef<dyn DialogResponseView>>; // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:56
 }
 impl std::ops::Deref for dyn PlayerCustomClickEventTrait {
@@ -32,7 +30,7 @@ impl std::ops::Deref for dyn PlayerCustomClickEventTrait {
 }
 impl PlayerCustomClickEvent {
     pub fn this(&self) -> JRef<dyn PlayerCustomClickEventTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PlayerCustomClickEventTrait + 'static>(this: &Weak<S>, identifier: JRef<dyn Key>, common_connection: JRef<dyn PlayerCommonConnection>) -> Self {
+    pub fn new_base<S: PlayerCustomClickEventTrait + 'static>(this: &Weak<S>, identifier: crate::net::minecraft::resources::identifier::Identifier, common_connection: JRef<dyn PlayerCommonConnection>) -> Self {
         PlayerCustomClickEvent {
             base: Event::new_base(this),
             this: this.clone(),
@@ -43,7 +41,7 @@ impl PlayerCustomClickEvent {
     pub fn get_handlers(&self) -> JRef<HandlerList> {
         PlayerCustomClickEvent::get_handler_list()
     } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:67
-    pub fn get_identifier(&self) -> JRef<dyn Key> { self.identifier.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:40
+    pub fn get_identifier(&self) -> crate::net::minecraft::resources::identifier::Identifier { self.identifier.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:40
     pub fn get_common_connection(&self) -> JRef<dyn PlayerCommonConnection> { self.common_connection.clone() } // paper-api/src/main/java/io/papermc/paper/event/player/PlayerCustomClickEvent.java:63
     pub fn get_handler_list() -> JRef<HandlerList> {
         HOLDER_HANDLER_LIST.clone()

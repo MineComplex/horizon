@@ -174,3 +174,6 @@ pub type PropertyMap = indexmap::IndexMap<String, Vec<Property>>;
 
 /// AES/CFB8, the connection cipher.
 pub type Cfb8Cipher = cfb8::Encryptor<aes::Aes128>;
+
+/// What the port still has to replace: library calls with no Rust counterpart yet (integration).
+pub struct Unported;

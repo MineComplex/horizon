@@ -53,8 +53,6 @@ use crate::io::papermc::paper::datacomponent::item::writable_book_content::Writa
 use crate::io::papermc::paper::datacomponent::item::written_book_content::WrittenBookContent;
 use crate::io::papermc::paper::item::map_post_processing::MapPostProcessing;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::art::Art;
 use crate::org::bukkit::block::banner::pattern_type::PatternType;
 use crate::org::bukkit::damage::damage_type::DamageType;
@@ -96,11 +94,11 @@ pub static MAX_DAMAGE: LazyLock<JRef<dyn DataComponentTypeValued<i32>>> = LazyLo
 pub static DAMAGE: LazyLock<JRef<dyn DataComponentTypeValued<i32>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:118
 pub static UNBREAKABLE: LazyLock<JRef<dyn DataComponentTypeNonValued>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:122
 pub static USE_EFFECTS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn UseEffects>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:124
-pub static CUSTOM_NAME: LazyLock<JRef<dyn DataComponentTypeValued<Component>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:130
+pub static CUSTOM_NAME: LazyLock<JRef<dyn DataComponentTypeValued<crate::text::Text>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:130
 pub static MINIMUM_ATTACK_CHARGE: LazyLock<JRef<dyn DataComponentTypeValued<f32>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:131
 pub static DAMAGE_TYPE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn DamageType>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:132
-pub static ITEM_NAME: LazyLock<JRef<dyn DataComponentTypeValued<Component>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:146
-pub static ITEM_MODEL: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Key>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:147
+pub static ITEM_NAME: LazyLock<JRef<dyn DataComponentTypeValued<crate::text::Text>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:146
+pub static ITEM_MODEL: LazyLock<JRef<dyn DataComponentTypeValued<crate::net::minecraft::resources::identifier::Identifier>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:147
 pub static LORE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn ItemLore>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:151
 pub static RARITY: LazyLock<JRef<dyn DataComponentTypeValued<ItemRarity>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:155
 pub static ENCHANTMENTS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn ItemEnchantments>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:163
@@ -124,7 +122,7 @@ pub static ENCHANTABLE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Encha
 pub static EQUIPPABLE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Equippable>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:221
 pub static REPAIRABLE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Repairable>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:222
 pub static GLIDER: LazyLock<JRef<dyn DataComponentTypeNonValued>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:223
-pub static TOOLTIP_STYLE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Key>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:224
+pub static TOOLTIP_STYLE: LazyLock<JRef<dyn DataComponentTypeValued<crate::net::minecraft::resources::identifier::Identifier>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:224
 pub static DEATH_PROTECTION: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn DeathProtection>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:225
 pub static BLOCKS_ATTACKS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn BlocksAttacks>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:226
 pub static PIERCING_WEAPON: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn PiercingWeapon>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:227
@@ -151,12 +149,12 @@ pub static PROVIDES_TRIM_MATERIAL: LazyLock<JRef<dyn DataComponentTypeValued<JRe
 pub static OMINOUS_BOTTLE_AMPLIFIER: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn OminousBottleAmplifier>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:307
 pub static JUKEBOX_PLAYABLE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn JukeboxPlayable>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:308
 pub static PROVIDES_BANNER_PATTERNS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn RegistryKeySet<JRef<dyn PatternType>>>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:309
-pub static RECIPES: LazyLock<JRef<dyn DataComponentTypeValued<Vec<JRef<dyn Key>>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:313
+pub static RECIPES: LazyLock<JRef<dyn DataComponentTypeValued<Vec<crate::net::minecraft::resources::identifier::Identifier>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:313
 pub static LODESTONE_TRACKER: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn LodestoneTracker>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:317
 pub static FIREWORK_EXPLOSION: LazyLock<JRef<dyn DataComponentTypeValued<JRef<FireworkEffect>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:321
 pub static FIREWORKS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Fireworks>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:325
 pub static PROFILE: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn ResolvableProfile>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:329
-pub static NOTE_BLOCK_SOUND: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Key>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:333
+pub static NOTE_BLOCK_SOUND: LazyLock<JRef<dyn DataComponentTypeValued<crate::net::minecraft::resources::identifier::Identifier>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:333
 pub static BANNER_PATTERNS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn BannerPatternLayers>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:337
 pub static BASE_COLOR: LazyLock<JRef<dyn DataComponentTypeValued<DyeColor>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:341
 pub static POT_DECORATIONS: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn PotDecorations>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:345
@@ -164,7 +162,7 @@ pub static CONTAINER: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn ItemCon
 pub static BLOCK_DATA: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn BlockItemDataProperties>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:353
 pub static SULFUR_CUBE_CONTENT: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn SulfurCubeContent>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:355
 pub static CONTAINER_LOOT: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn SeededContainerLoot>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:367
-pub static BREAK_SOUND: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn Key>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:368
+pub static BREAK_SOUND: LazyLock<JRef<dyn DataComponentTypeValued<crate::net::minecraft::resources::identifier::Identifier>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:368
 pub static MOB_VISIBILITY: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn MobVisibility>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:369
 pub static VILLAGER_VARIANT: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn VillagerType>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:370
 pub static WOLF_VARIANT: LazyLock<JRef<dyn DataComponentTypeValued<JRef<dyn WolfVariant>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/datacomponent/DataComponentTypes.java:371

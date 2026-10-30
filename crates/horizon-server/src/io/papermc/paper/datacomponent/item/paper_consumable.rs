@@ -5,7 +5,6 @@ use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::buildable_data_component::BuildableDataComponent;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::consumable_class::ConsumableBuilder;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::sounds::sound_event::SoundEvent;
 
@@ -21,7 +20,7 @@ impl PaperConsumable {
     pub fn get_handle(&self) -> crate::net::minecraft::world::item::component::consumable::Consumable { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:26
     pub fn consume_seconds(&self) -> f32 { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:31
     pub fn animation(&self) -> crate::io::papermc::paper::datacomponent::item::consumable::item_use_animation::ItemUseAnimation { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:36
-    pub fn sound(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:41
+    pub fn sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:41
     pub fn has_consume_particles(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:46
     pub fn consume_effects(&self) -> Vec<JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:51
     pub fn to_builder(&self) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:56
@@ -31,7 +30,7 @@ impl PaperConsumable {
 impl crate::io::papermc::paper::datacomponent::item::consumable_class::Consumable for PaperConsumable {
     fn consume_seconds(&self) -> f32 { PaperConsumable::consume_seconds(self) }
     fn animation(&self) -> crate::io::papermc::paper::datacomponent::item::consumable::item_use_animation::ItemUseAnimation { PaperConsumable::animation(self) }
-    fn sound(&self) -> JRef<dyn Key> { PaperConsumable::sound(self) }
+    fn sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperConsumable::sound(self) }
     fn has_consume_particles(&self) -> bool { PaperConsumable::has_consume_particles(self) }
     fn consume_effects(&self) -> Vec<JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>> { PaperConsumable::consume_effects(self) }
 }
@@ -57,7 +56,7 @@ impl PaperConsumableBuilderImpl {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:66
     pub fn consume_seconds(&self, consume_seconds: f32) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:76
     pub fn animation(&self, animation: crate::io::papermc::paper::datacomponent::item::consumable::item_use_animation::ItemUseAnimation) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:82
-    pub fn sound(&self, sound: JRef<dyn Key>) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:88
+    pub fn sound(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:88
     pub fn has_consume_particles(&self, has_consume_particles: bool) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:94
     pub fn effects(&self, effects: &mut Vec<JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>>) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:100
     pub fn add_effect(&self, effect: JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>) -> JRef<dyn ConsumableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperConsumable.java:106
@@ -69,7 +68,7 @@ impl PaperConsumableBuilderImpl {
 impl ConsumableBuilder for PaperConsumableBuilderImpl {
     fn consume_seconds(&self, consume_seconds: f32) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::consume_seconds(self, consume_seconds) }
     fn animation(&self, animation: crate::io::papermc::paper::datacomponent::item::consumable::item_use_animation::ItemUseAnimation) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::animation(self, animation) }
-    fn sound(&self, sound: JRef<dyn Key>) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::sound(self, sound) }
+    fn sound(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::sound(self, sound) }
     fn has_consume_particles(&self, has_consume_particles: bool) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::has_consume_particles(self, has_consume_particles) }
     fn effects(&self, effects: &Vec<JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>>) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::effects(self, effects) }
     fn add_effect(&self, effect: JRef<dyn crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect>) -> JRef<dyn ConsumableBuilder> { PaperConsumableBuilderImpl::add_effect(self, effect) }

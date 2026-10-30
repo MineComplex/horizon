@@ -44,7 +44,7 @@ use crate::net::kyori::adventure::key::key as akey;
 use crate::org::bukkit::registry;
 
 // ---- interface org.bukkit.inventory.ItemType (paper-api/src/main/java/org/bukkit/inventory/ItemType.java:49)
-pub trait ItemType: Keyed + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable + FeatureDependant {
+pub trait ItemType: Keyed + crate::org::bukkit::translatable::Translatable + FeatureDependant {
     fn typed(&self) -> JRef<dyn ItemTypeTyped<JRef<dyn ItemMeta>>>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3427
     fn typed_1<M: JGeneric>(&self, item_meta_type: crate::rt::Class) -> JRef<dyn ItemTypeTyped<M>> where Self: Sized; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3438
     fn create_item_stack(&self) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3446

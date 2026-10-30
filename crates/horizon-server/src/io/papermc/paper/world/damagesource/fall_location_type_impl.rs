@@ -30,4 +30,3 @@ impl FallLocationType for FallLocationTypeImpl {
 }
 crate::jobject!(FallLocationTypeImpl: dyn FallLocationType);
 // PORT: adventure's Translatable (translationKey) is a stand-in; FallLocationTypeImpl::translation_key is its body.
-impl crate::net::kyori::adventure::translation::Translatable for FallLocationTypeImpl {}

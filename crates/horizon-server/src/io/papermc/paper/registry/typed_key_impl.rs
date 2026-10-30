@@ -3,18 +3,17 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::net::kyori::adventure::key::Key;
 use crate::api_prelude::*;
 
 // ---- record io.papermc.paper.registry.TypedKeyImpl (paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:7)
 #[derive(Clone)]
 pub struct TypedKeyImpl<T: JGeneric> {
-    pub key: JRef<dyn Key>,
+    pub key: crate::net::minecraft::resources::identifier::Identifier,
     pub registry_key: JRef<dyn RegistryKey<T>>,
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> TypedKeyImpl<T> {
-    pub fn new_2(key: JRef<dyn Key>, registry_key: JRef<dyn RegistryKey<T>>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:7
+    pub fn new_2(key: crate::net::minecraft::resources::identifier::Identifier, registry_key: JRef<dyn RegistryKey<T>>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:7
     pub fn namespace(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:10
     pub fn value(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:16
     pub fn as_string(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/TypedKeyImpl.java:22
@@ -22,6 +21,6 @@ impl<T: JGeneric> TypedKeyImpl<T> {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> TypedKey<T> for TypedKeyImpl<T> {
-    fn key(&self) -> JRef<dyn Key> { self.key.clone() }
+    fn key(&self) -> crate::net::minecraft::resources::identifier::Identifier { self.key.clone() }
     fn registry_key(&self) -> JRef<dyn RegistryKey<T>> { self.registry_key.clone() }
 }

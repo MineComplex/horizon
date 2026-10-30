@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRenderer;
 use crate::io::papermc::paper::event::player::abstract_chat_event::AbstractChatEvent;
 use crate::io::papermc::paper::event::player::abstract_chat_event::AbstractChatEventTrait;
-use crate::net::kyori::adventure::audience::Audience;
-use crate::net::kyori::adventure::chat::SignedMessage;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::entity::player::Player;
 use crate::org::bukkit::event::cancellable::Cancellable;
 use crate::org::bukkit::event::event::Event;
@@ -28,7 +25,7 @@ impl std::ops::Deref for AsyncChatEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatEvent.java:29
 impl AsyncChatEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(async_: bool, player: JRef<dyn Player>, viewers: &HashSet<JRef<dyn Audience>>, renderer: JRef<dyn ChatRenderer>, message: Component, original_message: Component, signed_message: JRef<dyn SignedMessage>) -> JRef<Self> {
+    pub fn new(async_: bool, player: JRef<dyn Player>, viewers: &HashSet<()>, renderer: JRef<dyn ChatRenderer>, message: crate::text::Text, original_message: crate::text::Text, signed_message: ()) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| AsyncChatEvent {
             base: AbstractChatEvent::new_base(this, async_, player, viewers, renderer, message, original_message, signed_message),
             this: this.clone(),

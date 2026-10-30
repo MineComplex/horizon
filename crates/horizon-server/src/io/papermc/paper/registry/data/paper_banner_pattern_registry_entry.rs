@@ -6,7 +6,6 @@ use crate::io::papermc::paper::registry::data::banner_pattern_registry_entry::Ba
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
 use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::world::level::block::entity::banner_pattern::BannerPattern;
 use crate::org::bukkit::block::banner::pattern_type::PatternType;
@@ -28,7 +27,7 @@ impl PaperBannerPatternRegistryEntry {
     pub fn this(&self) -> JRef<dyn PaperBannerPatternRegistryEntryTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PaperBannerPatternRegistryEntryTrait + 'static>(this: &Weak<S>, ignored_conversions: JRef<Conversions>, internal: Option<BannerPattern>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:20
     pub fn new(ignored_conversions: JRef<Conversions>, internal: Option<BannerPattern>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, ignored_conversions, internal)) }
-    pub fn asset_id(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:30
+    pub fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:30
     pub fn translation_key(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:35
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -37,7 +36,7 @@ impl PaperBannerPatternRegistryEntryTrait for PaperBannerPatternRegistryEntry {
     fn as_paper_banner_pattern_registry_entry(&self) -> &PaperBannerPatternRegistryEntry { self }
 }
 impl BannerPatternRegistryEntry for PaperBannerPatternRegistryEntry {
-    fn asset_id(&self) -> JRef<dyn Key> { PaperBannerPatternRegistryEntry::asset_id(self) }
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperBannerPatternRegistryEntry::asset_id(self) }
     fn translation_key(&self) -> String { PaperBannerPatternRegistryEntry::translation_key(self) }
 }
 crate::jobject!(PaperBannerPatternRegistryEntry: dyn PaperBannerPatternRegistryEntryTrait, dyn BannerPatternRegistryEntry);
@@ -53,7 +52,7 @@ impl std::ops::Deref for PaperBannerPatternRegistryEntryPaperBuilder {
 impl PaperBannerPatternRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<BannerPattern>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:42
-    pub fn asset_id_1(&self, asset_id: JRef<dyn Key>) -> JRef<dyn BannerPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:46
+    pub fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn BannerPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:46
     pub fn translation_key_1(&self, translation_key: &str) -> JRef<dyn BannerPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:52
     pub fn build(&self) -> BannerPattern { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperBannerPatternRegistryEntry.java:58
 }
@@ -63,11 +62,11 @@ impl PaperBannerPatternRegistryEntryTrait for PaperBannerPatternRegistryEntryPap
     fn as_paper_banner_pattern_registry_entry(&self) -> &PaperBannerPatternRegistryEntry { self }
 }
 impl BannerPatternRegistryEntryBuilder for PaperBannerPatternRegistryEntryPaperBuilder {
-    fn asset_id_1(&self, asset_id: JRef<dyn Key>) -> JRef<dyn BannerPatternRegistryEntryBuilder> { PaperBannerPatternRegistryEntryPaperBuilder::asset_id_1(self, asset_id) }
+    fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn BannerPatternRegistryEntryBuilder> { PaperBannerPatternRegistryEntryPaperBuilder::asset_id_1(self, asset_id) }
     fn translation_key_1(&self, translation_key: &str) -> JRef<dyn BannerPatternRegistryEntryBuilder> { PaperBannerPatternRegistryEntryPaperBuilder::translation_key_1(self, translation_key) }
 }
 impl BannerPatternRegistryEntry for PaperBannerPatternRegistryEntryPaperBuilder {
-    fn asset_id(&self) -> JRef<dyn Key> { PaperBannerPatternRegistryEntry::asset_id(self) }
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperBannerPatternRegistryEntry::asset_id(self) }
     fn translation_key(&self) -> String { PaperBannerPatternRegistryEntry::translation_key(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperBannerPatternRegistryEntryPaperBuilder {

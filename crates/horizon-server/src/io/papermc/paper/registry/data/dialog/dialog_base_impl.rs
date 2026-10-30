@@ -6,13 +6,12 @@ use crate::io::papermc::paper::registry::data::dialog::dialog_base::DialogBase;
 use crate::io::papermc::paper::registry::data::dialog::dialog_base::DialogBaseBuilder;
 use crate::io::papermc::paper::registry::data::dialog::dialog_base::DialogBaseDialogAfterAction;
 use crate::io::papermc::paper::registry::data::dialog::input::dialog_input::DialogInput;
-use crate::net::kyori::adventure::text::Component;
 
 // ---- record io.papermc.paper.registry.data.dialog.DialogBaseImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:12)
 #[derive(Clone)]
 pub struct DialogBaseImpl {
-    pub title: Component,
-    pub external_title: Option<Component>,
+    pub title: crate::text::Text,
+    pub external_title: Option<crate::text::Text>,
     pub can_close_with_escape: bool,
     pub pause: bool,
     pub after_action: DialogBaseDialogAfterAction,
@@ -20,13 +19,13 @@ pub struct DialogBaseImpl {
     pub inputs: Vec<JRef<dyn DialogInput>>,
 }
 impl DialogBaseImpl {
-    pub fn new(title: Component, external_title: Option<Component>, can_close_with_escape: bool, pause: bool, after_action: DialogBaseDialogAfterAction, body: &Vec<JRef<dyn DialogBody>>, inputs: &Vec<JRef<dyn DialogInput>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:12
+    pub fn new(title: crate::text::Text, external_title: Option<crate::text::Text>, can_close_with_escape: bool, pause: bool, after_action: DialogBaseDialogAfterAction, body: &Vec<JRef<dyn DialogBody>>, inputs: &Vec<JRef<dyn DialogInput>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DialogBase for DialogBaseImpl {
-    fn title(&self) -> Component { todo!("abstract DialogBase.title") }
-    fn external_title(&self) -> Option<Component> { todo!("abstract DialogBase.externalTitle") }
+    fn title(&self) -> crate::text::Text { todo!("abstract DialogBase.title") }
+    fn external_title(&self) -> Option<crate::text::Text> { todo!("abstract DialogBase.externalTitle") }
     fn can_close_with_escape(&self) -> bool { todo!("abstract DialogBase.canCloseWithEscape") }
     fn pause(&self) -> bool { todo!("abstract DialogBase.pause") }
     fn after_action(&self) -> DialogBaseDialogAfterAction { todo!("abstract DialogBase.afterAction") }
@@ -37,8 +36,8 @@ crate::jobject!(DialogBaseImpl: dyn DialogBase);
 // ---- class io.papermc.paper.registry.data.dialog.DialogBaseImpl.BuilderImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:28)
 pub struct DialogBaseImplBuilderImpl {
     pub this: Weak<Self>,
-    pub title: Component, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:30
-    pub external_title: Mut<Option<Component>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:31
+    pub title: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:30
+    pub external_title: Mut<Option<crate::text::Text>>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:31
     pub can_close_with_escape: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:32
     pub pause: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:33
     pub after_action: Mut<DialogBaseDialogAfterAction>, // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:34
@@ -47,8 +46,8 @@ pub struct DialogBaseImplBuilderImpl {
 }
 impl DialogBaseImplBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(title: Component) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:38
-    pub fn external_title(&self, external_title: Option<Component>) -> JRef<DialogBaseImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:42
+    pub fn new(title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:38
+    pub fn external_title(&self, external_title: Option<crate::text::Text>) -> JRef<DialogBaseImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:42
     pub fn can_close_with_escape(&self, can_close_with_escape: bool) -> JRef<DialogBaseImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:48
     pub fn pause(&self, pause: bool) -> JRef<DialogBaseImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:54
     pub fn after_action(&self, after_action: DialogBaseDialogAfterAction) -> JRef<DialogBaseImplBuilderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/DialogBaseImpl.java:60
@@ -59,7 +58,7 @@ impl DialogBaseImplBuilderImpl {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DialogBaseBuilder for DialogBaseImplBuilderImpl {
-    fn external_title(&self, external_title: Option<Component>) -> JRef<dyn DialogBaseBuilder> { DialogBaseImplBuilderImpl::external_title(self, external_title) }
+    fn external_title(&self, external_title: Option<crate::text::Text>) -> JRef<dyn DialogBaseBuilder> { DialogBaseImplBuilderImpl::external_title(self, external_title) }
     fn can_close_with_escape(&self, can_close_with_escape: bool) -> JRef<dyn DialogBaseBuilder> { DialogBaseImplBuilderImpl::can_close_with_escape(self, can_close_with_escape) }
     fn pause(&self, pause: bool) -> JRef<dyn DialogBaseBuilder> { DialogBaseImplBuilderImpl::pause(self, pause) }
     fn after_action(&self, after_action: DialogBaseDialogAfterAction) -> JRef<dyn DialogBaseBuilder> { DialogBaseImplBuilderImpl::after_action(self, after_action) }

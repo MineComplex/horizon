@@ -13,14 +13,6 @@ use crate::io::papermc::paper::entity::look_anchor::LookAnchor;
 use crate::io::papermc::paper::entity::player_give_result::PlayerGiveResult;
 use crate::io::papermc::paper::entity::player_post_effects::PlayerPostEffects;
 use crate::io::papermc::paper::math::position::Position;
-use crate::net::kyori::adventure::bossbar::BossBar;
-use crate::net::kyori::adventure::bossbar::BossBarViewer;
-use crate::net::kyori::adventure::identity::Identified;
-use crate::net::kyori::adventure::identity::Identity;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::object::ObjectContents;
-use crate::net::kyori::adventure::text::object::ObjectContentsLike;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::advancement::advancement_progress::AdvancementProgress;
 use crate::org::bukkit::ban_entry::BanEntry;
@@ -71,20 +63,20 @@ use crate::org::bukkit::world_border::WorldBorder;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.entity.Player (paper-api/src/main/java/org/bukkit/entity/Player.java:74)
-pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecipient + Identified + BossBarViewer + NetworkClient + ObjectContentsLike {
-    fn identity(&self) -> Identity {
-        crate::net::kyori::adventure::identity::Identity::identity(Entity::get_unique_id(self)) // PORT: Adventure Identity.identity(UUID)
+pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecipient + NetworkClient {
+    fn identity(&self) -> Uuid {
+        Uuid::identity(Entity::get_unique_id(self)) // PORT: Adventure Uuid.identity(UUID)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:78
     fn send_packet(&self, packet: Option<JObjectRef>); // paper-api/src/main/java/org/bukkit/entity/Player.java:88
-    fn active_boss_bars(&self) -> Vec<BossBar>; // paper-api/src/main/java/org/bukkit/entity/Player.java:100
-    fn display_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Player.java:108
-    fn display_name_1(&self, display_name: Component); // paper-api/src/main/java/org/bukkit/entity/Player.java:115
+    fn active_boss_bars(&self) -> Vec<()>; // paper-api/src/main/java/org/bukkit/entity/Player.java:100
+    fn display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:108
+    fn display_name_1(&self, display_name: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:115
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:134
     fn set_display_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:147
-    fn player_list_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Player.java:165
-    fn player_list_name_1(&self, name: Component); // paper-api/src/main/java/org/bukkit/entity/Player.java:158
-    fn player_list_header(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Player.java:172
-    fn player_list_footer(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Player.java:179
+    fn player_list_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:165
+    fn player_list_name_1(&self, name: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:158
+    fn player_list_header(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:172
+    fn player_list_footer(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Player.java:179
     fn get_player_list_name(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:187
     fn set_player_list_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:198
     fn get_player_list_order(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:206
@@ -106,10 +98,10 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn kick(&self) {
         self.kick_1(Some(HOLDER_DEFAULT_KICK_MESSAGE.clone()));
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:347
-    fn kick_1(&self, message: Option<Component>) {
+    fn kick_1(&self, message: Option<crate::text::Text>) {
         self.kick_2(message, PlayerKickEventCause::PLUGIN);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:359
-    fn kick_2(&self, message: Option<Component>, cause: PlayerKickEventCause); // paper-api/src/main/java/org/bukkit/entity/Player.java:369
+    fn kick_2(&self, message: Option<crate::text::Text>, cause: PlayerKickEventCause); // paper-api/src/main/java/org/bukkit/entity/Player.java:369
     fn ban_4<E: JGeneric>(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:384
     fn ban_4_2<E: JGeneric>(&self, reason: Option<String>, expires: Option<std::time::SystemTime>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:400
     fn ban_4_3<E: JGeneric>(&self, reason: Option<String>, duration: Option<std::time::Duration>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:416
@@ -142,9 +134,9 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
         self.play_note_3(loc, instrument.expect("NullPointerException: instrument"), Note::new(note as i32));
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:653
     fn play_note_3(&self, loc: JRef<Location>, instrument: Instrument, note: Note); // paper-api/src/main/java/org/bukkit/entity/Player.java:667
-    fn play_sound(&self, sound: crate::net::kyori::adventure::sound::Sound, pos: JRef<dyn Position>) {
+    fn play_sound(&self, sound: (), pos: JRef<dyn Position>) {
         // PORT: Adventure Audience.playSound(Sound, double, double, double); its Rust name comes with the Adventure port
-        crate::net::kyori::adventure::audience::Audience::play_sound_4(self, sound, pos.x(), pos.y(), pos.z());
+        crate::rt::Unported::play_sound_4(self, sound, pos.x(), pos.y(), pos.z());
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:850
     fn play_sound_4(&self, location: JRef<Location>, sound: JRef<dyn crate::org::bukkit::sound::Sound>, volume: f32, pitch: f32) {
         self.play_sound_5(location, sound, SoundCategory::MASTER, volume, pitch);
@@ -198,22 +190,22 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1045
     fn send_equipment_change(&self, entity: JRef<dyn LivingEntity>, items: &HashMap<EquipmentSlot, JRef<ItemStack>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1103
     fn send_equipment_change_3(&self, entity: JRef<dyn LivingEntity>, slot: EquipmentSlot, item: Option<JRef<ItemStack>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1093
-    fn send_sign_change(&self, loc: JRef<Location>, lines: &Vec<Component>) {
+    fn send_sign_change(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>) {
         self.send_sign_change_3(loc, lines, DyeColor::BLACK);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1124
     fn send_sign_change_2(&self, loc: JRef<Location>, lines: Option<Vec<String>>) {
         self.send_sign_change_3_3(loc, lines, DyeColor::BLACK);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1225
-    fn send_sign_change_3(&self, loc: JRef<Location>, lines: &Vec<Component>, color: DyeColor) {
+    fn send_sign_change_3(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, color: DyeColor) {
         self.send_sign_change_4(loc, lines, color, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1149
-    fn send_sign_change_3_2(&self, loc: JRef<Location>, lines: &Vec<Component>, has_glowing_text: bool) {
+    fn send_sign_change_3_2(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, has_glowing_text: bool) {
         self.send_sign_change_4(loc, lines, DyeColor::BLACK, has_glowing_text);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1174
     fn send_sign_change_3_3(&self, loc: JRef<Location>, lines: Option<Vec<String>>, color: DyeColor) {
         self.send_sign_change_4_2(loc, lines, color, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1253
-    fn send_sign_change_4(&self, loc: JRef<Location>, lines: &Vec<Component>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1200
+    fn send_sign_change_4(&self, loc: JRef<Location>, lines: &Vec<crate::text::Text>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1200
     fn send_sign_change_4_2(&self, loc: JRef<Location>, lines: Option<Vec<String>>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1282
     fn send_block_update(&self, loc: JRef<Location>, tile_state: JRef<dyn TileState>) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:1302
     fn send_potion_effect_change(&self, entity: JRef<dyn LivingEntity>, effect: JRef<PotionEffect>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1316
@@ -321,8 +313,8 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn get_experience_points_needed_for_next_level(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:2019
     fn send_experience_change(&self, progress: f32); // paper-api/src/main/java/org/bukkit/entity/Player.java:2031
     fn send_experience_change_2(&self, progress: f32, level: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:2045
-    fn set_flying_fall_damage(&self, flying_fall_damage: TriState); // paper-api/src/main/java/org/bukkit/entity/Player.java:2069
-    fn has_flying_fall_damage(&self) -> TriState; // paper-api/src/main/java/org/bukkit/entity/Player.java:2076
+    fn set_flying_fall_damage(&self, flying_fall_damage: Option<bool>); // paper-api/src/main/java/org/bukkit/entity/Player.java:2069
+    fn has_flying_fall_damage(&self) -> Option<bool>; // paper-api/src/main/java/org/bukkit/entity/Player.java:2076
     fn reset_flying_ticks(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:2085
     fn hide_player(&self, player: JRef<dyn Player>); // paper-api/src/main/java/org/bukkit/entity/Player.java:2093
     fn hide_player_2(&self, plugin: JRef<dyn Plugin>, player: JRef<dyn Player>) {
@@ -355,7 +347,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn set_resource_pack_3(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>) {
         self.set_resource_pack_4(url, hash, prompt, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2405
-    fn set_resource_pack_3_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<Component>) {
+    fn set_resource_pack_3_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>) {
         self.set_resource_pack_4_2(url, hash, prompt, false);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2453
     fn set_resource_pack_3_3(&self, url: &str, hash: Option<&Vec<i8>>, force: bool) {
@@ -365,24 +357,24 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
         self.set_resource_pack_4_3(url, hash, required, None);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2764
     fn set_resource_pack_4(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2550
-    fn set_resource_pack_4_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<Component>, force: bool) {
+    fn set_resource_pack_4_2(&self, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>, force: bool) {
         // PORT: UUID.nameUUIDFromBytes (an MD5, version 3 UUID without a namespace) needs a shared helper
         self.set_resource_pack_5_2(crate::java::util::name_uuid_from_bytes(url.as_bytes()), url, hash, prompt, force);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2598
-    fn set_resource_pack_4_3(&self, url: &str, hash: &str, required: bool, resource_pack_prompt: Option<Component>) {
+    fn set_resource_pack_4_3(&self, url: &str, hash: &str, required: bool, resource_pack_prompt: Option<crate::text::Text>) {
         // PORT: UUID.nameUUIDFromBytes (an MD5, version 3 UUID without a namespace) needs a shared helper
         self.set_resource_pack_5_3(crate::java::util::name_uuid_from_bytes(url.as_bytes()), url, hash, resource_pack_prompt, required);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:2799
     fn set_resource_pack_5(&self, id: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2648
-    fn set_resource_pack_5_2(&self, uuid: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<Component>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2697
-    fn set_resource_pack_5_3(&self, uuid: Uuid, url: &str, hash: &str, resource_pack_prompt: Option<Component>, required: bool) {
+    fn set_resource_pack_5_2(&self, uuid: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<crate::text::Text>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2697
+    fn set_resource_pack_5_3(&self, uuid: Uuid, url: &str, hash: &str, resource_pack_prompt: Option<crate::text::Text>, required: bool) {
         // PORT: Adventure ResourcePackRequest/ResourcePackInfo and Audience.sendResourcePacks, java.net.()
         self.send_resource_packs(
-            crate::net::kyori::adventure::resource::ResourcePackRequest::resource_pack_request()
+            crate::rt::Unported::resource_pack_request()
                 .required(required)
                 .replace(true)
                 .prompt(resource_pack_prompt)
-                .packs(crate::net::kyori::adventure::resource::ResourcePackInfo::resource_pack_info(
+                .packs(crate::rt::Unported::resource_pack_info(
                     uuid,
                     URI::create(url),
                     hash,
@@ -528,7 +520,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn get_death_screen_score(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:4081
     fn set_death_screen_score(&self, score: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:4089
     fn get_connection(&self) -> JRef<dyn PlayerGameConnection>; // paper-api/src/main/java/org/bukkit/entity/Player.java:4096
-    fn as_object_contents(&self) -> ObjectContents {
+    fn as_object_contents(&self) -> () {
         OfflinePlayer::get_player_profile(self).as_object_contents()
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:4098
     fn unset_fixed_pose(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:4107
@@ -541,14 +533,14 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn send_block_highlight_4_2(&self, location: JRef<Location>, duration: i32, color: Color, transparency: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:4173
     fn send_block_highlight_5(&self, location: JRef<Location>, duration: i32, text: &str, color: Color, transparency: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:4186
     fn clear_block_highlights(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:4191
-    fn send_death_screen(&self, message: Component); // paper-api/src/main/java/org/bukkit/entity/Player.java:4198
-    fn send_death_screen_2(&self, message: Component, killer: Option<JRef<dyn Entity>>) {
+    fn send_death_screen(&self, message: crate::text::Text); // paper-api/src/main/java/org/bukkit/entity/Player.java:4198
+    fn send_death_screen_2(&self, message: crate::text::Text, killer: Option<JRef<dyn Entity>>) {
         self.send_death_screen(message);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:4208
 }
 /// `Player.kick()`'s local `class Holder { DEFAULT_KICK_MESSAGE }`.
-pub static HOLDER_DEFAULT_KICK_MESSAGE: LazyLock<Component> = LazyLock::new(|| {
-    // PORT: Adventure Component.translatable(String)
+pub static HOLDER_DEFAULT_KICK_MESSAGE: LazyLock<crate::text::Text> = LazyLock::new(|| {
+    // PORT: Adventure crate::text::Text.translatable(String)
     Component::translatable("multiplayer.disconnect.kicked")
 }); // paper-api/src/main/java/org/bukkit/entity/Player.java:349
 // ---- class org.bukkit.entity.Player.Spigot (paper-api/src/main/java/org/bukkit/entity/Player.java:3723)

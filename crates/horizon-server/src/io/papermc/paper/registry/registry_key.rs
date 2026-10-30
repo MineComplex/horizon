@@ -7,8 +7,6 @@ use crate::io::papermc::paper::dialog::dialog::Dialog;
 use crate::io::papermc::paper::entity::poi::poi_type::PoiType;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::key::Keyed;
 use crate::org::bukkit::art::Art;
 use crate::org::bukkit::attribute::attribute::Attribute;
 use crate::org::bukkit::block::banner::pattern_type::PatternType;
@@ -52,10 +50,10 @@ use crate::org::bukkit::sound::Sound;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.RegistryKey (paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:61)
-pub trait RegistryKey<T: JGeneric>: Keyed {
-    fn typed_key(&self, key: JRef<dyn Key>) -> JRef<dyn TypedKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:288
+pub trait RegistryKey<T: JGeneric>: JObject {
+    fn typed_key(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TypedKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:288
     fn typed_key_1(&self, key: &str) -> JRef<dyn TypedKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:298
-    fn tag_key(&self, key: JRef<dyn Key>) -> JRef<dyn TagKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:308
+    fn tag_key(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn TagKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:308
     fn tag_key_1(&self, key: &str) -> JRef<dyn TagKey<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:318
 }
 pub static GAME_EVENT: LazyLock<JRef<dyn RegistryKey<JRef<dyn GameEventTrait>>>> = LazyLock::new(|| todo!()); // paper-api/src/main/java/io/papermc/paper/registry/RegistryKey.java:72

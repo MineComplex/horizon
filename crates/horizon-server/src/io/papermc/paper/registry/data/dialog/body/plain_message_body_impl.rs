@@ -3,22 +3,21 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::dialog::body::dialog_body::DialogBody;
 use crate::io::papermc::paper::registry::data::dialog::body::plain_message_dialog_body::PlainMessageDialogBody;
-use crate::net::kyori::adventure::text::Component;
 
 // ---- record io.papermc.paper.registry.data.dialog.body.PlainMessageBodyImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageBodyImpl.java:8)
 #[derive(Clone)]
 pub struct PlainMessageBodyImpl {
-    pub contents: Component,
+    pub contents: crate::text::Text,
     pub width: i32,
 }
 impl PlainMessageBodyImpl {
-    pub fn new(contents: Component) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageBodyImpl.java:14
-    pub fn new_2(contents: Component, width: i32) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageBodyImpl.java:8
+    pub fn new(contents: crate::text::Text) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageBodyImpl.java:14
+    pub fn new_2(contents: crate::text::Text, width: i32) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/body/PlainMessageBodyImpl.java:8
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PlainMessageDialogBody for PlainMessageBodyImpl {
-    fn contents(&self) -> Component { todo!("abstract PlainMessageDialogBody.contents") }
+    fn contents(&self) -> crate::text::Text { todo!("abstract PlainMessageDialogBody.contents") }
     fn width(&self) -> i32 { todo!("abstract PlainMessageDialogBody.width") }
 }
 impl DialogBody for PlainMessageBodyImpl {

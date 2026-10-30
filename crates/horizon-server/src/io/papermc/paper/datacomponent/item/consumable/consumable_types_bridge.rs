@@ -7,7 +7,6 @@ use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::
 use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffectRemoveStatusEffects;
 use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffectTeleportRandomly;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::potion::potion_effect::PotionEffect;
 use crate::org::bukkit::potion::potion_effect_type::PotionEffectTypeTrait;
 use crate::prelude::*;
@@ -24,7 +23,7 @@ pub trait ConsumableTypesBridge: JObject {
         effect_types: JRef<dyn RegistryKeySet<JRef<dyn PotionEffectTypeTrait>>>,
     ) -> JRef<dyn ConsumeEffectRemoveStatusEffects>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridge.java:21
     fn clear_all_status_effects(&self) -> JRef<dyn ConsumeEffectClearAllStatusEffects>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridge.java:23
-    fn play_sound_effect(&self, sound: JRef<dyn Key>) -> JRef<dyn ConsumeEffectPlaySound>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridge.java:25
+    fn play_sound_effect(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn ConsumeEffectPlaySound>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/consumable/ConsumableTypesBridge.java:25
     fn teleport_randomly_effect(
         &self,
         diameter: f32,

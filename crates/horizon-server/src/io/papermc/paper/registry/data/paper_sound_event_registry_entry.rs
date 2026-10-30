@@ -6,7 +6,6 @@ use crate::io::papermc::paper::registry::data::sound_event_registry_entry::Sound
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
 use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::sounds::sound_event::SoundEvent;
 use crate::org::bukkit::sound::Sound;
@@ -29,7 +28,7 @@ impl PaperSoundEventRegistryEntry {
     pub fn this(&self) -> JRef<dyn PaperSoundEventRegistryEntryTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PaperSoundEventRegistryEntryTrait + 'static>(this: &Weak<S>, conversions: JRef<Conversions>, sound_event: Option<SoundEvent>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:26
     pub fn new(conversions: JRef<Conversions>, sound_event: Option<SoundEvent>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, conversions, sound_event)) }
-    pub fn location(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:36
+    pub fn location(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:36
     pub fn fixed_range(&self) -> Option<f32> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:41
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -38,7 +37,7 @@ impl PaperSoundEventRegistryEntryTrait for PaperSoundEventRegistryEntry {
     fn as_paper_sound_event_registry_entry(&self) -> &PaperSoundEventRegistryEntry { self }
 }
 impl SoundEventRegistryEntry for PaperSoundEventRegistryEntry {
-    fn location(&self) -> JRef<dyn Key> { PaperSoundEventRegistryEntry::location(self) }
+    fn location(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperSoundEventRegistryEntry::location(self) }
     fn fixed_range(&self) -> Option<f32> { PaperSoundEventRegistryEntry::fixed_range(self) }
 }
 crate::jobject!(PaperSoundEventRegistryEntry: dyn PaperSoundEventRegistryEntryTrait, dyn SoundEventRegistryEntry);
@@ -54,7 +53,7 @@ impl std::ops::Deref for PaperSoundEventRegistryEntryPaperBuilder {
 impl PaperSoundEventRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, sound_event: Option<SoundEvent>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:48
-    pub fn location_1(&self, location: JRef<dyn Key>) -> JRef<dyn SoundEventRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:52
+    pub fn location_1(&self, location: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SoundEventRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:52
     pub fn fixed_range_1(&self, fixed_range: Option<f32>) -> JRef<dyn SoundEventRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:58
     pub fn build(&self) -> SoundEvent { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperSoundEventRegistryEntry.java:64
 }
@@ -64,11 +63,11 @@ impl PaperSoundEventRegistryEntryTrait for PaperSoundEventRegistryEntryPaperBuil
     fn as_paper_sound_event_registry_entry(&self) -> &PaperSoundEventRegistryEntry { self }
 }
 impl SoundEventRegistryEntryBuilder for PaperSoundEventRegistryEntryPaperBuilder {
-    fn location_1(&self, location: JRef<dyn Key>) -> JRef<dyn SoundEventRegistryEntryBuilder> { PaperSoundEventRegistryEntryPaperBuilder::location_1(self, location) }
+    fn location_1(&self, location: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SoundEventRegistryEntryBuilder> { PaperSoundEventRegistryEntryPaperBuilder::location_1(self, location) }
     fn fixed_range_1(&self, fixed_range: Option<f32>) -> JRef<dyn SoundEventRegistryEntryBuilder> { PaperSoundEventRegistryEntryPaperBuilder::fixed_range_1(self, fixed_range) }
 }
 impl SoundEventRegistryEntry for PaperSoundEventRegistryEntryPaperBuilder {
-    fn location(&self) -> JRef<dyn Key> { PaperSoundEventRegistryEntry::location(self) }
+    fn location(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperSoundEventRegistryEntry::location(self) }
     fn fixed_range(&self) -> Option<f32> { PaperSoundEventRegistryEntry::fixed_range(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperSoundEventRegistryEntryPaperBuilder {

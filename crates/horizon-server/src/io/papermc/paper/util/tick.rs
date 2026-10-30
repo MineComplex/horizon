@@ -8,7 +8,7 @@ use crate::api_prelude::*;
 pub struct Tick {
     pub milliseconds: i64, // paper-api/src/main/java/io/papermc/paper/util/Tick.java:23
 }
-pub static INSTANCE: LazyLock<Tick> = LazyLock::new(|| Tick::new(crate::net::kyori::adventure::util::ticks::SINGLE_TICK_DURATION_MS)); // PORT: adventure's Ticks (SINGLE_TICK_DURATION_MS = 50) is not ported yet // paper-api/src/main/java/io/papermc/paper/util/Tick.java:21
+pub static INSTANCE: LazyLock<Tick> = LazyLock::new(|| Tick::new(())); // PORT: adventure's Ticks (SINGLE_TICK_DURATION_MS = 50) is not ported yet // paper-api/src/main/java/io/papermc/paper/util/Tick.java:21
 impl Tick {
     pub fn new(length: i64) -> Self {
         Tick { milliseconds: length }

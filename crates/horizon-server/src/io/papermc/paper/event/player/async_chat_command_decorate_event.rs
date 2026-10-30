@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::event::player::async_chat_decorate_event::AsyncChatDecorateEvent;
 use crate::io::papermc::paper::event::player::async_chat_decorate_event::AsyncChatDecorateEventTrait;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::entity::player::Player;
 use crate::org::bukkit::event::cancellable::Cancellable;
 use crate::org::bukkit::event::event::Event;
@@ -25,7 +24,7 @@ impl std::ops::Deref for AsyncChatCommandDecorateEvent {
 pub static HANDLER_LIST: LazyLock<JRef<HandlerList>> = LazyLock::new(|| HandlerList::new()); // paper-api/src/main/java/io/papermc/paper/event/player/AsyncChatCommandDecorateEvent.java:14
 impl AsyncChatCommandDecorateEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(player: Option<JRef<dyn Player>>, original_message: Component) -> JRef<Self> {
+    pub fn new(player: Option<JRef<dyn Player>>, original_message: crate::text::Text) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| AsyncChatCommandDecorateEvent {
             base: AsyncChatDecorateEvent::new_base(this, player, original_message),
             this: this.clone(),
@@ -39,9 +38,9 @@ impl AsyncChatCommandDecorateEvent {
 impl AsyncChatDecorateEventTrait for AsyncChatCommandDecorateEvent {
     fn as_async_chat_decorate_event(&self) -> &AsyncChatDecorateEvent { self }
     fn player(&self) -> Option<JRef<dyn Player>> { AsyncChatDecorateEvent::player(self) }
-    fn original_message(&self) -> Component { AsyncChatDecorateEvent::original_message(self) }
-    fn result(&self) -> Component { AsyncChatDecorateEvent::result(self) }
-    fn result_1(&self, result: Component) { AsyncChatDecorateEvent::result_1(self, result) }
+    fn original_message(&self) -> crate::text::Text { AsyncChatDecorateEvent::original_message(self) }
+    fn result(&self) -> crate::text::Text { AsyncChatDecorateEvent::result(self) }
+    fn result_1(&self, result: crate::text::Text) { AsyncChatDecorateEvent::result_1(self, result) }
 }
 impl ServerEventTrait for AsyncChatCommandDecorateEvent {
     fn as_server_event(&self) -> &ServerEvent { self }

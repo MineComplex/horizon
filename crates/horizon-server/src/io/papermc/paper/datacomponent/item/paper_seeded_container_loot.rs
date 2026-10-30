@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::seeded_container_loot::SeededContainerLootBuilder;
-use crate::net::kyori::adventure::key::Key;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperSeededContainerLoot (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:11)
 #[derive(Clone)]
@@ -15,13 +14,13 @@ impl PaperSeededContainerLoot {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:11
     pub fn new_1(impl_: crate::net::minecraft::world::item::component::seeded_container_loot::SeededContainerLoot) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:11
     pub fn get_handle(&self) -> crate::net::minecraft::world::item::component::seeded_container_loot::SeededContainerLoot { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:15
-    pub fn loot_table(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:20
+    pub fn loot_table(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:20
     pub fn seed(&self) -> i64 { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:25
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl crate::io::papermc::paper::datacomponent::item::seeded_container_loot::SeededContainerLoot for PaperSeededContainerLoot {
-    fn loot_table(&self) -> JRef<dyn Key> { PaperSeededContainerLoot::loot_table(self) }
+    fn loot_table(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperSeededContainerLoot::loot_table(self) }
     fn seed(&self) -> i64 { PaperSeededContainerLoot::seed(self) }
 }
 impl Handleable<crate::net::minecraft::world::item::component::seeded_container_loot::SeededContainerLoot> for PaperSeededContainerLoot {
@@ -32,19 +31,19 @@ crate::jobject!(PaperSeededContainerLoot: dyn crate::io::papermc::paper::datacom
 pub struct PaperSeededContainerLootBuilderImpl {
     pub this: Weak<Self>,
     pub seed: Mut<i64>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:32
-    pub key: Mut<JRef<dyn Key>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:33
+    pub key: Mut<crate::net::minecraft::resources::identifier::Identifier>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:33
 }
 impl PaperSeededContainerLootBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: JRef<dyn Key>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:35
-    pub fn loot_table(&self, key: JRef<dyn Key>) -> JRef<dyn SeededContainerLootBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:39
+    pub fn new(key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:35
+    pub fn loot_table(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SeededContainerLootBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:39
     pub fn seed(&self, seed: i64) -> JRef<dyn SeededContainerLootBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:45
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::seeded_container_loot::SeededContainerLoot> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSeededContainerLoot.java:51
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SeededContainerLootBuilder for PaperSeededContainerLootBuilderImpl {
-    fn loot_table(&self, key: JRef<dyn Key>) -> JRef<dyn SeededContainerLootBuilder> { PaperSeededContainerLootBuilderImpl::loot_table(self, key) }
+    fn loot_table(&self, key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SeededContainerLootBuilder> { PaperSeededContainerLootBuilderImpl::loot_table(self, key) }
     fn seed(&self, seed: i64) -> JRef<dyn SeededContainerLootBuilder> { PaperSeededContainerLootBuilderImpl::seed(self, seed) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperSeededContainerLootBuilderImpl {

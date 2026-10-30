@@ -8,24 +8,23 @@ use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_owner::LifecycleEventOwner;
 use crate::io::papermc::paper::plugin::lifecycle::event::paper_lifecycle_event_manager::PaperLifecycleEventManager;
 use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 
 // ---- class io.papermc.paper.plugin.bootstrap.PluginBootstrapContextImpl (paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:11)
 pub struct PluginBootstrapContextImpl {
     pub this: Weak<Self>,
     pub config: JRef<dyn PluginMeta>, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:13
     pub data_folder: std::path::PathBuf, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:14
-    pub logger: ComponentLogger, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:15
+    pub logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:15
     pub plugin_source: std::path::PathBuf, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:16
     pub allows_lifecycle_registration: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:18
     pub lifecycle_event_manager: JRef<PaperLifecycleEventManager<JRef<dyn BootstrapContext>>>, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:19
 }
 impl PluginBootstrapContextImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(config: JRef<dyn PluginMeta>, data_folder: std::path::PathBuf, logger: ComponentLogger, plugin_source: std::path::PathBuf) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:22
+    pub fn new(config: JRef<dyn PluginMeta>, data_folder: std::path::PathBuf, logger: (), plugin_source: std::path::PathBuf) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:22
     pub fn get_configuration(&self) -> JRef<dyn PluginMeta> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:35
     pub fn get_data_directory(&self) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:40
-    pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:45
+    pub fn get_logger(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:45
     pub fn get_plugin_source(&self) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:50
     pub fn get_plugin_meta(&self) -> JRef<dyn PluginMeta> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:56
     pub fn get_lifecycle_manager(&self) -> JRef<dyn LifecycleEventManager<JRef<dyn BootstrapContext>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginBootstrapContextImpl.java:61
@@ -40,7 +39,7 @@ impl BootstrapContext for PluginBootstrapContextImpl {
 impl PluginProviderContext for PluginBootstrapContextImpl {
     fn get_configuration(&self) -> JRef<dyn PluginMeta> { PluginBootstrapContextImpl::get_configuration(self) }
     fn get_data_directory(&self) -> std::path::PathBuf { PluginBootstrapContextImpl::get_data_directory(self) }
-    fn get_logger(&self) -> ComponentLogger { PluginBootstrapContextImpl::get_logger(self) }
+    fn get_logger(&self) -> () { PluginBootstrapContextImpl::get_logger(self) }
     fn get_plugin_source(&self) -> std::path::PathBuf { PluginBootstrapContextImpl::get_plugin_source(self) }
 }
 impl LifecycleEventOwner for PluginBootstrapContextImpl {

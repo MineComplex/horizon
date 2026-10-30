@@ -9,9 +9,6 @@ use crate::io::papermc::paper::persistence::persistent_data_key::PersistentDataK
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::world::damagesource::combat_entry::CombatEntry;
 use crate::io::papermc::paper::world::damagesource::fall_location_type::FallLocationType;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::flattener::ComponentFlattener;
 use crate::org::bukkit::attribute::attributable::Attributable;
 use crate::org::bukkit::block::biome::Biome;
 use crate::org::bukkit::command::command_sender::CommandSender;
@@ -56,7 +53,7 @@ pub trait InternalAPIBridge: JObject {
     ) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:82
     fn default_mannequin_profile(&self) -> JRef<dyn ResolvableProfile>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:84
     fn all_skin_parts(&self) -> JRef<dyn SkinPartsMutable>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:86
-    fn default_mannequin_description(&self) -> Component; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:89
+    fn default_mannequin_description(&self) -> crate::text::Text; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:89
     fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(
         &self,
         rule: JRef<dyn GameRuleTrait<MODERN>>,
@@ -90,15 +87,15 @@ pub trait InternalAPIBridge: JObject {
     fn create_empty_stack(&self) -> JRef<ItemStack>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:115
     fn resolve_with_context(
         &self,
-        component: Component,
+        component: crate::text::Text,
         context: Option<JRef<dyn CommandSender>>,
         scoreboard_subject: Option<JRef<dyn Entity>>,
         bypass_permissions: bool,
-    ) -> Result<Component, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
-    fn component_flattener(&self) -> ComponentFlattener; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:119
+    ) -> Result<crate::text::Text, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
+    fn component_flattener(&self) -> (); // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:119
     fn create_persistent_data_key<C: JGeneric>(
         &self,
-        key: JRef<dyn Key>,
+        key: crate::net::minecraft::resources::identifier::Identifier,
         type_: JRef<dyn PersistentDataType<JObjectRef, C>>,
     ) -> JRef<dyn PersistentDataKey<C>>
     where

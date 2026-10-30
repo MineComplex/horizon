@@ -7,7 +7,6 @@ use crate::io::papermc::paper::registry::data::decorated_pot_pattern_registry_en
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
 use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::world::level::block::entity::decorated_pot_pattern::DecoratedPotPattern;
 
@@ -27,7 +26,7 @@ impl PaperDecoratedPotPatternRegistryEntry {
     pub fn this(&self) -> JRef<dyn PaperDecoratedPotPatternRegistryEntryTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PaperDecoratedPotPatternRegistryEntryTrait + 'static>(this: &Weak<S>, ignored_conversions: JRef<Conversions>, internal: Option<DecoratedPotPattern>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:19
     pub fn new(ignored_conversions: JRef<Conversions>, internal: Option<DecoratedPotPattern>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, ignored_conversions, internal)) }
-    pub fn asset_id(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:28
+    pub fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:28
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -35,7 +34,7 @@ impl PaperDecoratedPotPatternRegistryEntryTrait for PaperDecoratedPotPatternRegi
     fn as_paper_decorated_pot_pattern_registry_entry(&self) -> &PaperDecoratedPotPatternRegistryEntry { self }
 }
 impl DecoratedPotPatternRegistryEntry for PaperDecoratedPotPatternRegistryEntry {
-    fn asset_id(&self) -> JRef<dyn Key> { PaperDecoratedPotPatternRegistryEntry::asset_id(self) }
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperDecoratedPotPatternRegistryEntry::asset_id(self) }
 }
 crate::jobject!(PaperDecoratedPotPatternRegistryEntry: dyn PaperDecoratedPotPatternRegistryEntryTrait, dyn DecoratedPotPatternRegistryEntry);
 // ---- class io.papermc.paper.registry.data.PaperDecoratedPotPatternRegistryEntry.PaperBuilder (paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:33)
@@ -50,7 +49,7 @@ impl std::ops::Deref for PaperDecoratedPotPatternRegistryEntryPaperBuilder {
 impl PaperDecoratedPotPatternRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<DecoratedPotPattern>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:35
-    pub fn asset_id_1(&self, asset_id: JRef<dyn Key>) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:39
+    pub fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:39
     pub fn build(&self) -> DecoratedPotPattern { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperDecoratedPotPatternRegistryEntry.java:45
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -59,10 +58,10 @@ impl PaperDecoratedPotPatternRegistryEntryTrait for PaperDecoratedPotPatternRegi
     fn as_paper_decorated_pot_pattern_registry_entry(&self) -> &PaperDecoratedPotPatternRegistryEntry { self }
 }
 impl DecoratedPotPatternRegistryEntryBuilder for PaperDecoratedPotPatternRegistryEntryPaperBuilder {
-    fn asset_id_1(&self, asset_id: JRef<dyn Key>) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder> { PaperDecoratedPotPatternRegistryEntryPaperBuilder::asset_id_1(self, asset_id) }
+    fn asset_id_1(&self, asset_id: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn DecoratedPotPatternRegistryEntryBuilder> { PaperDecoratedPotPatternRegistryEntryPaperBuilder::asset_id_1(self, asset_id) }
 }
 impl DecoratedPotPatternRegistryEntry for PaperDecoratedPotPatternRegistryEntryPaperBuilder {
-    fn asset_id(&self) -> JRef<dyn Key> { PaperDecoratedPotPatternRegistryEntry::asset_id(self) }
+    fn asset_id(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperDecoratedPotPatternRegistryEntry::asset_id(self) }
 }
 impl RegistryBuilder<JObjectRef> for PaperDecoratedPotPatternRegistryEntryPaperBuilder {
 }

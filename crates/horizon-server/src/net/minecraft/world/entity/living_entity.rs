@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::event::entity::entity_knockback_event::EntityKnockbackEventCause;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::direction::Direction;
@@ -161,7 +160,7 @@ pub struct LivingEntity {
     pub collidable_exemptions: Mut<HashSet<Uuid>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:304
     pub bukkit_pick_up_loot: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:305
     pub silent_death: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:306
-    pub friction_state: Mut<TriState>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:307
+    pub friction_state: Mut<Option<bool>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:307
     pub invulnerable_duration: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:308
     pub should_burn_in_day: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:309
     pub ticking_effects: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/LivingEntity.java:973

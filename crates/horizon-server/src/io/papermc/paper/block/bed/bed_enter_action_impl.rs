@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::block::bed::bed_enter_action::BedEnterAction;
 use crate::io::papermc::paper::block::bed::bed_enter_problem::BedEnterProblem;
 use crate::io::papermc::paper::block::bed::bed_rule_result::BedRuleResult;
-use crate::net::kyori::adventure::text::Component;
 
 // ---- record io.papermc.paper.block.bed.BedEnterActionImpl (paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterActionImpl.java:6)
 #[derive(Clone)]
@@ -12,11 +11,11 @@ pub struct BedEnterActionImpl {
     pub can_sleep: JRef<dyn BedRuleResult>,
     pub can_set_spawn: JRef<dyn BedRuleResult>,
     pub problem: Option<JRef<dyn BedEnterProblem>>,
-    pub error_message: Option<Component>,
+    pub error_message: Option<crate::text::Text>,
 }
 impl BedEnterActionImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterActionImpl.java:6
-    pub fn new_4(can_sleep: JRef<dyn BedRuleResult>, can_set_spawn: JRef<dyn BedRuleResult>, problem: Option<JRef<dyn BedEnterProblem>>, error_message: Option<Component>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterActionImpl.java:6
+    pub fn new_4(can_sleep: JRef<dyn BedRuleResult>, can_set_spawn: JRef<dyn BedRuleResult>, problem: Option<JRef<dyn BedEnterProblem>>, error_message: Option<crate::text::Text>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/block/bed/BedEnterActionImpl.java:6
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -24,6 +23,6 @@ impl BedEnterAction for BedEnterActionImpl {
     fn can_sleep(&self) -> JRef<dyn BedRuleResult> { todo!("abstract BedEnterAction.canSleep") }
     fn can_set_spawn(&self) -> JRef<dyn BedRuleResult> { todo!("abstract BedEnterAction.canSetSpawn") }
     fn problem(&self) -> Option<JRef<dyn BedEnterProblem>> { todo!("abstract BedEnterAction.problem") }
-    fn error_message(&self) -> Option<Component> { todo!("abstract BedEnterAction.errorMessage") }
+    fn error_message(&self) -> Option<crate::text::Text> { todo!("abstract BedEnterAction.errorMessage") }
 }
 crate::jobject!(BedEnterActionImpl: dyn BedEnterAction);

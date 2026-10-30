@@ -5,8 +5,6 @@ use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::written_book_content::WrittenBookContentBuilder;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::inventory::Book;
-use crate::net::kyori::adventure::text::ComponentLike;
 use crate::net::minecraft::server::network::filterable::Filterable;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperWrittenBookContent (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:25)
@@ -21,9 +19,9 @@ impl PaperWrittenBookContent {
     pub fn title(&self) -> JRef<dyn Filtered<String>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:34
     pub fn author(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:39
     pub fn generation(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:44
-    pub fn pages(&self) -> Vec<JRef<dyn Filtered<crate::net::kyori::adventure::text::Component>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:49
+    pub fn pages(&self) -> Vec<JRef<dyn Filtered<crate::text::Text>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:49
     pub fn resolved(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:57
-    pub fn as_book(&self) -> Book { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:62
+    pub fn as_book(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:62
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -31,7 +29,7 @@ impl crate::io::papermc::paper::datacomponent::item::written_book_content::Writt
     fn title(&self) -> JRef<dyn Filtered<String>> { PaperWrittenBookContent::title(self) }
     fn author(&self) -> String { PaperWrittenBookContent::author(self) }
     fn generation(&self) -> i32 { PaperWrittenBookContent::generation(self) }
-    fn pages(&self) -> Vec<JRef<dyn Filtered<crate::net::kyori::adventure::text::Component>>> { PaperWrittenBookContent::pages(self) }
+    fn pages(&self) -> Vec<JRef<dyn Filtered<crate::text::Text>>> { PaperWrittenBookContent::pages(self) }
     fn resolved(&self) -> bool { PaperWrittenBookContent::resolved(self) }
 }
 impl Handleable<crate::net::minecraft::world::item::component::written_book_content::WrittenBookContent> for PaperWrittenBookContent {
@@ -55,13 +53,13 @@ impl PaperWrittenBookContentBuilderImpl {
     pub fn author(&self, author: &str) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:128
     pub fn generation(&self, generation: i32) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:134
     pub fn resolved(&self, resolved: bool) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:140
-    pub fn add_page(&self, page: JRef<dyn ComponentLike>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:146
-    pub fn add_pages(&self, pages: &mut Vec<JRef<dyn ComponentLike>>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:154
-    pub fn add_filtered_page(&self, page: JRef<dyn Filtered<JRef<dyn ComponentLike>>>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:164
-    pub fn add_filtered_pages(&self, pages: &Vec<JRef<dyn Filtered<JRef<dyn ComponentLike>>>>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:177
+    pub fn add_page(&self, page: crate::text::Text) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:146
+    pub fn add_pages(&self, pages: &mut Vec<crate::text::Text>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:154
+    pub fn add_filtered_page(&self, page: JRef<dyn Filtered<crate::text::Text>>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:164
+    pub fn add_filtered_pages(&self, pages: &Vec<JRef<dyn Filtered<crate::text::Text>>>) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:177
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::written_book_content::WrittenBookContent> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:183
     pub fn validate_title(title: &str) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:92
-    pub fn validate_page_length(page: crate::net::kyori::adventure::text::Component) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:101
+    pub fn validate_page_length(page: crate::text::Text) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperWrittenBookContent.java:101
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -71,10 +69,10 @@ impl WrittenBookContentBuilder for PaperWrittenBookContentBuilderImpl {
     fn author(&self, author: &str) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::author(self, author) }
     fn generation(&self, generation: i32) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::generation(self, generation) }
     fn resolved(&self, resolved: bool) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::resolved(self, resolved) }
-    fn add_page(&self, page: JRef<dyn ComponentLike>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_page(self, page) }
-    fn add_pages(&self, page: &Vec<JRef<dyn ComponentLike>>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_pages(self, page) }
-    fn add_filtered_page(&self, page: JRef<dyn Filtered<JRef<dyn ComponentLike>>>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_filtered_page(self, page) }
-    fn add_filtered_pages(&self, pages: &Vec<JRef<dyn Filtered<JRef<dyn ComponentLike>>>>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_filtered_pages(self, pages) }
+    fn add_page(&self, page: crate::text::Text) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_page(self, page) }
+    fn add_pages(&self, page: &Vec<crate::text::Text>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_pages(self, page) }
+    fn add_filtered_page(&self, page: JRef<dyn Filtered<crate::text::Text>>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_filtered_page(self, page) }
+    fn add_filtered_pages(&self, pages: &Vec<JRef<dyn Filtered<crate::text::Text>>>) -> JRef<dyn WrittenBookContentBuilder> { PaperWrittenBookContentBuilderImpl::add_filtered_pages(self, pages) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperWrittenBookContentBuilderImpl {
     fn build(&self) -> C { PaperWrittenBookContentBuilderImpl::build(self) }

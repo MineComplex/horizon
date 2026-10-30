@@ -11,7 +11,6 @@ use crate::io::papermc::paper::connection::readable_player_cookie_connection::Re
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImpl;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImplTrait;
 use crate::io::papermc::paper::connection::writable_player_cookie_connection::WritablePlayerCookieConnection;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::network::protocol::cookie::serverbound_cookie_response_packet::ServerboundCookieResponsePacket;
 use crate::net::minecraft::server::level::client_information::ClientInformation;
 use crate::net::minecraft::server::network::server_game_packet_listener_impl::ServerGamePacketListenerImpl;
@@ -66,7 +65,7 @@ impl WritablePlayerCookieConnection for PaperPlayerGameConnection {
     fn store_cookie(&self, key: JRef<NamespacedKey>, value: &Vec<i8>) { PaperCommonConnection::store_cookie(self, key, value) }
 }
 impl PlayerConnection for PaperPlayerGameConnection {
-    fn disconnect(&self, component: Component) { PaperCommonConnection::disconnect(self, component) }
+    fn disconnect(&self, component: crate::text::Text) { PaperCommonConnection::disconnect(self, component) }
     fn is_connected(&self) -> bool { PaperPlayerGameConnection::is_connected(self) }
     fn is_transferred(&self) -> bool { PaperCommonConnection::is_transferred(self) }
     fn get_address(&self) -> std::net::SocketAddr { PaperCommonConnection::get_address(self) }

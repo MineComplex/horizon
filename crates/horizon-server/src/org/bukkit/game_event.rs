@@ -193,7 +193,7 @@ impl GameEvent {
     pub fn get_event(key: &str) -> JRef<dyn GameEventTrait> {
         crate::org::bukkit::registry::GAME_EVENT.get_or_throw(
             crate::net::kyori::adventure::key::key::key_2(
-                crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+                (),
                 key,
             ),
         )

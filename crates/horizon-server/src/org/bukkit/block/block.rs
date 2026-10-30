@@ -24,7 +24,7 @@ use crate::org::bukkit::world::World;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.block.Block (paper-api/src/main/java/org/bukkit/block/Block.java:35)
-pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable {
+pub trait Block: Metadatable + crate::org::bukkit::translatable::Translatable {
     fn get_data(&self) -> i8; // paper-api/src/main/java/org/bukkit/block/Block.java:43
     fn get_block_data(&self) -> JRef<dyn BlockData>; // paper-api/src/main/java/org/bukkit/block/Block.java:51
     fn get_relative(&self, face: BlockFace) -> JRef<dyn Block>; // paper-api/src/main/java/org/bukkit/block/Block.java:74

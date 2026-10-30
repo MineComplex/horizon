@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::block::bed::bed_enter_problem::BedEnterProblem;
 use crate::io::papermc::paper::block::bed::bed_rule_result::BedRuleResult;
-use crate::net::kyori::adventure::text::Component;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.block.bed.BedEnterAction (paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:12)
@@ -11,5 +10,5 @@ pub trait BedEnterAction: JObject {
     fn can_sleep(&self) -> JRef<dyn BedRuleResult>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:24
     fn can_set_spawn(&self) -> JRef<dyn BedRuleResult>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:35
     fn problem(&self) -> Option<JRef<dyn BedEnterProblem>>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:44
-    fn error_message(&self) -> Option<Component>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:52
+    fn error_message(&self) -> Option<crate::text::Text>; // paper-api/src/main/java/io/papermc/paper/block/bed/BedEnterAction.java:52
 }

@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponBuilder;
-use crate::net::kyori::adventure::key::Key;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperKineticWeapon (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:14)
 #[derive(Clone)]
@@ -22,8 +21,8 @@ impl PaperKineticWeapon {
     pub fn damage_conditions(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponCondition> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:55
     pub fn forward_movement(&self) -> f32 { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:61
     pub fn damage_multiplier(&self) -> f32 { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:66
-    pub fn sound(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:71
-    pub fn hit_sound(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:80
+    pub fn sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:71
+    pub fn hit_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:80
     pub fn to_nms(api: JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponCondition>) -> crate::net::minecraft::world::item::component::kinetic_weapon::KineticWeaponCondition { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:18
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -36,8 +35,8 @@ impl crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeap
     fn damage_conditions(&self) -> Option<JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponCondition>> { PaperKineticWeapon::damage_conditions(self) }
     fn forward_movement(&self) -> f32 { PaperKineticWeapon::forward_movement(self) }
     fn damage_multiplier(&self) -> f32 { PaperKineticWeapon::damage_multiplier(self) }
-    fn sound(&self) -> Option<JRef<dyn Key>> { PaperKineticWeapon::sound(self) }
-    fn hit_sound(&self) -> Option<JRef<dyn Key>> { PaperKineticWeapon::hit_sound(self) }
+    fn sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperKineticWeapon::sound(self) }
+    fn hit_sound(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperKineticWeapon::hit_sound(self) }
 }
 impl Handleable<crate::net::minecraft::world::item::component::kinetic_weapon::KineticWeapon> for PaperKineticWeapon {
     fn get_handle(&self) -> M { PaperKineticWeapon::get_handle(self) }
@@ -75,8 +74,8 @@ pub struct PaperKineticWeaponBuilderImpl {
     pub dismount_conditions: Mut<crate::net::minecraft::world::item::component::kinetic_weapon::KineticWeaponCondition>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:119
     pub knockback_conditions: Mut<crate::net::minecraft::world::item::component::kinetic_weapon::KineticWeaponCondition>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:120
     pub damage_conditions: Mut<crate::net::minecraft::world::item::component::kinetic_weapon::KineticWeaponCondition>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:121
-    pub sound: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:123
-    pub hit_sound: Mut<Option<JRef<dyn Key>>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:124
+    pub sound: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:123
+    pub hit_sound: Mut<Option<crate::net::minecraft::resources::identifier::Identifier>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:124
     pub damage_multiplier: Mut<f32>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:126
     pub forward_movement: Mut<f32>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:127
 }
@@ -90,8 +89,8 @@ impl PaperKineticWeaponBuilderImpl {
     pub fn damage_conditions(&self, condition: JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponCondition>) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:153
     pub fn damage_multiplier(&self, damage_multiplier: f32) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:159
     pub fn forward_movement(&self, forward_movement: f32) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:165
-    pub fn sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:171
-    pub fn hit_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:177
+    pub fn sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:171
+    pub fn hit_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn KineticWeaponBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:177
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeapon> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperKineticWeapon.java:183
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -104,8 +103,8 @@ impl KineticWeaponBuilder for PaperKineticWeaponBuilderImpl {
     fn damage_conditions(&self, condition: Option<JRef<dyn crate::io::papermc::paper::datacomponent::item::kinetic_weapon::KineticWeaponCondition>>) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::damage_conditions(self, condition) }
     fn forward_movement(&self, forward_movement: f32) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::forward_movement(self, forward_movement) }
     fn damage_multiplier(&self, damage_multiplier: f32) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::damage_multiplier(self, damage_multiplier) }
-    fn sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::sound(self, sound) }
-    fn hit_sound(&self, sound: Option<JRef<dyn Key>>) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::hit_sound(self, sound) }
+    fn sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::sound(self, sound) }
+    fn hit_sound(&self, sound: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn KineticWeaponBuilder> { PaperKineticWeaponBuilderImpl::hit_sound(self, sound) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperKineticWeaponBuilderImpl {
     fn build(&self) -> C { PaperKineticWeaponBuilderImpl::build(self) }

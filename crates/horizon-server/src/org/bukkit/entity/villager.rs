@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
 use crate::com::destroystokyo::paper::entity::villager::reputation::Reputation;
-use crate::net::kyori::adventure::translation::Translatable;
 use crate::org::bukkit::entity::abstract_villager::AbstractVillager;
 use crate::org::bukkit::entity::zombie_villager::ZombieVillager;
 use crate::org::bukkit::keyed::Keyed;
@@ -67,7 +66,7 @@ pub fn type_values() -> Vec<JRef<dyn VillagerType>> {
     crate::org::bukkit::registry::VILLAGER_TYPE.stream().collect()
 } // paper-api/src/main/java/org/bukkit/entity/Villager.java:210
 // ---- interface org.bukkit.entity.Villager.Profession (paper-api/src/main/java/org/bukkit/entity/Villager.java:221)
-pub trait VillagerProfession: OldEnum<JRef<dyn VillagerProfession>> + Keyed + Translatable {
+pub trait VillagerProfession: OldEnum<JRef<dyn VillagerProfession>> + Keyed {
     fn translation_key(&self) -> String {
         format!("entity.minecraft.villager.{}", self.get_key().get_key())
     } // default, paper-api/src/main/java/org/bukkit/entity/Villager.java:341

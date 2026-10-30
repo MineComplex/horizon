@@ -9,7 +9,6 @@ use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider
 use crate::io::papermc::paper::plugin::provider::provider_status::ProviderStatus;
 use crate::io::papermc::paper::plugin::provider::provider_status_holder::ProviderStatusHolder;
 use crate::io::papermc::paper::plugin::provider::type_::plugin_type_factory::PluginTypeFactory;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::org::bukkit::plugin::java::java_plugin::JavaPluginTrait;
 use crate::org::bukkit::plugin::java::library_loader::LibraryLoader;
 use crate::org::bukkit::plugin::plugin_description_file::PluginDescriptionFile;
@@ -22,7 +21,7 @@ pub struct SpigotPluginProvider {
     pub jar_file: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:41
     pub logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:42
     pub paper_library_paths: Mut<Vec<std::path::PathBuf>>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:43
-    pub component_logger: ComponentLogger, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:44
+    pub component_logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:44
     pub status: Mut<ProviderStatus>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:45
     pub dependency_context: Mut<JRef<dyn DependencyContext>>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:46
 }
@@ -35,7 +34,7 @@ impl SpigotPluginProvider {
     pub fn file(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:62
     pub fn create_instance(&self) -> JRef<dyn JavaPluginTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:67
     pub fn get_meta(&self) -> JRef<PluginDescriptionFile> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:147
-    pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:152
+    pub fn get_logger(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:152
     pub fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:157
     pub fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:162
     pub fn get_last_provided_status(&self) -> ProviderStatus { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:174
@@ -50,7 +49,7 @@ impl PluginProvider<JRef<dyn JavaPluginTrait>> for SpigotPluginProvider {
     fn file(&self) -> () { SpigotPluginProvider::file(self) }
     fn create_instance(&self) -> T { SpigotPluginProvider::create_instance(self) }
     fn get_meta(&self) -> JRef<dyn PluginMeta> { SpigotPluginProvider::get_meta(self) }
-    fn get_logger(&self) -> ComponentLogger { SpigotPluginProvider::get_logger(self) }
+    fn get_logger(&self) -> () { SpigotPluginProvider::get_logger(self) }
     fn create_configuration(&self, to_load: &HashMap<String, JRef<dyn PluginProvider<JObjectRef>>>) -> JRef<dyn LoadOrderConfiguration> { SpigotPluginProvider::create_configuration(self, to_load) }
     fn validate_dependencies(&self, context: JRef<dyn DependencyContext>) -> Vec<String> { SpigotPluginProvider::validate_dependencies(self, context) }
 }

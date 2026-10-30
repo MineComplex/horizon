@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_owner::LifecycleEventOwner;
-use crate::net::kyori::adventure::key::Namespaced;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::org::bukkit::command::tab_executor::TabExecutor;
 use crate::org::bukkit::configuration::file::file_configuration::FileConfigurationTrait;
 use crate::org::bukkit::generator::biome_provider::BiomeProviderTrait;
@@ -15,7 +13,7 @@ use crate::org::bukkit::server::Server;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.plugin.Plugin (paper-api/src/main/java/org/bukkit/plugin/Plugin.java:20)
-pub trait Plugin: TabExecutor + LifecycleEventOwner + Namespaced {
+pub trait Plugin: TabExecutor + LifecycleEventOwner {
     fn get_data_folder(&self) -> std::path::PathBuf; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:27
     fn get_data_path(&self) -> std::path::PathBuf { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:38
     fn get_description(&self) -> JRef<PluginDescriptionFile>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:50
@@ -36,7 +34,7 @@ pub trait Plugin: TabExecutor + LifecycleEventOwner + Namespaced {
     fn get_default_world_generator(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn ChunkGeneratorTrait>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:183
     fn get_default_biome_provider(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn BiomeProviderTrait>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:195
     fn get_logger(&self) -> (); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:205
-    fn get_component_logger(&self) -> ComponentLogger { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:209
+    fn get_component_logger(&self) -> () { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:209
     fn get_slf4_j_logger(&self) -> () { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:216
     fn get_log4_j_logger(&self) -> () { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:224
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:239

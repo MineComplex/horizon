@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffectPlaySound;
 use crate::io::papermc::paper::datacomponent::item::consumable::paper_consumable_effect::PaperConsumableEffect;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::world::item::consume_effects::play_sound_consume_effect::PlaySoundConsumeEffect;
 
 // ---- record io.papermc.paper.datacomponent.item.consumable.PaperPlaySound (paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/PaperPlaySound.java:7)
@@ -14,12 +13,12 @@ pub struct PaperPlaySound {
 impl PaperPlaySound {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/PaperPlaySound.java:7
     pub fn new_1(internal: PlaySoundConsumeEffect) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/PaperPlaySound.java:7
-    pub fn sound(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/PaperPlaySound.java:11
+    pub fn sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/consumable/PaperPlaySound.java:11
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ConsumeEffectPlaySound for PaperPlaySound {
-    fn sound(&self) -> JRef<dyn Key> { PaperPlaySound::sound(self) }
+    fn sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperPlaySound::sound(self) }
 }
 impl crate::io::papermc::paper::datacomponent::item::consumable::consume_effect::ConsumeEffect for PaperPlaySound {
 }

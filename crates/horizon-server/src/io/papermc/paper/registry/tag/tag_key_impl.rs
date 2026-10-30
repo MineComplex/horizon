@@ -3,18 +3,17 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
-use crate::net::kyori::adventure::key::Key;
 use crate::api_prelude::*;
 
 // ---- record io.papermc.paper.registry.tag.TagKeyImpl (paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:8)
 #[derive(Clone)]
 pub struct TagKeyImpl<T: JGeneric> {
     pub registry_key: JRef<dyn RegistryKey<T>>,
-    pub key: JRef<dyn Key>,
+    pub key: crate::net::minecraft::resources::identifier::Identifier,
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> TagKeyImpl<T> {
-    pub fn new_2(registry_key: JRef<dyn RegistryKey<T>>, key: JRef<dyn Key>) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:8
+    pub fn new_2(registry_key: JRef<dyn RegistryKey<T>>, key: crate::net::minecraft::resources::identifier::Identifier) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:8
     pub fn to_string(&self) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/tag/TagKeyImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

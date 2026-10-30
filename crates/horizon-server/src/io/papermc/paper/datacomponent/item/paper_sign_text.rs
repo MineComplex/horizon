@@ -5,7 +5,6 @@ use crate::api_impl::util::handleable::Handleable;
 use crate::io::papermc::paper::datacomponent::buildable_data_component::BuildableDataComponent;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::sign_text::SignTextBuilder;
-use crate::net::kyori::adventure::text::ComponentLike;
 
 // ---- record io.papermc.paper.datacomponent.item.PaperSignText (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:13)
 #[derive(Clone)]
@@ -16,7 +15,7 @@ impl PaperSignText {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:13
     pub fn new_1(impl_: JRef<crate::net::minecraft::world::level::block::entity::sign_text::SignText>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:13
     pub fn get_handle(&self) -> JRef<crate::net::minecraft::world::level::block::entity::sign_text::SignText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:17
-    pub fn lines(&self) -> Vec<crate::net::kyori::adventure::text::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:22
+    pub fn lines(&self) -> Vec<crate::text::Text> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:22
     pub fn color(&self) -> crate::org::bukkit::dye_color::DyeColor { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:27
     pub fn has_glowing_text(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:32
     pub fn to_builder(&self) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:37
@@ -25,7 +24,7 @@ impl PaperSignText {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl crate::io::papermc::paper::datacomponent::item::sign_text::SignText for PaperSignText {
-    fn lines(&self) -> Vec<crate::net::kyori::adventure::text::Component> { PaperSignText::lines(self) }
+    fn lines(&self) -> Vec<crate::text::Text> { PaperSignText::lines(self) }
     fn color(&self) -> crate::org::bukkit::dye_color::DyeColor { PaperSignText::color(self) }
     fn has_glowing_text(&self) -> bool { PaperSignText::has_glowing_text(self) }
 }
@@ -48,8 +47,8 @@ impl PaperSignTextBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:58
     pub fn new_2(lines: &Vec<JRef<dyn crate::net::minecraft::network::chat::component::Component>>, filtered_lines: &Vec<JRef<dyn crate::net::minecraft::network::chat::component::Component>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:65
-    pub fn lines(&self, lines: &Vec<JRef<dyn ComponentLike>>) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:70
-    pub fn line(&self, index: i32, line: JRef<dyn ComponentLike>) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:82
+    pub fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:70
+    pub fn line(&self, index: i32, line: crate::text::Text) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:82
     pub fn color(&self, color: crate::org::bukkit::dye_color::DyeColor) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:88
     pub fn has_glowing_text(&self, has_glowing_text: bool) -> JRef<dyn SignTextBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:94
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::sign_text::SignText> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperSignText.java:100
@@ -57,8 +56,8 @@ impl PaperSignTextBuilderImpl {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SignTextBuilder for PaperSignTextBuilderImpl {
-    fn lines(&self, lines: &Vec<JRef<dyn ComponentLike>>) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::lines(self, lines) }
-    fn line(&self, index: i32, line: JRef<dyn ComponentLike>) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::line(self, index, line) }
+    fn lines(&self, lines: &Vec<crate::text::Text>) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::lines(self, lines) }
+    fn line(&self, index: i32, line: crate::text::Text) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::line(self, index, line) }
     fn color(&self, color: crate::org::bukkit::dye_color::DyeColor) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::color(self, color) }
     fn has_glowing_text(&self, has_glowing_text: bool) -> JRef<dyn SignTextBuilder> { PaperSignTextBuilderImpl::has_glowing_text(self, has_glowing_text) }
 }

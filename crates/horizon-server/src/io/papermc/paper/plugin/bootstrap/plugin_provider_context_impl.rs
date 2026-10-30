@@ -3,31 +3,30 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::bootstrap::plugin_provider_context::PluginProviderContext;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
-use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 
 // ---- class io.papermc.paper.plugin.bootstrap.PluginProviderContextImpl (paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:10)
 pub struct PluginProviderContextImpl {
     pub this: Weak<Self>,
     pub config: JRef<dyn PluginMeta>, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:12
     pub data_folder: std::path::PathBuf, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:13
-    pub logger: ComponentLogger, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:14
+    pub logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:14
     pub plugin_source: std::path::PathBuf, // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:15
 }
 impl PluginProviderContextImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(config: JRef<dyn PluginMeta>, data_folder: std::path::PathBuf, logger: ComponentLogger, plugin_source: std::path::PathBuf) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:17
+    pub fn new(config: JRef<dyn PluginMeta>, data_folder: std::path::PathBuf, logger: (), plugin_source: std::path::PathBuf) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:17
     pub fn get_configuration(&self) -> JRef<dyn PluginMeta> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:30
     pub fn get_data_directory(&self) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:35
-    pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:40
+    pub fn get_logger(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:40
     pub fn get_plugin_source(&self) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:45
-    pub fn create(config: JRef<dyn PluginMeta>, logger: ComponentLogger, plugin_source: std::path::PathBuf) -> JRef<PluginProviderContextImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:24
+    pub fn create(config: JRef<dyn PluginMeta>, logger: (), plugin_source: std::path::PathBuf) -> JRef<PluginProviderContextImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/bootstrap/PluginProviderContextImpl.java:24
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PluginProviderContext for PluginProviderContextImpl {
     fn get_configuration(&self) -> JRef<dyn PluginMeta> { PluginProviderContextImpl::get_configuration(self) }
     fn get_data_directory(&self) -> std::path::PathBuf { PluginProviderContextImpl::get_data_directory(self) }
-    fn get_logger(&self) -> ComponentLogger { PluginProviderContextImpl::get_logger(self) }
+    fn get_logger(&self) -> () { PluginProviderContextImpl::get_logger(self) }
     fn get_plugin_source(&self) -> std::path::PathBuf { PluginProviderContextImpl::get_plugin_source(self) }
 }
 crate::jobject!(PluginProviderContextImpl: dyn PluginProviderContext);

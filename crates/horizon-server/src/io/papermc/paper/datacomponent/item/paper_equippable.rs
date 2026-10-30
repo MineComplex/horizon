@@ -6,7 +6,6 @@ use crate::io::papermc::paper::datacomponent::buildable_data_component::Buildabl
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::equippable::EquippableBuilder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::net::kyori::adventure::key::Key;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::resources::identifier::Identifier;
@@ -24,32 +23,32 @@ impl PaperEquippable {
     pub fn new_1(impl_: crate::net::minecraft::world::item::equipment::equippable::Equippable) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:26
     pub fn get_handle(&self) -> crate::net::minecraft::world::item::equipment::equippable::Equippable { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:30
     pub fn slot(&self) -> crate::org::bukkit::inventory::equipment_slot::EquipmentSlot { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:35
-    pub fn equip_sound(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:40
-    pub fn asset_id(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:45
-    pub fn camera_overlay(&self) -> Option<JRef<dyn Key>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:52
+    pub fn equip_sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:40
+    pub fn asset_id(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:45
+    pub fn camera_overlay(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:52
     pub fn allowed_entities(&self) -> Option<JRef<dyn RegistryKeySet<crate::org::bukkit::entity::entity_type::EntityType>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:59
     pub fn dispensable(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:66
     pub fn swappable(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:71
     pub fn damage_on_hurt(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:76
     pub fn equip_on_interact(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:81
     pub fn can_be_sheared(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:86
-    pub fn shear_sound(&self) -> JRef<dyn Key> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:91
+    pub fn shear_sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:91
     pub fn to_builder(&self) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:96
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl crate::io::papermc::paper::datacomponent::item::equippable::Equippable for PaperEquippable {
     fn slot(&self) -> crate::org::bukkit::inventory::equipment_slot::EquipmentSlot { PaperEquippable::slot(self) }
-    fn equip_sound(&self) -> JRef<dyn Key> { PaperEquippable::equip_sound(self) }
-    fn asset_id(&self) -> Option<JRef<dyn Key>> { PaperEquippable::asset_id(self) }
-    fn camera_overlay(&self) -> Option<JRef<dyn Key>> { PaperEquippable::camera_overlay(self) }
+    fn equip_sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperEquippable::equip_sound(self) }
+    fn asset_id(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperEquippable::asset_id(self) }
+    fn camera_overlay(&self) -> Option<crate::net::minecraft::resources::identifier::Identifier> { PaperEquippable::camera_overlay(self) }
     fn allowed_entities(&self) -> Option<JRef<dyn RegistryKeySet<crate::org::bukkit::entity::entity_type::EntityType>>> { PaperEquippable::allowed_entities(self) }
     fn dispensable(&self) -> bool { PaperEquippable::dispensable(self) }
     fn swappable(&self) -> bool { PaperEquippable::swappable(self) }
     fn damage_on_hurt(&self) -> bool { PaperEquippable::damage_on_hurt(self) }
     fn equip_on_interact(&self) -> bool { PaperEquippable::equip_on_interact(self) }
     fn can_be_sheared(&self) -> bool { PaperEquippable::can_be_sheared(self) }
-    fn shear_sound(&self) -> JRef<dyn Key> { PaperEquippable::shear_sound(self) }
+    fn shear_sound(&self) -> crate::net::minecraft::resources::identifier::Identifier { PaperEquippable::shear_sound(self) }
 }
 impl BuildableDataComponent<JObjectRef, JObjectRef> for PaperEquippable {
     fn to_builder(&self) -> B { PaperEquippable::to_builder(self) }
@@ -76,31 +75,31 @@ pub struct PaperEquippableBuilderImpl {
 impl PaperEquippableBuilderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(equipment_slot: crate::org::bukkit::inventory::equipment_slot::EquipmentSlot) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:126
-    pub fn equip_sound(&self, sound: JRef<dyn Key>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:130
-    pub fn asset_id(&self, asset_id: Option<JRef<dyn Key>>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:136
-    pub fn camera_overlay(&self, camera_overlay: Option<JRef<dyn Key>>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:144
+    pub fn equip_sound(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:130
+    pub fn asset_id(&self, asset_id: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:136
+    pub fn camera_overlay(&self, camera_overlay: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:144
     pub fn allowed_entities(&self, allowed_entities: Option<JRef<dyn RegistryKeySet<crate::org::bukkit::entity::entity_type::EntityType>>>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:152
     pub fn dispensable(&self, dispensable: bool) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:159
     pub fn swappable(&self, swappable: bool) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:165
     pub fn damage_on_hurt(&self, damage_on_hurt: bool) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:171
     pub fn equip_on_interact(&self, equip_on_interact: bool) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:177
     pub fn can_be_sheared(&self, can_be_sheared: bool) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:183
-    pub fn shear_sound(&self, shear_sound: JRef<dyn Key>) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:189
+    pub fn shear_sound(&self, shear_sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn EquippableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:189
     pub fn build(&self) -> JRef<dyn crate::io::papermc::paper::datacomponent::item::equippable::Equippable> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperEquippable.java:195
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl EquippableBuilder for PaperEquippableBuilderImpl {
-    fn equip_sound(&self, sound: JRef<dyn Key>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::equip_sound(self, sound) }
-    fn asset_id(&self, asset_id: Option<JRef<dyn Key>>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::asset_id(self, asset_id) }
-    fn camera_overlay(&self, camera_overlay: Option<JRef<dyn Key>>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::camera_overlay(self, camera_overlay) }
+    fn equip_sound(&self, sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::equip_sound(self, sound) }
+    fn asset_id(&self, asset_id: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::asset_id(self, asset_id) }
+    fn camera_overlay(&self, camera_overlay: Option<crate::net::minecraft::resources::identifier::Identifier>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::camera_overlay(self, camera_overlay) }
     fn allowed_entities(&self, allowed_entities: Option<JRef<dyn RegistryKeySet<crate::org::bukkit::entity::entity_type::EntityType>>>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::allowed_entities(self, allowed_entities) }
     fn dispensable(&self, dispensable: bool) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::dispensable(self, dispensable) }
     fn swappable(&self, swappable: bool) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::swappable(self, swappable) }
     fn damage_on_hurt(&self, damage_on_hurt: bool) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::damage_on_hurt(self, damage_on_hurt) }
     fn equip_on_interact(&self, equip_on_interact: bool) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::equip_on_interact(self, equip_on_interact) }
     fn can_be_sheared(&self, can_be_sheared: bool) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::can_be_sheared(self, can_be_sheared) }
-    fn shear_sound(&self, shear_sound: JRef<dyn Key>) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::shear_sound(self, shear_sound) }
+    fn shear_sound(&self, shear_sound: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn EquippableBuilder> { PaperEquippableBuilderImpl::shear_sound(self, shear_sound) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperEquippableBuilderImpl {
     fn build(&self) -> C { PaperEquippableBuilderImpl::build(self) }

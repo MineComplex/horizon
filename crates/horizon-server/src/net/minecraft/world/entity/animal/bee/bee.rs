@@ -7,7 +7,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::io::papermc::paper::event::entity::entity_knockback_event::EntityKnockbackEventCause;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -213,7 +212,7 @@ pub struct Bee {
     pub go_to_hive_goal: Mut<JRef<BeeBeeGoToHiveGoal>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/bee/Bee.java:147
     pub go_to_known_flower_goal: Mut<JRef<BeeBeeGoToKnownFlowerGoal>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/bee/Bee.java:148
     pub under_water_ticks: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/bee/Bee.java:149
-    pub rolling_override: Mut<TriState>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/bee/Bee.java:150
+    pub rolling_override: Mut<Option<bool>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/bee/Bee.java:150
 }
 impl std::ops::Deref for Bee {
     type Target = Animal;

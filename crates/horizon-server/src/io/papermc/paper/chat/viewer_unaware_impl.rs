@@ -4,8 +4,6 @@ use crate::api_prelude::*;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRenderer;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRendererDefault;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRendererViewerUnaware;
-use crate::net::kyori::adventure::audience::Audience;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::entity::player::Player;
 use crate::prelude::*;
 
@@ -42,19 +40,19 @@ impl ViewerUnawareImpl {
     pub fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-        viewer: JRef<dyn Audience>,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+        viewer: (),
+    ) -> crate::text::Text {
         let _ = viewer;
         ChatRendererViewerUnaware::render(&*self.this(), source, source_display_name, message)
     } // paper-api/src/main/java/io/papermc/paper/chat/ViewerUnawareImpl.java:18
     pub fn render_3(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+    ) -> crate::text::Text {
         self.unaware.render(source, source_display_name, message)
     } // paper-api/src/main/java/io/papermc/paper/chat/ViewerUnawareImpl.java:23
 }
@@ -69,10 +67,10 @@ impl ChatRenderer for ViewerUnawareImpl {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-        viewer: JRef<dyn Audience>,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+        viewer: (),
+    ) -> crate::text::Text {
         ViewerUnawareImpl::render(self, source, source_display_name, message, viewer)
     }
 }
@@ -80,9 +78,9 @@ impl ChatRendererViewerUnaware for ViewerUnawareImpl {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+    ) -> crate::text::Text {
         ViewerUnawareImpl::render_3(self, source, source_display_name, message)
     }
 }
@@ -100,8 +98,8 @@ impl std::ops::Deref for ViewerUnawareImplDefault {
 }
 pub static DEFAULT_INSTANCE: LazyLock<JRef<ViewerUnawareImplDefault>> = LazyLock::new(|| {
     ViewerUnawareImplDefault::new(Arc::new(
-        |_source: JRef<dyn Player>, source_display_name: Component, message: Component| {
-            // PORT: adventure Component.translatable(String, ComponentLike...)
+        |_source: JRef<dyn Player>, source_display_name: crate::text::Text, message: crate::text::Text| {
+            // PORT: adventure crate::text::Text.translatable(String, ComponentLike...)
             Component::translatable_2("chat.type.text", vec![source_display_name, message])
         },
     ))
@@ -129,10 +127,10 @@ impl ChatRenderer for ViewerUnawareImplDefault {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-        viewer: JRef<dyn Audience>,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+        viewer: (),
+    ) -> crate::text::Text {
         ViewerUnawareImpl::render(self, source, source_display_name, message, viewer)
     }
 }
@@ -140,9 +138,9 @@ impl ChatRendererViewerUnaware for ViewerUnawareImplDefault {
     fn render(
         &self,
         source: JRef<dyn Player>,
-        source_display_name: Component,
-        message: Component,
-    ) -> Component {
+        source_display_name: crate::text::Text,
+        message: crate::text::Text,
+    ) -> crate::text::Text {
         ViewerUnawareImpl::render_3(self, source, source_display_name, message)
     }
 }

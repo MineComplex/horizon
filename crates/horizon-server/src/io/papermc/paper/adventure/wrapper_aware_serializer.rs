@@ -11,7 +11,7 @@ pub struct WrapperAwareSerializer {
 impl WrapperAwareSerializer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(java_ops: Arc<dyn Fn() -> JRef<dyn RegistryOpsTrait<JObjectRef>> + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/WrapperAwareSerializer.java:17
-    pub fn deserialize(&self, input: JRef<dyn crate::net::minecraft::network::chat::component::Component>) -> crate::net::kyori::adventure::text::Component { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/WrapperAwareSerializer.java:21
-    pub fn serialize(&self, component: crate::net::kyori::adventure::text::Component) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/WrapperAwareSerializer.java:34
+    pub fn deserialize(&self, input: JRef<dyn crate::net::minecraft::network::chat::component::Component>) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/WrapperAwareSerializer.java:21
+    pub fn serialize(&self, component: crate::text::Text) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/WrapperAwareSerializer.java:34
 }
 crate::jobject!(WrapperAwareSerializer);

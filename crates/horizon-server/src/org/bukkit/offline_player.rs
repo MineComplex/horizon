@@ -3,8 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::io::papermc::paper::persistence::persistent_data_view_holder::PersistentDataViewHolder;
-use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsBuilder;
-use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsSkinSource;
 use crate::org::bukkit::ban_entry::BanEntry;
 use crate::org::bukkit::ban_list::BanList;
 use crate::org::bukkit::ban_list::BanListType;
@@ -26,7 +24,6 @@ pub trait OfflinePlayer:
     + AnimalTamer
     + ConfigurationSerializable
     + PersistentDataViewHolder
-    + PlayerHeadObjectContentsSkinSource
 {
     fn is_online(&self) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:35
     fn is_connected(&self) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:46
@@ -179,7 +176,7 @@ pub trait OfflinePlayer:
     ) -> Result<i32, anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:513
     fn get_last_death_location(&self) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:562
     fn get_location(&self) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:571
-    fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) {
+    fn apply_skin_to_player_head_contents(&self, builder: ()) {
         builder.skin(self.get_player_profile());
     } // default, paper-api/src/main/java/org/bukkit/OfflinePlayer.java:590
     fn get_allow_flight(&self) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:602

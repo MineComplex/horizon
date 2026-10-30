@@ -3,14 +3,13 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::trim_material_registry_entry::TrimMaterialRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::translatable::Translatable;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.meta.trim.TrimMaterial (paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:21)
 pub trait TrimMaterial: Keyed + Translatable {
-    fn description(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:67
+    fn description(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:67
 }
 pub static AMETHYST: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("amethyst")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:35
 pub static COPPER: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("copper")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:37
@@ -30,7 +29,7 @@ pub fn get_trim_material(key: &str) -> JRef<dyn TrimMaterial> {
     crate::io::papermc::paper::registry::registry_access::registry_access()
         .get_registry_1(crate::io::papermc::paper::registry::registry_key::TRIM_MATERIAL.clone())
         .get_or_throw(crate::net::kyori::adventure::key::key::key_2(
-            crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+            (),
             key,
         ))
 } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:58

@@ -90,11 +90,6 @@ pub use crate::com::destroystokyo::paper::loottable::paper_lootable_entity_inven
 pub use crate::com::destroystokyo::paper::loottable::paper_lootable_inventory::PaperLootableInventory as _;
 pub use crate::com::destroystokyo::paper::loottable::paper_lootable_inventory_data::PaperLootableInventoryDataLootTableInterface as _;
 pub use crate::com::destroystokyo::paper::profile::shared_player_profile::SharedPlayerProfile as _;
-pub use crate::com::mojang::brigadier::builder::argument_builder::ArgumentBuilderTrait as _;
-pub use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait as _;
-pub use crate::com::mojang::brigadier::suggestion::suggestion::SuggestionTrait as _;
-pub use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait as _;
-pub use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait as _;
 pub use crate::com::mojang::math::axis::Axis as _;
 pub use crate::io::papermc::paper::adventure::adventure_codecs::AdventureCodecsNbtComponentDataSource as _;
 pub use crate::io::papermc::paper::adventure::chat_processor::ChatProcessorOutgoingChat as _;

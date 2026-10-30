@@ -16,7 +16,7 @@ pub static LAVA: LazyLock<JRef<dyn Fluid>> = LazyLock::new(|| get_fluid("lava"))
 pub static WATER: LazyLock<JRef<dyn Fluid>> = LazyLock::new(|| get_fluid("water")); // paper-api/src/main/java/org/bukkit/Fluid.java:25
 pub fn get_fluid(key: &str) -> JRef<dyn Fluid> {
     crate::org::bukkit::registry::FLUID.get_or_throw(crate::net::kyori::adventure::key::key::key_2(
-        crate::net::kyori::adventure::key::key::MINECRAFT_NAMESPACE,
+        (),
         key,
     ))
 } // paper-api/src/main/java/org/bukkit/Fluid.java:28

@@ -3,22 +3,21 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::scoreboard::numbers::fixed_format::FixedFormat;
 use crate::io::papermc::paper::scoreboard::numbers::number_format::NumberFormat;
-use crate::net::kyori::adventure::text::Component;
 use crate::api_prelude::*;
 
 // ---- record io.papermc.paper.scoreboard.numbers.FixedFormatImpl (paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:6)
 #[derive(Clone)]
 pub struct FixedFormatImpl {
-    pub component: Component,
+    pub component: crate::text::Text,
 }
 impl FixedFormatImpl {
-    pub fn new_1(component: Component) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:6
-    pub fn as_component(&self) -> Component { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:9
+    pub fn new_1(component: crate::text::Text) -> Self { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:6
+    pub fn as_component(&self) -> crate::text::Text { todo!() } // paper-api/src/main/java/io/papermc/paper/scoreboard/numbers/FixedFormatImpl.java:9
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl FixedFormat for FixedFormatImpl {
-    fn component(&self) -> Component { self.component.clone() }
+    fn component(&self) -> crate::text::Text { self.component.clone() }
 }
 impl NumberFormat for FixedFormatImpl {
 }

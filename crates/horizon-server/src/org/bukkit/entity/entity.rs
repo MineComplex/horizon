@@ -8,12 +8,6 @@ use crate::io::papermc::paper::entity::teleport_flag::TeleportFlag;
 use crate::io::papermc::paper::math::angle::Angle;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::threadedregions::scheduler::entity_scheduler::EntityScheduler;
-use crate::net::kyori::adventure::sound::SoundEmitter;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::event::HoverEvent;
-use crate::net::kyori::adventure::text::event::HoverEventShowEntity;
-use crate::net::kyori::adventure::text::event::HoverEventSource;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::block::block_face::BlockFace;
 use crate::org::bukkit::block::piston_move_reaction::PistonMoveReaction;
 use crate::org::bukkit::chunk::Chunk;
@@ -49,9 +43,7 @@ pub trait Entity:
     + CommandSender
     + Nameable
     + PersistentDataHolder
-    + HoverEventSource<HoverEventShowEntity>
-    + SoundEmitter
-    + crate::net::kyori::adventure::sound::Sound::SourceProvider
+    + crate::rt::Unported::SourceProvider
     + DataComponentView
 {
     fn get_location(&self) -> JRef<Location>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:55
@@ -133,9 +125,9 @@ pub trait Entity:
     fn get_max_fire_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Entity.java:364
     fn set_fire_ticks(&self, ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Entity.java:372
     fn set_visual_fire(&self, fire: bool); // paper-api/src/main/java/org/bukkit/entity/Entity.java:381
-    fn set_visual_fire_1(&self, fire: TriState); // paper-api/src/main/java/org/bukkit/entity/Entity.java:394
+    fn set_visual_fire_1(&self, fire: Option<bool>); // paper-api/src/main/java/org/bukkit/entity/Entity.java:394
     fn is_visual_fire(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Entity.java:403
-    fn get_visual_fire(&self) -> TriState; // paper-api/src/main/java/org/bukkit/entity/Entity.java:411
+    fn get_visual_fire(&self) -> Option<bool>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:411
     fn get_freeze_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Entity.java:420
     fn get_max_freeze_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Entity.java:428
     fn set_freeze_ticks(&self, ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Entity.java:436
@@ -225,12 +217,12 @@ pub trait Entity:
     fn create_snapshot(&self) -> Option<JRef<dyn EntitySnapshot>>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1133
     fn copy(&self) -> JRef<dyn Entity>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1144
     fn copy_1(&self, to: JRef<Location>) -> JRef<dyn Entity>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1154
-    fn team_display_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1172
+    fn team_display_name(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1172
     fn as_hover_event(
         &self,
-        op: Arc<dyn Fn(HoverEventShowEntity) -> HoverEventShowEntity + Send + Sync>,
-    ) -> HoverEvent<HoverEventShowEntity> {
-        // PORT: Adventure's HoverEvent.showEntity(ShowEntity) / ShowEntity.showEntity(Key, UUID, Component); NamespacedKey as Key
+        op: Arc<dyn Fn(()) -> () + Send + Sync>,
+    ) -> () {
+        // PORT: Adventure's ().showEntity(ShowEntity) / ShowEntity.showEntity(Key, UUID, crate::text::Text); NamespacedKey as Key
         HoverEvent::show_entity(op.apply(HoverEventShowEntity::show_entity_3(
             self.get_type().get_key(),
             self.get_unique_id(),

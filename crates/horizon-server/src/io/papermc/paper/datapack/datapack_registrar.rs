@@ -5,7 +5,6 @@ use crate::io::papermc::paper::datapack::datapack::DatapackPosition;
 use crate::io::papermc::paper::datapack::discovered_datapack::DiscoveredDatapack;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar::Registrar;
-use crate::net::kyori::adventure::text::Component;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.datapack.DatapackRegistrar (paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:47)
@@ -65,7 +64,7 @@ pub trait DatapackRegistrar: Registrar {
 }
 // ---- interface io.papermc.paper.datapack.DatapackRegistrar.Configurer (paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:170)
 pub trait DatapackRegistrarConfigurer: JObject {
-    fn title(&self, title: Component) -> JRef<dyn DatapackRegistrarConfigurer>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:180
+    fn title(&self, title: crate::text::Text) -> JRef<dyn DatapackRegistrarConfigurer>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:180
     fn auto_enable_on_server_start(
         &self,
         auto_enable_on_server_start: bool,

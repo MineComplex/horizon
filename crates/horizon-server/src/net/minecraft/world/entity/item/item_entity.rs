@@ -8,7 +8,6 @@ use crate::net::caffeinemc::mods::lithium::common::util::change_tracking::change
 use crate::net::caffeinemc::mods::lithium::common::util::change_tracking::change_subscriber::ChangeSubscriber;
 use crate::net::caffeinemc::mods::lithium::common::util::change_tracking::change_subscriber::ChangeSubscriberCountChangeSubscriber;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -117,7 +116,7 @@ pub struct ItemEntity {
     pub bob_offs: f32, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:55
     pub can_mob_pickup: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:56
     pub despawn_rate: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:57
-    pub friction_state: Mut<TriState>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:58
+    pub friction_state: Mut<Option<bool>>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:58
     pub immune_to_cactus: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:60
     pub immune_to_explosion: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:61
     pub immune_to_fire: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/entity/item/ItemEntity.java:62

@@ -21,7 +21,7 @@ impl CraftMerchantCustom {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:31
     pub fn new_1(title: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:20
-    pub fn new_1_(title: crate::net::kyori::adventure::text::Component) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:26
+    pub fn new_1_(title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:26
     pub fn get_merchant(&self) -> JRef<CraftMerchantCustomMinecraftMerchant> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:37
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -51,7 +51,7 @@ impl CraftMerchantCustomMinecraftMerchant {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:60
     pub fn new_1(title: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:49
-    pub fn new_1_(title: crate::net::kyori::adventure::text::Component) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:55
+    pub fn new_1_(title: crate::text::Text) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:55
     pub fn get_craft_merchant(&self) -> JRef<dyn crate::org::bukkit::inventory::merchant::Merchant> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:65
     pub fn set_trading_player(&self, customer: JRef<dyn PlayerTrait>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:70
     pub fn get_trading_player(&self) -> JRef<dyn PlayerTrait> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/inventory/CraftMerchantCustom.java:75

@@ -23,30 +23,25 @@ use crate::io::papermc::paper::registry::data::dialog::type_::multi_action_type:
 use crate::io::papermc::paper::registry::data::dialog::type_::notice_type::NoticeType;
 use crate::io::papermc::paper::registry::data::dialog::type_::server_links_type::ServerLinksType;
 use crate::io::papermc::paper::registry::set::registry_set::RegistrySet;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::nbt::api::BinaryTagHolder;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::event::ClickCallbackOptions;
-use crate::net::kyori::adventure::text::event::ClickEvent;
 use crate::org::bukkit::inventory::item_stack::ItemStack;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.dialog.DialogInstancesProvider (paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:33)
 pub trait DialogInstancesProvider: JObject {
-    fn dialog_base_builder(&self, title: Component) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:44
-    fn action_button_builder(&self, label: Component) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:46
-    fn register(&self, callback: JRef<dyn DialogActionCallback>, options: ClickCallbackOptions) -> JRef<dyn DialogActionCustomClickAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:49
-    fn static_action(&self, value: ClickEvent) -> JRef<dyn DialogActionStaticAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:51
+    fn dialog_base_builder(&self, title: crate::text::Text) -> JRef<dyn DialogBaseBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:44
+    fn action_button_builder(&self, label: crate::text::Text) -> JRef<dyn ActionButtonBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:46
+    fn register(&self, callback: JRef<dyn DialogActionCallback>, options: ()) -> JRef<dyn DialogActionCustomClickAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:49
+    fn static_action(&self, value: crate::text::ClickEvent) -> JRef<dyn DialogActionStaticAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:51
     fn command_template(&self, template: &str) -> JRef<dyn DialogActionCommandTemplateAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:53
-    fn custom_click(&self, id: JRef<dyn Key>, additions: Option<BinaryTagHolder>) -> JRef<dyn DialogActionCustomClickAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:55
+    fn custom_click(&self, id: crate::net::minecraft::resources::identifier::Identifier, additions: Option<String>) -> JRef<dyn DialogActionCustomClickAction>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:55
     fn item_dialog_body_builder(&self, item_stack: JRef<ItemStack>) -> JRef<dyn ItemDialogBodyBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:58
-    fn plain_message_dialog_body(&self, component: Component) -> JRef<dyn PlainMessageDialogBody>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:60
-    fn plain_message_dialog_body_2(&self, component: Component, width: i32) -> JRef<dyn PlainMessageDialogBody>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:62
-    fn boolean_builder(&self, key: &str, label: Component) -> JRef<dyn BooleanDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:65
-    fn number_range_builder(&self, key: &str, label: Component, start: f32, end: f32) -> JRef<dyn NumberRangeDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:67
-    fn single_option_builder(&self, key: &str, label: Component, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>) -> JRef<dyn SingleOptionDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:69
-    fn single_option_entry(&self, id: &str, display: Option<Component>, initial: bool) -> JRef<dyn SingleOptionDialogInputOptionEntry>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:71
-    fn text_builder(&self, key: &str, label: Component) -> JRef<dyn TextDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:73
+    fn plain_message_dialog_body(&self, component: crate::text::Text) -> JRef<dyn PlainMessageDialogBody>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:60
+    fn plain_message_dialog_body_2(&self, component: crate::text::Text, width: i32) -> JRef<dyn PlainMessageDialogBody>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:62
+    fn boolean_builder(&self, key: &str, label: crate::text::Text) -> JRef<dyn BooleanDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:65
+    fn number_range_builder(&self, key: &str, label: crate::text::Text, start: f32, end: f32) -> JRef<dyn NumberRangeDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:67
+    fn single_option_builder(&self, key: &str, label: crate::text::Text, entries: &Vec<JRef<dyn SingleOptionDialogInputOptionEntry>>) -> JRef<dyn SingleOptionDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:69
+    fn single_option_entry(&self, id: &str, display: Option<crate::text::Text>, initial: bool) -> JRef<dyn SingleOptionDialogInputOptionEntry>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:71
+    fn text_builder(&self, key: &str, label: crate::text::Text) -> JRef<dyn TextDialogInputBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:73
     fn multiline_options(&self, max_lines: Option<i32>, height: Option<i32>) -> JRef<dyn TextDialogInputMultilineOptions>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:75
     fn confirmation(&self, yes_button: JRef<dyn ActionButton>, no_button: JRef<dyn ActionButton>) -> JRef<dyn ConfirmationType>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:78
     fn dialog_list(&self, dialogs: JRef<dyn RegistrySet<JRef<dyn Dialog>>>) -> JRef<dyn DialogListTypeBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/dialog/DialogInstancesProvider.java:80

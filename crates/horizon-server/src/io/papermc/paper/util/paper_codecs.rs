@@ -5,14 +5,13 @@ use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::Decoder;
 use crate::com::mojang::serialization::MapCodec;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::server::packs::metadata::metadata_section_type::MetadataSectionType;
 
 // ---- class io.papermc.paper.util.PaperCodecs (paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:27)
 pub struct PaperCodecs {
     pub this: Weak<Self>,
 }
-pub static TRI_STATE_CODEC: LazyLock<JRef<dyn Codec<TriState>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:30
+pub static TRI_STATE_CODEC: LazyLock<JRef<dyn Codec<Option<bool>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:30
 impl PaperCodecs {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:93

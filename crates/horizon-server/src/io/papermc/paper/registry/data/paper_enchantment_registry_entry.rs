@@ -44,7 +44,7 @@ impl PaperEnchantmentRegistryEntry {
     pub fn this(&self) -> JRef<dyn PaperEnchantmentRegistryEntryTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PaperEnchantmentRegistryEntryTrait + 'static>(this: &Weak<S>, conversions: JRef<Conversions>, internal: Option<Enchantment>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:57
     pub fn new(conversions: JRef<Conversions>, internal: Option<Enchantment>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, conversions, internal)) }
-    pub fn description(&self) -> crate::net::kyori::adventure::text::Component { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:89
+    pub fn description(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:89
     pub fn supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:94
     pub fn primary_items(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:99
     pub fn weight(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:104
@@ -61,7 +61,7 @@ impl PaperEnchantmentRegistryEntryTrait for PaperEnchantmentRegistryEntry {
     fn as_paper_enchantment_registry_entry(&self) -> &PaperEnchantmentRegistryEntry { self }
 }
 impl EnchantmentRegistryEntry for PaperEnchantmentRegistryEntry {
-    fn description(&self) -> crate::net::kyori::adventure::text::Component { PaperEnchantmentRegistryEntry::description(self) }
+    fn description(&self) -> crate::text::Text { PaperEnchantmentRegistryEntry::description(self) }
     fn supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>> { PaperEnchantmentRegistryEntry::supported_items(self) }
     fn primary_items(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>> { PaperEnchantmentRegistryEntry::primary_items(self) }
     fn weight(&self) -> i32 { PaperEnchantmentRegistryEntry::weight(self) }
@@ -85,7 +85,7 @@ impl std::ops::Deref for PaperEnchantmentRegistryEntryPaperBuilder {
 impl PaperEnchantmentRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<Enchantment>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:144
-    pub fn description_1(&self, description: crate::net::kyori::adventure::text::Component) -> JRef<dyn EnchantmentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:148
+    pub fn description_1(&self, description: crate::text::Text) -> JRef<dyn EnchantmentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:148
     pub fn supported_items_1(&self, supported_items: JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:154
     pub fn primary_items_1(&self, primary_items: Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:160
     pub fn weight_1(&self, weight: i32) -> JRef<dyn EnchantmentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperEnchantmentRegistryEntry.java:166
@@ -103,7 +103,7 @@ impl PaperEnchantmentRegistryEntryTrait for PaperEnchantmentRegistryEntryPaperBu
     fn as_paper_enchantment_registry_entry(&self) -> &PaperEnchantmentRegistryEntry { self }
 }
 impl EnchantmentRegistryEntryBuilder for PaperEnchantmentRegistryEntryPaperBuilder {
-    fn description_1(&self, description: crate::net::kyori::adventure::text::Component) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::description_1(self, description) }
+    fn description_1(&self, description: crate::text::Text) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::description_1(self, description) }
     fn supported_items_1(&self, supported_items: JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::supported_items_1(self, supported_items) }
     fn primary_items_1(&self, primary_items: Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::primary_items_1(self, primary_items) }
     fn weight_1(&self, weight: i32) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::weight_1(self, weight) }
@@ -115,7 +115,7 @@ impl EnchantmentRegistryEntryBuilder for PaperEnchantmentRegistryEntryPaperBuild
     fn exclusive_with_1(&self, exclusive_with: JRef<dyn RegistryKeySet<JRef<dyn EnchantmentTrait>>>) -> JRef<dyn EnchantmentRegistryEntryBuilder> { PaperEnchantmentRegistryEntryPaperBuilder::exclusive_with_1(self, exclusive_with) }
 }
 impl EnchantmentRegistryEntry for PaperEnchantmentRegistryEntryPaperBuilder {
-    fn description(&self) -> crate::net::kyori::adventure::text::Component { PaperEnchantmentRegistryEntry::description(self) }
+    fn description(&self) -> crate::text::Text { PaperEnchantmentRegistryEntry::description(self) }
     fn supported_items(&self) -> JRef<dyn RegistryKeySet<JRef<dyn ItemType>>> { PaperEnchantmentRegistryEntry::supported_items(self) }
     fn primary_items(&self) -> Option<JRef<dyn RegistryKeySet<JRef<dyn ItemType>>>> { PaperEnchantmentRegistryEntry::primary_items(self) }
     fn weight(&self) -> i32 { PaperEnchantmentRegistryEntry::weight(self) }

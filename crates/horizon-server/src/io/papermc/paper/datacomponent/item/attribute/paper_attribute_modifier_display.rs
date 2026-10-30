@@ -5,7 +5,6 @@ use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifie
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayDefault;
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayHidden;
 use crate::io::papermc::paper::datacomponent::item::attribute::attribute_modifier_display::AttributeModifierDisplayOverrideText;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::world::item::component::item_attribute_modifiers::ItemAttributeModifiersDisplay;
 use crate::net::minecraft::world::item::component::item_attribute_modifiers::ItemAttributeModifiersDisplayOverrideText;
 
@@ -66,12 +65,12 @@ pub struct PaperAttributeModifierDisplayOverrideText {
 impl PaperAttributeModifierDisplayOverrideText {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:42
     pub fn new_1(internal: ItemAttributeModifiersDisplayOverrideText) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:42
-    pub fn text(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:46
+    pub fn text(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/attribute/PaperAttributeModifierDisplay.java:46
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl AttributeModifierDisplayOverrideText for PaperAttributeModifierDisplayOverrideText {
-    fn text(&self) -> Component { PaperAttributeModifierDisplayOverrideText::text(self) }
+    fn text(&self) -> crate::text::Text { PaperAttributeModifierDisplayOverrideText::text(self) }
 }
 impl AttributeModifierDisplay for PaperAttributeModifierDisplayOverrideText {
 }

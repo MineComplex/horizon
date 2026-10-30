@@ -5,7 +5,6 @@
 //! Rust subtrait cannot do: they are free functions of this module, and each implementor's glue forwards
 //! the overridden trait methods to them (see `BufferedCommandSender`).
 use crate::prelude::*;
-use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::bukkit::Bukkit;
 use crate::org::bukkit::command::command_sender::CommandSender;
 use crate::org::bukkit::command::command_sender::CommandSenderSpigotTrait;
@@ -42,7 +41,7 @@ pub fn get_server<S: MessageCommandSender + ?Sized>(_this: &S) -> JRef<dyn Serve
     Bukkit::get_server()
 }
 // MessageCommandSender.java:50
-pub fn name<S: MessageCommandSender + ?Sized>(_this: &S) -> Component {
+pub fn name<S: MessageCommandSender + ?Sized>(_this: &S) -> crate::text::Text {
     panic!("java.lang.UnsupportedOperationException");
 }
 // MessageCommandSender.java:57

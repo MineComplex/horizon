@@ -3,23 +3,21 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::dialog::action::dialog_action::DialogAction;
 use crate::io::papermc::paper::registry::data::dialog::action::dialog_action::DialogActionCustomClickAction;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::nbt::api::BinaryTagHolder;
 
 // ---- record io.papermc.paper.registry.data.dialog.action.CustomClickActionImpl (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/CustomClickActionImpl.java:12)
 #[derive(Clone)]
 pub struct CustomClickActionImpl {
-    pub id: JRef<dyn Key>,
-    pub additions: Option<BinaryTagHolder>,
+    pub id: crate::net::minecraft::resources::identifier::Identifier,
+    pub additions: Option<String>,
 }
 impl CustomClickActionImpl {
-    pub fn new(id: JRef<dyn Key>, additions: Option<BinaryTagHolder>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/CustomClickActionImpl.java:12
+    pub fn new(id: crate::net::minecraft::resources::identifier::Identifier, additions: Option<String>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/action/CustomClickActionImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DialogActionCustomClickAction for CustomClickActionImpl {
-    fn id(&self) -> JRef<dyn Key> { todo!("abstract CustomClickAction.id") }
-    fn additions(&self) -> Option<BinaryTagHolder> { todo!("abstract CustomClickAction.additions") }
+    fn id(&self) -> crate::net::minecraft::resources::identifier::Identifier { todo!("abstract CustomClickAction.id") }
+    fn additions(&self) -> Option<String> { todo!("abstract CustomClickAction.additions") }
 }
 impl DialogAction for CustomClickActionImpl {
 }

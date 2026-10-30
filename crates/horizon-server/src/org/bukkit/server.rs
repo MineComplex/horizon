@@ -8,10 +8,6 @@ use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::threadedregions::scheduler::async_scheduler::AsyncScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::global_region_scheduler::GlobalRegionScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::region_scheduler::RegionScheduler;
-use crate::net::kyori::adventure::audience::ForwardingAudience;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::text::Component;
-use crate::net::kyori::adventure::text::minimessage::tag::resolver::TagResolver;
 use crate::org::bukkit::WarningWarningState;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::block::block::Block;
@@ -73,7 +69,7 @@ use crate::org::bukkit::world_creator::WorldCreator;
 use crate::prelude::*;
 
 // ---- interface org.bukkit.Server (paper-api/src/main/java/org/bukkit/Server.java:74)
-pub trait Server: PluginMessageRecipient + ForwardingAudience {
+pub trait Server: PluginMessageRecipient {
     fn get_plugins_folder(&self) -> std::path::PathBuf; // paper-api/src/main/java/org/bukkit/Server.java:85
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:109
     fn get_version(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:117
@@ -117,30 +113,30 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn broadcast_1(&self, components: &Vec<()>) {
         self.spigot().broadcast_1(components);
     } // default, paper-api/src/main/java/org/bukkit/Server.java:419
-    fn broadcast_1_2(&self, message: Component) -> i32 {
+    fn broadcast_1_2(&self, message: crate::text::Text) -> i32 {
         self.broadcast_2_2(message, BROADCAST_CHANNEL_USERS)
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1400
     fn broadcast_2(&self, message: &str, permission: &str) -> i32 {
         // PORT: Adventure's LegacyComponentSerializer.legacySection() (Rust name per the Adventure port)
         self.broadcast_2_2(crate::net::kyori::adventure::text::serializer::legacy::legacy_component_serializer::legacy_section().deserialize(message), permission)
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1385
-    fn broadcast_2_2(&self, message: Component, permission: &str) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1413
+    fn broadcast_2_2(&self, message: crate::text::Text, permission: &str) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1413
     fn send_rich_message(&self, message: &str) {
-        // PORT: Adventure's MiniMessage.miniMessage().deserialize(String, Pointered) and Audience.sendMessage(Component)
+        // PORT: Adventure's MiniMessage.miniMessage().deserialize(String, Pointered) and Audience.sendMessage(crate::text::Text)
         self.send_message(
             crate::net::kyori::adventure::text::minimessage::mini_message::mini_message()
                 .deserialize_2(message, self),
         );
     } // default, paper-api/src/main/java/org/bukkit/Server.java:433
-    fn send_rich_message_2(&self, message: &str, resolvers: &Vec<TagResolver>) {
-        // PORT: Adventure's MiniMessage.deserialize(String, Pointered, TagResolver...) and Audience.sendMessage(Component)
+    fn send_rich_message_2(&self, message: &str, resolvers: &Vec<()>) {
+        // PORT: Adventure's MiniMessage.deserialize(String, Pointered, ()...) and Audience.sendMessage(crate::text::Text)
         self.send_message(
             crate::net::kyori::adventure::text::minimessage::mini_message::mini_message()
                 .deserialize_3(message, self, resolvers),
         );
     } // default, paper-api/src/main/java/org/bukkit/Server.java:446
     fn send_plain_message(&self, message: &str) {
-        // PORT: Adventure's Audience.sendMessage(Component)
+        // PORT: Adventure's Audience.sendMessage(crate::text::Text)
         self.send_message(Component::text(message));
     } // default, paper-api/src/main/java/org/bukkit/Server.java:455
     fn get_update_folder(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:467
@@ -183,9 +179,9 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn get_world(&self, name: &str) -> Option<JRef<dyn World>>; // paper-api/src/main/java/org/bukkit/Server.java:818
     fn get_world_1(&self, uid: Uuid) -> Option<JRef<dyn World>>; // paper-api/src/main/java/org/bukkit/Server.java:828
     fn get_world_1_2(&self, world_key: JRef<NamespacedKey>) -> Option<JRef<dyn World>> {
-        self.get_world_1_3(world_key) // (net.kyori.adventure.key.Key) worldKey
+        self.get_world_1_3(world_key) // (net.kyori.adventure.key.crate::net::minecraft::resources::identifier::Identifier) worldKey
     } // default, paper-api/src/main/java/org/bukkit/Server.java:838
-    fn get_world_1_3(&self, world_key: JRef<dyn Key>) -> Option<JRef<dyn World>>; // paper-api/src/main/java/org/bukkit/Server.java:849
+    fn get_world_1_3(&self, world_key: crate::net::minecraft::resources::identifier::Identifier) -> Option<JRef<dyn World>>; // paper-api/src/main/java/org/bukkit/Server.java:849
     fn create_world_border(&self) -> JRef<dyn WorldBorder>; // paper-api/src/main/java/org/bukkit/Server.java:864
     fn get_map(&self, id: i32) -> Option<JRef<dyn MapView>>; // paper-api/src/main/java/org/bukkit/Server.java:873
     fn create_map(&self, world: JRef<dyn World>) -> JRef<dyn MapView>; // paper-api/src/main/java/org/bukkit/Server.java:882
@@ -358,7 +354,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         type_: InventoryType,
-        title: Component,
+        title: crate::text::Text,
     ) -> JRef<dyn Inventory>; // paper-api/src/main/java/org/bukkit/Server.java:1726
     fn create_inventory_3_2(
         &self,
@@ -370,7 +366,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
-        title: Component,
+        title: crate::text::Text,
     ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1783
     fn create_inventory_3_4(
         &self,
@@ -379,7 +375,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         title: &str,
     ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1799
     fn create_merchant(&self) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1843
-    fn create_merchant_1(&self, title: Component) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1813
+    fn create_merchant_1(&self, title: crate::text::Text) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1813
     fn create_merchant_1_2(&self, title: Option<String>) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1825
     fn get_max_chained_neighbor_updates(&self) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1836
     fn get_monster_spawn_limit(&self) -> i32 {
@@ -402,7 +398,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     } // default, paper-api/src/main/java/org/bukkit/Server.java:1912
     fn get_spawn_limit(&self, spawn_category: SpawnCategory) -> i32; // paper-api/src/main/java/org/bukkit/Server.java:1926
     fn is_primary_thread(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:1940
-    fn shutdown_message(&self) -> Component; // paper-api/src/main/java/org/bukkit/Server.java:1962
+    fn shutdown_message(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Server.java:1962
     fn get_server_links(&self) -> JRef<dyn ServerLinks>; // paper-api/src/main/java/org/bukkit/Server.java:1989
     fn get_shutdown_message(&self) -> Option<String>; // paper-api/src/main/java/org/bukkit/Server.java:1998
     fn get_warning_state(&self) -> WarningWarningState; // paper-api/src/main/java/org/bukkit/Server.java:2007
@@ -485,7 +481,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn reload_command_aliases(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:2609
     fn suggest_player_names_when_null_tab_completions(&self) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:2618
     fn get_permission_message(&self) -> String; // paper-api/src/main/java/org/bukkit/Server.java:2626
-    fn permission_message(&self) -> Component; // paper-api/src/main/java/org/bukkit/Server.java:2635
+    fn permission_message(&self) -> crate::text::Text; // paper-api/src/main/java/org/bukkit/Server.java:2635
     fn create_profile(
         &self,
         uuid: Uuid,

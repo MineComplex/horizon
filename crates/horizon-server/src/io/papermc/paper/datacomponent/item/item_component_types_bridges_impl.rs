@@ -59,8 +59,6 @@ use crate::io::papermc::paper::datacomponent::item::writable_book_content::Writa
 use crate::io::papermc::paper::datacomponent::item::written_book_content::WrittenBookContentBuilder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
 use crate::io::papermc::paper::text::filtered::Filtered;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::util::TriState;
 use crate::org::bukkit::block::block_type::BlockType;
 use crate::org::bukkit::damage::damage_type::DamageType;
 use crate::org::bukkit::entity::entity_type::EntityType;
@@ -90,11 +88,11 @@ impl ItemComponentTypesBridgesImpl {
     pub fn suspicious_stew_effects(&self) -> JRef<dyn SuspiciousStewEffectsBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:76
     pub fn map_decorations(&self) -> JRef<dyn MapDecorationsBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:81
     pub fn map_decoration_entry(&self, type_: JRef<dyn MapCursorType>, x: f64, z: f64, rotation: f32) -> JRef<dyn MapDecorationsDecorationEntry> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:86
-    pub fn seeded_container_loot(&self, loot_table_key: JRef<dyn Key>) -> JRef<dyn SeededContainerLootBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:91
+    pub fn seeded_container_loot(&self, loot_table_key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SeededContainerLootBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:91
     pub fn item_container_contents(&self) -> JRef<dyn ItemContainerContentsBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:96
     pub fn jukebox_playable(&self, song: JRef<dyn JukeboxSong>) -> JRef<dyn JukeboxPlayableBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:101
     pub fn tool(&self) -> JRef<dyn ToolBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:106
-    pub fn tool_rule(&self, blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: TriState) -> JRef<dyn ToolRule> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:111
+    pub fn tool_rule(&self, blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: Option<bool>) -> JRef<dyn ToolRule> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:111
     pub fn item_adventure_predicate(&self) -> JRef<dyn ItemAdventurePredicateBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:116
     pub fn written_book_content(&self, title: JRef<dyn Filtered<String>>, author: &str) -> JRef<dyn WrittenBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:121
     pub fn writeable_book_content(&self) -> JRef<dyn WritableBookContentBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/ItemComponentTypesBridgesImpl.java:126
@@ -147,7 +145,7 @@ impl ItemComponentTypesBridge for ItemComponentTypesBridgesImpl {
     fn suspicious_stew_effects(&self) -> JRef<dyn SuspiciousStewEffectsBuilder> { ItemComponentTypesBridgesImpl::suspicious_stew_effects(self) }
     fn map_decorations(&self) -> JRef<dyn MapDecorationsBuilder> { ItemComponentTypesBridgesImpl::map_decorations(self) }
     fn map_decoration_entry(&self, type_: JRef<dyn MapCursorType>, x: f64, z: f64, rotation: f32) -> JRef<dyn MapDecorationsDecorationEntry> { ItemComponentTypesBridgesImpl::map_decoration_entry(self, type_, x, z, rotation) }
-    fn seeded_container_loot(&self, loot_table_key: JRef<dyn Key>) -> JRef<dyn SeededContainerLootBuilder> { ItemComponentTypesBridgesImpl::seeded_container_loot(self, loot_table_key) }
+    fn seeded_container_loot(&self, loot_table_key: crate::net::minecraft::resources::identifier::Identifier) -> JRef<dyn SeededContainerLootBuilder> { ItemComponentTypesBridgesImpl::seeded_container_loot(self, loot_table_key) }
     fn written_book_content(&self, title: JRef<dyn Filtered<String>>, author: &str) -> JRef<dyn WrittenBookContentBuilder> { ItemComponentTypesBridgesImpl::written_book_content(self, title, author) }
     fn writeable_book_content(&self) -> JRef<dyn WritableBookContentBuilder> { ItemComponentTypesBridgesImpl::writeable_book_content(self) }
     fn item_armor_trim(&self, armor_trim: JRef<ArmorTrim>) -> JRef<dyn ItemArmorTrimBuilder> { ItemComponentTypesBridgesImpl::item_armor_trim(self, armor_trim) }
@@ -162,7 +160,7 @@ impl ItemComponentTypesBridge for ItemComponentTypesBridgesImpl {
     fn item_container_contents(&self) -> JRef<dyn ItemContainerContentsBuilder> { ItemComponentTypesBridgesImpl::item_container_contents(self) }
     fn jukebox_playable(&self, song: JRef<dyn JukeboxSong>) -> JRef<dyn JukeboxPlayableBuilder> { ItemComponentTypesBridgesImpl::jukebox_playable(self, song) }
     fn tool(&self) -> JRef<dyn ToolBuilder> { ItemComponentTypesBridgesImpl::tool(self) }
-    fn tool_rule(&self, blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: TriState) -> JRef<dyn ToolRule> { ItemComponentTypesBridgesImpl::tool_rule(self, blocks, speed, correct_for_drops) }
+    fn tool_rule(&self, blocks: JRef<dyn RegistryKeySet<JRef<dyn BlockType>>>, speed: Option<f32>, correct_for_drops: Option<bool>) -> JRef<dyn ToolRule> { ItemComponentTypesBridgesImpl::tool_rule(self, blocks, speed, correct_for_drops) }
     fn item_adventure_predicate(&self) -> JRef<dyn ItemAdventurePredicateBuilder> { ItemComponentTypesBridgesImpl::item_adventure_predicate(self) }
     fn custom_model_data(&self) -> JRef<dyn CustomModelDataBuilder> { ItemComponentTypesBridgesImpl::custom_model_data(self) }
     fn map_id(&self, id: i32) -> JRef<dyn MapId> { ItemComponentTypesBridgesImpl::map_id(self, id) }

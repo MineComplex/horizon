@@ -5,8 +5,6 @@ use crate::io::papermc::paper::connection::player_common_connection::PlayerCommo
 use crate::io::papermc::paper::dialog::dialog_response_view::DialogResponseView;
 use crate::io::papermc::paper::event::player::player_custom_click_event::PlayerCustomClickEvent;
 use crate::io::papermc::paper::event::player::player_custom_click_event::PlayerCustomClickEventTrait;
-use crate::net::kyori::adventure::key::Key;
-use crate::net::kyori::adventure::nbt::api::BinaryTagHolder;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::org::bukkit::event::event::Event;
 use crate::org::bukkit::event::event::EventTrait;
@@ -17,7 +15,7 @@ pub struct PaperPlayerCustomClickEvent {
     pub base: PlayerCustomClickEvent,
     pub this: Weak<Self>,
     pub payload: Option<JRef<dyn Tag>>, // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:16
-    pub api_payload: Mut<Option<BinaryTagHolder>>, // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:17
+    pub api_payload: Mut<Option<String>>, // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:17
     pub raw_response: Mut<Option<JRef<dyn DialogResponseView>>>, // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:19
 }
 impl std::ops::Deref for PaperPlayerCustomClickEvent {
@@ -26,15 +24,15 @@ impl std::ops::Deref for PaperPlayerCustomClickEvent {
 }
 impl PaperPlayerCustomClickEvent {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: JRef<dyn Key>, common_connection: JRef<dyn PlayerCommonConnection>, payload: Option<JRef<dyn Tag>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:21
-    pub fn get_tag(&self) -> Option<BinaryTagHolder> { todo!() } // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:26
+    pub fn new(key: crate::net::minecraft::resources::identifier::Identifier, common_connection: JRef<dyn PlayerCommonConnection>, payload: Option<JRef<dyn Tag>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:21
+    pub fn get_tag(&self) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:26
     pub fn get_dialog_response_view(&self) -> Option<JRef<dyn DialogResponseView>> { todo!() } // paper-server/src/main/java/io/papermc/paper/event/player/PaperPlayerCustomClickEvent.java:34
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PlayerCustomClickEventTrait for PaperPlayerCustomClickEvent {
     fn as_player_custom_click_event(&self) -> &PlayerCustomClickEvent { self }
-    fn get_tag(&self) -> Option<BinaryTagHolder> { PaperPlayerCustomClickEvent::get_tag(self) }
+    fn get_tag(&self) -> Option<String> { PaperPlayerCustomClickEvent::get_tag(self) }
     fn get_dialog_response_view(&self) -> Option<JRef<dyn DialogResponseView>> { PaperPlayerCustomClickEvent::get_dialog_response_view(self) }
 }
 impl EventTrait for PaperPlayerCustomClickEvent {

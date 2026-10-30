@@ -3,11 +3,10 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::net::kyori::adventure::key::Keyed;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.tag.TagEntry (paper-api/src/main/java/io/papermc/paper/tag/TagEntry.java:17)
-pub trait TagEntry<T: JGeneric>: Keyed {
+pub trait TagEntry<T: JGeneric>: JObject {
     fn is_tag(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/tag/TagEntry.java:77
     fn is_required(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/tag/TagEntry.java:88
 }

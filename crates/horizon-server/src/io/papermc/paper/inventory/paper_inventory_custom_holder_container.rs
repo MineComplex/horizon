@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::net::caffeinemc::mods::lithium::api::inventory::lithium_cooldown_receiving_inventory::LithiumCooldownReceivingInventory;
 use crate::net::caffeinemc::mods::lithium::api::inventory::lithium_transfer_condition_inventory::LithiumTransferConditionInventory;
-use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::world::clearable::Clearable;
 use crate::net::minecraft::world::container::Container;
 use crate::net::minecraft::world::entity::player::player::PlayerTrait;
@@ -22,7 +21,7 @@ pub struct PaperInventoryCustomHolderContainer {
     pub delegate: JRef<dyn Container>, // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:25
     pub type_: InventoryType, // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:26
     pub title: String, // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:27
-    pub adventure_title: Component, // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:28
+    pub adventure_title: crate::text::Text, // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:28
 }
 impl PaperInventoryCustomHolderContainer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -44,7 +43,7 @@ impl PaperInventoryCustomHolderContainer {
     pub fn set_max_stack_size(&self, size: i32) { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:127
     pub fn get_location(&self) -> JRef<Location> { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:132
     pub fn clear_content(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:137
-    pub fn title(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:45
+    pub fn title(&self) -> crate::text::Text { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:45
     pub fn get_title(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:49
     pub fn get_type(&self) -> InventoryType { todo!() } // paper-server/src/main/java/io/papermc/paper/inventory/PaperInventoryCustomHolderContainer.java:53
 }
