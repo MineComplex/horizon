@@ -262,3 +262,6 @@ glue Java semantics need — never a re-implementation of the Java class. In met
 not even DFU, Brigadier, Adventure or concurrentutil: they are replaced by Rust crates (user's decision);
 the network transport is tokio. The library packages under `crate::` hold only aliases/re-exports of those
 crates' types.
+- **No secure seed** (Leaf's Matter port, `su.plo.matter`, and `SecureSeed` config): world generation uses
+  the plain world seed. Where Java branches on secure seed (`WorldgenCryptoRandom`, `Globals.worldSeed`,
+  `Globals.setupGlobals`, the `feature-seed` property, `/seed` printing it), keep only the non-secure path.
