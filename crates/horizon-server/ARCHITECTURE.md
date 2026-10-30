@@ -25,6 +25,34 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
   seed, and the API remnants of these (list-ping events, server icon/MOTD, remote console sender).
 - `src/azalea/`: code taken from azalea (MIT) as modules, not dependencies.
 
+## What gets ported, and what never does
+
+Before porting a Java class, classify it: (1) Minecraft server code (NMS), (2) Paper/Leaf/Purpur/Gale/
+Pufferfish/Lithium/Moonrise patches and code, (3) the Bukkit/Paper API — these are ported, as native Rust
+designs; (4) the JDK/JVM, (5) third-party libraries, shaded or relocated (netty, fastutil, Guava, Gson, Log4j,
+SLF4J, Apache Commons, Caffeine, JCTools, Brigadier, DFU, Adventure, ASM, ByteBuddy, Configurate, jline,
+joptsimple, Spottedleaf's concurrentutil...), (6) generated or build-time code — these are **never
+translated**: their uses are replaced by Rust std, a maintained crate, or a narrow native component for the
+Minecraft-visible behaviour only (command parsing/suggestions, text components, NBT/JSON formats).
+There is no `java`/`jvm`/`jdk` module and no compatibility layer: no reflection, class loaders, monitors,
+Java exceptions or reference semantics. Java's wrapping `int` arithmetic is written explicitly
+(`wrapping_*`) where the game relies on it.
+
+Dependencies are added only when a subsystem uses them, after checking maintenance, correctness, allocation
+and thread-safety; logging is `tracing`.
+
+### Audit (2026-10-30)
+
+| Path | Origin | Why it is here | Used by | Status |
+|---|---|---|---|---|
+| `src/azalea/buf` | azalea-buf (Rust) | protocol primitives (VarInt, strings, UUIDs) | network codecs (to come) | kept; stable-Rust edits: no specialization, no simdnbt, no backtrace capture |
+| `src/azalea/chat` | azalea-chat (Rust) | text components (Adventure's role) | chat, commands, API (to come) | kept |
+| `src/azalea/language` | azalea-language (Rust) | translations; `en_us.json` read at run time | chat | kept |
+| `src/azalea/crypto` | azalea-crypto (Rust) | login encryption, AES/CFB8 | network login (to come) | kept |
+| `src/azalea/brigadier` | azalea-brigadier (Rust) | command parsing/suggestions | commands (to come) | kept; must be checked against Minecraft's command semantics |
+| `src/util/random` | NMS `RandomSource` family | game RNG | everything | native, checked against Leaf on the JVM |
+| former `src/java`, generated skeleton, `tools/leaf_port` | JDK / Java object model | first attempt | — | removed |
+
 ## Ownership and threads
 
 - **The tick thread owns the game.** `Server` owns every `Level` (one per dimension); a `Level` owns its

@@ -19,41 +19,17 @@ thiserror = "2"
 compact_str = { version = "0.9.0", features = ["serde"] }
 byteorder = "1.5.0"
 rsa_public_encrypt_pkcs1 = "0.4.0"
-rand_core = "0.10.0"
 indexmap = "2"
 uuid = { version = "1", features = ["v3", "v4"] }
 parking_lot = "0.12"
-dashmap = "6"
-crossbeam = "0.8"
-regex = "1"
-log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-serde_yaml = "0.9"
-anyhow = "1"
-thread_local = "1"
-bit-set = "0.8"
 rand = { version = "0.10.0", features = ["sys_rng"] }
-chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-bytes = "1"
-glam = "0.30"
-moka = { version = "0.12", features = ["sync"] }
-rustyline = "14"
-clap = { version = "4", features = ["derive"] }
 rsa = { version = "0.10.0-rc.17", features = ["sha2"] }
 aes = "0.8.4"
 cfb8 = "0.8.1"
-flate2 = "1"
 sha1 = "0.11.0-rc.5"
 sha2 = "0.11.0-rc.5"
 md-5 = "0.10.6"
-image = { version = "0.25", default-features = false, features = ["png"] }
 num-bigint = "0.4.6"
-either = "1"
-rayon = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "time", "sync", "macros"] }
-lz4_flex = "0.11"
-itertools = "0.13"
 
-# Java's int arithmetic wraps; the port writes it with plain operators.
-# (overflow-checks is off for this crate in the workspace's profiles.)

@@ -65,6 +65,3 @@ lto = false
 codegen-units = 16
 incremental = true
 
-# Leaf's Java code relies on two's-complement wrapping for int/long arithmetic and shifts.
-[profile.dev.package.horizon-server]
-overflow-checks = false
