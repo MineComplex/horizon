@@ -39,4 +39,9 @@ java-properties = "2.0.0"
 encoding_rs = "0.8.42"
 jiff = "0.2.38"
 num-bigint = "0.4.6"
+# network: tokio replaces Netty (TCP, tasks, channels), bytes its buffers; hmac verifies Velocity's
+# forwarding signature (HMAC-SHA256 over the crate's sha2).
+tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
+bytes = "1.12"
+hmac = "0.13"
 

@@ -752,6 +752,7 @@ dependencies = [
  "block-buffer 0.12.1",
  "const-oid",
  "crypto-common 0.2.2",
+ "ctutils",
 ]
 
 [[package]]
@@ -1238,6 +1239,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmac"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6303bc9732ae41b04cb554b844a762b4115a61bfaa81e3e83050991eeb56863f"
+dependencies = [
+ "digest 0.11.3",
+]
+
+[[package]]
 name = "horizon-assets"
 version = "0.1.0"
 dependencies = [
@@ -1364,7 +1374,7 @@ dependencies = [
  "chrono",
  "flate2",
  "glam",
- "hmac",
+ "hmac 0.12.1",
  "horizon-assets",
  "horizon-client-core",
  "horizon-command",
@@ -1433,7 +1443,7 @@ dependencies = [
 name = "horizon-proxy"
 version = "0.1.0"
 dependencies = [
- "hmac",
+ "hmac 0.12.1",
  "horizon-protocol",
  "horizon-world",
  "prost",
@@ -1455,9 +1465,11 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "byteorder",
+ "bytes",
  "cfb8",
  "encoding_rs",
  "flate2",
+ "hmac 0.13.0",
  "indexmap",
  "java-properties",
  "jiff",
@@ -1473,6 +1485,7 @@ dependencies = [
  "sha1 0.11.0",
  "sha2 0.11.1",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
  "uuid",
  "xxhash-rust",
