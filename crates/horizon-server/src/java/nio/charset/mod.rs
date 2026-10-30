@@ -1,3 +1,2 @@
-//! `java.nio.charset`.
-pub mod charset;
-pub use self::charset::*;
+pub mod ext_stubs;
+pub use self::ext_stubs::*;

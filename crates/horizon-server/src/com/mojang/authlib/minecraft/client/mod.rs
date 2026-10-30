@@ -1,2 +1,2 @@
-pub mod minecraft_client;
-pub use self::minecraft_client::MinecraftClient;
+pub mod ext_stubs;
+pub use self::ext_stubs::*;

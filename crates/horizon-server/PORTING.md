@@ -258,5 +258,7 @@ glue Java semantics need — never a re-implementation of the Java class. In met
 | log4j/slf4j | `log` |
 | console (jline), options (joptsimple) | `rustyline` (or stdin), `clap` |
 
-Libraries with no Rust equivalent keep being ported: DFU serialization (Codec...), Brigadier, Adventure,
-Spottedleaf's concurrentutil; the network transport is tokio.
+**Only NMS (and Leaf/Paper server code, plus the Bukkit/Paper API) is ported. No shaded library is ported**,
+not even DFU, Brigadier, Adventure or concurrentutil: they are replaced by Rust crates (user's decision);
+the network transport is tokio. The library packages under `crate::` hold only aliases/re-exports of those
+crates' types.

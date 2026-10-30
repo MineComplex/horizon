@@ -1,0 +1,32 @@
+//! Stand-ins for the external library types this package's users name (tools/leaf_port/gen.py).
+//! Replace each with its port.
+use crate::prelude::*;
+
+pub struct Function10<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef, A10 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9, fn() -> A10)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10> Clone for Function10<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function11<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef, A10 = JObjectRef, A11 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9, fn() -> A10, fn() -> A11)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11> Clone for Function11<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function12<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef, A10 = JObjectRef, A11 = JObjectRef, A12 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9, fn() -> A10, fn() -> A11, fn() -> A12)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> Clone for Function12<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function13<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef, A10 = JObjectRef, A11 = JObjectRef, A12 = JObjectRef, A13 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9, fn() -> A10, fn() -> A11, fn() -> A12, fn() -> A13)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13> Clone for Function13<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function14<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef, A10 = JObjectRef, A11 = JObjectRef, A12 = JObjectRef, A13 = JObjectRef, A14 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9, fn() -> A10, fn() -> A11, fn() -> A12, fn() -> A13, fn() -> A14)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14> Clone for Function14<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function3<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3)>);
+impl<A0, A1, A2, A3> Clone for Function3<A0, A1, A2, A3> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function4<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4)>);
+impl<A0, A1, A2, A3, A4> Clone for Function4<A0, A1, A2, A3, A4> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function5<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5)>);
+impl<A0, A1, A2, A3, A4, A5> Clone for Function5<A0, A1, A2, A3, A4, A5> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function6<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6)>);
+impl<A0, A1, A2, A3, A4, A5, A6> Clone for Function6<A0, A1, A2, A3, A4, A5, A6> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function7<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7> Clone for Function7<A0, A1, A2, A3, A4, A5, A6, A7> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function8<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8> Clone for Function8<A0, A1, A2, A3, A4, A5, A6, A7, A8> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Function9<A0 = JObjectRef, A1 = JObjectRef, A2 = JObjectRef, A3 = JObjectRef, A4 = JObjectRef, A5 = JObjectRef, A6 = JObjectRef, A7 = JObjectRef, A8 = JObjectRef, A9 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1, fn() -> A2, fn() -> A3, fn() -> A4, fn() -> A5, fn() -> A6, fn() -> A7, fn() -> A8, fn() -> A9)>);
+impl<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9> Clone for Function9<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Pair<A0 = JObjectRef, A1 = JObjectRef>(pub std::marker::PhantomData<(fn() -> A0, fn() -> A1)>);
+impl<A0, A1> Clone for Pair<A0, A1> { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
+pub struct Unit(pub std::marker::PhantomData<()>);
+impl Clone for Unit { fn clone(&self) -> Self { Self(std::marker::PhantomData) } }
