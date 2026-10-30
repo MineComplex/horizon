@@ -19,7 +19,7 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
   The Bukkit/Paper API is not ported for now; its event points in Leaf's code are noted, not implemented.
 - Not ported (no Java library is ported; Rust crates or code taken from azalea instead):
   JDK -> std/tokio/rayon/chrono/...; netty -> tokio + `azalea::buf`; Gson -> `serde_json`; JOML -> `glam`;
-  Guava/fastutil/Caffeine -> std/`moka`; YAML configs -> `serde_yaml`; log4j/slf4j -> `log`;
+  Guava/fastutil/Caffeine -> std/`moka`; YAML configs -> `saphyr` (SnakeYAML's YAML 1.1 typing on top, `server/config/yaml.rs`); log4j/slf4j -> `log`;
   jline -> `rustyline`; joptsimple -> `clap`; Brigadier -> `command` (Horizon's own Brigadier core, arena tree); Adventure -> `azalea::chat`;
   translations -> `azalea::language` (`en_us.json` loaded and installed once at startup, never committed); encryption ->
   `azalea::crypto`. DFU `Codec`s become plain (de)serialization functions/`serde` over JSON and NBT.
@@ -69,11 +69,15 @@ from their patches): the command tree and its packet (`command`, `command/networ
 `server/server_properties.rs`; Leaf deletes the EULA check, so there is no `eula.txt`); `/tick` and the
 tick loop's timing with Paper's TPS/MSPT (`server/tick_rate.rs`, `server/tick_loop.rs`); paletted
 containers with Moonrise's save form (`world/chunk`); the block state table read from the data
-generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`).
+generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`); startup (`server/bootstrap.rs`, `main.rs`): Leaf's
+order and log lines; the YAML settings read so far (`server/config`: Velocity, catch-up ticks,
+`tab-complete`/`send-namespaced`, the lagging threshold, Leaf's 5 s TPS; YAML typing checked against
+SnakeYAML 2.6, the libraries' coercions derived from their sources) and the vanilla jar with `en_us.json`
+and `deprecated.json` (`server/vanilla_jar.rs`).
 
 Next, in order:
-1. Bootstrap: read `server.properties`, Paper/Purpur/Leaf YAML (`paper-global.yml` Velocity forwarding,
-   `leaf-global.yml`), load and `install` `en_us.json`, and run the tick thread over `TickClock`.
+1. Run the tick thread over `TickClock` after `bootstrap` (more YAML settings as the code needing them is
+   ported).
 2. Network: tokio transport with `azalea::buf` codecs, one channel per connection into the tick thread;
    login with Velocity modern forwarding; configuration and play states.
 3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in

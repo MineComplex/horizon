@@ -97,6 +97,29 @@ impl Language {
         self.entries.get(key).map(|v| &**v)
     }
 
+    /// `DeprecatedTranslationsInfo.applyToMap`: the `removed` keys go; each `renamed` key moves to its new
+    /// name, in order, and a rename whose key is missing removes the new name (with vanilla's warning).
+    pub fn apply_deprecated<'a>(
+        &mut self,
+        removed: &[String],
+        renamed: impl IntoIterator<Item = (&'a String, &'a str)>,
+    ) {
+        for key in removed {
+            self.entries.remove(key.as_str());
+        }
+        for (from, to) in renamed {
+            match self.entries.remove(from.as_str()) {
+                Some(value) => {
+                    self.entries.insert(to.into(), value);
+                }
+                None => {
+                    tracing::warn!("Missing translation key for rename: {from}");
+                    self.entries.remove(to);
+                }
+            }
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.entries.len()
     }

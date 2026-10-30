@@ -44,4 +44,19 @@ num-bigint = "0.4.6"
 tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
 bytes = "1.12"
 hmac = "0.13"
+# The YAML configs (paper-global.yml, spigot.yml, purpur.yml, leaf-global.yml): why saphyr is in
+# server/config/yaml.rs. Its default `encoding` feature pins encoding_rs < 0.8.40, which conflicts with
+# the line above, and is not needed (the files are UTF-8 text).
+saphyr = { version = "0.3.3", default-features = false }
+saphyr-parser = "0.3.3"
+# SnakeYAML's implicit-type patterns, used as SnakeYAML 2.6 prints them (server/config/yaml.rs).
+regex = "1"
+# The vanilla server jar (server/vanilla_jar.rs): the version the rest of the workspace uses.
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# Leaf's command-line options (joptsimple in Java), and the binary's console log.
+clap = { version = "4", features = ["derive"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std", "ansi"] }
+
+[dev-dependencies]
+tempfile = "3"
 
