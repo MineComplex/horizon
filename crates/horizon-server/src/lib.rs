@@ -4,6 +4,7 @@
 // azalea's optional features (simdnbt, serde_json, azalea-buf...) are off here: their cfg blocks stay compiled out.
 #[allow(unexpected_cfgs)]
 pub mod azalea;
+pub mod block;
 pub mod command;
 pub mod core;
 pub mod nbt;

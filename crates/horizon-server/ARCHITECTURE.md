@@ -68,7 +68,8 @@ from their patches): the command tree and its packet (`command`, `command/networ
 `.properties` files and Leaf's `server.properties` (`server/properties_file.rs`,
 `server/server_properties.rs`; Leaf deletes the EULA check, so there is no `eula.txt`); `/tick` and the
 tick loop's timing with Paper's TPS/MSPT (`server/tick_rate.rs`, `server/tick_loop.rs`); paletted
-containers with Moonrise's save form (`world/chunk`).
+containers with Moonrise's save form (`world/chunk`); the block state table read from the data
+generator's `blocks.json` (`block`, with `tools/leaf_server_reports.py`).
 
 Next, in order:
 1. Bootstrap: read `server.properties`, Paper/Purpur/Leaf YAML (`paper-global.yml` Velocity forwarding,
@@ -77,8 +78,8 @@ Next, in order:
    login with Velocity modern forwarding; configuration and play states.
 3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
    `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
-4. Blocks (`BlockState` table from the server jar's reports), chunk sections over `world/chunk`, chunk
-   NBT, then the entity arena, following "Data" below.
+4. Block state flags and shapes (an exporter in the prepare step), chunk sections over `world/chunk`
+   with `block::BlockState`, chunk NBT, then the entity arena, following "Data" below.
 
 ## Ownership and threads
 
@@ -98,6 +99,18 @@ Next, in order:
 - **Blocks:** `BlockState` is a `u32` id into a flat static table (properties, flags, shapes); `Block` is an
   id with behaviour by enum/`match` (or a `&'static` behaviour table per block where hooks are many).
   No objects per state.
+- **Where block data comes from (2026-10-30):** the state table is Mojang's data, so it is neither
+  committed nor generated into Rust sources, and the server runs without a JVM. Reading the jar
+  directly is not possible: blocks and their properties exist only as `Blocks`'s static-initializer
+  bytecode. So a one-time prepare step, `tools/leaf_server_reports.py`, runs vanilla's own data
+  generator (`net.minecraft.data.Main --reports`, Java needed only there) on the owner's 26.3 server
+  jar and writes `reports/` to `<server dir>/cache/vanilla-26.3/reports/`; at startup the server reads
+  `blocks.json` (`block::BlockStates::load`, ~7 MB, checked state by state against vanilla's order).
+  Paper/Purpur/Leaf patches do not change state ids or properties (Moonrise only replaces the
+  neighbour table by the same index arithmetic), so the vanilla report is Leaf's table. The report
+  has no flags or shapes: `isAir` comes from the three `Properties.air()` blocks; light emission,
+  random ticks, shapes, sounds, map colours and the like need a Horizon-written exporter run in the
+  same prepare step (as `horizon-prepare` does for the client), writing another file beside it.
 - **Positions:** `BlockPos`/`ChunkPos`/`SectionPos` are `Copy` value types (`i32` fields, Java's long packing
   as functions); `Vec3`/`AABB` are `Copy` `f64` structs.
 - **Chunks:** paletted containers (Java's bit layout, for the protocol and region format), sections in a
