@@ -1,2 +1,3 @@
-//! The world: storage (more to come: levels, chunks, generation, lighting).
+//! The world: storage, chunk data (more to come: levels, generation, lighting).
+pub mod chunk;
 pub mod storage;
