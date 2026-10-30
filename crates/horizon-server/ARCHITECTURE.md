@@ -61,16 +61,24 @@ Checked and kept: the `LazyLock` tables in `azalea/chat` (immutable constants), 
 `azalea/buf` (a codec impl, not storage), the temp-name counter in `world/storage/region.rs` (an atomic
 for unique file names). Unused crates after these changes (`compact_str`, `parking_lot`) were removed.
 
-### Next steps (in order)
+### Done so far, and next steps
 
-1. Server bootstrap: read `server.properties`/Paper/Leaf YAML, load and `install` `en_us.json` from the
-   server jar, start the tick loop that owns the levels.
+Done (each checked against Java 25 running the real 26.3 classes, with Paper's/Leaf's changes applied
+from their patches): the command tree and its packet (`command`, `command/network.rs`);
+`.properties` files and Leaf's `server.properties` (`server/properties_file.rs`,
+`server/server_properties.rs`; Leaf deletes the EULA check, so there is no `eula.txt`); `/tick` and the
+tick loop's timing with Paper's TPS/MSPT (`server/tick_rate.rs`, `server/tick_loop.rs`); paletted
+containers with Moonrise's save form (`world/chunk`).
+
+Next, in order:
+1. Bootstrap: read `server.properties`, Paper/Purpur/Leaf YAML (`paper-global.yml` Velocity forwarding,
+   `leaf-global.yml`), load and `install` `en_us.json`, and run the tick thread over `TickClock`.
 2. Network: tokio transport with `azalea::buf` codecs, one channel per connection into the tick thread;
-   the commands packet written from `CommandTree` (nodes in breadth-first order, as vanilla numbers them).
-3. Commands: Minecraft's argument types as `ArgumentType` variants, the vanilla tree registered from
-   `Commands`, and vanilla's executor (`net.minecraft.commands.execution`) over `ContextChain`.
-4. Blocks (`BlockState` table), chunks (paletted containers, region I/O already here), then the entity
-   arena, following "Data" below.
+   login with Velocity modern forwarding; configuration and play states.
+3. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
+   `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
+4. Blocks (`BlockState` table from the server jar's reports), chunk sections over `world/chunk`, chunk
+   NBT, then the entity arena, following "Data" below.
 
 ## Ownership and threads
 
