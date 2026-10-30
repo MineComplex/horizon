@@ -1592,11 +1592,6 @@ struct Game<'a> {
     screen_fx: horizon_client::screen_effects::ScreenEffects,
     weather_parameters: horizon_client::weather::ParameterCache,
     panorama_rotation: horizon_client::gfx::panorama::Rotation,
-    lod: Option<horizon_client::lod::Lod>,
-    lod_source_attempted: bool,
-    lod_observe: horizon_client::fast_hash::FxHashSet<(i32, i32)>,
-    /// The detail revision, centre and radius `Lod::update` last had covered for.
-    lod_covered_at: Option<(u64, (i32, i32), i32)>,
     /// The wheel and hovered slot of `BundleMouseActions`.
     bundle_mouse: bundles::BundleMouse,
     cursor: (f32, f32),
@@ -4376,7 +4371,7 @@ impl Game<'_> {
         } else {
             self.spinning_matrix(camera_alpha as f32)
         };
-        let terrain_distance = self.terrain_distance();
+        let terrain_distance = self.streaming.radius;
         let distance = (terrain_distance * 16) as f32;
         let depth_far =
             horizon_client::camera::depth_far(terrain_distance, self.settings.cloud_range);
@@ -4625,7 +4620,7 @@ impl Game<'_> {
         );
         // Camera.depthFar, as the renderer's far plane.
         let depth_far =
-            horizon_client::camera::depth_far(self.terrain_distance(), self.settings.cloud_range);
+            horizon_client::camera::depth_far(self.streaming.radius, self.settings.cloud_range);
         if !self
             .border_renderer
             .prepare(&self.border_state, camera, distance, depth_far)
@@ -4830,74 +4825,11 @@ impl Game<'_> {
         }
         self.remote_mouse(button, pressed)
     }
-    /// LOD Distance as far terrain uses it (`graphics::lod_distance_capped`).
-    fn lod_distance(&self) -> u32 {
-        let (distance, _) = self.far_terrain_choice();
-        match &self.renderer {
-            Some(renderer) => {
-                horizon_client::graphics::lod_distance_capped(distance, &renderer.info)
-            }
-            None => distance.min(1024),
-        }
-    }
-    /// Only enabled LOD worlds extend the renderer's range, never simulation.
-    fn terrain_distance(&self) -> i32 {
-        if self.lod.is_some() {
-            self.streaming.radius.max(self.lod_distance() as i32)
-        } else {
-            self.streaming.radius
-        }
-    }
-    fn clear_lod(&mut self) {
-        self.lod = None;
-        self.lod_source_attempted = false;
-        self.lod_observe.clear();
-        self.lod_covered_at = None;
-        if let Some(renderer) = &mut self.renderer {
-            renderer.clear_lods();
-        }
-    }
-    fn prepare_lod(&mut self) {
-        // Far terrain needs a world generator, which a client does not have.
-        if self.lod.is_some() || self.lod_source_attempted {
-            self.clear_lod();
-        }
-    }
     fn update_world(&mut self) {
         if let Err(e) = self.poll_remote() {
             log::warn!("Horizon: {e}");
         }
-        self.prepare_lod();
-        if self.lod.is_some() {
-            for &((x, _, z), _, _) in &self.world.light_edits {
-                self.lod_observe.insert((x >> 4, z >> 4));
-            }
-        }
         let (uploads, unloaded) = self.stream_world();
-        if let Some(lod) = &mut self.lod {
-            self.lod_observe
-                .extend(uploads.iter().map(|(key, _)| (key.0, key.2)));
-            for chunk in &unloaded {
-                self.lod_observe.remove(&(chunk.x, chunk.z));
-            }
-            // Unloaded columns first (their summaries are all that remains),
-            // then a few resident ones (an edit copies a chunk the worker
-            // still holds). The worker summarizes them.
-            horizon_client::spans::time("lod_observe", || {
-                for chunk in &unloaded {
-                    lod.observe(chunk.clone(), self.res.facts());
-                }
-                while lod.observing() < horizon_client::lod::OBSERVE_AHEAD
-                    && let Some(&key) = self.lod_observe.iter().next()
-                {
-                    self.lod_observe.remove(&key);
-                    if let Some(chunk) = self.world.chunks.get(&key) {
-                        lod.observe(chunk.clone(), self.res.facts());
-                    }
-                }
-            });
-        }
-        let (far_distance, far_reduced) = self.far_terrain_choice();
         if let Some(renderer) = self.renderer.as_mut() {
             let g = &self.settings.horizon;
             let budgeted = g.chunk_updates > 0 || g.upload_budget_kib > 0;
@@ -4950,45 +4882,6 @@ impl Game<'_> {
                 }
             }
             renderer.remove_columns(unloaded.iter().map(|c| (c.x, c.z)));
-            if let (Some(lod), Some(player)) = (&mut self.lod, &self.player) {
-                let lod_distance =
-                    horizon_client::graphics::lod_distance_capped(far_distance, &renderer.info);
-                lod.set_near_loading(self.streaming.busy());
-                lod.set_reduced_detail(far_reduced);
-                // The covered columns change only with the complete ones and
-                // the render area: rebuilt then, not every frame.
-                let at = (
-                    renderer.lod_detail_revision(),
-                    self.streaming.center,
-                    self.streaming.radius,
-                );
-                let covered = (self.lod_covered_at != Some(at)).then(|| {
-                    self.lod_covered_at = Some(at);
-                    horizon_client::spans::time("lod_covered_set", || {
-                        renderer
-                            .lod_detail_columns()
-                            .filter(|&(x, z)| {
-                                horizon_client::streaming::in_view_distance(at.1, at.2, x, z)
-                            })
-                            .collect()
-                    })
-                });
-                let meshes = horizon_client::spans::time("lod_update", || {
-                    lod.update(
-                        [player.position.x, player.position.y, player.position.z],
-                        self.yaw,
-                        self.streaming.radius,
-                        lod_distance,
-                        covered,
-                    )
-                });
-                renderer.queue_lods(meshes, lod.removed(), lod.take_cutout());
-                // A finished job can hold hundreds of tiles: spread them
-                // over frames rather than stall one.
-                horizon_client::spans::time("lod_upload", || {
-                    renderer.upload_lods(std::time::Duration::from_millis(2))
-                });
-            }
         }
     }
 }
@@ -7086,17 +6979,6 @@ impl crate::game::Game<'_> {
         horizon_client::creative::item_group_key(&tab.id)
             .map_or_else(|| tab.title.clone(), |key| self.translate(key, &tab.title))
     }
-    /// LOD Distance and Far Detail Reduced as chosen: the player's LOD
-    /// Distance when it is on, else a mod's far terrain
-    /// (`render.set-far-terrain`).
-    fn far_terrain_choice(&self) -> (u32, bool) {
-        let g = &self.settings.horizon;
-        let reduced = g.far_detail == horizon_client::graphics::FarDetail::Reduced;
-        if g.lod_distance > 0 {
-            return (g.lod_distance, reduced);
-        }
-        (0, reduced)
-    }
     /// The world's chunks as a server streams them (`ChunkMap`): the area around its players and
     /// forced chunks loads and generates, what falls out unloads with its entities and saves.
     /// Returns the section meshes the window draws and the chunks that unloaded.
@@ -8302,10 +8184,6 @@ impl<'a> Game<'a> {
             screen_fx: Default::default(),
             weather_parameters: Default::default(),
             panorama_rotation: Default::default(),
-            lod: None,
-            lod_source_attempted: false,
-            lod_observe: Default::default(),
-            lod_covered_at: None,
             bundle_mouse: Default::default(),
             cursor: (0.0, 0.0),
             cursor_icon: horizon_client::widgets::Cursor::Arrow,

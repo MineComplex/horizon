@@ -98,7 +98,7 @@ pub use horizon_game::world;
 pub use horizon_game::worldborder;
 pub use horizon_game::zip;
 pub use horizon_game::{
-    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex, world_data,
+    chunk_status, creative_menu, face_visibility, gallery, image, vertex, world_data,
 };
 pub use horizon_items::{
     banner_layer, blocks, bundle, content_namespaces, cooldowns, enchant, firework, item_data,

@@ -10,7 +10,7 @@ use crate::{
     sprites::SpriteAnimation,
 };
 use glam::{DVec3, Mat4, Vec3, Vec4};
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
@@ -73,7 +73,6 @@ mod end_sky;
 mod flat;
 mod hdr;
 pub mod lightning;
-mod lod;
 mod native_material;
 mod native_pack;
 mod native_post;
@@ -99,8 +98,6 @@ pub(crate) mod upload;
 mod wgsl_prefix;
 mod world_post;
 
-/// A column whose every section has its mesh (`Renderer::lod_detail_columns`).
-const COMPLETE_COLUMN: u32 = (1 << (crate::chunk::HEIGHT / 16)) - 1;
 /// A section's instance: its camera-relative origin and, in `w`, the step of
 /// its fixed-point UVs (`terrain.wgsl`'s `terrain_uv`).
 /// The world pass again after occlusion culling's test: it loads both
@@ -225,7 +222,7 @@ pub struct Frame<'a> {
     pub sky: Sky,
     /// Render distance in blocks (fog end).
     pub distance: f32,
-    /// Full-detail terrain distance in blocks; distant LODs bypass the cave graph.
+    /// Terrain distance in blocks.
     pub detail_distance: f32,
     /// `Camera.depthFar`: the far plane (`crate::camera::depth_far`).
     pub depth_far: f32,
@@ -485,18 +482,6 @@ pub struct Renderer {
     outline: wgpu::Buffer,
     depth: wgpu::TextureView,
     sections: resident::Resident<SectionGpu>,
-    lods: HashMap<crate::lod::TileKey, lod::Tile>,
-    /// The chunk columns the resident tiles leave out (`Lod::take_cutout`):
-    /// their sections are drawn even past the render distance, so terrain
-    /// leaving it never opens a hole before the tiles fill it in.
-    lod_cutout: crate::fast_hash::FxHashSet<(i32, i32)>,
-    /// Removed sections of `lod_cutout` columns, released once tiles cover them.
-    lod_retiring: crate::fast_hash::FxHashSet<SectionKey>,
-    /// Finished tile meshes `upload_lods` has yet to upload.
-    lod_pending: Option<lod::Pending>,
-    detail_columns: crate::fast_hash::FxHashMap<(i32, i32), u32>,
-    /// Bumped whenever a column becomes or stops being complete.
-    detail_revision: u64,
     arena: arena::Arena,
     sorted_indices: arena::Arena,
     translucent_sorter: translucency::Sorter,
@@ -508,7 +493,6 @@ pub struct Renderer {
     pub multi_draw: bool,
     /// Per-frame scratch, kept to avoid allocating every frame.
     visible: Vec<resident::Visible>,
-    visible_lods: Vec<lod::Visible>,
     /// The sections a shader pack's shadow camera sees (`pack_post::ShadowView`).
     shadow_visible: Vec<resident::Visible>,
     translucent_draws: Vec<(u64, usize, [u32; 5], (u32, Option<u32>))>,
@@ -1006,13 +990,6 @@ impl Renderer {
     pub fn resident_sections(&self) -> usize {
         self.sections.len()
     }
-    /// Quads of the far terrain tiles with GPU buffers.
-    pub fn lod_quads(&self) -> u64 {
-        self.lods
-            .values()
-            .map(|tile| u64::from(tile.mesh.solid + tile.mesh.translucent))
-            .sum()
-    }
     /// Bytes of the section vertex arena's buffers, and of the vertices
     /// resident sections hold in them.
     pub fn section_vertex_bytes(&self) -> [u64; 2] {
@@ -1020,7 +997,6 @@ impl Renderer {
         let vertices: u64 = self
             .sections
             .values()
-            .chain(self.lods.values().map(|tile| &tile.mesh))
             .map(|s| u64::from(s.solid + s.translucent) * 4)
             .sum();
         [self.arena.bytes(), vertices * stride]
@@ -1089,7 +1065,6 @@ impl Renderer {
             None => open_device(&window, offscreen, api, layers).await?,
         };
         let info = adapter.get_info();
-        crate::graphics::suggest_reduced_far_detail(crate::graphics::lod_capped(&info));
         let size = window.inner_size();
         let (config, present_modes, hdr_output) = if let Some(surface) = &surface {
             let mut config = surface
@@ -2609,12 +2584,6 @@ impl Renderer {
             outline,
             depth,
             sections: resident::Resident::default(),
-            lods: HashMap::new(),
-            lod_cutout: Default::default(),
-            lod_retiring: Default::default(),
-            lod_pending: None,
-            detail_columns: Default::default(),
-            detail_revision: 0,
             arena,
             sorted_indices,
             translucent_sorter: translucency::Sorter::default(),
@@ -2623,7 +2592,6 @@ impl Renderer {
             indirect_capacity: 1024,
             multi_draw,
             visible: Vec::new(),
-            visible_lods: Vec::new(),
             shadow_visible: Vec::new(),
             translucent_draws: Vec::new(),
             origins: Vec::new(),
@@ -2907,15 +2875,8 @@ impl Renderer {
         if changed {
             self.block_entity_revision = next_block_entity_revision();
         }
-        if !self.lod_retiring.is_empty() {
-            self.lod_retiring.remove(&key);
-        }
         self.release_section(key);
         let section = self.upload_mesh(mesh);
-        self.set_detail(
-            key,
-            section.is_some() || (mesh.solid.is_empty() && mesh.translucent.is_empty()),
-        );
         if let Some(section) = section {
             self.sections.insert(key, section);
         }
@@ -3073,12 +3034,6 @@ impl Renderer {
         self.block_entities.clear();
         self.block_entity_revision = next_block_entity_revision();
         self.sections.clear();
-        self.lods.clear();
-        self.lod_cutout.clear();
-        self.lod_retiring.clear();
-        self.lod_pending = None;
-        self.detail_columns.clear();
-        self.detail_revision += 1;
         self.arena.clear();
         if let Some(flat) = &mut self.flat {
             flat.clear();
@@ -3087,33 +3042,6 @@ impl Renderer {
         self.translucency_cursor = 0;
         self.occlusion.clear();
     }
-    pub fn lod_detail_columns(&self) -> impl Iterator<Item = (i32, i32)> + '_ {
-        self.detail_columns
-            .iter()
-            .filter_map(move |(&column, &mask)| (mask == COMPLETE_COLUMN).then_some(column))
-    }
-    /// Changes whenever `lod_detail_columns` does.
-    pub fn lod_detail_revision(&self) -> u64 {
-        self.detail_revision
-    }
-    /// Whether the section at `key` has its mesh, for `lod_detail_columns`.
-    fn set_detail(&mut self, key: SectionKey, meshed: bool) {
-        let column = (key.0, key.2);
-        let mask = self.detail_columns.get(&column).copied().unwrap_or(0);
-        let next = if meshed {
-            mask | 1 << key.1
-        } else {
-            mask & !(1 << key.1)
-        };
-        if (mask == COMPLETE_COLUMN) != (next == COMPLETE_COLUMN) {
-            self.detail_revision += 1;
-        }
-        if next == 0 {
-            self.detail_columns.remove(&column);
-        } else {
-            self.detail_columns.insert(column, next);
-        }
-    }
     /// Every section of these columns goes: one lookup per column where the
     /// tables are by column, and the meshes' ranges freed in one batch. A
     /// teleport removes a few thousand columns in one frame.
@@ -3121,18 +3049,11 @@ impl Renderer {
         let mut released = Vec::new();
         let mut block_entities = false;
         for (x, z) in columns {
-            if self.detail_columns.remove(&(x, z)) == Some(COMPLETE_COLUMN) {
-                self.detail_revision += 1;
-            }
             self.occlusion.remove_column(x, z);
-            let retiring = !self.lod_cutout.is_empty() && self.lod_cutout.contains(&(x, z));
             for sy in 0..crate::chunk::SECTIONS as i32 {
                 let key = (x, sy, z);
                 block_entities |= self.block_entities.remove(&key).is_some();
-                if retiring {
-                    // Distant tiles still leave its column out: drawn until they don't.
-                    self.lod_retiring.insert(key);
-                } else if let Some(section) = self.sections.remove(key) {
+                if let Some(section) = self.sections.remove(key) {
                     released.push(section);
                 }
             }
@@ -3747,7 +3668,6 @@ impl Renderer {
             });
         }
         let reachable = &self.occlusion;
-        let cutout = &self.lod_cutout;
         let mut visible = std::mem::take(&mut self.visible);
         visible.clear();
         crate::spans::time("visibility", || {
@@ -3756,21 +3676,12 @@ impl Renderer {
                 (frame.detail_distance / 16.0) as i32,
                 &view,
                 |k| !culling || reachable.contains(k),
-                |x, z| !cutout.is_empty() && cutout.contains(&(x, z)),
+                |_, _| false,
                 &mut visible,
             )
         });
-        let mut visible_lods = std::mem::take(&mut self.visible_lods);
-        visible_lods.clear();
         if frame.title {
             visible.clear();
-        } else {
-            visible_lods.extend(
-                self.lods
-                    .iter()
-                    .filter_map(|(&key, tile)| tile.visible(key, camera, frame.distance, &view)),
-            );
-            visible_lods.sort_unstable_by_key(|v| (v.distance, v.key));
         }
         // A shader pack's shadow pass draws the sections in its camera's box, all of them (the
         // occlusion graph follows the eye, not the light), within shadowDistanceRenderMul.
@@ -3807,7 +3718,7 @@ impl Renderer {
                 height(b).total_cmp(&height(a))
             });
         }
-        self.drawn_sections = visible.len() + visible_lods.len();
+        self.drawn_sections = visible.len();
         let instances = self.drawn_sections + shadow_visible.len();
         if instances as u64 > self.instance_capacity {
             self.instance_capacity = (instances as u64).next_power_of_two();
@@ -3825,7 +3736,6 @@ impl Renderer {
             visible
                 .iter()
                 .map(|v| section_instance(v.origin))
-                .chain(visible_lods.iter().map(|v| lod::instance(v.origin)))
                 .chain(shadow_visible.iter().map(|v| section_instance(v.origin))),
         );
         if !self.origins.is_empty() {
@@ -3913,23 +3823,6 @@ impl Renderer {
                 c.deferred(i as usize, slot, r.start as usize, r.len as usize, indices);
             }
         }
-        // Distant terrain tiles are never occlusion tested: phase 1.
-        let tiles = self.draws.len();
-        self.solid_runs.clear();
-        for (i, v) in visible_lods.iter().enumerate() {
-            let s = &self.lods[&v.key].mesh;
-            let start = self.draws.len();
-            let instance = (visible.len() + i) as u32;
-            facing_runs(&s.sides, eye, v.origin, |first, quads| {
-                let base = s.start as u32 + first * 4;
-                self.draws.push([quads * 6, 1, 0, base, instance]);
-                self.draw_pages.push((s.page, None));
-            });
-            self.solid_runs
-                .push(v.distance, s.page, start, self.draws.len() - start, [0; 3]);
-        }
-        self.solid_runs
-            .regroup(&mut self.draws, &mut self.draw_pages, tiles);
         let phase1_draws = self.draws.len() as u32;
         self.draws.extend_from_slice(&self.phase2_draws);
         self.draw_pages.extend_from_slice(&self.phase2_pages);
@@ -3938,7 +3831,7 @@ impl Renderer {
         // LevelRenderer: nearby sections each frame, plus a rotating eighth
         // (at least 15) of the visible list. Cached views avoid needless sorts.
         self.translucent_draws.clear();
-        let count = visible.len() + visible_lods.len();
+        let count = visible.len();
         let budget = (count / 8).max(15).min(count);
         self.translucency_cursor %= count.max(1);
         for (i, v) in visible.iter().enumerate().rev() {
@@ -3980,49 +3873,7 @@ impl Renderer {
                 ));
             }
         }
-        // Sections went back to front (`visible` is sorted by distance, then
-        // key): tiles' water only needs sorting in when there is some.
-        let section_translucent = self.translucent_draws.len();
-        for (i, v) in visible_lods.iter().enumerate() {
-            let instance = visible.len() + i;
-            let tile = self.lods.get_mut(&v.key).expect("visible resident tile");
-            let s = &mut tile.mesh;
-            if let Some((index_page, index_start)) = s.sorted_indices {
-                let scheduled = (instance + count - self.translucency_cursor) % count < budget;
-                if (!s.sort.is_sorted() || scheduled)
-                    && let Some(indices) = s.sort.update_lod(
-                        camera.to_array(),
-                        v.key.origin(),
-                        &mut self.translucent_sorter,
-                    )
-                {
-                    self.uploads.buffer(
-                        &mut encoder,
-                        self.sorted_indices.buffer(index_page),
-                        index_start * 4,
-                        bytemuck::cast_slice(indices),
-                    );
-                }
-                let first = s.start + u64::from(s.solid) * 4;
-                self.translucent_draws.push((
-                    v.distance,
-                    instance,
-                    [
-                        s.translucent * 6,
-                        1,
-                        index_start as u32,
-                        first as u32,
-                        instance as u32,
-                    ],
-                    (s.page, Some(index_page)),
-                ));
-            }
-        }
-        // Near water and distant water share one back-to-front draw order.
-        if self.translucent_draws.len() > section_translucent {
-            self.translucent_draws
-                .sort_unstable_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
-        }
+        // Sections went back to front (`visible` is sorted by distance, then key).
         for &(_, _, draw, pages) in &self.translucent_draws {
             self.draws.push(draw);
             self.draw_pages.push(pages);
@@ -4392,7 +4243,6 @@ impl Renderer {
                         || shadow_view.is_some()) =>
             {
                 let sections = &self.sections;
-                let lods = &self.lods;
                 let sorted = &self.sorted_indices;
                 let phase2 = self.cull.as_ref().filter(|_| culling).map(|c| &c.phase2);
                 crate::spans::time("flatten", || {
@@ -4406,17 +4256,10 @@ impl Renderer {
                         solid_draws as usize,
                         [shadow_first, shadow_first + shadow_solid].map(|d| d as usize),
                         phase2,
-                        visible
-                            .iter()
-                            .chain(&shadow_visible)
-                            .filter_map(|v| {
-                                let id = sections.get(v.slot).flat_id?;
-                                Some((id, section_instance(v.origin)))
-                            })
-                            .chain(visible_lods.iter().filter_map(|v| {
-                                let id = lods[&v.key].mesh.flat_id?;
-                                Some((id, lod::instance(v.origin)))
-                            })),
+                        visible.iter().chain(&shadow_visible).filter_map(|v| {
+                            let id = sections.get(v.slot).flat_id?;
+                            Some((id, section_instance(v.origin)))
+                        }),
                         |page| sorted.buffer(page).clone(),
                     )
                 })
@@ -5265,7 +5108,6 @@ impl Renderer {
         self.last_encode = started.elapsed().saturating_sub(self.last_wait);
         let _ = self.started;
         self.visible = visible;
-        self.visible_lods = visible_lods;
         self.shadow_visible = shadow_visible;
         Ok(true)
     }

@@ -192,7 +192,7 @@ impl<T> Resident<T> {
     /// Appends the sections `in_view` and `reachable` to `out`, nearest
     /// first (ties by key, so the order never depends on storage), and the
     /// sections in the frustum of columns past the render distance that
-    /// `beyond` keeps (distant terrain still leaves them out; the occlusion
+    /// `beyond` keeps (the occlusion
     /// graph never reaches them).
     ///
     /// Columns are tested first, with the same distance test (it depends
@@ -275,7 +275,7 @@ mod tests {
                     planes: super::super::frustum(projection * view),
                 };
                 let mut fast = Vec::new();
-                // Columns past the distance kept for distant terrain.
+                // Columns past the distance that `beyond` keeps.
                 let beyond = |x: i32, z: i32| (x + z).rem_euclid(3) == 0;
                 r.visible(camera, radius, &frustum, reachable, beyond, &mut fast);
                 let mut slow: Vec<(SectionKey, f64, [f32; 3])> = r

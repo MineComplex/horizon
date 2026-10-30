@@ -23,7 +23,6 @@ const HELP: &[&str] = &[
     "hotbar 1-9                     select a hotbar slot",
     "give ITEM [COUNT]              add items to the inventory",
     "render-distance N              chunks, 2..64",
-    "lod-distance N                 far surface chunks, 0 disables, up to1024",
     "time TICKS                     set the time of day",
     "summon KIND [X Y Z] [baby]     spawn a mob (in front of the player without a position)",
     "mobs [RADIUS]                  list mobs near the player with their AI state",
@@ -450,15 +449,6 @@ impl Game<'_> {
                 self.apply_settings();
                 ok()
             }
-            "lod-distance" => {
-                let n: u32 = arg(1)?.parse()?;
-                if n > 1024 {
-                    return Err("LOD distance must be 0..1024".into());
-                }
-                self.settings.horizon.lod_distance = n;
-                self.apply_settings();
-                ok()
-            }
             "time" => {
                 let time: i64 = arg(1)?.parse()?;
                 // The clock is the server's.
@@ -791,19 +781,6 @@ impl Game<'_> {
             .map(|k| format!("{k:?}"))
             .collect();
         physical_keys.sort();
-        let lod = json!({
-            "distance": self.settings.horizon.lod_distance,
-            "effective_distance": self.lod_distance(),
-            "terrain_distance": self.terrain_distance(),
-            "source": if self.lod.is_none() { "none" } else if self.remote.is_some() { "server" } else { "local" },
-            "source_attempted": self.lod_source_attempted,
-            "active_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().0),
-            "cached_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().1),
-            "far_detail": self.settings.horizon.far_detail.name(),
-            "resident_quads": self.renderer.as_ref().map_or(0, |r| r.lod_quads()),
-            "pending_observations": self.lod_observe.len(),
-            "refined_samples": self.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
-        });
         // The other players' cracks this client draws (LevelRenderer.destroyingBlocks).
         let destroying: Vec<_> = self
             .destroying
@@ -868,10 +845,6 @@ impl Game<'_> {
                 .eye_position()
                 .map(|e| self.shown_name_tags(glam::DVec3::from_array(e))),
         });
-        status["lod"] = lod;
-        let (target, sampled) = self.lod.as_ref().map_or((0, 0), |lod| lod.progress());
-        status["lod"]["target_tiles"] = target.into();
-        status["lod"]["sampled_target_tiles"] = sampled.into();
         status["pending_uploads"] = self.pending_uploads.len().into();
         status["destroying"] = json!(destroying);
         status["physical_keys"] = json!(physical_keys);

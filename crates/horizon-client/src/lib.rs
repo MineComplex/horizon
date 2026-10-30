@@ -100,7 +100,6 @@ pub use horizon_game::landing;
 pub mod level_loading;
 pub use horizon_game::light;
 pub mod locator_bar;
-pub mod lod;
 pub use horizon_game::logging;
 pub use horizon_game::menu;
 pub mod menu_blur;
@@ -191,7 +190,7 @@ pub use horizon_command as command;
 pub use horizon_game::world;
 pub use horizon_game::worldborder;
 pub use horizon_game::{
-    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex, world_data,
+    chunk_status, creative_menu, face_visibility, gallery, image, vertex, world_data,
 };
 pub use horizon_items::{
     banner_layer, blocks, bundle, content_namespaces, cooldowns, enchant, firework, item_data,

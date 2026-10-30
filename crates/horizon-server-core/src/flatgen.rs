@@ -6,7 +6,6 @@ use horizon_world::{nbt::Tag, registry::BlockRegistry};
 pub struct FlatTerrain {
     layers: Vec<u32>,
     biome: u16,
-    surface: Option<crate::lod_column::Surface>,
 }
 impl FlatTerrain {
     /// The overworld generator of `world_gen_settings` (`data.dimensions`), if it
@@ -36,40 +35,7 @@ impl FlatTerrain {
             }
         }
         let biome = biomes.id(&biome);
-        let mut water = None;
-        let mut surface = None;
-        for (i, &id) in layers
-            .iter()
-            .take(crate::chunk::HEIGHT as usize)
-            .enumerate()
-            .rev()
-        {
-            let state = horizon_world::registry::BlockStateId(id);
-            let name = registry.state(state)?.name.as_str();
-            if matches!(
-                name,
-                "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-            ) {
-                continue;
-            }
-            let height = crate::chunk::MIN_Y + i as i32 + 1;
-            if matches!(name, "minecraft:water" | "minecraft:lava") {
-                water.get_or_insert((height, state));
-            } else {
-                surface = Some(crate::lod_column::Surface {
-                    height,
-                    state,
-                    water,
-                    biome,
-                });
-                break;
-            }
-        }
-        Some(Self {
-            layers,
-            biome,
-            surface,
-        })
+        Some(Self { layers, biome })
     }
     /// FlatLevelSource.getSpawnHeight: the top of the layers.
     pub fn spawn_height(&self) -> i32 {
@@ -186,9 +152,6 @@ pub fn settings_from_json(
 impl ChunkGenerator for FlatTerrain {
     type Worker = ();
     fn worker(&self) {}
-    fn lod_surface(&self, _: &mut (), _: i32, _: i32) -> Option<crate::lod_column::Surface> {
-        self.surface
-    }
     fn proto(&self, _: &mut (), cx: i32, cz: i32) -> crate::streaming::Proto {
         let mut chunk = Chunk::empty(cx, cz);
         for s in &mut chunk.sections {

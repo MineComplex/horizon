@@ -8,7 +8,7 @@ designed separately: a **Horizon shader API**, described here, and a clean-room 
 
 Write WGSL against documented stages of Horizon's renderer, with typed inputs, options the player can change, a
 reload as soon as a file is saved and an overlay that shows what each pass costs and draws. The renderer keeps
-everything that makes it fast (culling, batching, LOD, the mesher); a pack changes how surfaces and light look, not
+everything that makes it fast (culling, batching, the mesher); a pack changes how surfaces and light look, not
 how the world is fed to the GPU.
 
 ## The design

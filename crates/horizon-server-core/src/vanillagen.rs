@@ -4,7 +4,7 @@ use crate::{
     biome::Biomes,
     chunk::{BIOME_STRATEGY, Chunk, HEIGHT, MIN_Y, SECTIONS, Section},
     save::SavedProto,
-    streaming::{ChunkGenerator, LodSampler, Proto},
+    streaming::{ChunkGenerator, Proto},
 };
 use horizon_core::{
     paletted::PalettedContainer,
@@ -16,16 +16,12 @@ use horizon_world::{
     nbt::Tag,
     registry::BlockRegistry,
     worldgen::{
-        generator::{
-            GeneratorData, GeneratorWorker, OverworldGenerator, ProtoChunk, SurfaceSample,
-        },
+        generator::{GeneratorData, GeneratorWorker, OverworldGenerator, ProtoChunk},
         terrain::PreLightChunkStage,
     },
 };
 use std::{path::Path, sync::Arc};
-mod lod;
 mod structure_mobs;
-use lod::VanillaLodSampler;
 use structure_mobs::StructureMobFinalizer;
 
 pub struct VanillaTerrain {
@@ -44,8 +40,6 @@ pub struct VanillaTerrain {
     tick_states: Vec<u32>,
     /// Block state id -> the block entity type of its block, if it has one.
     block_entity_types: Vec<Option<&'static str>>,
-    seed: i64,
-    dimension: String,
     /// When the last proto chunk was generated, in milliseconds since
     /// `created`: the ring search waits for a pause in generation.
     last_proto: std::sync::atomic::AtomicU64,
@@ -102,18 +96,6 @@ fn add_default_block_entities(kinds: &[Option<&str>], out: &mut Chunk, raw: &mut
 }
 
 impl VanillaTerrain {
-    fn client_surface(&self, surface: SurfaceSample) -> crate::lod_column::Surface {
-        crate::lod_column::Surface {
-            height: surface.height,
-            state: surface.state,
-            water: surface.water,
-            biome: self
-                .biome_map
-                .get(surface.biome.0 as usize)
-                .copied()
-                .unwrap_or(0),
-        }
-    }
     pub fn new(
         dir: &Path,
         registry: &'static BlockRegistry,
@@ -198,8 +180,6 @@ impl VanillaTerrain {
             tick_blocks,
             tick_states,
             block_entity_types,
-            seed,
-            dimension: dimension.to_owned(),
             last_proto: std::sync::atomic::AtomicU64::new(0),
             created: std::time::Instant::now(),
         })
@@ -431,17 +411,6 @@ impl ChunkGenerator for VanillaTerrain {
         let mut worker = self.generator.worker();
         worker.set_structure_mobs(self.structure_mobs.clone());
         worker
-    }
-    fn lod_sampler(self: Arc<Self>) -> Box<dyn LodSampler> {
-        Box::new(VanillaLodSampler::new(self))
-    }
-    fn lod_surface(
-        &self,
-        worker: &mut GeneratorWorker,
-        x: i32,
-        z: i32,
-    ) -> Option<crate::lod_column::Surface> {
-        Some(self.client_surface(worker.surface_sample(x, z)?))
     }
     /// The structure starts a saved chunk references, as vanilla reads them
     /// with the chunk: built here, on the loading worker, into the

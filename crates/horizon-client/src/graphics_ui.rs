@@ -2,7 +2,7 @@
 //! they show, in what groups, with what description and cost, and their
 //! input. How they look comes from `graphics_style`.
 use crate::{
-    graphics::{FarDetail, GraphicsApi, Overlay, Pacing, PresentMode, Preset},
+    graphics::{GraphicsApi, Overlay, Pacing, PresentMode, Preset},
     graphics_style::{Cost, STYLE},
     hud::{HudAtlas, HudBatch},
     settings::{Opt, Settings},
@@ -20,8 +20,6 @@ pub enum Level {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum H {
     Preset,
-    LodDistance,
-    FarDetail,
     CaveCulling,
     EntityCulling,
     ChunkUpdates,
@@ -79,22 +77,7 @@ pub fn rows(level: Level) -> Vec<Row> {
     let render = v(
         Opt::RenderDistance,
         High,
-        "Full-detail terrain range. LOD Distance can extend local worlds farther.",
-    );
-    let lod = h(
-        H::LodDistance,
-        Medium,
-        "Coarse distant terrain in local worlds. Integrated GPUs stop at 128 chunks.",
-    );
-    // Suggested, never switched on, where far terrain costs the GPU most.
-    let far = h(
-        H::FarDetail,
-        Medium,
-        if crate::graphics::reduced_far_detail_suggested() {
-            "Reduced draws far terrain coarser: faster on this integrated GPU."
-        } else {
-            "Reduced draws far terrain coarser, for GPUs it slows down."
-        },
+        "How far terrain is drawn, in chunks.",
     );
     let fov = v(
         Opt::Fov,
@@ -118,12 +101,10 @@ pub fn rows(level: Level) -> Vec<Row> {
         "Sets the options below together. Changing one makes it Custom.",
     );
     let mut rows = match level {
-        Level::Simple => vec![preset, render, lod, far, fov, fps, vsync, gui],
+        Level::Simple => vec![preset, render, fov, fps, vsync, gui],
         Level::Advanced => vec![
             Row::Header("Rendering"),
             render,
-            lod,
-            far,
             v(
                 Opt::SimulationDistance,
                 Medium,
@@ -350,11 +331,6 @@ impl H {
         let g = &s.horizon;
         match self {
             H::Preset => labelled("Preset", g.preset.label()),
-            H::LodDistance => match g.lod_distance {
-                0 => labelled("LOD Distance", "Off"),
-                n => labelled("LOD Distance", format!("{n} chunks")),
-            },
-            H::FarDetail => labelled("Far Detail", g.far_detail.label()),
             H::CaveCulling => labelled("Cave Culling", on_off(g.cave_culling)),
             H::EntityCulling => labelled("Entity Culling", on_off(g.entity_culling)),
             H::ChunkUpdates => match g.chunk_updates {
@@ -428,12 +404,6 @@ impl H {
         }
         let g = &mut s.horizon;
         match self {
-            H::LodDistance => {
-                g.lod_distance = step(&[0, 64, 128, 256, 512, 1024], g.lod_distance, back)
-            }
-            H::FarDetail => {
-                g.far_detail = step(&[FarDetail::Full, FarDetail::Reduced], g.far_detail, back)
-            }
             H::CaveCulling => g.cave_culling = !g.cave_culling,
             H::EntityCulling => g.entity_culling = !g.entity_culling,
             H::Sky => g.sky = !g.sky,
@@ -504,10 +474,6 @@ impl Item {
     }
     pub fn label(self, s: &Settings) -> Text {
         match self {
-            Item::Vanilla(Opt::RenderDistance) if s.horizon.lod_distance > 0 => labelled(
-                "Full Detail Distance",
-                format!("{} chunks", s.render_distance),
-            ),
             Item::Vanilla(o) => o.label(s),
             Item::Horizon(h) => h.label(s),
         }
@@ -989,40 +955,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn lod_distance_cycles_in_both_levels_without_changing_near_distance() {
-        let mut s = Settings::default();
-        let item = Item::Horizon(H::LodDistance);
-        let near = s.render_distance;
-        assert_eq!(item.label(&s).plain(), "LOD Distance: Off");
-        for level in [Level::Simple, Level::Advanced] {
-            let items: Vec<_> = rows(level)
-                .into_iter()
-                .filter_map(|row| match row {
-                    Row::Setting(setting) => Some(setting.item),
-                    Row::Header(_) => None,
-                })
-                .collect();
-            let render = items
-                .iter()
-                .position(|i| *i == Item::Vanilla(Opt::RenderDistance))
-                .unwrap();
-            assert_eq!(items[render + 1], item);
-        }
-        for distance in [64, 128, 256, 512, 1024, 0] {
-            item.cycle(&mut s, false, [854, 480]);
-            assert_eq!(s.horizon.lod_distance, distance);
-            assert_eq!(s.render_distance, near);
-        }
-        item.cycle(&mut s, true, [854, 480]);
-        assert_eq!(s.horizon.lod_distance, 1024);
-        assert_eq!(item.label(&s).plain(), "LOD Distance: 1024 chunks");
-        assert_eq!(
-            Item::Vanilla(Opt::RenderDistance).label(&s).plain(),
-            format!("Full Detail Distance: {near} chunks")
-        );
     }
 
     #[test]

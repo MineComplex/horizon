@@ -56,7 +56,6 @@ pub mod item_sync;
 pub mod java_text;
 pub mod landing;
 pub mod light;
-pub mod lod_column;
 pub mod logging;
 pub mod menu;
 pub mod merchant;

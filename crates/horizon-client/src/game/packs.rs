@@ -203,7 +203,6 @@ impl Game<'_> {
         lang::set(lang::Language::load(&[&root], &lang::code()));
         self.refresh_remote_language();
         self.audio.reload(&root);
-        self.clear_lod();
         self.streaming.reload_resources(&mut self.world, context);
         self.pending_uploads.clear();
         // New GPU textures: a renderer built from the reloaded resources; the

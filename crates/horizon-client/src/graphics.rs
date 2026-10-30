@@ -168,79 +168,9 @@ pub enum Overlay {
     Graph,
 }
 
-/// How finely far terrain is drawn (`FarDetail` in the LOD options).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum FarDetail {
-    /// Each tile level starts at eight times its size from the camera.
-    #[default]
-    Full,
-    /// Coarser levels start at half that distance: about a quarter of the
-    /// far quads, for GPUs that far terrain slows down. Changes the picture.
-    Reduced,
-}
-impl FarDetail {
-    pub fn name(self) -> &'static str {
-        match self {
-            FarDetail::Full => "full",
-            FarDetail::Reduced => "reduced",
-        }
-    }
-    pub fn label(self) -> &'static str {
-        match self {
-            FarDetail::Full => "Full",
-            FarDetail::Reduced => "Reduced",
-        }
-    }
-    fn parse(s: &str) -> Self {
-        if s == "reduced" {
-            FarDetail::Reduced
-        } else {
-            FarDetail::Full
-        }
-    }
-}
-
-static REDUCED_SUGGESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-/// Whether the settings suggest Reduced far detail: set when the renderer
-/// starts, on the GPUs `lod_capped` names (far terrain slows them most).
-pub fn suggest_reduced_far_detail(on: bool) {
-    REDUCED_SUGGESTED.store(on, std::sync::atomic::Ordering::Relaxed);
-}
-pub fn reduced_far_detail_suggested() -> bool {
-    REDUCED_SUGGESTED.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-/// The farthest LOD Distance, in chunks, on integrated GPUs other than
-/// Apple's: they share the CPU's memory bandwidth, and past it far terrain
-/// costs them more frame time than it is worth.
-pub const INTEGRATED_LOD_DISTANCE: u32 = 128;
-/// Whether `INTEGRATED_LOD_DISTANCE` applies to this adapter. Apple's GPUs
-/// are integrated too, with memory and bandwidth enough for every distance.
-pub fn lod_capped(info: &wgpu::AdapterInfo) -> bool {
-    info.device_type == wgpu::DeviceType::IntegratedGpu && !info.name.starts_with("Apple")
-}
-/// A LOD distance as far terrain uses it on this adapter.
-pub fn lod_distance_capped(distance: u32, info: &wgpu::AdapterInfo) -> u32 {
-    let distance = distance.min(1024);
-    if lod_capped(info) {
-        distance.min(INTEGRATED_LOD_DISTANCE)
-    } else {
-        distance
-    }
-}
-impl Graphics {
-    /// `lod_distance` as far terrain uses it on this adapter.
-    pub fn lod_distance_on(&self, info: &wgpu::AdapterInfo) -> u32 {
-        lod_distance_capped(self.lod_distance, info)
-    }
-}
 #[derive(Clone, Debug, PartialEq)]
 pub struct Graphics {
     pub preset: Preset,
-    /// Distant surface terrain range, in chunks; 0 disables LODs.
-    pub lod_distance: u32,
-    /// How finely far terrain is drawn; Full unless the player picks Reduced.
-    pub far_detail: FarDetail,
     /// Skip sections hidden behind closed ones (vanilla's occlusion graph).
     pub cave_culling: bool,
     /// Skip drawing entities hidden behind opaque terrain.
@@ -283,8 +213,6 @@ impl Default for Graphics {
     fn default() -> Self {
         Self {
             preset: Preset::Custom,
-            lod_distance: 0,
-            far_detail: FarDetail::Full,
             cave_culling: true,
             entity_culling: false,
             chunk_updates: 0,
@@ -340,8 +268,6 @@ impl Graphics {
             let number = |d: u32| value.parse().unwrap_or(d);
             match key.trim() {
                 "preset" => g.preset = Preset::parse(value),
-                "lodDistance" => g.lod_distance = number(g.lod_distance).min(1024),
-                "farDetail" => g.far_detail = FarDetail::parse(value),
                 "caveCulling" => g.cave_culling = flag(g.cave_culling),
                 "entityCulling" => g.entity_culling = flag(g.entity_culling),
                 "chunkUpdates" => g.chunk_updates = number(g.chunk_updates).min(512),
@@ -381,10 +307,8 @@ impl Graphics {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "preset:{}\nlodDistance:{}\nfarDetail:{}\ncaveCulling:{}\nentityCulling:{}\nchunkUpdates:{}\nuploadBudgetKiB:{}\nsky:{}\nfog:{}\nweather:{}\nanimatedTextures:{}\npresentMode:{}\nframePacing:{}\nworkers:{}\noverlay:{}\nresolutionScale:{}\nfxaa:{}\nhdr:{}\nhdrPaperWhite:{}\nhdrPeak:{}\nbatteryMode:{}\ngraphicsApi:{}\npickedShaderPack:{}\n",
+            "preset:{}\ncaveCulling:{}\nentityCulling:{}\nchunkUpdates:{}\nuploadBudgetKiB:{}\nsky:{}\nfog:{}\nweather:{}\nanimatedTextures:{}\npresentMode:{}\nframePacing:{}\nworkers:{}\noverlay:{}\nresolutionScale:{}\nfxaa:{}\nhdr:{}\nhdrPaperWhite:{}\nhdrPeak:{}\nbatteryMode:{}\ngraphicsApi:{}\npickedShaderPack:{}\n",
             self.preset.name(),
-            self.lod_distance,
-            self.far_detail.name(),
             bool_text(self.cave_culling),
             bool_text(self.entity_culling),
             self.chunk_updates,
@@ -490,8 +414,6 @@ mod tests {
     fn round_trips() {
         let g = Graphics {
             preset: Preset::Balanced,
-            lod_distance: 256,
-            far_detail: FarDetail::Reduced,
             cave_culling: false,
             entity_culling: true,
             chunk_updates: 12,
@@ -526,77 +448,6 @@ mod tests {
             Graphics::parse("workers:abc\nsky:maybe\ncullLeaves:true\nentityCulling:maybe\n"),
             Graphics::default()
         );
-    }
-
-    #[test]
-    fn integrated_gpus_other_than_apple_cap_the_lod_distance() {
-        let adapter = |name: &str, device_type| wgpu::AdapterInfo {
-            name: name.into(),
-            vendor: 0,
-            device: 0,
-            device_type,
-            device_pci_bus_id: String::new(),
-            driver: String::new(),
-            driver_info: String::new(),
-            backend: wgpu::Backend::Vulkan,
-            subgroup_min_size: 0,
-            subgroup_max_size: 0,
-            transient_saves_memory: None,
-            limit_bucket: None,
-        };
-        let hd620 = adapter(
-            "Intel(R) HD Graphics 620 (KBL GT2)",
-            wgpu::DeviceType::IntegratedGpu,
-        );
-        let m4 = adapter("Apple M4 Pro", wgpu::DeviceType::IntegratedGpu);
-        let discrete = adapter("NVIDIA GeForce RTX 4070", wgpu::DeviceType::DiscreteGpu);
-        for (distance, capped) in [(0, 0), (64, 64), (128, 128), (256, 128), (1024, 128)] {
-            let g = Graphics {
-                lod_distance: distance,
-                ..Graphics::default()
-            };
-            assert_eq!(g.lod_distance_on(&hd620), capped);
-            assert_eq!(g.lod_distance_on(&m4), distance);
-            assert_eq!(g.lod_distance_on(&discrete), distance);
-        }
-        assert!(
-            crate::graphics_ui::rows(crate::graphics_ui::Level::Simple)
-                .iter()
-                .any(|row| matches!(row, crate::graphics_ui::Row::Setting(s)
-                    if s.text.contains(&format!("{INTEGRATED_LOD_DISTANCE} chunks")))),
-            "the LOD Distance description names the cap"
-        );
-    }
-
-    #[test]
-    fn lod_distance_is_opt_in_and_bounded() {
-        assert_eq!(Graphics::default().lod_distance, 0);
-        for distance in [0, 64, 128, 256, 512, 1024] {
-            let g = Graphics::parse(&format!("lodDistance:{distance}\n"));
-            assert_eq!(g.lod_distance, distance);
-            assert_eq!(Graphics::parse(&g.serialize()), g);
-        }
-        assert_eq!(Graphics::parse("lodDistance:10000\n").lod_distance, 1024);
-        assert_eq!(Graphics::parse("lodDistance:-1\n").lod_distance, 0);
-        assert_eq!(Graphics::parse("lodDistance:invalid\n").lod_distance, 0);
-    }
-
-    #[test]
-    fn far_detail_is_full_unless_reduced_is_picked() {
-        assert_eq!(Graphics::default().far_detail, FarDetail::Full);
-        assert_eq!(
-            Graphics::parse("farDetail:reduced\n").far_detail,
-            FarDetail::Reduced
-        );
-        for text in ["farDetail:full\n", "farDetail:other\n", ""] {
-            assert_eq!(Graphics::parse(text).far_detail, FarDetail::Full);
-        }
-        // No preset changes it.
-        for preset in Preset::ALL {
-            let mut s = crate::settings::Settings::default();
-            apply_preset(preset, &mut s);
-            assert_eq!(s.horizon.far_detail, FarDetail::Full, "{preset:?}");
-        }
     }
 
     #[test]
