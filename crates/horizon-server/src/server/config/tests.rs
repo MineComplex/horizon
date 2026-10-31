@@ -5,6 +5,18 @@ fn read(path: &Path) -> String {
 }
 
 #[test]
+fn spigot_messages_are_transformed_and_the_whitelist_one_is_read() {
+    assert_eq!(transform_message("&cNo&zpe\\nx &"), "§cNo&zpe\nx &");
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("spigot.yml");
+    let default = load_spigot(&path).unwrap().whitelist_message;
+    assert_eq!(default, DEFAULT_WHITELIST_MESSAGE);
+    std::fs::write(&path, "messages:\n  whitelist: '&aApply on Discord'\n").unwrap();
+    let custom = load_spigot(&path).unwrap().whitelist_message;
+    assert_eq!(custom, "§aApply on Discord");
+}
+
+#[test]
 fn missing_files_are_written_with_defaults() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path();

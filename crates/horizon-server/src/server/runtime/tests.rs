@@ -2,10 +2,11 @@
 //! server runs on its own thread, over a small synthetic world in a temporary folder.
 use std::io::{Read as _, Write as _};
 use std::net::TcpStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
 
 use bytes::BytesMut;
+use jiff::tz::TimeZone;
 
 use super::*;
 use crate::azalea::chat::{FormattedText, read_component};
@@ -42,6 +43,10 @@ fn config(max_players: i32) -> RuntimeConfig {
         online_mode: false,
         proxy_online_mode: true,
         white_list: false,
+        whitelist_message: "You are not whitelisted on this server!".into(),
+        operator_level: PermissionLevel::Owners,
+        user_lists_dir: PathBuf::new(),
+        time_zone: TimeZone::UTC,
         pause_when_empty_seconds: -1,
         view_distance: 2,
         simulation_distance: 2,
@@ -150,7 +155,18 @@ struct Running {
 
 /// The server over the synthetic world, not running yet.
 fn start(config: RuntimeConfig, chunks: ChunkSettings) -> (Server, tempfile::TempDir) {
+    start_with(config, chunks, |_| {})
+}
+
+/// [`start`], after `before` has written files into the server folder.
+fn start_with(
+    mut config: RuntimeConfig,
+    chunks: ChunkSettings,
+    before: impl FnOnce(&Path),
+) -> (Server, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
+    before(dir.path());
+    config.user_lists_dir = dir.path().to_owned();
     let tables = tables();
     make_world(dir.path(), &tables);
     let settings = WorldSettings {
@@ -172,7 +188,11 @@ fn start(config: RuntimeConfig, chunks: ChunkSettings) -> (Server, tempfile::Tem
 }
 
 fn run(config: RuntimeConfig) -> Running {
-    let (server, dir) = start(config, ChunkSettings::default());
+    run_with(config, |_| {})
+}
+
+fn run_with(config: RuntimeConfig, before: impl FnOnce(&Path)) -> Running {
+    let (server, dir) = start_with(config, ChunkSettings::default(), before);
     Running {
         addr: server.local_addr(),
         control: server.control(),
@@ -434,6 +454,103 @@ fn a_full_server_refuses() {
         login::disconnect_packet(&Reason::translatable("multiplayer.disconnect.server_full"))
     );
     assert_eq!(client.recv(), None);
+    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
+}
+
+const LISTED: &str = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch"}]"#;
+
+fn whitelist_on() -> RuntimeConfig {
+    RuntimeConfig {
+        white_list: true,
+        ..config(20)
+    }
+}
+
+/// A refused login: the login disconnect with this reason, then the connection closes.
+fn assert_refused(server: Running, reason: &Reason) {
+    let (mut client, refusal) = Client::log_in(server.addr);
+    assert_eq!(refusal, login::disconnect_packet(reason));
+    assert_eq!(client.recv(), None);
+    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
+}
+
+/// `white-list=true` with no `whitelist.json` (Leaf's default): nobody gets in.
+#[test]
+fn an_empty_whitelist_refuses() {
+    let server = run(whitelist_on());
+    let file = server.dir.path().join("whitelist.json");
+    assert_eq!(std::fs::read_to_string(file).unwrap(), "[]");
+    let message = Reason::Literal("You are not whitelisted on this server!".into());
+    assert_refused(server, &message);
+}
+
+#[test]
+fn a_whitelisted_player_joins() {
+    let server = run_with(whitelist_on(), |dir| {
+        std::fs::write(dir.join("whitelist.json"), LISTED).unwrap();
+    });
+    let mut client = Client::play(server.addr);
+    client.until_play(play_cb::LOGIN, &mut Vec::new());
+    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
+}
+
+#[test]
+fn the_whitelist_message_is_spigots() {
+    let server = run(RuntimeConfig {
+        whitelist_message: "Ask the owner".into(),
+        ..whitelist_on()
+    });
+    assert_refused(server, &Reason::Literal("Ask the owner".into()));
+}
+
+#[test]
+fn a_banned_player_is_refused_with_the_ban() {
+    let server = run_with(config(20), |dir| {
+        let ban = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch","created":"2025-01-01 00:00:00 +0000","source":"Server","expires":"2099-01-01 12:30:00 +0000","reason":"Griefing"}]"#;
+        std::fs::write(dir.join("banned-players.json"), ban).unwrap();
+    });
+    let expected = serde_json::json!({
+        "translate": "multiplayer.disconnect.banned.reason",
+        "with": ["Griefing"],
+        "extra": [{
+            "translate": "multiplayer.disconnect.banned.expiration",
+            "with": ["2099-01-01 at 12:30:00 UTC"],
+        }],
+    });
+    assert_refused(server, &Reason::Component(expected));
+}
+
+#[test]
+fn a_banned_address_is_refused_with_the_ban() {
+    // The address Velocity forwards for the test client.
+    let server = run_with(config(20), |dir| {
+        let ban = r#"[{"ip":"203.0.113.5","created":"2025-01-01 00:00:00 +0000","source":"Server","expires":"forever"}]"#;
+        std::fs::write(dir.join("banned-ips.json"), ban).unwrap();
+    });
+    let expected = serde_json::json!({
+        "translate": "multiplayer.disconnect.banned_ip.reason",
+        "with": [{"translate": "multiplayer.disconnect.banned.reason.default"}],
+    });
+    assert_refused(server, &Reason::Component(expected));
+}
+
+/// An operator is let past the whitelist and, with `bypassesPlayerLimit`, a full server; the client
+/// is told its level (`entity_event` 24 + level).
+#[test]
+fn an_operator_gets_in_and_its_level() {
+    let ops = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch","level":3,"bypassesPlayerLimit":true}]"#;
+    let full_with_whitelist = RuntimeConfig {
+        white_list: true,
+        ..config(0)
+    };
+    let server = run_with(full_with_whitelist, |dir| {
+        std::fs::write(dir.join("ops.json"), ops).unwrap();
+    });
+    let mut client = Client::play(server.addr);
+    let mut seen = Vec::new();
+    client.until_play(play_cb::LOGIN, &mut seen);
+    let event = client.until_play(play_cb::ENTITY_EVENT, &mut seen);
+    assert_eq!(event[5], 24 + 3);
     assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
 }
 

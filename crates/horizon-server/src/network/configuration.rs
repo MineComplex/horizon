@@ -63,6 +63,7 @@ pub fn brand_packet(brand: &str) -> Vec<u8> {
 fn reason_json(reason: &Reason) -> serde_json::Value {
     match reason {
         Reason::Literal(text) => text.as_str().into(),
+        Reason::Component(json) => json.clone(),
         Reason::Translatable(key, args) if args.is_empty() => {
             serde_json::json!({ "translate": key })
         }

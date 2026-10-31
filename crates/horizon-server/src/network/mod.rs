@@ -71,6 +71,9 @@ pub enum Reason {
     Literal(String),
     /// A translation key and its string arguments.
     Translatable(&'static str, Vec<String>),
+    /// Any other component (siblings, component arguments), in the JSON of `ComponentSerialization.CODEC`
+    /// (built with `azalea::chat`: `FormattedText::to_json`).
+    Component(serde_json::Value),
 }
 
 impl Reason {
@@ -78,9 +81,15 @@ impl Reason {
         Reason::Translatable(key, Vec::new())
     }
 
+    /// A component as a reason.
+    pub fn component(text: &crate::azalea::chat::FormattedText) -> Self {
+        Reason::Component(text.to_json())
+    }
+
     pub fn to_json(&self) -> String {
         let mut out = String::new();
         match self {
+            Reason::Component(json) => out = json.to_string(),
             Reason::Literal(text) => gson_string(&mut out, text),
             Reason::Translatable(key, args) => {
                 out.push_str("{\"translate\":");

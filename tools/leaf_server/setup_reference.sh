@@ -35,7 +35,8 @@ mkdir -p "$out/oracle-run"
     "$java" -cp "$cp" "$oracles/LeafTerrainOracle.java" "$out/terrain.txt" &&
     "$java" -cp "$cp" "$oracles/LeafBiomeOracle.java" "$out/biomes.txt" &&
     "$java" -cp "$cp" "$oracles/LeafStructurePlacementOracle.java" "$out/structures.txt" &&
-    "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt") 2>&1 |
+    "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt" &&
+    "$java" -cp "$cp" "$oracles/LeafUserListsOracle.java" "$out/user_lists.jsonl") 2>&1 |
     grep -v -i warning || true
 
 echo "== vanilla fixture world (crates/horizon-server/src/world/storage_tests.rs)"
@@ -77,5 +78,6 @@ export HORIZON_BIOME_ORACLE=$out/biomes.txt
 export HORIZON_BIOME_REPORTS=$reports/reports
 export HORIZON_STRUCTURE_ORACLE=$out/structures.txt
 export HORIZON_TICKETS_ORACLE=$out/tickets.txt
+export HORIZON_USER_LISTS_ORACLE=$out/user_lists.jsonl
 EOF
 echo "== done: . $out/realdata.env"

@@ -24,10 +24,10 @@
 //! (`tick_loop::next_autosave_interval`) is never read after Paper's incremental saving, so it is
 //! not kept.
 //!
-//! Logins (`PlayerList.canPlayerLogin` as Leaf left it, and the duplicate check): MineComplex's
-//! cleanup removed the ban lists; the whitelist (`whitelist.json`) and the operators' player-limit
-//! bypass (`ops.json`) are not ported yet, so nobody is refused for them; a full server refuses with
-//! `multiplayer.disconnect.server_full`. Duplicates follow `disconnectAllPlayersWithProfile`
+//! Logins (`PlayerList.canPlayerLogin` and the duplicate check): `server::user_lists` decides, in
+//! order, a player ban, the whitelist (`white-list`; operators pass), an IP ban (the address Velocity
+//! forwarded) and a full server (`multiplayer.disconnect.server_full`; operators with
+//! `bypassesPlayerLimit` pass). The lists are read at start (`loadAndSaveFiles`). Duplicates follow `disconnectAllPlayersWithProfile`
 //! (Paper: also by name, ignoring case, when the proxy is in online mode): they are kicked with
 //! `multiplayer.disconnect.duplicate_login` and the new login waits until they are gone.
 //!
@@ -44,11 +44,13 @@
 //! The overworld's chunk I/O answers are drained at the start of each tick (Paper's
 //! `runAllTasksAtTickStart`), also while the server is paused, as Moonrise completes chunk loads on
 //! its own executor.
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc as std_mpsc;
 use std::time::{Duration, Instant};
 
+use jiff::tz::TimeZone;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -60,10 +62,12 @@ use super::chunk_system::ticket::{ENTITY_TICKING_LEVEL, FULL_LEVEL};
 use super::level::{World, WorldError};
 use super::player::{NewPlayer, Player, Spawn, chunk_of};
 use super::player_data::SavedPlayer;
+use super::server_properties::PermissionLevel;
 use super::tick_loop::{
     EmptyPause, EmptyTick, TickAction, TickClock, TickLoopConfig, TickTimeSamples,
 };
 use super::tick_rate::TickRateManager;
+use super::user_lists::{LoginRules, UserLists, now_millis};
 use crate::command::network::CommandsPacket;
 use crate::core::position::ChunkPos;
 use crate::network::configuration::{Action, Configuration, PlayHandoff, Settings};
@@ -96,6 +100,14 @@ pub struct RuntimeConfig {
     /// Paper's `isProxyOnlineMode`: duplicates are also found by name.
     pub proxy_online_mode: bool,
     pub white_list: bool,
+    /// Spigot's `messages.whitelist`, transformed.
+    pub whitelist_message: String,
+    /// `op-permission-level`: an operator without an entry of its own has this level.
+    pub operator_level: PermissionLevel,
+    /// The folder of `whitelist.json`, `ops.json`, `banned-players.json` and `banned-ips.json`.
+    pub user_lists_dir: PathBuf,
+    /// The JVM's default time zone (the ban dates are written in it).
+    pub time_zone: TimeZone,
     pub pause_when_empty_seconds: i32,
     /// `view-distance`, `simulation-distance`: the levels' Moonrise distances.
     pub view_distance: i32,
@@ -131,6 +143,10 @@ impl RuntimeConfig {
             online_mode: properties.online_mode,
             proxy_online_mode: properties.online_mode || (velocity.enabled && velocity.online_mode),
             white_list: properties.white_list,
+            whitelist_message: config.yaml.spigot.whitelist_message.clone(),
+            operator_level: properties.op_permission_level,
+            user_lists_dir: PathBuf::from("."),
+            time_zone: TimeZone::system(),
             pause_when_empty_seconds: properties.pause_when_empty_seconds,
             view_distance: properties.view_distance,
             simulation_distance: properties.simulation_distance,
@@ -304,6 +320,8 @@ pub struct Server {
     level_distances: ViewDistances,
     /// `Entity.ENTITY_COUNTER` (the first id is 1).
     last_entity_id: i32,
+    /// `PlayerList`'s whitelist, operators and bans; the tick thread alone reads and writes them.
+    user_lists: UserLists,
     logins: Vec<PendingLogin>,
     configuring: Vec<Configuring>,
     players: Vec<Joined>,
@@ -358,11 +376,11 @@ impl Server {
         if !config.online_mode {
             tracing::warn!("**** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!");
         }
-        if config.white_list {
-            tracing::warn!(
-                "white-list is on, but whitelist.json is not ported yet: nobody is refused"
-            );
-        }
+        let user_lists = UserLists::load_and_save(
+            &config.user_lists_dir,
+            config.time_zone.clone(),
+            now_millis(),
+        );
         let (event_sender, events) = mpsc::unbounded_channel();
         let accept = runtime.spawn(listener::listen(
             tcp,
@@ -394,6 +412,7 @@ impl Server {
             tick_count: 0,
             tick_times: TickTimeSamples::default(),
             epoch: now,
+            user_lists,
             logins: Vec::new(),
             configuring: Vec::new(),
             players: Vec::new(),
@@ -754,7 +773,9 @@ impl Server {
             }
             let profile = &login.request.forwarded.profile;
             if !login.waiting {
-                if let Some(reason) = self.can_player_login(profile) {
+                if let Some(reason) =
+                    self.can_player_login(&profile.clone(), login.request.forwarded.address)
+                {
                     let _ = login.request.reply.send(LoginVerdict::Deny(reason));
                     continue;
                 }
@@ -775,10 +796,15 @@ impl Server {
     }
 
     /// `PlayerList.canPlayerLogin` (see the module's notes).
-    fn can_player_login(&self, _profile: &GameProfile) -> Option<Reason> {
-        let full =
-            i64::try_from(self.players.len()).unwrap_or(i64::MAX) >= self.config.max_players.into();
-        full.then(|| Reason::translatable("multiplayer.disconnect.server_full"))
+    fn can_player_login(&mut self, profile: &GameProfile, address: IpAddr) -> Option<Reason> {
+        let rules = LoginRules {
+            using_whitelist: self.config.white_list,
+            whitelist_message: &self.config.whitelist_message,
+            max_players: self.config.max_players,
+            online_players: self.players.len(),
+        };
+        self.user_lists
+            .can_player_login(&profile.into(), address, &rules, now_millis())
     }
 
     /// `disconnectAllPlayersWithProfile`: true when some had to go.
@@ -836,7 +862,7 @@ impl Server {
                 "multiplayer.disconnect.duplicate_login",
             ))
         } else {
-            self.can_player_login(&profile)
+            self.can_player_login(&profile, c.peer.conn.address.ip())
         };
         let ready = c.spawn.as_ref().and_then(|s| s.ready.clone());
         let (Some(spawn), None) = (ready, refusal.clone()) else {
@@ -897,15 +923,27 @@ impl Server {
             peer: c.peer,
             player,
         };
-        match self.join_steps(&joined.player) {
+        let permission_level = self.permission_level(&joined.player.profile);
+        match self.join_steps(&joined.player, permission_level) {
             Ok(steps) => self.send_join(&joined, steps),
             Err(e) => tracing::error!("Couldn't place player in world: {e}"),
         }
         self.players.push(joined);
     }
 
+    /// `getProfilePermissions`: the level `sendPlayerPermissionLevel` tells the client.
+    fn permission_level(&mut self, profile: &GameProfile) -> u8 {
+        self.user_lists
+            .profile_permissions(&profile.into(), self.config.operator_level, now_millis())
+            .id() as u8
+    }
+
     /// The join packets (`network::play::join`) for this server.
-    fn join_steps(&self, player: &Player) -> Result<Vec<JoinStep>, crate::nbt::Error> {
+    fn join_steps(
+        &self,
+        player: &Player,
+        permission_level: u8,
+    ) -> Result<Vec<JoinStep>, crate::nbt::Error> {
         use crate::network::play::clientbound::{
             Abilities, Border, Login, PlayerInfoEntry, SpawnInfo,
         };
@@ -973,8 +1011,7 @@ impl Server {
                 walking_speed: 0.1,
             },
             selected_slot: 0,
-            // `ops.json` is not ported.
-            permission_level: 0,
+            permission_level,
             teleport_id: 1,
             position: player.position,
             y_rot: player.y_rot,

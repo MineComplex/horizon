@@ -148,6 +148,10 @@ pub struct SpigotConfig {
     /// completion starts at that many characters.
     pub tab_complete: i32,
     pub send_namespaced: bool,
+    /// `messages.whitelist` after `SpigotConfig.transform` (`&` codes to `§`, a typed `\\n` to a line
+    /// break): what a player who is not whitelisted is told. Read only; the key is not written back
+    /// (Spigot writes it, and its place among the other keys depends on reflection's method order).
+    pub whitelist_message: String,
     /// `world-settings`' structure seeds, resolved per level by [`SpigotConfig::world_seeds`].
     pub seed_sections: SeedSections,
 }
@@ -426,6 +430,29 @@ impl BukkitFile {
     }
 }
 
+/// `messages.whitelist`'s default.
+pub const DEFAULT_WHITELIST_MESSAGE: &str = "You are not whitelisted on this server!";
+
+/// `SpigotConfig.transform`: `ChatColor.translateAlternateColorCodes('&', s)` (an `&` before one of
+/// `0-9A-Fa-fK-Ok-oRrXx` becomes `§`), then `replaceAll("\\\\n", "\n")` (a backslash and an `n`).
+pub fn transform_message(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match (c, chars.peek()) {
+            ('&', Some(next)) if "0123456789AaBbCcDdEeFfKkLlMmNnOoRrXx".contains(*next) => {
+                out.push('§');
+            }
+            ('\\', Some('n')) => {
+                chars.next();
+                out.push('\n');
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 /// `SpigotConfig.init` (the settings above only).
 pub fn load_spigot(path: &Path) -> Result<SpigotConfig, ConfigError> {
     let mut file = BukkitFile::load(path)?;
@@ -458,12 +485,17 @@ pub fn load_spigot(path: &Path) -> Result<SpigotConfig, ConfigError> {
             Value::Str("default".into()),
         );
     }
+    let whitelist_message = transform_message(&match file.doc.get("messages.whitelist") {
+        Value::Str(text) => text.into_owned(),
+        _ => DEFAULT_WHITELIST_MESSAGE.to_owned(),
+    });
     let seed_sections = SeedSections {
         doc: file.doc.clone(),
     };
     let config = SpigotConfig {
         tab_complete,
         send_namespaced,
+        whitelist_message,
         seed_sections,
     };
     file.save(SPIGOT_HEADER);

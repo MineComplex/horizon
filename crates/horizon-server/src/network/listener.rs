@@ -135,6 +135,9 @@ pub fn disconnect_packet(state: ConnectionState, reason: &Reason) -> Vec<u8> {
 pub fn reason_component(reason: &Reason) -> FormattedText {
     match reason {
         Reason::Literal(text) => FormattedText::from(text.as_str()),
+        Reason::Component(json) => {
+            FormattedText::from_json(json).expect("a component built from a FormattedText decodes")
+        }
         Reason::Translatable(key, args) => TranslatableComponent::new(
             (*key).to_owned(),
             args.iter()
