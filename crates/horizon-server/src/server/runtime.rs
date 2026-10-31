@@ -256,6 +256,8 @@ struct PendingLogin {
 #[derive(Debug)]
 struct PreparingSpawn {
     saved: Option<SavedPlayer>,
+    /// The level the player spawns in (its index in `World::levels`).
+    level: usize,
     center: ChunkPos,
     /// The `CHUNK_LOAD` tickets' identifier, and the chunks still loading.
     load_id: u64,
@@ -468,7 +470,7 @@ impl Server {
     pub fn tick(&mut self) -> bool {
         let start = Instant::now();
         let sprinting = self.clock.start_tick(start, &mut self.rate, false);
-        self.world.overworld.tick_io();
+        self.world.tick_io();
         match self
             .empty_pause
             .update(self.players.len(), self.rate.is_sprinting(), false)
@@ -518,26 +520,32 @@ impl Server {
         }
     }
 
-    /// The overworld's `ServerChunkCache.tick` (the only part of `ServerLevel.tick` ported):
-    /// expired tickets, level updates, each player's chunk loader, then unloads and autosave.
+    /// `tickChildren`'s loop over the levels, in `MinecraftServer.levels`' order (Leaf's parallel
+    /// world ticking is off by default): each level's `ServerChunkCache.tick` (the only part of
+    /// `ServerLevel.tick` ported): expired tickets, level updates, the chunk loader of each player
+    /// in that level, then unloads and autosave.
     fn tick_levels(&mut self) {
         let now = self.now_ns();
-        let level = &mut self.world.overworld;
-        level.tick_tickets();
-        for j in &mut self.players {
-            if j.peer.closing.is_none() {
-                j.player.tick_chunks(level, &j.peer.conn, now);
+        let time = self.world.data.game_time;
+        for (index, level) in self.world.levels.iter_mut().enumerate() {
+            level.tick_tickets();
+            for j in &mut self.players {
+                if j.player.level == index && j.peer.closing.is_none() {
+                    j.player.tick_chunks(level, &j.peer.conn, now);
+                }
             }
+            level.tick_unloads(time);
         }
-        level.tick_unloads(self.world.data.game_time);
     }
 
-    /// While paused: `getChunkSource().tick(() -> true, false)`, which only processes tickets,
-    /// unloads and autosave.
+    /// While paused: `getChunkSource().tick(() -> true, false)` of each level, which only
+    /// processes tickets, unloads and autosave.
     fn tick_paused_levels(&mut self) {
-        let level = &mut self.world.overworld;
-        level.tick_tickets();
-        level.tick_unloads(self.world.data.game_time);
+        let time = self.world.data.game_time;
+        for level in &mut self.world.levels {
+            level.tick_tickets();
+            level.tick_unloads(time);
+        }
     }
 
     /// `MinecraftServer.autoSave`: `saveEverything(true, false, false)`.
@@ -623,19 +631,23 @@ impl Server {
         Ok(handoff)
     }
 
-    /// `PrepareSpawnTask.start` (with Paper's level choice): the player's file, its level (only
-    /// the overworld exists: another saved dimension is Paper's "unknown dimension" case) and
-    /// position (saved, else the world's respawn position), then the spawn chunks are held.
+    /// `PrepareSpawnTask.start` (with Paper's level choice): the player's file, its level (the
+    /// saved `Dimension`; a new player, or a dimension this server has no level for, gets the
+    /// level of the world's respawn data, else the overworld) and position (saved, else the
+    /// world's respawn position in that level), then the spawn chunks are held.
     fn prepare_spawn(&mut self, profile: &GameProfile) -> PreparingSpawn {
         let saved = self.world.players.load(profile.id, &profile.name);
         let respawn = &self.world.data.spawn;
-        if let Some(dimension) = saved.as_ref().and_then(|s| s.dimension.as_deref())
-            && dimension != self.world.overworld.dimension
-        {
-            tracing::warn!(
-                "Unknown respawn dimension ResourceKey[minecraft:dimension / {dimension}], defaulting to overworld"
-            );
-        }
+        let spawn_data_level = self.world.level_index(&respawn.dimension).unwrap_or(0);
+        let level = match saved.as_ref().and_then(|s| s.dimension.as_deref()) {
+            None => spawn_data_level,
+            Some(dimension) => self.world.level_index(dimension).unwrap_or_else(|| {
+                tracing::warn!(
+                    "Unknown respawn dimension ResourceKey[minecraft:dimension / {dimension}], defaulting to overworld"
+                );
+                spawn_data_level
+            }),
+        };
         let position = saved.as_ref().and_then(|s| s.position);
         let rotation = saved
             .as_ref()
@@ -648,7 +660,7 @@ impl Server {
         };
         // `trackLoadWithRadius`: Moonrise's `loadChunksAsync` holds each chunk with a
         // `CHUNK_LOAD` ticket at FULL until it is loaded.
-        let chunks = &mut self.world.overworld.chunks;
+        let chunks = &mut self.world.levels[level].chunks;
         let load_id = chunks.next_ticket_id();
         let r = PREPARE_CHUNK_RADIUS;
         let loading: Vec<ChunkPos> = (-r..=r)
@@ -660,6 +672,7 @@ impl Server {
         chunks.process_ticket_updates();
         PreparingSpawn {
             saved,
+            level,
             center,
             load_id,
             loading,
@@ -676,7 +689,7 @@ impl Server {
     /// the respawn position, see `Level::spawn_height`; its search over the respawn radius and
     /// its collision checks need the physics), or at the respawn position when that chunk is missing.
     fn prepare_spawn_tick(&mut self, spawn: &mut PreparingSpawn) -> bool {
-        let level = &mut self.world.overworld;
+        let level = &mut self.world.levels[spawn.level];
         let id = spawn.load_id;
         spawn.loading.retain(|&pos| {
             let loading = level.is_loading(pos);
@@ -712,7 +725,7 @@ impl Server {
     /// removes each when its load completes; the load still completes here).
     fn release_spawn(&mut self, c: &mut Configuring) {
         if let Some(spawn) = c.spawn.take() {
-            let chunks = &mut self.world.overworld.chunks;
+            let chunks = &mut self.world.levels[spawn.level].chunks;
             for pos in spawn.loading {
                 chunks.remove_ticket(TicketType::ChunkLoad, pos, FULL_LEVEL, spawn.load_id);
             }
@@ -721,7 +734,7 @@ impl Server {
 
     /// A player's packets, then its tick; `Err` once it is gone.
     fn tick_joined(&mut self, j: &mut Joined, now_ns: i64) -> Result<(), Reason> {
-        let level = &mut self.world.overworld;
+        let level = &mut self.world.levels[j.player.level];
         while let Some(incoming) = j.peer.next() {
             match j.peer.receive(incoming) {
                 Ok(PeerState::Open) => {}
@@ -745,11 +758,11 @@ impl Server {
     fn remove_player(&mut self, mut j: Joined, reason: &Reason) {
         j.peer.log_lost(reason);
         self.save_player(&j.player);
-        j.player.remove(&mut self.world.overworld);
+        j.player.remove(&mut self.world.levels[j.player.level]);
     }
 
     fn save_player(&self, player: &Player) {
-        let data = player.saved_data(self.world.overworld.dimension);
+        let data = player.saved_data(&self.world.levels[player.level].dimension);
         let profile = &player.profile;
         self.world.players.save(profile.id, &profile.name, &data);
     }
@@ -870,6 +883,7 @@ impl Server {
             self.configuring.push(c);
             return;
         };
+        let level = c.spawn.as_ref().map_or(0, |s| s.level);
         let saved = c
             .spawn
             .as_mut()
@@ -879,7 +893,7 @@ impl Server {
         // not read yet).
         let world_mode = game_type_by_id(self.world.data.game_type as u8);
         // Paper's `PLAYER_JOIN` ticket, before the level info.
-        self.world.overworld.chunks.add_ticket(
+        self.world.levels[level].chunks.add_ticket(
             TicketType::PlayerJoin,
             chunk_of(spawn.position),
             ENTITY_TICKING_LEVEL,
@@ -898,8 +912,9 @@ impl Server {
                 latency: handoff.latency,
                 saved,
                 level_distances: self.level_distances,
+                level,
             },
-            &mut self.world.overworld,
+            &mut self.world.levels[level],
             &c.peer.conn,
             now_ns,
         );
@@ -914,7 +929,7 @@ impl Server {
             player.profile.name,
             c.peer.conn.address,
             player.entity_id,
-            self.world.overworld.dimension,
+            self.world.levels[level].dimension,
         );
         let joined = Joined {
             peer: c.peer,
@@ -943,9 +958,9 @@ impl Server {
             Abilities, Border, Login, PlayerInfoEntry, SpawnInfo,
         };
         let world = &self.world;
-        let level = &world.overworld;
+        let level = &world.levels[player.level];
         let (view, simulation) = api_distances(self.level_distances);
-        let levels = [level.dimension];
+        let levels: Vec<&str> = world.levels.iter().map(|l| l.dimension.as_str()).collect();
         let mode = player.game_type;
         let creative = mode == GameType::Creative;
         let spectator = mode == GameType::Spectator;
@@ -965,7 +980,7 @@ impl Server {
         }
         let own = entry(player);
         let others: Vec<PlayerInfoEntry> = self.players.iter().map(|j| entry(&j.player)).collect();
-        let weather = &world.weather;
+        let weather = &level.weather;
         let spawn = &world.data.spawn;
         join::join_sequence(&join::JoinInputs {
             login: Login {
@@ -981,16 +996,15 @@ impl Server {
                 do_limited_crafting: false,
                 spawn: SpawnInfo {
                     dimension_type: level.dimension_type,
-                    dimension: level.dimension,
-                    seed: obfuscate_seed(world.seed),
+                    dimension: &level.dimension,
+                    seed: obfuscate_seed(level.seed),
                     game_type: mode,
                     previous_game_type: player.previous_game_type,
                     is_debug: false,
-                    is_flat: world.flat,
+                    is_flat: level.flat,
                     last_death_location: None,
                     portal_cooldown: 0,
-                    // The noise settings are not read: the overworld's and flat's sea levels.
-                    sea_level: if world.flat { -63 } else { 63 },
+                    sea_level: level.sea_level,
                 },
                 online_mode: self.config.online_mode,
                 enforces_secure_chat: self.config.enforces_secure_chat,
@@ -1098,7 +1112,9 @@ impl Server {
         let mut peers = Vec::new();
         for mut joined in std::mem::take(&mut self.players) {
             self.save_player(&joined.player);
-            joined.player.remove(&mut self.world.overworld);
+            joined
+                .player
+                .remove(&mut self.world.levels[joined.player.level]);
             joined.peer.disconnect(message.clone());
             peers.push(joined.peer);
         }

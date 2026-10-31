@@ -1,7 +1,11 @@
 //! The world the tick thread owns: the open world folder (`LevelStorageAccess`, `level.dat`, the
-//! player files) and its levels, of which only the overworld is opened for now (the nether and the
-//! end come with dimension switching: each would be one more [`Level`] with its own [`ChunkIo`]
-//! over `dimensions/minecraft/<name>/region`).
+//! player files) and its levels, one [`Level`] per level stem of `WorldGenSettings` (the
+//! overworld, the nether and the end, each with its own [`ChunkIo`] over
+//! `dimensions/<namespace>/<path>/region`, its own chunk holders and saved data), in
+//! `WorldDimensions.keysInOrder`'s order: the order the server ticks, saves and stops them in
+//! (`MinecraftServer.levels` is a linked map; Leaf's parallel world ticking is off by default and
+//! not ported, so the levels tick one after the other). Switching a player between levels
+//! (portals, `/execute in`) is not ported.
 //!
 //! **Chunks.** A [`Level`] holds its chunks in Moonrise's chunk holders (`server::chunk_system`),
 //! owned by the tick thread; the region I/O workers read and write them and hand the answers back
@@ -22,6 +26,7 @@ use super::player_data::PlayerDataStorage;
 use crate::block::BlockStates;
 use crate::block::flags::BlockStateData;
 use crate::core::position::ChunkPos;
+use crate::nbt::{Compound, Tag};
 use crate::network::play::chunk::{LightSection, level_chunk_with_light};
 use crate::registry::Registries;
 use crate::world::chunk::serial::Heightmap;
@@ -34,6 +39,103 @@ use crate::world::level_storage::{
 use crate::world::storage::compression::Compression;
 
 pub const OVERWORLD: &str = "minecraft:overworld";
+pub const NETHER: &str = "minecraft:the_nether";
+pub const END: &str = "minecraft:the_end";
+
+/// A level stem of the world generation settings, as far as a level needs it before generation
+/// is ported.
+#[derive(Debug, PartialEq, Eq)]
+struct Stem {
+    /// The stem's key, which is also its level's dimension.
+    key: String,
+    /// The stem's `type`, an id in `minecraft:dimension_type`.
+    dimension_type: String,
+    /// The generator is `minecraft:flat`.
+    flat: bool,
+    /// The generator's `settings` id when it names noise settings.
+    settings: Option<String>,
+}
+
+impl Stem {
+    fn read(key: &str, stem: Option<&Compound>) -> Self {
+        let string = |t: Option<&Tag>| match t {
+            Some(Tag::String(s)) => Some(s.to_string_lossy()),
+            _ => None,
+        };
+        let generator = match stem.and_then(|s| s.get(&"generator".into())) {
+            Some(Tag::Compound(g)) => Some(g),
+            _ => None,
+        };
+        Self {
+            key: key.to_owned(),
+            dimension_type: string(stem.and_then(|s| s.get(&"type".into())))
+                .unwrap_or_else(|| key.to_owned()),
+            flat: string(generator.and_then(|g| g.get(&"type".into()))).as_deref()
+                == Some("minecraft:flat"),
+            settings: string(generator.and_then(|g| g.get(&"settings".into()))),
+        }
+    }
+
+    /// `ServerLevel.getSeaLevel`, which is the generator's: flat worlds -63, else the noise
+    /// settings' (the noise settings are not read yet: the three vanilla ones' values).
+    fn sea_level(&self) -> i32 {
+        match (self.flat, self.settings.as_deref()) {
+            (true, _) => -63,
+            (_, Some("minecraft:nether")) => 32,
+            (_, Some("minecraft:end")) => 0,
+            _ => 63,
+        }
+    }
+
+    /// `PaperWorldLoader.defaultWorldName`: the level name, then `_nether`, `_the_end` or the
+    /// stem's namespace and path.
+    fn world_name(&self, level_name: &str) -> String {
+        match self.key.as_str() {
+            OVERWORLD => level_name.to_owned(),
+            NETHER => format!("{level_name}_nether"),
+            END => format!("{level_name}_the_end"),
+            key => format!("{level_name}_{}", key.replacen(':', "_", 1)),
+        }
+    }
+}
+
+/// `WorldDimensions.keysInOrder` over the stems of the overworld's `world_gen_settings` (a world
+/// without them has the three vanilla stems): the builtin ones in order, then the others.
+fn level_stems(dimensions: Option<&Compound>) -> Result<Vec<Stem>, WorldError> {
+    let Some(dimensions) = dimensions else {
+        return Ok([OVERWORLD, NETHER, END]
+            .map(|key| Stem::read(key, None))
+            .into());
+    };
+    let get = |key: &str| match dimensions.get(&key.into()) {
+        Some(Tag::Compound(c)) => Some(c),
+        _ => None,
+    };
+    if get(OVERWORLD).is_none() {
+        return Err(WorldError::NoOverworld);
+    }
+    let builtin = [OVERWORLD, NETHER, END];
+    let others = dimensions
+        .keys()
+        .map(|k| k.to_string_lossy())
+        .filter(|k| !builtin.contains(&k.as_str()));
+    Ok(builtin
+        .iter()
+        .map(|k| (*k).to_owned())
+        .filter(|k| get(k).is_some())
+        .chain(others)
+        .map(|key| Stem::read(&key, get(&key)))
+        .collect())
+}
+
+/// A level with no `weather.dat`.
+const CLEAR_WEATHER: WeatherData = WeatherData {
+    clear_weather_time: 0,
+    rain_time: 0,
+    thunder_time: 0,
+    raining: false,
+    thundering: false,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorldError {
@@ -42,7 +144,10 @@ pub enum WorldError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error("the registries have no {0}")]
-    Registry(&'static str),
+    Registry(String),
+    /// `PaperWorldLoader.loadInitialWorlds`: `requireNonNull(..., "Overworld stem missing")`.
+    #[error("Overworld stem missing")]
+    NoOverworld,
 }
 
 /// The read-only tables a world is opened with (startup's, shared with the I/O workers).
@@ -71,12 +176,9 @@ pub struct World {
     pub data: LevelData,
     /// Whether `level.dat` was there: a new world is not written (generation is not ported).
     pub has_level_data: bool,
-    /// `world_gen_settings`: the seed, and whether the overworld is flat.
-    pub seed: i64,
-    pub flat: bool,
-    pub weather: WeatherData,
     pub players: PlayerDataStorage,
-    pub overworld: Level,
+    /// The levels in `MinecraftServer.levels`' order; the overworld is the first.
+    pub levels: Vec<Level>,
 }
 
 impl World {
@@ -109,37 +211,60 @@ impl World {
                 ..LevelData::parse(&Default::default())
             }
         };
-        let dimension = storage.read_dimension_data(OVERWORLD)?;
-        let (seed, flat) = dimension.world_gen.as_ref().map_or((0, false), |w| {
-            let generator = w
-                .dimensions
-                .get(&OVERWORLD.into())
-                .and_then(|d| d.get("generator"))
-                .and_then(|g| g.get("type"));
-            let flat = matches!(generator, Some(crate::nbt::Tag::String(t))
-                if t.to_string_lossy() == "minecraft:flat");
-            (w.seed, flat)
-        });
+        let mut overworld_data = Some(storage.read_dimension_data(OVERWORLD)?);
+        let stems = level_stems(
+            overworld_data
+                .as_ref()
+                .and_then(|d| d.world_gen.as_ref())
+                .map(|w| &w.dimensions),
+        )?;
+        let overworld_seed = overworld_data
+            .as_ref()
+            .and_then(|d| d.world_gen.as_ref())
+            .map_or(0, |w| w.seed);
         let players = PlayerDataStorage::new(storage.dir())?;
-        let region = storage.region_path(OVERWORLD, "region");
-        let overworld = Level::open(OVERWORLD, &region, settings, tables)?;
+        let mut levels = Vec::with_capacity(stems.len());
+        for stem in &stems {
+            // Each level reads its own dimension's saved data (`loadWorldGenSettings`,
+            // weather...); one without a folder has the overworld's seed and a clear sky.
+            let data = match overworld_data.take_if(|_| stem.key == OVERWORLD) {
+                Some(data) => data,
+                None => storage.read_dimension_data(&stem.key)?,
+            };
+            let seed = data.world_gen.as_ref().map_or(overworld_seed, |w| w.seed);
+            let region = storage.region_path(&stem.key, "region");
+            levels.push(Level::open(
+                stem,
+                stem.world_name(settings.level_name),
+                seed,
+                data.weather.unwrap_or(CLEAR_WEATHER),
+                &region,
+                settings,
+                tables,
+            )?);
+        }
         Ok(Self {
             storage,
             name: settings.level_name.to_owned(),
             data,
             has_level_data,
-            seed,
-            flat,
-            weather: dimension.weather.unwrap_or(WeatherData {
-                clear_weather_time: 0,
-                rain_time: 0,
-                thunder_time: 0,
-                raining: false,
-                thundering: false,
-            }),
             players,
-            overworld,
+            levels,
         })
+    }
+
+    pub fn overworld(&self) -> &Level {
+        &self.levels[0]
+    }
+
+    /// `MinecraftServer.getLevel(dimension)`: the index in [`Self::levels`].
+    pub fn level_index(&self, dimension: &str) -> Option<usize> {
+        self.levels.iter().position(|l| l.dimension == dimension)
+    }
+
+    /// The start of each tick's I/O: every level's region answers.
+    pub fn tick_io(&mut self) {
+        self.levels.iter_mut().for_each(Level::tick_io);
     }
 
     /// `saveGlobalData`: `level.dat` (not for a world this server did not find one in).
@@ -155,14 +280,16 @@ impl World {
     /// unsaved chunks (`ChunkMap.saveAllChunks`).
     pub fn save_all_chunks(&mut self, silent: bool, flush: bool) {
         self.save_level_data();
-        if !silent {
-            info!(
-                "Saving chunks for level 'ServerLevel[{}]'/{}",
-                self.name, self.overworld.dimension
-            );
-        }
         let time = self.data.game_time;
-        self.overworld.chunks.save_all(flush, false, None, time);
+        for level in &mut self.levels {
+            if !silent {
+                info!(
+                    "Saving chunks for level 'ServerLevel[{}]'/{}",
+                    self.name, level.dimension
+                );
+            }
+            level.chunks.save_all(flush, false, None, time);
+        }
     }
 
     /// The end of `stopServer`: `saveAllChunks(false, true, false, true)` (`level.dat`, then each
@@ -170,11 +297,14 @@ impl World {
     /// stopped once their queued requests ran), then the wait for the region I/O.
     pub fn close(self) {
         self.save_level_data();
-        info!(
-            "Saving chunks for level 'ServerLevel[{}]'/{}",
-            self.name, self.overworld.dimension
-        );
-        self.overworld.close(&self.name, self.data.game_time);
+        let time = self.data.game_time;
+        for level in self.levels {
+            info!(
+                "Saving chunks for level 'ServerLevel[{}]'/{}",
+                self.name, level.dimension
+            );
+            level.close(time);
+        }
         info!("Waiting for all RegionFile I/O tasks to complete...");
         info!("All RegionFile I/O tasks to complete");
     }
@@ -196,7 +326,17 @@ impl ChunkStorage for ChunkIo {
 
 /// One dimension's chunks (see the module docs).
 pub struct Level {
-    pub dimension: &'static str,
+    /// The stem's key (`minecraft:the_nether`).
+    pub dimension: String,
+    /// Bukkit's name for the world (`world_nether`), which Moonrise's logs use.
+    pub world_name: String,
+    /// `WorldOptions.seed`.
+    pub seed: i64,
+    /// The generator is flat (`ServerLevel.isFlat`).
+    pub flat: bool,
+    pub sea_level: i32,
+    /// `weather.dat`: the level's own sky.
+    pub weather: WeatherData,
     /// Its id in `minecraft:dimension_type`.
     pub dimension_type: i32,
     pub min_section_y: i32,
@@ -223,7 +363,10 @@ fn block_tag(tables: &WorldTables, tag: &str) -> HashSet<crate::block::BlockId> 
 
 impl Level {
     fn open(
-        dimension: &'static str,
+        stem: &Stem,
+        world_name: String,
+        seed: i64,
+        weather: WeatherData,
         region: &Path,
         settings: &WorldSettings<'_>,
         tables: &WorldTables,
@@ -231,13 +374,15 @@ impl Level {
         let types = tables
             .registries
             .synced("minecraft:dimension_type")
-            .ok_or(WorldError::Registry("minecraft:dimension_type"))?;
+            .ok_or_else(|| WorldError::Registry("minecraft:dimension_type".into()))?;
         let (dimension_type, entry) = types
             .entries
             .iter()
             .enumerate()
-            .find(|(_, e)| e.id == dimension)
-            .ok_or(WorldError::Registry("overworld dimension type"))?;
+            .find(|(_, e)| e.id == stem.dimension_type)
+            .ok_or_else(|| {
+                WorldError::Registry(format!("dimension type {}", stem.dimension_type))
+            })?;
         let int = |k: &str, default| {
             entry
                 .json
@@ -280,7 +425,12 @@ impl Level {
             workers,
         )?;
         Ok(Self {
-            dimension,
+            dimension: stem.key.clone(),
+            world_name,
+            seed,
+            flat: stem.flat,
+            sea_level: stem.sea_level(),
+            weather,
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
@@ -358,7 +508,9 @@ impl Level {
     }
 
     /// `ChunkHolderManager.close(save, halt)` (see [`World::close`]).
-    fn close(mut self, world: &str, game_time: i64) {
+    fn close(mut self, game_time: i64) {
+        let world = std::mem::take(&mut self.world_name);
+        let world = world.as_str();
         info!("Waiting 60s for chunk system to halt for world '{world}'");
         info!("Halted chunk system for world '{world}'");
         self.chunks.save_all(true, true, Some(world), game_time);
@@ -427,5 +579,88 @@ impl Level {
     /// How many chunk holders there are (for tests and logs).
     pub fn held_count(&self) -> usize {
         self.chunks.holder_count()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stem(kind: &str, generator: &str, settings: Option<&str>) -> Tag {
+        let mut g = Compound::new();
+        g.insert("type".into(), Tag::String(generator.into()));
+        if let Some(s) = settings {
+            g.insert("settings".into(), Tag::String(s.into()));
+        }
+        let mut s = Compound::new();
+        s.insert("type".into(), Tag::String(kind.into()));
+        s.insert("generator".into(), Tag::Compound(g));
+        Tag::Compound(s)
+    }
+
+    #[test]
+    fn stems_come_in_keys_in_order_with_their_generator_facts() {
+        let mut d = Compound::new();
+        // The compound sorts by key: the end before the nether, custom stems after the builtin ones.
+        d.insert(
+            "minecraft:overworld".into(),
+            stem(
+                "minecraft:overworld",
+                "minecraft:noise",
+                Some("minecraft:overworld"),
+            ),
+        );
+        d.insert(
+            "minecraft:the_end".into(),
+            stem(
+                "minecraft:the_end",
+                "minecraft:noise",
+                Some("minecraft:end"),
+            ),
+        );
+        d.insert(
+            "minecraft:the_nether".into(),
+            stem(
+                "minecraft:the_nether",
+                "minecraft:noise",
+                Some("minecraft:nether"),
+            ),
+        );
+        d.insert(
+            "mod:flat".into(),
+            stem("minecraft:overworld", "minecraft:flat", None),
+        );
+        let stems = level_stems(Some(&d)).unwrap();
+        let keys: Vec<_> = stems.iter().map(|s| s.key.as_str()).collect();
+        assert_eq!(keys, [OVERWORLD, NETHER, END, "mod:flat"]);
+        assert_eq!(
+            stems.iter().map(Stem::sea_level).collect::<Vec<_>>(),
+            [63, 32, 0, -63]
+        );
+        assert_eq!(stems[3].dimension_type, "minecraft:overworld");
+        let names: Vec<_> = stems.iter().map(|s| s.world_name("world")).collect();
+        assert_eq!(
+            names,
+            ["world", "world_nether", "world_the_end", "world_mod_flat"]
+        );
+    }
+
+    #[test]
+    fn a_world_without_settings_has_the_vanilla_stems_and_one_without_an_overworld_fails() {
+        let keys: Vec<_> = level_stems(None)
+            .unwrap()
+            .into_iter()
+            .map(|s| s.key)
+            .collect();
+        assert_eq!(keys, [OVERWORLD, NETHER, END]);
+        let mut d = Compound::new();
+        d.insert(
+            "minecraft:the_end".into(),
+            stem("minecraft:the_end", "minecraft:noise", None),
+        );
+        assert!(matches!(
+            level_stems(Some(&d)),
+            Err(WorldError::NoOverworld)
+        ));
     }
 }

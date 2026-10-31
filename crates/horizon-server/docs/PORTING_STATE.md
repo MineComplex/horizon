@@ -64,9 +64,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 
 ## Next
 WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 rest (feature implementations, trees, state providers, block survival rules, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
-Small cleanups: `obfuscate_seed` (server/runtime.rs) → `worldgen/biome/zoom.rs`; `find_biome_horizontal`
-(structure/placement.rs) → `worldgen/biome`; `world/chunk/serial.rs` private int reader → `Tag::int_value`.
-Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
+Core: dimension switching (portals, `/execute in`, `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
@@ -76,5 +74,14 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
 - Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
   block/fluid ticks don't mark a chunk unsaved; a missing chunk stalls sending (Moonrise's rule for players
   who can't generate) until WP6; `paper-world.yml` per world and `chunk-loading-*` rates not read.
-- Stand-ins: no movement checks; default game rules/world border/clocks; only the overworld; no block
+- Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
+  weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
+  off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets
+  the respawn data's level (Paper's warn). `allow-nether`/`allow-end` (`paper-global` `misc.enable-nether`,
+  `bukkit.yml`) not read: all stems load. Sea level is the stand-in 63/32/0/-63 (noise settings unread);
+  game time, difficulty, spawn and border are still the world's, not per level.
+- A `messages.whitelist` Adventure cannot deserialize (a `§#rrggbb` overlapping a later code: no input
+  found that reaches it) fails `canPlayerLogin` for every login: warn "Failed to handle packet for", the
+  login answered "Internal server error" (Java's `ServerConnectionListener.tick` catch).
+- Stand-ins: no movement checks; default game rules/world border/clocks; no block
   entities in chunk packets; `bukkit.yml` not read; YAML comments dropped on save.

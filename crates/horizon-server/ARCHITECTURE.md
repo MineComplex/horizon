@@ -130,7 +130,7 @@ Paper's seeds are checked against the patched sources' arithmetic (Paper's code 
 
 **A client gets into the world (2026-10-30).** Startup loads the registries (one `Arc`), opens
 `level-name` with its `session.lock` and `level.dat` (a missing world is not created: generation is
-not ported, said in the log) and the overworld's region I/O workers with `region-file-compression`
+not ported, said in the log) and each level's (overworld, nether, end) region I/O workers with `region-file-compression`
 (`server/level.rs`). The tick thread drives each connection's `Configuration`; `PrepareSpawn` reads
 `players/data/<uuid>.dat` (26.3's folder; `server/player_data.rs`) and holds the 7x7 spawn chunks
 until loaded; `Play` places the player (`join_sequence`, the commands packet with Paper's empty tree,
@@ -161,9 +161,9 @@ Next, in order:
 1. Play state, continued: player info removal and the leave message, the unported join steps
    (recipes, recipe book, inventory, effects, scoreboard, entity tracking), block entities in chunk
    packets, the world border/clocks/game rules from the saved data, `ops.json` and permissions.
-2. The nether and the end: one more `Level` each (its own `ChunkIo` over
-   `dimensions/minecraft/<name>/region`), dimension switching, `paperSpawnDimension`.
-3. Moonrise's chunk system, continued: the nether and the end as more `Level`s, `/save-all` (with
+2. Dimension switching between the levels that exist now (portals, `/execute in`, respawn packets,
+   `move_player_to_level`), per-level time/difficulty/border.
+3. Moonrise's chunk system, continued: `/save-all` (with
    the command executor), entity and POI chunks, `FORCED`/`PORTAL`/`POST_TELEPORT` tickets with
    their systems, then light and generation (the holders' `awaiting_generation` hook).
 4. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in

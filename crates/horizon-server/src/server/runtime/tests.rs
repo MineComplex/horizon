@@ -21,8 +21,9 @@ use crate::network::play::ids::{cb as play_cb, sb as play_sb};
 use crate::registry::tests::pack;
 use crate::registry::{DataPack, KnownPack, parse_builtin};
 use crate::server::chunk_system::ChunkSettings;
-use crate::server::level::{WorldSettings, WorldTables};
+use crate::server::level::{NETHER, OVERWORLD, WorldSettings, WorldTables};
 use crate::server::player_data::PlayerDataStorage;
+use crate::server::player_data::SavedPlayer;
 use crate::world::chunk::{BiomeIds, ChunkStatus, ContainerFactory, SectionFlags, StateFlags};
 use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk, heightmaps_after};
@@ -57,7 +58,7 @@ fn config(max_players: i32) -> RuntimeConfig {
 const STONE: BlockState = BlockState(1);
 
 /// The synthetic tables: air, stone, a slab and water (`flags_tests::synthetic`), a 32-block high
-/// overworld with one biome.
+/// overworld and nether (the end 64 blocks high) with one biome.
 fn tables() -> WorldTables {
     let mut b = BlockStatesBuilder::new();
     for name in ["air", "stone", "oak_slab", "water"] {
@@ -73,6 +74,14 @@ fn tables() -> WorldTables {
             (
                 "minecraft/dimension_type/overworld.json",
                 r#"{"min_y": 0, "height": 32}"#,
+            ),
+            (
+                "minecraft/dimension_type/the_nether.json",
+                r#"{"min_y": 0, "height": 32}"#,
+            ),
+            (
+                "minecraft/dimension_type/the_end.json",
+                r#"{"min_y": 0, "height": 64}"#,
             ),
             ("minecraft/worldgen/biome/plains.json", "{}"),
         ],
@@ -112,35 +121,44 @@ fn make_world(dir: &Path, tables: &WorldTables) {
         max_section_y: 1,
     });
     let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
-    let (io, events) = ChunkIo::spawn(
-        access.region_path("minecraft:overworld", "region"),
-        Compression::Lz4,
-        false,
-        codec.clone(),
-        1,
-    )
-    .unwrap();
-    for x in -2..=2 {
-        for z in -2..=2 {
-            let pos = ChunkPos::new(x, z);
-            let mut chunk = LevelChunk::empty(pos, 0, 2, &codec.factory);
-            chunk.prime_heightmaps(heightmaps_after(ChunkStatus::Full), &heightmaps);
-            for (bx, bz) in [(0, 0), (8, 8), (15, 15)] {
-                chunk.set_block_state(BlockPos::new(bx, 3, bz), STONE, &Flags, &heightmaps);
+    // The overworld's chunks have stone at y = 3 and full sky light; the nether's stone at y = 5
+    // and a sky light of 0x77, to tell them apart in a packet.
+    for (dimension, stone_y, light) in [(OVERWORLD, 3, 0xff), (NETHER, 5, 0x77)] {
+        let (io, events) = ChunkIo::spawn(
+            access.region_path(dimension, "region"),
+            Compression::Lz4,
+            false,
+            codec.clone(),
+            1,
+        )
+        .unwrap();
+        for x in -2..=2 {
+            for z in -2..=2 {
+                let pos = ChunkPos::new(x, z);
+                let mut chunk = LevelChunk::empty(pos, 0, 2, &codec.factory);
+                chunk.prime_heightmaps(heightmaps_after(ChunkStatus::Full), &heightmaps);
+                for (bx, bz) in [(0, 0), (8, 8), (15, 15)] {
+                    chunk.set_block_state(
+                        BlockPos::new(bx, stone_y, bz),
+                        STONE,
+                        &Flags,
+                        &heightmaps,
+                    );
+                }
+                let mut data = chunk.to_data();
+                data.light_correct = true;
+                let section = data.sections.iter_mut().find(|s| s.y == 0).unwrap();
+                section.sky_light = Some(Box::new([light; 2048]));
+                section.sky_light_state = Some(2);
+                io.save(pos, Some(Box::new(data)));
             }
-            let mut data = chunk.to_data();
-            data.light_correct = true;
-            let section = data.sections.iter_mut().find(|s| s.y == 0).unwrap();
-            section.sky_light = Some(Box::new([0xff; 2048]));
-            section.sky_light_state = Some(2);
-            io.save(pos, Some(Box::new(data)));
         }
+        io.shutdown();
+        assert!(events.iter().all(|e| match e {
+            ChunkIoEvent::Saved { result, .. } => result.is_ok(),
+            _ => true,
+        }));
     }
-    io.shutdown();
-    assert!(events.iter().all(|e| match e {
-        ChunkIoEvent::Saved { result, .. } => result.is_ok(),
-        _ => true,
-    }));
 }
 
 struct Running {
@@ -611,7 +629,7 @@ fn tick_until(server: &mut Server, what: &str, mut done: impl FnMut(&mut Server)
 }
 
 /// A block of the chunk at `pos` as the region file has it.
-fn saved_block(dir: &Path, pos: BlockPos) -> BlockState {
+fn saved_block(dir: &Path, dimension: &str, pos: BlockPos) -> BlockState {
     let tables = tables();
     let codec = CodecTables {
         factory: ContainerFactory::new(4, 1, 0),
@@ -624,7 +642,7 @@ fn saved_block(dir: &Path, pos: BlockPos) -> BlockState {
     let chunk_pos = ChunkPos::new(pos.x >> 4, pos.z >> 4);
     let folder = LevelStorageAccess::open(dir, "world")
         .unwrap()
-        .region_path("minecraft:overworld", "region");
+        .region_path(dimension, "region");
     let mut regions = crate::world::chunk_io::RegionStorage::new(folder, Compression::Lz4, false);
     let tag = regions.read(chunk_pos).unwrap().expect("the chunk on disk");
     let data = codec.codec().read(&tag).unwrap().expect("a chunk");
@@ -683,9 +701,7 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     });
     let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
     let change = |s: &mut Server, pos: BlockPos| {
-        let chunk = s
-            .world
-            .overworld
+        let chunk = s.world.levels[0]
             .chunks
             .chunk_mut(ChunkPos::new(pos.x >> 4, pos.z >> 4))
             .unwrap();
@@ -702,8 +718,7 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     let mut ticks = 0;
     tick_until(&mut server, "the autosave", |s| {
         ticks += 1;
-        !s.world
-            .overworld
+        !s.world.levels[0]
             .chunk(ChunkPos::new(0, 0))
             .unwrap()
             .is_unsaved()
@@ -721,7 +736,7 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     let held = |s: &Server| {
         (-2..=2)
             .flat_map(|x| (-2..=2).map(move |z| ChunkPos::new(x, z)))
-            .filter(|&p| s.world.overworld.chunk(p).is_some())
+            .filter(|&p| s.world.levels[0].chunk(p).is_some())
             .count()
     };
     assert_eq!(held(&server), 25);
@@ -735,15 +750,143 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     // The saves were sent to the region workers; they are on disk once the server stopped.
     assert_eq!(server.stop(), 0);
     for pos in corners {
-        assert_eq!(saved_block(dir.path(), pos), STONE, "{pos:?}");
+        assert_eq!(saved_block(dir.path(), OVERWORLD, pos), STONE, "{pos:?}");
     }
-    assert_eq!(saved_block(dir.path(), center), STONE);
+    assert_eq!(saved_block(dir.path(), OVERWORLD, center), STONE);
     assert_eq!(
-        saved_block(dir.path(), BlockPos::new(-20, 10, 20)),
+        saved_block(dir.path(), OVERWORLD, BlockPos::new(-20, 10, 20)),
         BlockState(0)
     );
     // The 9 chunks sent were forgotten when the player moved.
     assert_eq!(client.join().unwrap(), 9);
+}
+
+/// How often the packet holds this text.
+fn occurrences(packet: &[u8], text: &str) -> usize {
+    packet
+        .windows(text.len())
+        .filter(|w| *w == text.as_bytes())
+        .count()
+}
+
+/// Writes the player file of Notch before the server starts.
+fn save_notch(dir: &Path, dimension: &str, position: [f64; 3]) {
+    let players = PlayerDataStorage::new(&dir.join("world")).unwrap();
+    let saved = SavedPlayer {
+        dimension: Some(dimension.to_owned()),
+        position: Some(position),
+        rotation: Some((0.0, 0.0)),
+        ..SavedPlayer::default()
+    };
+    players.save(NOTCH, "Notch", &saved);
+}
+
+#[test]
+fn the_server_has_a_level_per_stem_with_its_dimension_type() {
+    let (server, _dir) = start(config(20), ChunkSettings::default());
+    let levels = &server.world.levels;
+    let names: Vec<_> = levels.iter().map(|l| l.dimension.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "minecraft:overworld",
+            "minecraft:the_nether",
+            "minecraft:the_end"
+        ]
+    );
+    let worlds: Vec<_> = levels.iter().map(|l| l.world_name.as_str()).collect();
+    assert_eq!(worlds, ["world", "world_nether", "world_the_end"]);
+    assert_eq!(
+        levels.iter().map(|l| l.section_count).collect::<Vec<_>>(),
+        [2, 2, 4],
+        "the heights of the synced dimension types"
+    );
+    assert_eq!(
+        levels.iter().map(|l| l.sea_level).collect::<Vec<_>>(),
+        [63, 63, 63],
+        "no generator settings in a world without world_gen_settings"
+    );
+    let types: Vec<_> = levels.iter().map(|l| l.dimension_type).collect();
+    assert!(types[0] != types[1] && types[1] != types[2]);
+}
+
+/// A player saved in the nether joins there: the login names the nether, the chunks are the
+/// nether's, a stop saves the changed chunks of the nether (and only those).
+#[test]
+fn a_player_saved_in_the_nether_joins_the_nether_and_stop_saves_every_level() {
+    let (mut server, dir) = start_with(config(20), ChunkSettings::default(), |dir| {
+        save_notch(dir, NETHER, [8.5, 6.0, 8.5])
+    });
+    let addr = server.local_addr();
+    let client = std::thread::spawn(move || {
+        let mut client = Client::play(addr);
+        let mut seen = Vec::new();
+        let login = client.until_play(play_cb::LOGIN, &mut seen);
+        let mut lights = Vec::new();
+        while lights.len() < 9 {
+            let packet = client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+            lights.push(packet.windows(2048).any(|w| w.iter().all(|&b| b == 0x77)));
+        }
+        // Until the server stops.
+        while client.recv().is_some() {}
+        (login, lights)
+    });
+    tick_until(&mut server, "nine chunks sent", |s| {
+        s.players
+            .first()
+            .is_some_and(|j| j.player.sent_chunks() == 9)
+    });
+    assert_eq!(server.players[0].player.level, 1, "the nether");
+    let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
+    let pos = BlockPos::new(5, 10, 5);
+    let chunk = server.world.levels[1]
+        .chunks
+        .chunk_mut(ChunkPos::new(0, 0))
+        .expect("the nether's chunk is held");
+    assert!(
+        chunk
+            .set_block_state(pos, STONE, &Flags, &heightmaps)
+            .is_some()
+    );
+    assert!(
+        server.world.levels[0].chunk(ChunkPos::new(0, 0)).is_none(),
+        "the overworld holds nothing for a player in the nether"
+    );
+    assert_eq!(server.stop(), 0);
+    let (login, lights) = client.join().unwrap();
+    assert_eq!(
+        occurrences(&login, "minecraft:the_nether"),
+        2,
+        "the list, the spawn"
+    );
+    assert_eq!(occurrences(&login, "minecraft:overworld"), 1, "the list");
+    assert!(lights.iter().all(|&nether| nether), "the nether's chunks");
+    assert_eq!(saved_block(dir.path(), NETHER, pos), STONE);
+    let players = PlayerDataStorage::new(&dir.path().join("world")).unwrap();
+    let saved = players.load(NOTCH, "Notch").unwrap();
+    assert_eq!(saved.dimension.as_deref(), Some(NETHER));
+}
+
+/// A saved dimension the server has no level for: Paper's "unknown respawn dimension", the level of
+/// the respawn data (the overworld here), keeping the saved position.
+#[test]
+fn a_player_saved_in_a_missing_level_joins_the_respawn_level() {
+    let server = run_with(config(20), |dir| {
+        save_notch(dir, "minecraft:missing", [8.5, 4.0, 8.5]);
+    });
+    let mut client = Client::play(server.addr);
+    let mut seen = Vec::new();
+    let login = client.until_play(play_cb::LOGIN, &mut seen);
+    assert_eq!(occurrences(&login, "minecraft:overworld"), 2);
+    assert_eq!(occurrences(&login, "minecraft:missing"), 0);
+    let chunk = client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+    assert!(chunk.windows(2048).any(|w| w.iter().all(|&b| b == 0xff)));
+    drop(client);
+    let (code, dir) = server.stop(Control::Console("stop".into()));
+    assert_eq!(code, 0);
+    let players = PlayerDataStorage::new(&dir.path().join("world")).unwrap();
+    let saved = players.load(NOTCH, "Notch").unwrap();
+    assert_eq!(saved.dimension.as_deref(), Some(OVERWORLD));
 }
 
 /// The real binary, end to end: run `horizon-server` on a copy of a world made by vanilla 26.3 with

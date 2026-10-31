@@ -661,10 +661,6 @@ fn put(map: &mut Compound, key: &str, value: Tag) {
     map.insert(key.into(), value);
 }
 
-/// `Mth.floor` as Java's `(int)` cast does it (saturating, NaN to 0).
-fn floor_int(v: f64) -> i32 {
-    v.floor() as i32
-}
 /// `NumericTag.byteValue`.
 fn byte_value(tag: &Tag) -> Option<i8> {
     tag.int_value().map(|v| v as i8)

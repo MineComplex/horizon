@@ -98,6 +98,8 @@ pub struct Player {
     awaiting_position: Option<[f64; 3]>,
     awaiting_teleport_time: i32,
     level_distances: ViewDistances,
+    /// The index of the player's level in `World::levels`.
+    pub level: usize,
     loader: PlayerChunkLoader,
 }
 
@@ -113,6 +115,8 @@ pub struct NewPlayer {
     pub latency: i32,
     pub saved: SavedPlayer,
     pub level_distances: ViewDistances,
+    /// The level the player joins (its index in `World::levels`); `level` of [`Player::new`].
+    pub level: usize,
 }
 
 impl Player {
@@ -147,6 +151,7 @@ impl Player {
             awaiting_position: Some(p.spawn.position),
             awaiting_teleport_time: 0,
             level_distances: p.level_distances,
+            level: p.level,
             loader,
         }
     }
