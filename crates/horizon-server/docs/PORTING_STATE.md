@@ -68,6 +68,11 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   `LeafTemplateOracle`: 117 templates, 1,404 placements (40 vanilla + 9 built-in lists, rotations x mirrors, chunk boxes,
   waterlogging), 735,850 `setBlock` calls plus ticks, loot seeds, entity positions and random draws, all equal. The edge walk
   duplicates the tree feature's face traversal (its `Shape` is private to `feature/`): move it to a shared place.
+- Worldgen WP5 jigsaw (`src/worldgen/structure/{pool,jigsaw,piece_place,start}.rs`): template pools and their elements
+  (single, legacy single, feature, list, empty), the jigsaw assembler, jigsaw pieces placed into the world, saved starts
+  loaded back (an element is found by its saved form: an element listed by several pools has one copy per pool), and
+  `Structure.generate` for the jigsaw structures. `LeafJigsawOracle`: 132 starts and 6,445 pieces over two seeds, all start
+  tags equal, 94 placements (73,415 `setBlock` calls), 0 failures. Open: legacy pieces, the other structure types.
 - Worldgen WP4a first part (`src/worldgen/{feature,placement}`): `worldgen/feature` (type + raw JSON) and
   `placed_feature` registries, tags, each biome's features per step, the feature sorter, placement
   modifiers (all 18), block predicates, int/height providers, `FeaturePlacer` over a narrow `PlacementWorld`
@@ -168,6 +173,12 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   run, 13 codec cases, equal; Moonrise's dirty flag derived from sources; ties between containers unpacked from disk break
   by position then chunk (vanilla's order there depends on a hash map). Checked live: two runs of the release binary on one
   fresh world (save, reload). Open: call the runner, per-world `max-block-ticks`/`max-fluid-ticks`, debug-world skip.
+- Block updates and fluids (`src/world/{block_update,block_changes,block_rules,fluid}.rs`, `LeafFluidOracle`): the
+  block-change path (`setBlock` on loaded chunks, the neighbour updater chained up to `max-chained-neighbor-updates`, changed
+  blocks broadcast as block/section updates, level events), `FlowingFluid` for water and lava, and
+  `Level::tick_scheduled_ticks` now running the due fluid ticks (block ticks still wait for block behaviour).
+  `LeafFluidOracle`: 24 scenes, 2,898 game ticks, 4,520 block sets, 0 differ. Checked live: `real_binary_session` and
+  `real_binary_dimension_change` on the release binary.
 - Commands (`src/command/exec.rs`, `src/server/commands/`): vanilla's executor (frames, forks, limits at the 65,536 defaults
   until game rules exist, `ResultCallback` enum) over the tree's key and `&mut Server`; `CommandSource` as plain data (console:
   `System chat:` feedback, ops broadcast). Ported: `difficulty`, `list`, `seed`, `tick`, `time`, `weather`, `op`, `deop`,
@@ -195,8 +206,8 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`, `src/worldgen/structure/{template,place,processor}`, `src/block/transform.rs`, `src/world/ticks.rs`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (pools + jigsaw assembly, legacy pieces, `Structure.generate` per type; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
-Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
+WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (legacy pieces, `Structure.generate` per type; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
+Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
