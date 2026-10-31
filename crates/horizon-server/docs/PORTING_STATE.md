@@ -199,8 +199,32 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   (`ProtoChunk::height_or_prime`; primed in a read-only neighbour's snapshot, it is not kept past the step).
   Checked live: `real_binary_session` and `real_binary_dimension_change` on a fresh world, no warnings.
   Stand-ins: `structures::generate_start` (pieces) is a no-op awaiting WP5; Starlight not
-  ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
+  ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs,
   priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
+
+- Flat and debug generators (`worldgen/generator/{fixed,flat_settings,any}.rs`, 2026-10-31): `ChunkGenerator`
+  (`any.rs`) is `Noise(LevelGenerator)` or `Fixed(FixedGenerator)`; the level and the generation pool hold it,
+  `ChunkWorker::run` is the same status switch. `FixedGenerator` = `FlatLevelSource` (+
+  `FlatLevelGeneratorSettings`, decoded from the saved `settings` or `generator-settings` in `flat_settings.rs`: layers,
+  biome (unknown: plains, logged), `features`, `lakes`, `structure_overrides` as ids or a list; a parse error keeps the
+  preset's generator for a new world, fails the level for a saved one) or `DebugLevelSource` (every state in id order
+  on the `ceil(sqrt)` float grid, barrier at y 60, state at y 70). Over `FixedBiomeSource`; getMinY 0 / genDepth 384
+  (so the features' generator bounds are 0..384 while the level's are -64..320), sea level -63 / 63, spawn height
+  `minY + min(height, layers)` / 64, `createForFlat`'s overrides with ring seed 0 / `createForNormal`. TERRAIN lays the
+  layers that stay (non-`MOTION_BLOCKING`-opaque ones are `null` as `adjustGenerationSettings` leaves them), primes the
+  `_WG` heightmaps (kept stale through features, as vanilla's) and the final four. FEATURES = `addVanillaDecorations`'
+  loop over the adjusted lists (lakes, the biome's features minus underground/surface structures and, with lakes, its
+  own lakes; none in an air-only world unless the biome is the void) with the fill-layer features placed natively after
+  the biome's top-layer ones (`place_placed_listed`: the lists are the generator's, so the biome filter passes). Starts:
+  jigsaw and template structures through the structure port's code over layer heights (`FixedColumns`), plus strongholds
+  and mineshafts; the other piece-based types (they read noise columns in `legacy_structures`) make no start in flat/debug
+  levels. `fixed.rs`'s `decorate_flat` repeats `generator/decorate.rs`'s `StartPlacer` set-up (follow it when that changes).
+  `LeafFlatDebugOracle`: 13 settings (parse, layers, facts, adjusted layers, feature order), 20 decorated chunks (blocks and
+  heightmaps of 3 x 3) and the debug grid (36,672 states, 18 probes, 3 decorated chunks) equal; the vanilla-made flat world's
+  25 saved full chunks (`HORIZON_SERVER_VANILLA_WORLD`; `forceload add 0 0 15 15` is blocks, so only the spawn square is
+  full) equal (blocks, biomes, heightmaps, starts). Villages start and are placed in a 48 x 48 square (no vanilla reference
+  for them: the fixture world has none). Stand-ins: the layers are nulled from the first chunk on (vanilla nulls them on the
+  first `generationSettingsGetter` call, so the very first chunks' terrain keeps non-opaque layers until then).
 
 - 4.B.3 scheduled ticks (`src/world/ticks.rs`, `LeafTicksOracle`): `LevelChunkTicks` (by `DRAIN_ORDER`, one per type and
   position, pending saved ticks, Moonrise's dirty flag), `LevelTicks` (collect/drain by `INTRA_TICK_DRAIN_ORDER` with the
@@ -269,7 +293,7 @@ blocks, items, commands), Sonnet for routine porting against an oracle, Opus for
 
 | # | Stage | Contents | Java | Waves | Done when |
 |---|---|---|---|---|---|
-| 0 | Finish world generation | live structure generation, level random, flat/debug generators | ~10k | 1-2 | worlds generate as vanilla's, structures included |
+| 0 | Finish world generation | live structure generation, level random (ring search, structure check, `/locate`, flat/debug generators done) | ~10k | 1-2 | worlds generate as vanilla's, structures included |
 | 1 | Walk and build | play packets, movement checks, digging and placing, game modes, Starlight light, `updateShape` of every block | ~45k | 4-5 | walk, break and place blocks, correct light |
 | 2 | Block behaviour | block classes (~45k), redstone, block entities (chests, furnaces, hoppers, spawners), block ticks, game events | ~63k | 6-8 | redstone, machines and growth work |
 | 3 | Items and inventory | items, components, enchantments, crafting and furnaces, menus, loot tables, damage, effects, food | ~55k | 5-7 | survival: crafting, chests, loot, hunger, damage |
@@ -282,7 +306,7 @@ Order: 1 first; 2 and 3 can run in parallel; 4 before 5; 6 in pieces any time af
 the plugin API (no plugins for now), datagen-only code in `data/`.
 
 ## Next (stage 0 details)
-WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (a loaded monument regenerates its rooms with the level seed; `/locate` over loaded and saved chunks: a `ChunkScan` over region files, and a cached `Locator` per level; the arguments' registry lookup while parsing); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); flat/debug: the piece-based structures other than strongholds and mineshafts make no start there; WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (a loaded monument regenerates its rooms with the level seed; `/locate` over loaded and saved chunks: a `ChunkScan` over region files, and a cached `Locator` per level; the arguments' registry lookup while parsing); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
@@ -290,11 +314,11 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
 - User lists: no commands to edit them; `enforce-whitelist` not ported; Gson's lenient reading and bins of 8+
   colliding keys differ; saves are synchronous (Leaf's are async).
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
-- Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `chunk-loading-*` rates not read.
+- Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; a chunk of a level with no generator (a datapack's own generator type) never finishes and stalls sending; `chunk-loading-*` rates not read.
 - Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
   weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
   off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets
-  the respawn data's level (Paper's warn). Sea level is the generator's noise settings' (stand-in only for flat levels).
+  the respawn data's level (Paper's warn). Sea level is the generator's noise settings' (stand-in only for levels without a generator).
   Per level, as Paper keeps it (`server/level_data.rs`, 26.3 sources): `paper:level_overrides` (game time,
   spawn, `initialized`, game type, difficulty/hardcore/locked; overworld also synced to `level.dat`),
   `world_border`, `world_clocks` (day time; per-world, `time.affects-all-worlds` true not ported),
