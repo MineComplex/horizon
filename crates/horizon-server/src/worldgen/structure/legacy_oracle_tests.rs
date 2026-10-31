@@ -19,7 +19,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use super::jigsaw_oracle_tests::{canonical_string, first_difference};
-use super::legacy_piece::{PieceOutput, place_pieces};
+use super::legacy_piece::{PieceLevel, PieceOutput, place_pieces};
 use super::piece_place::{reference_of, writable_area};
 use super::start::StructureStart;
 use super::template::StructureTemplates;
@@ -414,7 +414,10 @@ fn legacy_structures_match_java() {
                     &mut random,
                     chunk_box,
                     reference,
-                    seed,
+                    PieceLevel {
+                        seed,
+                        mineshaft_blocking: &registry.mineshaft_blocking,
+                    },
                     &mut output,
                 ) {
                     failures.push(format!("{label}: rust error {e}"));

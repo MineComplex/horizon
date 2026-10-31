@@ -10,6 +10,7 @@ use crate::util::random::{LegacyRandom, WorldgenRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::structure::StructureId;
 use crate::worldgen::structure::legacy_piece::LegacyPiece;
+use crate::worldgen::structure::mineshaft;
 use crate::worldgen::structure::scattered::{
     BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece,
 };
@@ -66,6 +67,17 @@ impl Context<'_, '_, '_> {
         let biome = self.columns.biome_at(pos);
         self.columns.biomes.contains(biome)
     }
+}
+
+/// `MineshaftStructure`'s `mineshaft_type`: whether it is `mesa`.
+fn mesa_type(structure: &crate::worldgen::structure::Structure) -> bool {
+    serde_json::from_str::<serde_json::Value>(structure.json.get())
+        .ok()
+        .and_then(|v| {
+            v.get("mineshaft_type")
+                .and_then(|t| t.as_str().map(str::to_owned))
+        })
+        .is_some_and(|t| t == "mesa")
 }
 
 /// The pieces of a piece-based structure starting in `chunk`; `None` for an invalid start (also
@@ -132,6 +144,35 @@ pub fn generate(
                 }
                 _ => LegacyPiece::JungleTemple(JungleTemplePiece::new(&mut random, min_x, min_z)),
             }
+        }
+        "minecraft:mineshaft" => {
+            let mesa = mesa_type(generator.data().structures().structure(structure));
+            // `MineshaftStructure.findGenerationPoint`: the stub's biome is checked at its position
+            // after the pieces were made (`Either.right(builder)`).
+            let sea_level = cx.sea_level;
+            let min_y = cx.columns.min_y;
+            let (position, pieces) = mineshaft::generate(
+                &mut random,
+                [chunk.x, chunk.z],
+                mesa,
+                sea_level,
+                min_y,
+                &mut |x, z| {
+                    use crate::worldgen::structure::jigsaw::JigsawWorld;
+                    cx.columns
+                        .first_free_height(x, z, Heightmap::WorldSurfaceWg)
+                },
+            );
+            let position = BlockPos::new(position[0], position[1], position[2]);
+            if !cx.valid_biome(position) {
+                return None;
+            }
+            return Some(
+                pieces
+                    .into_iter()
+                    .map(|p| StructurePiece::Legacy(LegacyPiece::Mineshaft(p)))
+                    .collect(),
+            );
         }
         _ => return None,
     };

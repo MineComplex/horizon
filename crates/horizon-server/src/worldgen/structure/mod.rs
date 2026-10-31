@@ -16,6 +16,7 @@
 
 pub mod jigsaw;
 pub mod legacy_piece;
+pub mod mineshaft;
 pub mod piece_place;
 pub mod place;
 pub mod placement;
@@ -286,6 +287,8 @@ pub struct StructureRegistry {
     /// The structure templates (`StructureTemplateManager`), given once loaded
     /// ([`crate::worldgen::data::WorldgenData::set_templates`]).
     pub templates: template::StructureTemplates,
+    /// `BiomeTags.MINESHAFT_BLOCKING`, which mineshaft pieces read while they are placed.
+    pub mineshaft_blocking: BiomeSet,
 }
 
 impl StructureRegistry {

@@ -10,8 +10,10 @@
 //! yet, so a placement collects them in [`PieceOutput`], as template placement does
 //! ([`super::place::PlacedTemplate`]).
 
+use super::mineshaft::MineshaftPiece;
 use super::scattered::{BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece};
 use super::start::StructurePiece;
+use crate::block::flags::SupportType;
 use crate::block::transform::{Mirror, Rotation};
 use crate::block::{BlockState, BlockStateData, BlockStates};
 use crate::core::geometry::Direction;
@@ -22,6 +24,7 @@ use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::density::StructureBounds;
 use crate::worldgen::feature::FeatureWorld;
 use crate::worldgen::placement::{PlacementWorld, WorldError};
+use crate::worldgen::structure::BiomeSet;
 
 pub type Result<T> = std::result::Result<T, WorldError>;
 
@@ -308,6 +311,15 @@ pub struct PieceContext<'a> {
     pub reference: BlockPos,
     /// `WorldGenLevel.getSeed()`.
     pub seed: i64,
+    /// `BiomeTags.MINESHAFT_BLOCKING`.
+    pub mineshaft_blocking: &'a BiomeSet,
+}
+
+/// What a piece reads of the level besides its blocks.
+#[derive(Clone, Copy)]
+pub struct PieceLevel<'a> {
+    pub seed: i64,
+    pub mineshaft_blocking: &'a BiomeSet,
 }
 
 fn namespaced(name: &str) -> std::borrow::Cow<'_, str> {
@@ -365,6 +377,20 @@ impl PieceContext<'_> {
             .blocks()
             .with_property(state, key, value)
             .unwrap_or(state)
+    }
+    /// `BlockState.isFaceSturdy(level, pos, face)` with `SupportType.FULL`.
+    pub fn face_sturdy(&mut self, pos: [i32; 3], face: Direction) -> bool {
+        self.world
+            .block(pos)
+            .is_ok_and(|s| self.world.data().is_face_sturdy(s, face, SupportType::Full))
+    }
+    /// `BlockState.isFaceSturdy(level, pos, face, SupportType.CENTER)`.
+    pub fn center_sturdy(&mut self, pos: [i32; 3], face: Direction) -> bool {
+        self.world.block(pos).is_ok_and(|s| {
+            self.world
+                .data()
+                .is_face_sturdy(s, face, SupportType::Center)
+        })
     }
     /// `StructurePiece.isReplaceableByStructures`.
     pub fn replaceable_by_structures(&self, state: BlockState) -> bool {
@@ -430,6 +456,8 @@ pub struct PieceBase {
     pub bounding_box: BoundingBox,
     pub orientation: Option<Direction>,
     pub gen_depth: i32,
+    /// Blocks `placeBlock` leaves alone (`canBeReplaced` false): not saved, set by the piece kind.
+    pub keep: &'static [&'static str],
 }
 
 impl PieceBase {
@@ -438,7 +466,13 @@ impl PieceBase {
             bounding_box,
             orientation,
             gen_depth,
+            keep: &[],
         }
+    }
+
+    pub fn with_keep(mut self, keep: &'static [&'static str]) -> Self {
+        self.keep = keep;
+        self
     }
 
     /// `StructurePiece(type, tag)`: `GD`, `BB` and `O` (`None` for a missing or invalid box).
@@ -450,6 +484,7 @@ impl PieceBase {
             bounding_box,
             orientation: (orientation != -1).then(|| from_2d(orientation)),
             gen_depth: get("GD").and_then(Tag::int_value).unwrap_or(0),
+            keep: &[],
         })
     }
 
@@ -510,7 +545,13 @@ impl PieceBase {
         y: i32,
         z: i32,
     ) -> Result<()> {
-        self.place_if(c, state, x, y, z, true)
+        let replaceable = if self.keep.is_empty() {
+            true
+        } else {
+            let current = self.get(c, x, y, z)?;
+            !self.keep.contains(&c.name(current))
+        };
+        self.place_if(c, state, x, y, z, replaceable)
     }
 
     /// `placeBlock` where `canBeReplaced(x, y, z)` was already answered.
@@ -875,6 +916,7 @@ pub enum LegacyPiece {
     JungleTemple(JungleTemplePiece),
     SwampHut(SwampHutPiece),
     BuriedTreasure(BuriedTreasurePiece),
+    Mineshaft(MineshaftPiece),
 }
 
 impl LegacyPiece {
@@ -885,6 +927,7 @@ impl LegacyPiece {
             Self::JungleTemple(p) => p.base.base.bounding_box,
             Self::SwampHut(p) => p.base.base.bounding_box,
             Self::BuriedTreasure(p) => p.bounding_box(),
+            Self::Mineshaft(p) => p.bounding_box(),
         }
     }
 
@@ -895,6 +938,7 @@ impl LegacyPiece {
             Self::JungleTemple(p) => p.create_tag(),
             Self::SwampHut(p) => p.create_tag(),
             Self::BuriedTreasure(p) => p.create_tag(),
+            Self::Mineshaft(p) => p.create_tag(),
         }
     }
 
@@ -906,6 +950,10 @@ impl LegacyPiece {
             "minecraft:tejp" => Self::JungleTemple(JungleTemplePiece::load(tag)?),
             "minecraft:tesh" => Self::SwampHut(SwampHutPiece::load(tag)?),
             "minecraft:btp" => Self::BuriedTreasure(BuriedTreasurePiece::load(tag)?),
+            "minecraft:mscorridor"
+            | "minecraft:mscrossing"
+            | "minecraft:msroom"
+            | "minecraft:msstairs" => Self::Mineshaft(MineshaftPiece::load(id, tag)?),
             _ => return None,
         })
     }
@@ -914,7 +962,14 @@ impl LegacyPiece {
     pub fn handles(id: &str) -> bool {
         matches!(
             id,
-            "minecraft:tedp" | "minecraft:tejp" | "minecraft:tesh" | "minecraft:btp"
+            "minecraft:tedp"
+                | "minecraft:tejp"
+                | "minecraft:tesh"
+                | "minecraft:btp"
+                | "minecraft:mscorridor"
+                | "minecraft:mscrossing"
+                | "minecraft:msroom"
+                | "minecraft:msstairs"
         )
     }
 
@@ -925,6 +980,7 @@ impl LegacyPiece {
             Self::JungleTemple(p) => p.post_process(c),
             Self::SwampHut(p) => p.post_process(c),
             Self::BuriedTreasure(p) => p.post_process(c),
+            Self::Mineshaft(p) => p.post_process(c),
         }
     }
 }
@@ -941,7 +997,7 @@ pub fn place_pieces<W: FeatureWorld, R: RandomSource>(
     random: &mut R,
     chunk_box: StructureBounds,
     reference: BlockPos,
-    seed: i64,
+    level: PieceLevel<'_>,
     out: &mut PieceOutput,
 ) -> Result<()> {
     let chunk_box = BoundingBox::from_bounds(chunk_box);
@@ -953,7 +1009,8 @@ pub fn place_pieces<W: FeatureWorld, R: RandomSource>(
         chunk_box,
         chunk,
         reference,
-        seed,
+        seed: level.seed,
+        mineshaft_blocking: level.mineshaft_blocking,
     };
     for piece in pieces.iter_mut() {
         if let StructurePiece::Legacy(piece) = piece {

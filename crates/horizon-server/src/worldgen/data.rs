@@ -389,6 +389,9 @@ fn load_structures(
     parse: &impl Fn(&ElementFile<'_>) -> Result<Box<RawValue>, WorldgenError>,
 ) -> Result<StructureRegistry, WorldgenError> {
     let mut registry = StructureRegistry::default();
+    let blocking = RawValue::from_string("\"#minecraft:mineshaft_blocking\"".to_owned())
+        .expect("a JSON string");
+    registry.mineshaft_blocking = biomes.decode(&blocking).unwrap_or_default();
     for_each_element(packs, "minecraft:worldgen/structure", |file| {
         let structure = decode_structure(file.id, parse(&file)?, biomes);
         registry

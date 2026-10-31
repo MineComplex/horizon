@@ -10,7 +10,7 @@
 use std::borrow::Cow;
 
 use super::jigsaw::JigsawPiece;
-use super::legacy_piece::{PieceOutput, place_pieces};
+use super::legacy_piece::{PieceLevel, PieceOutput, place_pieces};
 use super::place::{PlaceContext, PlaceError, PlaceSettings, PlacedTemplate, place_in_world};
 use super::pool::{ElementKind, PoolElementId, Projection, template_of};
 use super::processor::{ProcessError, Processor, ProcessorLists};
@@ -93,7 +93,10 @@ impl PieceTables<'_> {
             random,
             chunk_box,
             reference,
-            self.seed,
+            PieceLevel {
+                seed: self.seed,
+                mineshaft_blocking: &self.structures.mineshaft_blocking,
+            },
             &mut output,
         )
         .map_err(ProviderError::World)?;
