@@ -13,6 +13,7 @@ use serde_json::value::RawValue;
 use std::sync::Arc;
 
 use super::FeatureRegistry;
+use super::cave::Cave;
 use super::misc::Misc;
 use super::ore::{self, OreConfig};
 use super::patch::VegetationPatch;
@@ -173,6 +174,7 @@ pub enum Feature {
     Misc(Misc),
     Patch(VegetationPatch),
     Terrain(Terrain),
+    Cave(Cave),
 }
 
 fn direction(raw: &RawValue) -> Result<Direction, DecodeError> {
@@ -203,6 +205,9 @@ impl Feature {
         }
         if let Some(misc) = Misc::decode(kind, raw, ctx)? {
             return Ok(Some(Self::Misc(misc)));
+        }
+        if let Some(cave) = Cave::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Cave(cave)));
         }
         if let Some(terrain) = Terrain::decode(kind, raw, ctx)? {
             return Ok(Some(Self::Terrain(terrain)));
@@ -278,6 +283,7 @@ impl Feature {
             Self::Misc(misc) => misc.place(world, random, origin),
             Self::Patch(patch) => patch.place(registry, world, random, origin),
             Self::Terrain(terrain) => terrain.place(registry, world, random, origin),
+            Self::Cave(cave) => cave.place(registry, world, random, origin),
             Self::Tree(tree) => {
                 let mut nested = |id, w: &mut W, r: &mut R, at: [i32; 3]| {
                     registry.place_configured(id, w, r, BlockPos::new(at[0], at[1], at[2]))

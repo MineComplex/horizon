@@ -26,12 +26,15 @@ use crate::worldgen::structure::BiomeSet;
 use crate::worldgen::surface::temperature::{BiomeClimate, BiomeClimates};
 use tree::TreeBlocksCell;
 
+pub mod cave;
+mod common;
 pub mod decorate;
 #[cfg(test)]
 mod decorate_oracle_tests;
 pub mod ice;
 pub mod lake;
 pub mod misc;
+pub mod multiface;
 pub mod mushroom;
 #[cfg(test)]
 mod oracle_tests;

@@ -720,7 +720,12 @@ public final class LeafFeatureOracle {
             features2(out, Set.of("TreeFeature", "FallenTreeFeature", "RandomSelectorFeature", "SimpleRandomSelectorFeature",
                 "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
                 "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature",
-                "SnowAndFreezeFeature", "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature"));
+                "SnowAndFreezeFeature", "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature",
+                "MultifaceGrowthFeature", "GeodeFeature", "MonsterRoomFeature", "FossilFeature", "LargeDripstoneFeature", "SpeleothemClusterFeature",
+                "SpeleothemFeature", "RootSystemFeature", "SculkPatchFeature", "CoralTreeFeature", "CoralClawFeature", "ProjectedRandomPatchySquare",
+                "SingleBlockPillarFeature", "NoOpFeature", "HugeFungusFeature", "ReplaceBlobsFeature", "DeltaFeature", "SteppedColumnClusterFeature",
+                "ChorusPlantFeature", "EndSpikeFeature", "EndIslandFeature", "EndPlatformFeature", "EndPodiumFeature", "EndGatewayFeature",
+                "VoidStartPlatformFeature", "SpikeFeature", "BonusChestFeature"));
         }
     }
 }
