@@ -107,6 +107,18 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   stepped_column_cluster, sculk_patch, chorus_plant, end_*, spike, single_block_pillar, projected_random_patchy_square,
   coral_tree/claw, no_op, bonus_chest. Mossy-carpet `simple_block` (region random), pale moss patch in the oracles (needs
   `getLevel()`), block entities (beehive occupants are drawn, not stored), POI and `getPostProcessPos` on `setBlock` are WP6.
+- Worldgen WP4 terrain features (`src/worldgen/feature/{terrain,ice,lake,mushroom,shape}.rs`): `freeze_top_layer`, `blue_ice`,
+  `iceberg`, `lake`, `block_blob`, `huge_brown_mushroom`/`huge_red_mushroom`. `FeatureRegistry` carries each biome's
+  `BiomeClimates` and `has_precipitation` (`shouldFreeze`/`shouldSnow`); light 0 as in Paper's `WorldGenRegion`;
+  `Math.pow(x, 2.0)` is `x*x`; `huge_red_mushroom`'s `isValidPosition` radius uses (-1, -1) as vanilla does. `feature::shape`
+  is `updateShapeAtEdge`'s `updateShape` for vegetation (air where `canSurvive` fails), double plants and vines, chosen by the
+  block's survival rule; `RegionWorld::update_shape_at_face` calls it. It was the cause of the 3 differing decoration chunks:
+  `decoration_matches_java` is now 48 chunks, 0 failures (no `KNOWN` list). `LeafFeatureOracle`: 47,135 rows; 6,983 ground
+  `feature2` rows equal (64 per new type), 1,401 skipped for unported types. 26.3 has no `lake_water` feature: the lake's
+  water/ice branch is ported from the source, not exercised. `updateShape` of other blocks (leaves, fences, walls...) is WP6.
+  Still not ported: multiface_growth, geode, monster_room, fossil, huge_fungus, netherrack_replace_blobs, delta_feature,
+  speleothem(_cluster), large_dripstone, root_system, stepped_column_cluster, sculk_patch, chorus_plant, end_*, spike,
+  single_block_pillar, projected_random_patchy_square, coral_tree/claw, no_op, bonus_chest, mossy-carpet simple_block.
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
@@ -163,7 +175,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates); WP4 rest (the feature types listed under WP4 rest above; `updateShape` after features, the probable cause of the 3 differing decoration chunks); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
