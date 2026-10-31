@@ -410,7 +410,7 @@ impl DedicatedServerProperties {
             100,
         )?;
         let player_idle_timeout = r.int("player-idle-timeout", 0);
-        let white_list = r.bool("white-list", true);
+        let white_list = r.bool("white-list", false);
         let enforce_secure_profile = r.bool("enforce-secure-profile", false);
         let log_ips = r.bool("log-ips", true);
         let pause_when_empty_seconds = r.int("pause-when-empty-seconds", -1);
@@ -679,7 +679,7 @@ mod tests {
         op-permission-level=4\npause-when-empty-seconds=-1\nplayer-idle-timeout=0\n\
         region-file-compression=lz4\nserver-ip=\nserver-name=Unknown Server\nserver-port=25565\n\
         simulation-distance=7\nspawn-protection=0\nsync-chunk-writes=true\nuse-native-transport=true\n\
-        view-distance=5\nwhite-list=true\n";
+        view-distance=5\nwhite-list=false\n";
 
     #[test]
     fn empty_file_stores_leaf_defaults() {
