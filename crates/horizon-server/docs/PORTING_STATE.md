@@ -56,6 +56,18 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
   `LeafStructurePlacementOracle`: 97,412 answers, all equal. Matches Leaf (user, 2026-10-31): a malformed
   inner start id fails the chunk load, inline structures/sets decode, dotted `spigot.yml` world names nest.
+- Worldgen WP5 templates (`src/worldgen/structure/{template,place,processor}.rs`, `src/block/transform.rs`): `StructureTemplates`
+  decodes every template at startup (world `generated/<ns>/structure/` first, then the jar's `data/<ns>/structure/`; a broken
+  file falls back to the next source; 1,511 in ~0.2 s release; no datafixer, `.snbt` or `BukkitValues`), palettes in vanilla's
+  order, jigsaws parsed at load. `PlaceSettings` + `place_in_world`/`process_block_infos`/transforms/bounding box over
+  `FeatureWorld` (barrier-first NBT blocks, waterlogging, the edge walk via `update_shape_at_face`); block entity NBT (with
+  `LootTableSeed`) and entity NBT are returned in `PlacedTemplate` until those systems exist; `updateFromNeighbourShapes` is
+  WP6. `worldgen/processor_list` (`WorldgenData::processor_lists`) and all processor types as an enum; the settings random is
+  shared or per-position (no separate one for `/place` yet). **`block_states.bin` v3** (rotate/mirror/waterlog columns,
+  has-block-entity, randomizable-container, full-outline, liquid-container flags; v2 rejected: rerun `setup_reference.sh`).
+  `LeafTemplateOracle`: 117 templates, 1,404 placements (40 vanilla + 9 built-in lists, rotations x mirrors, chunk boxes,
+  waterlogging), 735,850 `setBlock` calls plus ticks, loot seeds, entity positions and random draws, all equal. The edge walk
+  duplicates the tree feature's face traversal (its `Shape` is private to `feature/`): move it to a shared place.
 - Worldgen WP4a first part (`src/worldgen/{feature,placement}`): `worldgen/feature` (type + raw JSON) and
   `placed_feature` registries, tags, each biome's features per step, the feature sorter, placement
   modifiers (all 18), block predicates, int/height providers, `FeaturePlacer` over a narrow `PlacementWorld`
@@ -172,10 +184,10 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 ## Reusable Rust pieces (use these, don't add parallel ones)
 `src/util/{random,jmath,number_text}`, `src/core/{position,geometry}`, `src/nbt.rs`, `src/azalea/{buf,chat,
 crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storage,chunk_io}`,
-`src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
+`src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`, `src/worldgen/structure/{template,place,processor}`, `src/block/transform.rs`, `src/world/ticks.rs`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (pools + jigsaw assembly, legacy pieces, `Structure.generate` per type; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
