@@ -56,7 +56,7 @@ fn references_share_nodes_and_forward_references_resolve() {
                     {"type":"minecraft:condition","if_true":"minecraft:later","then_run":"minecraft:stone"}]}"#,
             ),
             ("minecraft:bedrock_floor", r#"{"type":"minecraft:block","result_state":"minecraft:stone"}"#),
-            ("minecraft:stone", r#"{"type":"minecraft:block","result_state":{"Name":"minecraft:stone"}}"#),
+            ("minecraft:stone", r#"{"type":"minecraft:block","result_state":{"id":"minecraft:stone"}}"#),
         ],
         &[(
             "minecraft:later",

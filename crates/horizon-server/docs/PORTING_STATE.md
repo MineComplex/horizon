@@ -7,7 +7,7 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 - One crate `crates/horizon-server`, no dependency on other Horizon crates; `#![forbid(unsafe_code)]`.
 - World generator **copied** from `crates/horizon-world/src/worldgen` + `crates/horizon-core/src` and adapted
   (2026-10-31; accepted exception to rule 16). Drop Horizon's modpack `horizon:*` code.
-- Cut vs Leaf: no EULA check, no `custom_enchantments` pack, `hex_color` syntax error for non-hex, no
+- Cut vs Leaf: no FastRNG (vanilla random sources only), `white-list` default false, no ban lists, no EULA check, no `custom_enchantments` pack, `hex_color` syntax error for non-hex, no
   packet-rate kick (own inbound byte budget), no plugins/Bukkit API yet, no datafixers, no secure seed,
   no status/Query/RCON/JSON-RPC/JFR/Sentry/spark.
 - Agents: 2-3 per wave, narrow briefs; Sonnet for routine porting/tests, Opus for ownership/hard design.

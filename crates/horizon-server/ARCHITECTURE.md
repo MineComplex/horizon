@@ -38,7 +38,9 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
     budget only applies backpressure;
   - `white-list` in `server.properties` defaults to `false` (Leaf 26.3: `true`), decided 2026-10-31;
   - no ban lists (`banned-players.json`, `banned-ips.json`), as in MineComplex's Leaf (its `0318-Cleanup`
-    removes them): only the whitelist and ops.
+    removes them): only the whitelist and ops;
+  - Leaf's FastRNG (`performance.faster-random-generator`, off by default) is not ported: the server always
+    uses vanilla's random sources.
 - The world generator is **copied** from `crates/horizon-world`/`horizon-core` into horizon-server and
   adapted (`docs/worldgen-plan.md`), not shared with or depended on (decided by the user, 2026-10-31).
   This is the accepted exception to PORTING_RULES §16 (no duplicate implementations): horizon-server
