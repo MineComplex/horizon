@@ -314,9 +314,20 @@ WP1's trait stubs); WP6 integrates.
   decides palette order and the search's previous result), Leaf's zoom summing x²+y²+z² (vanilla z²+y²+x²; equal
   on all 52,096 oracle samples). Verified by `LeafBiomeOracle.java` + `biome::oracle_tests` (counts in
   ARCHITECTURE.md).
-- **Left:** `W/biome_predicate.rs`, `W/terrain.rs` (fill), `aquifer.rs` + `aquifer/*`, Purpur's end void rings,
-  flat/debug generators' biome sources (WP6), wiring `BiomeSource`/`LevelDensity` into the level and the
-  scheduler (BIOMES jobs owning a `ClimateSearch` per worker), spawn origin at level creation.
+- **Done (2026-10-31, second slice):** `S/worldgen/aquifer/{mod,noise_based}.rs` (from `W/aquifer*`: the
+  noise-based aquifer, `FluidStatus`, the global picker, disabled aquifer; samplers became node ids of the level's
+  `DensityProgram`, `LevelDensity::aquifer_random` holds `getOrCreateRandomFactory("minecraft:aquifer")`) and
+  `S/worldgen/terrain/mod.rs` (`NoiseTerrain`: `NoiseChunk` + `doFill` onto a `ProtoChunk` with the WG
+  heightmaps and fluid post-processing marks, `iterateNoiseColumn` behind `base_height`/`base_column`).
+  26.3's `NoiseChunk` has no ore veins (they are density functions), so there is no `OreVeinifier`; Moonrise's
+  inline fill and thread-local buffers change no result. `LeafTerrainOracle`: 7 noise settings x 2 seeds x 16
+  chunks (224 chunks, 15.2M blocks, 114,688 heightmap values, 10,512 fluid marks) plus 84 base columns/heights,
+  all equal. Fill: 3.5 ms per overworld chunk in release (1.0 ms of it final density), 0.6 Nether, 0.3 End.
+- **Left:** `W/biome_predicate.rs` (nothing in terrain needs it; it comes with its first user, features or
+  structures), Purpur's end void rings (`generate-end-void-rings` must reach `EndIslands`, in `density/`;
+  awaiting the owner's go-ahead), flat/debug generators' biome sources (WP6), wiring `BiomeSource`/`LevelDensity`
+  and `NoiseTerrain` into the level and the scheduler (BIOMES jobs owning a `ClimateSearch` per worker, TERRAIN
+  jobs a `DensityContext` with the chunk's beardifier bound), spawn origin at level creation.
 
 ### WP3 — Surface rules and carvers (rest of TERRAIN) (~5k lines)
 

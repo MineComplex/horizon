@@ -10,6 +10,8 @@
 //! - [`anchor`]: vertical anchors and Paper's optionally flat bedrock condition.
 //! - [`climate`]: climate parameters, the climate sampler and the biome search tree.
 //! - [`biome`]: biome sources, the BIOMES step, the biome zoom and the spawn finder.
+//! - [`aquifer`]: the underground fluids and barriers (`Aquifer`).
+//! - [`terrain`]: the noise fill (`NoiseChunk`, `doFill`) of a proto chunk.
 //! - [`proto_chunk`]: the chunk the generation steps write into before it becomes a
 //!   `LevelChunk`.
 //! - [`structure`]: the structure registries, where structures start (with Paper's
@@ -20,6 +22,7 @@
 //! crate.
 
 pub mod anchor;
+pub mod aquifer;
 pub mod biome;
 pub mod climate;
 pub mod codec;
@@ -29,6 +32,7 @@ pub mod noise;
 pub mod proto_chunk;
 pub mod settings;
 pub mod structure;
+pub mod terrain;
 
 #[cfg(test)]
 mod oracle_tests;

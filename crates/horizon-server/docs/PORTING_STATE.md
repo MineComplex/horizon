@@ -30,6 +30,9 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 - Worldgen WP2 slice (`src/worldgen/{climate,biome}`): climate parameters + Moonrise R-tree search,
   multi-noise/fixed/checkerboard/end biome sources, BiomeManager zoom (Leaf's 0087 order), BIOMES step
   (Paper's fill order), NoiseSpawnFinder. `LeafBiomeOracle`: 2 seeds x 5 stems, ~109k rows, all equal.
+- Worldgen WP2 terrain (`src/worldgen/{aquifer,terrain}`): `NoiseChunk` fill + aquifer onto the proto chunk, WG
+  heightmaps, fluid marks, base column/height. `LeafTerrainOracle`: 224 chunks (15.2M blocks) + 84 columns, all
+  equal; 3.5 ms per overworld chunk (release).
 - Worldgen WP5 slice (`src/worldgen/structure`): structure/structure_set registries + tags, random spread,
   frequency reducers, exclusion zones, ring geometry (biome search as a closure), Spigot `seed-*` salts
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
@@ -46,7 +49,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates, terrain fill, aquifer, Purpur end void rings; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
+WP2 rest (biome predicates, Purpur end void rings; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
 placement, trees); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
 Small cleanups: `obfuscate_seed` (server/runtime.rs) → `worldgen/biome/zoom.rs`; `find_biome_horizontal`
 (structure/placement.rs) → `worldgen/biome`; `world/chunk/serial.rs` private int reader → `Tag::int_value`.

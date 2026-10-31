@@ -32,6 +32,7 @@ mkdir -p "$out/oracle-run"
 (cd "$out/oracle-run" &&
     "$java" -cp "$cp" "$oracles/LeafConfigurationOracle.java" "$out/config.tsv" &&
     "$java" -cp "$cp" "$oracles/LeafDensityOracle.java" "$out/density.txt" &&
+    "$java" -cp "$cp" "$oracles/LeafTerrainOracle.java" "$out/terrain.txt" &&
     "$java" -cp "$cp" "$oracles/LeafBiomeOracle.java" "$out/biomes.txt" &&
     "$java" -cp "$cp" "$oracles/LeafStructurePlacementOracle.java" "$out/structures.txt" &&
     "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt") 2>&1 |
@@ -71,6 +72,7 @@ export HORIZON_SERVER_VANILLA_WORLD=$world/world
 export HORIZON_REGISTRIES_JSON=$reports/reports/registries.json
 export HORIZON_ORACLE_TSV=$out/config.tsv
 export HORIZON_DENSITY_ORACLE=$out/density.txt
+export HORIZON_TERRAIN_ORACLE=$out/terrain.txt
 export HORIZON_BIOME_ORACLE=$out/biomes.txt
 export HORIZON_BIOME_REPORTS=$reports/reports
 export HORIZON_STRUCTURE_ORACLE=$out/structures.txt

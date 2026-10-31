@@ -24,7 +24,7 @@ cargo test -p horizon-server --release -- --ignored                   # oracle c
 
 It writes, under the scratch dir: the prepare step's `serverdir/cache/vanilla-26.3/{reports/,block_states.bin}`
 (`tools/leaf_server_reports.py`: vanilla's data generator + `LeafBlockStatesExporter.java`), the oracles'
-outputs (`config.tsv`, `density.txt`, `biomes.txt`, `structures.txt`, `tickets.txt`), a flat world made by the real 26.3 server (the fixture that
+outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `tickets.txt`), a flat world made by the real 26.3 server (the fixture that
 `world/storage_tests.rs` describes), and `realdata.env` with the variables below.
 
 | Variable | Used by |
@@ -36,6 +36,7 @@ outputs (`config.tsv`, `density.txt`, `biomes.txt`, `structures.txt`, `tickets.t
 | `HORIZON_STRUCTURE_ORACLE` | `worldgen/structure/oracle_tests.rs` (`LeafStructurePlacementOracle.java`) |
 | `HORIZON_TICKETS_ORACLE` | `server/chunk_system/oracle_tests.rs` (`LeafChunkTicketsOracle.java`) |
 | `HORIZON_DENSITY_ORACLE` | `worldgen/oracle_tests.rs` (`LeafDensityOracle.java`); `density_program_speed` is a benchmark |
+| `HORIZON_TERRAIN_ORACLE` | `worldgen/terrain/oracle_tests.rs` (`LeafTerrainOracle.java`: `doFill` blocks, WG heightmaps, fluid marks, base columns; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES`); `terrain_fill_speed` is a benchmark |
 
 ## Oracles
 

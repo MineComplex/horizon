@@ -13,6 +13,7 @@
 use serde_json::value::RawValue;
 
 use super::anchor::{OPTIONALLY_FLAT_BEDROCK, OptionallyFlatBedrock};
+use super::aquifer::AquiferRandom;
 use super::climate::Parameter;
 use super::codec::{DecodeError, DensityLoader, decode_noise, object, optional, string};
 use super::density::{
@@ -65,6 +66,8 @@ pub struct LevelDensity {
     pub router: [NodeId; 8],
     /// By [`AquiferField`].
     pub aquifers: Option<[NodeId; 6]>,
+    /// `getOrCreateRandomFactory("minecraft:aquifer")` of the level.
+    pub aquifer_random: AquiferRandom,
     /// The settings' `spawn_target` points with their functions compiled (what
     /// `NoiseSpawnFinder` samples through `RandomState.samplersWithContext`).
     pub spawn_target: Vec<Vec<(NodeId, Parameter)>>,
@@ -258,6 +261,7 @@ impl WorldgenData {
             program: compiler.finish(),
             router: router.try_into().expect("eight router roots"),
             aquifers: aquifers.map(|nodes| nodes.try_into().expect("six aquifer roots")),
+            aquifer_random: AquiferRandom::new(seed, settings.legacy_random_source),
             spawn_target,
         };
         Ok((density, extra))
