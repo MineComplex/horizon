@@ -38,6 +38,7 @@ use crate::worldgen::feature::sort::{StepFeatureData, build_features_per_step};
 use crate::worldgen::feature::{FeatureRegistry, FeatureWorld, PlacedFeatureId};
 use crate::worldgen::placement::RegionWorld;
 use crate::worldgen::placement::survival::BlockSurvivalRules;
+use crate::worldgen::placement::world::RegionRandom;
 use crate::worldgen::proto_chunk::{GenerationRegion, ProtoChunk};
 use crate::worldgen::structure::jigsaw::{
     GenerationContext, JigsawTables, JigsawWorld, generate as jigsaw_generate,
@@ -857,6 +858,8 @@ impl<'g> FixedWorker<'g> {
                 data: &tables.flags,
             },
             seed: generator.seed,
+            // `ChunkMap`: a generator without noise gets `RandomState.create(..., false, ...)` (not legacy).
+            random: RegionRandom::new(generator.seed, false, center),
         };
         // `GenerationRegion.getChunk` of the 3 x 3: the final heightmaps primed where missing.
         for dz in -1..=1 {
@@ -875,6 +878,8 @@ impl<'g> FixedWorker<'g> {
         }
         let origin = BlockPos::new(center.x << 4, min_y, center.z << 4);
         let result = generator.place_steps(&mut world, &mut structures, registry, origin);
+        // The pieces the starts' placement changed go back to the chunks holding the starts.
+        region.defer_piece_changes(structures.finish());
         if let Err(message) = result {
             tracing::warn!(
                 "Chunk [{}, {}]: {message}; its decoration stops there",

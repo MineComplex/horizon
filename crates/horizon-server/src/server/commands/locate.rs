@@ -206,7 +206,7 @@ pub(super) fn structure(
     };
     let at = source_pos(source);
     let started = Instant::now();
-    let nearest = match Locator::new(&generator) {
+    let nearest = match Locator::new(generator) {
         Ok(mut locator) => {
             locator.find_nearest_map_structure(&target, at, MAX_STRUCTURE_SEARCH_RADIUS, false)
         }
@@ -262,7 +262,7 @@ pub(super) fn biome(
     let at = source_pos(source);
     let started = Instant::now();
     let nearest = find_closest_biome_3d(
-        &generator,
+        generator,
         at,
         MAX_BIOME_SEARCH_RADIUS,
         (
