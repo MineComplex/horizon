@@ -14,6 +14,9 @@ use std::collections::HashMap;
 
 use serde_json::value::RawValue;
 
+use super::cave::Cave;
+use super::end::End;
+use super::nether::Nether;
 use super::terrain::Terrain;
 use super::{ConfiguredFeatureId, Feature, FeatureRegistry, FeatureWorld, PlacedFeatureId};
 use crate::block::survival::{BlockSurvival, SurvivalError, SurvivalWorld};
@@ -233,6 +236,12 @@ struct TestWorld<'a> {
     water: BlockState,
     /// `ground`'s palette: air, stone, grass_block, podzol, dirt, moss_block, sand, packed_ice.
     ground: [BlockState; 8],
+    /// The underground modes' extras: tuff, andesite, calcite and dripstone block.
+    cave: [BlockState; 4],
+    /// The Nether ground's: crimson nylium, warped nylium and netherrack.
+    nether: [BlockState; 3],
+    /// The End ground's end stone and the snow ground's snow block.
+    flat: [BlockState; 2],
     /// The registry ids of the oracle's `BIOMES`.
     biomes: Vec<u32>,
     writes: HashMap<(i32, i32, i32), BlockState>,
@@ -265,6 +274,9 @@ impl<'a> TestWorld<'a> {
                 "packed_ice",
             ]
             .map(state),
+            cave: ["tuff", "andesite", "calcite", "dripstone_block"].map(state),
+            nether: ["crimson_nylium", "warped_nylium", "netherrack"].map(state),
+            flat: ["end_stone", "snow_block"].map(state),
             biomes: BIOMES
                 .split_whitespace()
                 .map(|name| {
@@ -314,10 +326,71 @@ fn ground_y_in(mode: i32, x: i32, z: i32) -> i32 {
 }
 
 impl TestWorld<'_> {
+    /// The oracle's `underground` (modes 5 to 7).
+    fn underground(&self, g: i32, x: i32, y: i32, z: i32, hash: i32) -> BlockState {
+        let [air, stone, _, _, dirt, moss, ..] = self.ground;
+        let [tuff, andesite, calcite, dripstone] = self.cave;
+        if y > g + 40 {
+            return air;
+        }
+        if self.mode == 6 {
+            // The sparse two-block tunnel over the terrace.
+            let tunnel = mix(x.wrapping_mul(5) ^ z.wrapping_mul(11) ^ 99).rem_euclid(12) == 0;
+            if (y == g + 1 || y == g + 2) && tunnel {
+                return air;
+            }
+            return match hash.rem_euclid(11) {
+                0 => tuff,
+                1 => andesite,
+                2 => dirt,
+                _ => stone,
+            };
+        }
+        let ceiling =
+            g + 6 + mix((x >> 4).wrapping_mul(3) ^ (z >> 4).wrapping_mul(5) ^ 77).rem_euclid(12);
+        if y < ceiling {
+            return if self.mode == 7 && y <= g + 2 {
+                self.water
+            } else {
+                air
+            };
+        }
+        match hash.rem_euclid(10) {
+            0 => dripstone,
+            1 => moss,
+            2 => calcite,
+            _ => stone,
+        }
+    }
+
     /// The oracle's `ground` (modes 2 and 3).
     fn ground(&self, x: i32, y: i32, z: i32, hash: i32) -> BlockState {
         let [air, stone, grass, podzol, dirt, moss, sand, packed_ice] = self.ground;
         let g = ground_y_in(self.mode, x, z);
+        if self.mode == 9 || self.mode == 10 {
+            return if y > g {
+                air
+            } else {
+                self.flat[usize::from(self.mode == 10)]
+            };
+        }
+        if self.mode == 8 {
+            let [crimson, warped, netherrack] = self.nether;
+            return if y > g {
+                air
+            } else if y == g {
+                match hash.rem_euclid(3) {
+                    0 => crimson,
+                    1 => warped,
+                    _ => netherrack,
+                }
+            } else {
+                netherrack
+            };
+        }
+        if self.mode >= 5 && (y > g || self.mode == 6) {
+            return self.underground(g, x, y, z, hash);
+        }
         if y > g {
             if self.mode == 4 && y <= 63 {
                 return if hash.rem_euclid(6) == 0 {
@@ -384,6 +457,12 @@ impl PlacementWorld for TestWorld<'_> {
         if self.mode >= 2 {
             // The oracle's `groundHeight`: the ocean floor ignores the water.
             let g = ground_y_in(self.mode, x, z);
+            if self.mode >= 8 {
+                return Ok(g + 1);
+            }
+            if self.mode >= 5 {
+                return Ok(g + 41);
+            }
             let ocean = matches!(kind, Heightmap::OceanFloor | Heightmap::OceanFloorWg);
             return Ok(if !ocean && self.mode >= 3 {
                 g.max(63)
@@ -472,6 +551,10 @@ impl FeatureWorld for TestWorld<'_> {
     }
     fn store_beehive_occupants(&mut self, _: BlockPos, _: &[i32]) -> Result<(), WorldError> {
         Ok(())
+    }
+    fn world_seed(&self) -> Result<i64, WorldError> {
+        // The oracle's `getSeed`.
+        Ok(8675309)
     }
 }
 
@@ -610,7 +693,45 @@ fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
         feature,
         Feature::Terrain(Terrain::BlueIce(_) | Terrain::Iceberg { .. })
     );
-    let mut world = TestWorld::new(f, if sea { 4 } else { 2 + (index & 1) as i32 });
+    // The underground modes: the cave features' (5, and 7 with a pool) and the geode's solid stone (6).
+    let cave = matches!(
+        feature,
+        Feature::Cave(
+            Cave::Speleothem(_)
+                | Cave::SpeleothemCluster(_)
+                | Cave::LargeDripstone(_)
+                | Cave::SculkPatch(_)
+        )
+    );
+    let solid = matches!(
+        feature,
+        Feature::Cave(Cave::Geode(_) | Cave::MonsterRoom(_))
+    );
+    let nether = matches!(
+        feature,
+        Feature::Nether(Nether::HugeFungus(_) | Nether::ReplaceBlobs(_))
+    );
+    let end = matches!(
+        feature,
+        Feature::End(End::ChorusPlant(_) | End::EndPodium(_) | End::EndIsland(_))
+    );
+    let snow = matches!(feature, Feature::End(End::Spike(_)));
+    let mode = if sea {
+        4
+    } else if end {
+        9
+    } else if snow {
+        10
+    } else if nether {
+        8
+    } else if solid {
+        6
+    } else if cave {
+        5 + 2 * (index & 1) as i32
+    } else {
+        2 + (index & 1) as i32
+    };
+    let mut world = TestWorld::new(f, mode);
     let mut random = XoroshiroRandom::new(seed.parse().unwrap());
     let at = origin(pos);
     world.write_zone = ([at.x >> 4, at.z >> 4], 1);

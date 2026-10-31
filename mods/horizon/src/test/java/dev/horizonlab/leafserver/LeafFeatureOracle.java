@@ -217,9 +217,59 @@ public final class LeafFeatureOracle {
         return groundY(x, z) - (mode == 4 ? 8 : 0);
     }
 
+    /**
+     * Modes 5 to 7 are underground, for the cave and geode features (`ground` in oracle_tests.rs repeats them): stone
+     * from the terrace's `g` up to y g + 40 with a cave over it, the ceiling at g + 6 + (0..11) (mode 5, and mode 7 with
+     * water up to g + 2), or solid with a few tuff, andesite and dirt (mode 6). The terrace itself is the cave's floor.
+     */
+    static BlockState underground(int mode, int g, int x, int y, int z, int hash) {
+        if (y > g + 40) return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        if (mode == 6) {
+            // A sparse two-block tunnel over the terrace, for the monster room's holes and the geode's invalid points.
+            if ((y == g + 1 || y == g + 2) && Math.floorMod(mix(x * 5 ^ z * 11 ^ 99), 12) == 0) {
+                return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+            }
+            return switch (Math.floorMod(hash, 11)) {
+                case 0 -> block("tuff");
+                case 1 -> block("andesite");
+                case 2 -> block("dirt");
+                default -> block("stone");
+            };
+        }
+        int ceiling = g + 6 + Math.floorMod(mix((x >> 4) * 3 ^ (z >> 4) * 5 ^ 77), 12);
+        if (y < ceiling) {
+            return mode == 7 && y <= g + 2 ? net.minecraft.world.level.block.Blocks.WATER.defaultBlockState()
+                : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        }
+        return switch (Math.floorMod(hash, 10)) {
+            case 0 -> block("dripstone_block");
+            case 1 -> block("moss_block");
+            case 2 -> block("calcite");
+            default -> block("stone");
+        };
+    }
+
     static BlockState ground(int mode, int x, int y, int z) {
         int g = groundY(mode, x, z);
         int hash = mix(x * 73856093 ^ y * 19349663 ^ z * 83492791);
+        if (mode == 9 || mode == 10) {
+            // Flat ground of one block, air above: end stone for the chorus plants, snow blocks for the ice spikes.
+            if (y > g) return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+            return block(mode == 9 ? "end_stone" : "snow_block");
+        }
+        if (mode == 8) {
+            // The Nether's ground for the fungi and the blobs: nylium and netherrack, air above.
+            if (y > g) return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+            if (y == g) {
+                return switch (Math.floorMod(hash, 3)) {
+                    case 0 -> block("crimson_nylium");
+                    case 1 -> block("warped_nylium");
+                    default -> block("netherrack");
+                };
+            }
+            return block("netherrack");
+        }
+        if (mode >= 5 && (y > g || mode == 6)) return underground(mode, g, x, y, z, hash);
         if (y > g) {
             if (mode == 4 && y <= 63) {
                 return Math.floorMod(hash, 6) == 0 ? block("packed_ice") : net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
@@ -245,6 +295,8 @@ public final class LeafFeatureOracle {
     /** WorldGenLevel.getHeight(type, x, z): the first free y of the type's column (mode 2, 3). */
     static int groundHeight(int mode, String type, int x, int z) {
         int g = groundY(mode, x, z);
+        if (mode >= 8) return g + 1;
+        if (mode >= 5) return g + 41;
         boolean ocean = type.startsWith("OCEAN_FLOOR");
         return (!ocean && mode >= 3 ? Math.max(g, 63) : g) + 1;
     }
@@ -349,6 +401,17 @@ public final class LeafFeatureOracle {
                             + "," + values[2]);
                         return true;
                     }
+                    case "destroyBlock" -> {
+                        // WorldGenRegion.destroyBlock: no drops (not a ServerLevel), the block becomes its fluid's legacy block.
+                        BlockPos at = ((BlockPos) values[0]).immutable();
+                        BlockState written = writes.get(at);
+                        BlockState there = written != null ? written : synth(mode, at.getX(), at.getY(), at.getZ());
+                        if (there.isAir()) return false;
+                        BlockState next = there.getFluidState().createLegacyBlock();
+                        writes.put(at, next);
+                        log.add("set " + at.getX() + "," + at.getY() + "," + at.getZ() + "," + Block.getId(next) + ",3");
+                        return true;
+                    }
                     case "scheduleTick" -> {
                         BlockPos at = ((BlockPos) values[0]).immutable();
                         log.add("tick " + at.getX() + "," + at.getY() + "," + at.getZ() + "," + values[2]);
@@ -362,6 +425,20 @@ public final class LeafFeatureOracle {
                         return biomeAt(at.getX(), at.getY(), at.getZ());
                     }
                     case "getChunk" -> {
+                        if (values.length == 2) {
+                            // `findBlocksIn` reads sections: live ones, over the writes.
+                            int cx = (Integer) values[0], cz = (Integer) values[1];
+                            var chunk = fakeChunk();
+                            var sections = new net.minecraft.world.level.chunk.LevelChunkSection[24];
+                            for (int i = 0; i < 24; i++) {
+                                sections[i] = new LiveSection(cx, cz, i - 4, p -> {
+                                    BlockState written = writes.get(p);
+                                    return written != null ? written : synth(mode, p.getX(), p.getY(), p.getZ());
+                                });
+                            }
+                            setField(net.minecraft.world.level.chunk.ChunkAccess.class, chunk, "sections", sections);
+                            return chunk;
+                        }
                         BlockPos at = (BlockPos) values[0];
                         long key = ((long) (at.getX() >> 4) << 32) ^ (at.getZ() >> 4 & 0xFFFFFFFFL);
                         return chunks.computeIfAbsent(key, k -> {
@@ -389,6 +466,12 @@ public final class LeafFeatureOracle {
                         // The ground levels only (the older rows have no level random: MossyCarpetBlock.placeAt throws).
                         if (mode < 2) throw new UnsupportedOperationException(method.toString());
                         return random(0L);
+                    }
+                    case "getSeed" -> {
+                        return 8675309L;
+                    }
+                    case "playSound", "levelEvent", "gameEvent" -> {
+                        return null;
                     }
                     case "getSeaLevel" -> {
                         return 63;
@@ -517,6 +600,30 @@ public final class LeafFeatureOracle {
         }
     }
 
+    /** A section that reads the level (the formula under the writes) instead of storing: for `findBlocksIn`. */
+    static final class LiveSection extends net.minecraft.world.level.chunk.LevelChunkSection {
+        final int cx, cz, sectionY;
+        final java.util.function.Function<BlockPos, BlockState> reader;
+
+        LiveSection(int cx, int cz, int sectionY, java.util.function.Function<BlockPos, BlockState> reader) {
+            super(containerFactory);
+            this.cx = cx;
+            this.cz = cz;
+            this.sectionY = sectionY;
+            this.reader = reader;
+        }
+
+        @Override
+        public boolean maybeHas(java.util.function.Predicate<BlockState> predicate) {
+            return true;
+        }
+
+        @Override
+        public BlockState getBlockState(int x, int y, int z) {
+            return reader.apply(new BlockPos((cx << 4) + x, (sectionY << 4) + y, (cz << 4) + z));
+        }
+    }
+
     /**
      * A level whose chunks hold real sections filled by the `synth` formula; `ensureCanWrite` allows the
      * chunks within `radius` of the origin's chunk (the Rust test repeats it).
@@ -630,11 +737,23 @@ public final class LeafFeatureOracle {
             if (!kinds.contains(feature.getClass().getSimpleName())) return;
             String only = System.getenv("ORACLE_ONLY");
             if (only != null && !java.util.Arrays.asList(only.split(",")).contains(name)) return;
+            // The end spikes are placed where their centre lies: the first eight spikes' centres.
+            int[][] columns = COLUMNS;
+            if (feature.getClass().getSimpleName().equals("EndSpikeFeature")) {
+                var spikes = net.minecraft.world.level.levelgen.feature.EndSpikeFeature.getSpikesForLevel(newLevel(2).level());
+                columns = new int[8][];
+                for (int i = 0; i < 8; i++) columns[i] = new int[] {spikes.get(i).getCenterX(), spikes.get(i).getCenterZ()};
+            }
             for (int s = 0; s < SEEDS2.length; s++) {
-                for (int[] column : COLUMNS) {
+                for (int[] column : columns) {
                     String kind = feature.getClass().getSimpleName();
                     boolean sea = kind.equals("BlueIceFeature") || kind.equals("IcebergFeature");
-                    int mode = sea ? 4 : 2 + (s & 1);
+                    boolean cave = Set.of("SpeleothemFeature", "SpeleothemClusterFeature", "LargeDripstoneFeature", "SculkPatchFeature").contains(kind);
+                    boolean solid = kind.equals("GeodeFeature") || kind.equals("FossilFeature") || kind.equals("MonsterRoomFeature");
+                    boolean nether = kind.equals("HugeFungusFeature") || kind.equals("ReplaceBlobsFeature");
+                    boolean end = kind.equals("ChorusPlantFeature") || kind.equals("EndPodiumFeature") || kind.equals("EndIslandFeature");
+                    boolean snow = kind.equals("SpikeFeature");
+                    int mode = sea ? 4 : end ? 9 : snow ? 10 : nether ? 8 : solid ? 6 : cave ? 5 + 2 * (s & 1) : 2 + (s & 1);
                     int y = sea ? 56 + s % 6 : groundY(column[0], column[1]) + 1;
                     Level level = newLevel(mode);
                     RandomSource random = random(SEEDS2[s]);
@@ -720,7 +839,12 @@ public final class LeafFeatureOracle {
             features2(out, Set.of("TreeFeature", "FallenTreeFeature", "RandomSelectorFeature", "SimpleRandomSelectorFeature",
                 "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
                 "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature",
-                "SnowAndFreezeFeature", "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature"));
+                "SnowAndFreezeFeature", "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature",
+                "MultifaceGrowthFeature", "GeodeFeature", "MonsterRoomFeature", "FossilFeature", "LargeDripstoneFeature", "SpeleothemClusterFeature",
+                "SpeleothemFeature", "RootSystemFeature", "SculkPatchFeature", "CoralTreeFeature", "CoralClawFeature", "ProjectedRandomPatchySquare",
+                "SingleBlockPillarFeature", "NoOpFeature", "HugeFungusFeature", "ReplaceBlobsFeature", "DeltaFeature", "SteppedColumnClusterFeature",
+                "ChorusPlantFeature", "EndSpikeFeature", "EndIslandFeature", "EndPlatformFeature", "EndPodiumFeature", "EndGatewayFeature",
+                "VoidStartPlatformFeature", "SpikeFeature", "BonusChestFeature"));
         }
     }
 }

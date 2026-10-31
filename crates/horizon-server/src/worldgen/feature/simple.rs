@@ -13,7 +13,10 @@ use serde_json::value::RawValue;
 use std::sync::Arc;
 
 use super::FeatureRegistry;
+use super::cave::Cave;
+use super::end::End;
 use super::misc::Misc;
+use super::nether::Nether;
 use super::ore::{self, OreConfig};
 use super::patch::VegetationPatch;
 use super::rule_test::RuleTest;
@@ -79,6 +82,21 @@ pub trait FeatureWorld: PlacementWorld {
     /// `WorldGenLevel.getRandom().nextFloat()`.
     fn level_float(&mut self) -> Result<f32, WorldError> {
         Err(WorldError::Unsupported("level random"))
+    }
+    /// `WorldGenLevel.getSeed()`: the level's seed (the geode's noise reads it).
+    fn world_seed(&self) -> Result<i64, WorldError> {
+        Err(WorldError::Unsupported("the level seed"))
+    }
+    /// `level.addFreshEntity(endCrystal)` for a spike's crystal, with `snapTo`'s random yaw (the
+    /// draw is made here). The proto chunk keeps no entities yet (WP6); a world that cannot say so.
+    fn add_end_crystal(
+        &mut self,
+        _pos: BlockPos,
+        _beam_target: Option<BlockPos>,
+        _invulnerable: bool,
+        _random: &mut impl RandomSource,
+    ) -> Result<(), WorldError> {
+        Err(WorldError::Unsupported("entities"))
     }
     /// A `BeehiveBlockEntity` the feature put bees in (`BeehiveDecorator`): `ticksInHive` of each.
     fn store_beehive_occupants(&mut self, pos: BlockPos, ticks: &[i32]) -> Result<(), WorldError>;
@@ -149,6 +167,20 @@ impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
         // The proto chunk keeps no block entity data yet (WP6).
         Ok(())
     }
+    fn world_seed(&self) -> Result<i64, WorldError> {
+        Ok(self.seed)
+    }
+    fn add_end_crystal(
+        &mut self,
+        _: BlockPos,
+        _: Option<BlockPos>,
+        _: bool,
+        random: &mut impl RandomSource,
+    ) -> Result<(), WorldError> {
+        // `snapTo(.., random.nextFloat() * 360.0F, 0.0F)`; the entity itself is WP6's.
+        random.next_float();
+        Ok(())
+    }
 }
 
 /// A decoded feature of a type this module implements.
@@ -182,6 +214,9 @@ pub enum Feature {
     Misc(Misc),
     Patch(VegetationPatch),
     Terrain(Terrain),
+    Cave(Cave),
+    Nether(Nether),
+    End(End),
 }
 
 fn direction(raw: &RawValue) -> Result<Direction, DecodeError> {
@@ -212,6 +247,15 @@ impl Feature {
         }
         if let Some(misc) = Misc::decode(kind, raw, ctx)? {
             return Ok(Some(Self::Misc(misc)));
+        }
+        if let Some(cave) = Cave::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Cave(cave)));
+        }
+        if let Some(end) = End::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::End(end)));
+        }
+        if let Some(nether) = Nether::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Nether(nether)));
         }
         if let Some(terrain) = Terrain::decode(kind, raw, ctx)? {
             return Ok(Some(Self::Terrain(terrain)));
@@ -287,6 +331,9 @@ impl Feature {
             Self::Misc(misc) => misc.place(world, random, origin),
             Self::Patch(patch) => patch.place(registry, world, random, origin),
             Self::Terrain(terrain) => terrain.place(registry, world, random, origin),
+            Self::Cave(cave) => cave.place(registry, world, random, origin),
+            Self::Nether(nether) => nether.place(world, random, origin),
+            Self::End(end) => end.place(world, random, origin),
             Self::Tree(tree) => {
                 let mut nested = |id, w: &mut W, r: &mut R, at: [i32; 3]| {
                     registry.place_configured(id, w, r, BlockPos::new(at[0], at[1], at[2]))

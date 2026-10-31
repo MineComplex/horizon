@@ -254,6 +254,13 @@ fn fully_ported(registry: &FeatureRegistry, id: ConfiguredFeatureId, depth: u32)
             .placed()
             .iter()
             .all(|&p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
+        Some(Feature::Cave(cave)) => {
+            cave.ready()
+                && cave
+                    .placed()
+                    .iter()
+                    .all(|&p| fully_ported(registry, registry.placed(p).feature, depth + 1))
+        }
         Some(Feature::Tree(tree)) => !tree.places_pale_moss(),
         Some(Feature::FallenTree(tree)) => !tree.places_pale_moss(),
         Some(_) => true,

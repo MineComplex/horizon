@@ -79,6 +79,7 @@ pub fn decorate(
             blocks: &tables.blocks,
             data: &tables.flags,
         },
+        seed: generator.seed,
     };
     let result = apply_biome_decoration(
         &mut world,

@@ -26,18 +26,29 @@ use crate::worldgen::structure::BiomeSet;
 use crate::worldgen::surface::temperature::{BiomeClimate, BiomeClimates};
 use tree::TreeBlocksCell;
 
+pub mod cave;
+mod common;
 pub mod decorate;
 #[cfg(test)]
 mod decorate_oracle_tests;
+mod dripstone;
+pub mod end;
+mod fossil;
+mod geode;
 pub mod ice;
 pub mod lake;
 pub mod misc;
+mod monster_room;
+pub mod multiface;
 pub mod mushroom;
+pub mod nether;
 #[cfg(test)]
 mod oracle_tests;
 pub mod ore;
 pub mod patch;
+mod root_system;
 pub mod rule_test;
+mod sculk;
 pub mod select;
 pub mod shape;
 pub mod simple;
@@ -212,6 +223,19 @@ impl FeatureRegistry {
             })
     }
 
+    /// Gives the fossils their templates and processor lists, which load after the registries.
+    pub fn attach_templates(
+        &mut self,
+        templates: &crate::worldgen::structure::template::StructureTemplates,
+        processors: &crate::worldgen::structure::processor::ProcessorLists,
+    ) {
+        for configured in &mut self.configured {
+            if let Some(Feature::Cave(cave)) = &mut configured.feature {
+                cave.attach_templates(templates, processors);
+            }
+        }
+    }
+
     /// Decodes the feature registries of `packs` (bottom to top).
     pub fn load(packs: &[DataPack], blocks: &BlockStates) -> Result<Self, WorldgenError> {
         let error = |file: &ElementFile<'_>, source: DecodeError| WorldgenError {
@@ -357,6 +381,15 @@ impl FeatureRegistry {
                     Feature::Patch(patch) => {
                         let refs = patch.refs_mut();
                         if let Some(raw) = refs.take_pending() {
+                            let ids =
+                                resolve_entries(&raw, &mut lookup, &mut placed, &mut configured)?;
+                            refs.resolve(ids);
+                        }
+                    }
+                    Feature::Cave(cave) => {
+                        if let Some(refs) = cave.refs_mut()
+                            && let Some(raw) = refs.take_pending()
+                        {
                             let ids =
                                 resolve_entries(&raw, &mut lookup, &mut placed, &mut configured)?;
                             refs.resolve(ids);

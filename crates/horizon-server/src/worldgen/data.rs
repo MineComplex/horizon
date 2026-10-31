@@ -239,6 +239,8 @@ impl WorldgenData {
     /// Gives the structures their templates (`StructureTemplateManager`, loaded from the jar and the
     /// world's `generated` folder) and fills the pools' `getMaxSize` from them.
     pub fn set_templates(&mut self, templates: StructureTemplates) {
+        self.features
+            .attach_templates(&templates, &self.processor_lists);
         self.structures.templates = templates;
         let structures = &mut self.structures;
         structures.pools.compute_max_sizes(&structures.templates);
