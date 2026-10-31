@@ -15,16 +15,20 @@
 //! modpack placements and keys (`horizon:*`).
 
 pub mod jigsaw;
+pub mod legacy_piece;
 pub mod piece_place;
 pub mod place;
 pub mod placement;
 pub mod pool;
 pub mod processor;
+pub mod scattered;
 pub mod start;
 pub mod template;
 
 #[cfg(test)]
 mod jigsaw_oracle_tests;
+#[cfg(test)]
+mod legacy_oracle_tests;
 #[cfg(test)]
 mod oracle_tests;
 #[cfg(test)]

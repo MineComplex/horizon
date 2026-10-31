@@ -71,6 +71,15 @@ pub trait FeatureWorld: PlacementWorld {
         direction: Direction,
         flags: i32,
     ) -> Result<(), WorldError>;
+    /// `WorldGenLevel.getRandom().nextBoolean()`: the level's own random, which some structure
+    /// pieces draw from besides the structure's.
+    fn level_boolean(&mut self) -> Result<bool, WorldError> {
+        Err(WorldError::Unsupported("level random"))
+    }
+    /// `WorldGenLevel.getRandom().nextFloat()`.
+    fn level_float(&mut self) -> Result<f32, WorldError> {
+        Err(WorldError::Unsupported("level random"))
+    }
     /// A `BeehiveBlockEntity` the feature put bees in (`BeehiveDecorator`): `ticksInHive` of each.
     fn store_beehive_occupants(&mut self, pos: BlockPos, ticks: &[i32]) -> Result<(), WorldError>;
 }

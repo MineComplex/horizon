@@ -95,7 +95,13 @@ pub fn generate_start(
     references: i32,
 ) -> Option<StructureStart> {
     let registry = generator.data().structures();
-    let config = registry.structure(structure).jigsaw.as_ref()?;
+    let Some(config) = registry.structure(structure).jigsaw.as_ref() else {
+        // The piece-based structure types (`legacy_structures`).
+        let pieces = super::legacy_structures::generate(generator, columns, structure, chunk)?;
+        return Some(StructureStart::new(
+            registry, structure, chunk, references, pieces,
+        ));
+    };
     let settings = generator.settings();
     let generation = WorldGenerationContext::new(
         columns.min_y.max(settings.noise.min_y),

@@ -10,6 +10,7 @@
 use std::borrow::Cow;
 
 use super::jigsaw::JigsawPiece;
+use super::legacy_piece::{PieceOutput, place_pieces};
 use super::place::{PlaceContext, PlaceError, PlaceSettings, PlacedTemplate, place_in_world};
 use super::pool::{ElementKind, PoolElementId, Projection, template_of};
 use super::processor::{ProcessError, Processor, ProcessorLists};
@@ -75,6 +76,27 @@ impl PieceTables<'_> {
             keep_jigsaws: false,
         };
         let mut placed = Vec::new();
+        // Code-placed pieces change as they are placed (their settled height, the chests put): a
+        // copy of the start's, as the start itself is read-only here.
+        let mut legacy: Vec<StructurePiece> = (start.children.iter())
+            .filter(|p| matches!(p, StructurePiece::Legacy(_)))
+            .cloned()
+            .collect();
+        let kind = start
+            .structure
+            .map_or("", |s| self.structures.structure(s).kind.as_str());
+        let mut output = PieceOutput::default();
+        place_pieces(
+            &mut legacy,
+            kind,
+            world,
+            random,
+            chunk_box,
+            reference,
+            self.seed,
+            &mut output,
+        )
+        .map_err(ProviderError::World)?;
         for piece in &start.children {
             if !piece
                 .bounding_box()

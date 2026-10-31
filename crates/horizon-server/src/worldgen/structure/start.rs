@@ -18,6 +18,7 @@
 //! order of their ids.
 
 use super::jigsaw::{JigsawPiece, Junction};
+use super::legacy_piece::LegacyPiece;
 use super::place::LiquidSettings;
 use super::pool::{Projection, liquid_name};
 use super::{StructureId, StructureRegistry};
@@ -55,6 +56,8 @@ pub struct StructureStart {
 pub enum StructurePiece {
     /// `PoolElementStructurePiece` (`minecraft:jigsaw`).
     Jigsaw(JigsawPiece),
+    /// A piece that places its blocks in code (`legacy_piece`).
+    Legacy(LegacyPiece),
     /// A piece of a type not ported yet, as saved (`StructurePiece.createTag`).
     Saved(Compound),
 }
@@ -64,6 +67,7 @@ impl StructurePiece {
     pub fn bounding_box(&self) -> Option<StructureBounds> {
         match self {
             Self::Jigsaw(piece) => Some(piece.bounding_box),
+            Self::Legacy(piece) => Some(piece.bounding_box().to_bounds()),
             Self::Saved(tag) => piece_box(tag),
         }
     }
@@ -73,6 +77,7 @@ impl StructurePiece {
         match self {
             Self::Saved(tag) => tag.clone(),
             Self::Jigsaw(piece) => jigsaw_tag(registry, piece),
+            Self::Legacy(piece) => piece.create_tag(),
         }
     }
 }
@@ -328,6 +333,14 @@ impl StructureStart {
                             | "minecraft:runtime"
                     ) {
                         return load_jigsaw(registry, piece).map(StructurePiece::Jigsaw);
+                    }
+                    let id = parse_identifier(&kind).unwrap_or_default();
+                    if LegacyPiece::handles(&id) {
+                        let loaded = LegacyPiece::load(&id, piece);
+                        if loaded.is_none() {
+                            tracing::error!("Exception loading structure piece with id {id}");
+                        }
+                        return loaded.map(StructurePiece::Legacy);
                     }
                     let Some(bounds) = piece_box(piece) else {
                         tracing::error!(
