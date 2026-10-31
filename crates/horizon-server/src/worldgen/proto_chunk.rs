@@ -370,6 +370,12 @@ impl<'a> GenerationRegion<'a> {
         })
     }
 
+    /// `WorldGenRegion.isWithinWriteZone` for a chunk.
+    pub fn is_writable(&self, pos: ChunkPos) -> bool {
+        self.slot(pos)
+            .is_some_and(|i| matches!(self.chunks[i], RegionChunk::Writable(_)))
+    }
+
     pub fn chunk_mut(&mut self, pos: ChunkPos) -> Result<&mut ProtoChunk, OutsideRegion> {
         match self.slot(pos).map(|i| &mut self.chunks[i]) {
             Some(RegionChunk::Writable(chunk)) => Ok(chunk),

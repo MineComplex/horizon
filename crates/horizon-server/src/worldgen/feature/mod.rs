@@ -22,6 +22,7 @@ use crate::worldgen::structure::BiomeSet;
 
 #[cfg(test)]
 mod oracle_tests;
+pub mod ore;
 pub mod rule_test;
 pub mod simple;
 pub mod sort;

@@ -224,6 +224,8 @@ struct TestWorld<'a> {
     writes: HashMap<(i32, i32, i32), BlockState>,
     log: Vec<String>,
     marks: Vec<String>,
+    /// The chunk and radius `ensureCanWrite` allows (the oracle's `oreLevel`).
+    write_zone: ([i32; 2], i32),
 }
 
 impl<'a> TestWorld<'a> {
@@ -241,6 +243,7 @@ impl<'a> TestWorld<'a> {
             writes: HashMap::new(),
             log: Vec::new(),
             marks: Vec::new(),
+            write_zone: ([0, 0], 0),
         }
     }
     fn at(&self, x: i32, y: i32, z: i32) -> BlockState {
@@ -286,8 +289,13 @@ impl PlacementWorld for TestWorld<'_> {
     fn level_generation(&self) -> WorldGenerationContext {
         WorldGenerationContext::new(-64, 384, 63)
     }
-    fn height(&self, _: Heightmap, _: i32, _: i32) -> Result<i32, WorldError> {
-        Err(WorldError::Unsupported("heightmaps"))
+    /// The oracle's `oreHeight`: the first free y.
+    fn height(&self, _: Heightmap, x: i32, z: i32) -> Result<i32, WorldError> {
+        Ok(if self.mode == 1 {
+            51
+        } else {
+            40 + mix(x.wrapping_mul(31) ^ z.wrapping_mul(17) ^ 5).rem_euclid(60)
+        })
     }
     fn block_state(&self, pos: BlockPos) -> Result<BlockState, WorldError> {
         Ok(self.at(pos.x, pos.y, pos.z))
@@ -323,6 +331,21 @@ impl FeatureWorld for TestWorld<'_> {
     fn schedule_tick(&mut self, pos: BlockPos, delay: i32) -> Result<(), WorldError> {
         self.log
             .push(format!("tick {},{},{},{delay}", pos.x, pos.y, pos.z));
+        Ok(())
+    }
+    fn ensure_can_write(&self, pos: BlockPos) -> Result<bool, WorldError> {
+        let ([x, z], radius) = self.write_zone;
+        Ok((pos.x >> 4).abs_diff(x) as i32 <= radius && (pos.z >> 4).abs_diff(z) as i32 <= radius)
+    }
+    fn section_block(&self, pos: BlockPos) -> Result<Option<BlockState>, WorldError> {
+        Ok((-64..320)
+            .contains(&pos.y)
+            .then(|| self.at(pos.x, pos.y, pos.z)))
+    }
+    fn set_section_block(&mut self, pos: BlockPos, state: BlockState) -> Result<(), WorldError> {
+        self.writes.insert((pos.x, pos.y, pos.z), state);
+        self.log
+            .push(format!("sec {},{},{},{}", pos.x, pos.y, pos.z, state.0));
         Ok(())
     }
     fn mark_postprocessing(&mut self, pos: BlockPos) -> Result<(), WorldError> {
@@ -396,7 +419,10 @@ fn check_feature(f: &Fixture, fields: &[&str]) -> bool {
         i32::from(*seed == "987654321012" || *seed == "4242424242"),
     );
     let mut random = XoroshiroRandom::new(seed.parse().unwrap());
-    let got = match feature.place(&mut world, &mut random, origin(pos)) {
+    // The oracle's `oreLevel` writes the origin's chunk, and its neighbours when mode is 0.
+    let at = origin(pos);
+    world.write_zone = ([at.x >> 4, at.z >> 4], 1 - world.mode);
+    let got = match feature.place(&mut world, &mut random, at) {
         Ok(placed) => placed.to_string(),
         Err(_) => "error".into(),
     };

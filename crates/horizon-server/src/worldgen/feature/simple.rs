@@ -10,20 +10,20 @@
 
 use serde_json::value::RawValue;
 
+use super::ore::{self, OreConfig};
 use super::rule_test::RuleTest;
 use crate::block::BlockState;
 use crate::block::flags::{FLAG_AIR, FLAG_DOUBLE_PLANT, FLAG_MOSSY_CARPET};
 use crate::core::geometry::Direction;
 use crate::core::position::BlockPos;
 use crate::util::random::RandomSource;
-use crate::worldgen::codec::{
-    DecodeError, boolean, float, int_range, object, optional, required, string,
-};
+use crate::worldgen::codec::{DecodeError, boolean, int_range, object, optional, required, string};
 use crate::worldgen::placement::provider::type_of;
 use crate::worldgen::placement::world::SurvivalRules;
 use crate::worldgen::placement::{
     BlockPredicate, IntProvider, PlacementWorld, RegionWorld, WorldError,
 };
+use crate::worldgen::proto_chunk::OutsideRegion;
 use crate::worldgen::state_provider::{BlockStateProvider, ProviderContext, ProviderError};
 
 /// What a feature asks of the level besides reading it.
@@ -39,6 +39,14 @@ pub trait FeatureWorld: PlacementWorld {
     fn schedule_tick(&mut self, pos: BlockPos, delay: i32) -> Result<(), WorldError>;
     /// `getChunk(pos).markPosForPostProcessing(pos)`.
     fn mark_postprocessing(&mut self, pos: BlockPos) -> Result<(), WorldError>;
+    /// `WorldGenLevel.ensureCanWrite(pos)`: whether the position lies in a chunk the step may write.
+    fn ensure_can_write(&self, pos: BlockPos) -> Result<bool, WorldError>;
+    /// `BulkSectionAccess.getSection(pos)` and the block read from it: `None` when the height has
+    /// no section at `pos.y`. The chunk must be inside the region.
+    fn section_block(&self, pos: BlockPos) -> Result<Option<BlockState>, WorldError>;
+    /// `LevelChunkSection.setBlockState(x, y, z, state, false)`: the section alone changes, with
+    /// no heightmap, post-processing or block entity bookkeeping.
+    fn set_section_block(&mut self, pos: BlockPos, state: BlockState) -> Result<(), WorldError>;
 }
 
 impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
@@ -65,6 +73,21 @@ impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
         chunk.mark_postprocessing(pos.x, pos.y, pos.z);
         Ok(())
     }
+    fn ensure_can_write(&self, pos: BlockPos) -> Result<bool, WorldError> {
+        // `isWithinWriteZone`: a chunk outside the region is outside the zone too. (Paper logs the
+        // first refusal; `isUpgrading` chunks are not modelled.)
+        Ok(self.region.is_writable(pos.chunk()))
+    }
+    fn section_block(&self, pos: BlockPos) -> Result<Option<BlockState>, WorldError> {
+        let chunk = (self.region.chunk(pos.chunk())).ok_or(OutsideRegion(pos.chunk()))?;
+        let in_height = pos.y >= chunk.min_y() && pos.y < chunk.min_y() + chunk.height();
+        Ok(in_height.then(|| chunk.block_state(pos.x, pos.y, pos.z)))
+    }
+    fn set_section_block(&mut self, pos: BlockPos, state: BlockState) -> Result<(), WorldError> {
+        let chunk = self.region.chunk_mut(pos.chunk())?;
+        chunk.set_block_raw(pos.x, pos.y, pos.z, state, self.data);
+        Ok(())
+    }
 }
 
 /// A decoded feature of a type this module implements.
@@ -79,6 +102,7 @@ pub enum Feature {
         size: i32,
         discard_chance_on_air_exposure: f32,
     },
+    Ore(OreConfig),
     Disk {
         provider: BlockStateProvider,
         target: BlockPredicate,
@@ -122,28 +146,14 @@ impl Feature {
             },
             // `AbstractOreFeature.makeCodec`: targets, size 0..=64, the air exposure chance.
             "minecraft:scattered_ore" => {
-                let targets: Vec<Box<RawValue>> =
-                    serde_json::from_str(required(&fields, "targets")?.get())?;
-                let targets = targets
-                    .iter()
-                    .map(|target| {
-                        let target = object(target)?;
-                        Ok((
-                            RuleTest::decode(required(&target, "target")?, names)?,
-                            names.block_state(required(&target, "state")?)?,
-                        ))
-                    })
-                    .collect::<Result<_, DecodeError>>()?;
-                let chance = float(required(&fields, "discard_chance_on_air_exposure")?)?;
-                if !(0.0..=1.0).contains(&chance) {
-                    return Err(DecodeError::Field("discard_chance_on_air_exposure"));
-                }
+                let config = OreConfig::decode(&fields, names)?;
                 Self::ScatteredOre {
-                    targets,
-                    size: int_range(required(&fields, "size")?, "size", 0, 64)?,
-                    discard_chance_on_air_exposure: chance,
+                    targets: config.targets,
+                    size: config.size,
+                    discard_chance_on_air_exposure: config.discard_chance_on_air_exposure,
                 }
             }
+            "minecraft:ore" => Self::Ore(OreConfig::decode(&fields, names)?),
             "minecraft:disk" => Self::Disk {
                 provider: BlockStateProvider::decode(required(&fields, "state_provider")?, ctx)?,
                 target: BlockPredicate::decode(required(&fields, "target")?, names)?,
@@ -201,6 +211,7 @@ impl Feature {
                 *size,
                 *discard_chance_on_air_exposure,
             ),
+            Self::Ore(config) => ore::place(world, random, origin, config),
             Self::Disk {
                 provider,
                 target,
@@ -317,7 +328,7 @@ fn scattered_ore<W: FeatureWorld>(
         let pos = origin.offset(offsets[0], offsets[1], offsets[2]);
         let state = world.block_state(pos)?;
         for (test, replacement) in targets {
-            if !test.test(world.blocks(), state, random) {
+            if !test.test(world.blocks(), state, pos, random) {
                 continue;
             }
             let skip_air_check =

@@ -6,7 +6,8 @@
 // HORIZON_SERVER_BLOCK_STATES). Original Horizon code. Rows are tab separated:
 //   survive <state id> <one char per configuration: 1 survives, 0 does not, x the call threw>
 //   provider <seed> <x y z> <json> <states "id;id;..."|error|decode error>  (several draws per row)
-//   feature  <config name> <seed> <origin> <placed any> <writes "x y z id flags;..."> <next long>
+//   feature  <config name> <seed> <origin> <placed any> <writes "x y z id flags;..."> <marks> <next long>
+//            (ore rows: the writes are the chunk sections' own, "sec x,y,z,id" in order; see oreLevel)
 // `survive` runs BlockState.canSurvive on every block state over CONFIGS neighbourhoods given by
 // formulas the Rust test repeats (see `neighbour`): mode 0 a world of one palette state, 1 that state
 // below and air elsewhere, 2 it above, a hashed state below and air elsewhere, 3 a hashed state per
@@ -382,9 +383,105 @@ public final class LeafFeatureOracle {
         }
     }
 
+    // ---- the ore level: chunk sections that log their writes ----
+
+    static net.minecraft.world.level.chunk.PalettedContainerFactory containerFactory;
+
+    /** The ore level's height formula (`ore_height` in oracle_tests.rs repeats it): the first free y. */
+    static int oreHeight(int mode, int x, int z) {
+        if (mode == 1) return 51;
+        return 40 + Math.floorMod(mix(x * 31 ^ z * 17 ^ 5), 60);
+    }
+
+    /** A section that logs the writes made to it after it was filled. */
+    static final class LoggedSection extends net.minecraft.world.level.chunk.LevelChunkSection {
+        final int cx, cz, sectionY;
+        final List<String> log;
+        boolean filling = true;
+
+        LoggedSection(int cx, int cz, int sectionY, List<String> log) {
+            super(containerFactory);
+            this.cx = cx;
+            this.cz = cz;
+            this.sectionY = sectionY;
+            this.log = log;
+        }
+
+        @Override
+        public BlockState setBlockState(int x, int y, int z, BlockState state, boolean checkThreading) {
+            if (!filling) {
+                log.add("sec " + ((cx << 4) + x) + "," + ((sectionY << 4) + y) + "," + ((cz << 4) + z) + "," + Block.getId(state));
+            }
+            return super.setBlockState(x, y, z, state, checkThreading);
+        }
+    }
+
+    /**
+     * A level whose chunks hold real sections filled by the `synth` formula; `ensureCanWrite` allows the
+     * chunks within `radius` of the origin's chunk (the Rust test repeats it).
+     */
+    static Level oreLevel(int mode, int centerX, int centerZ, int radius) {
+        var log = new ArrayList<String>();
+        var chunks = new java.util.HashMap<Long, net.minecraft.world.level.chunk.ChunkAccess>();
+        WorldGenLevel level = (WorldGenLevel) Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),
+            new Class<?>[] {WorldGenLevel.class}, (proxy, method, values) -> {
+                switch (method.getName()) {
+                    case "getHeight" -> {
+                        if (values == null || values.length == 0) return 384;
+                        return oreHeight(mode, (Integer) values[1], (Integer) values[2]);
+                    }
+                    case "getMinY" -> {
+                        return -64;
+                    }
+                    case "ensureCanWrite" -> {
+                        BlockPos at = (BlockPos) values[0];
+                        return Math.abs((at.getX() >> 4) - centerX) <= radius && Math.abs((at.getZ() >> 4) - centerZ) <= radius;
+                    }
+                    case "getChunk" -> {
+                        int cx, cz;
+                        if (values[0] instanceof BlockPos at) {
+                            cx = at.getX() >> 4;
+                            cz = at.getZ() >> 4;
+                        } else {
+                            cx = (Integer) values[0];
+                            cz = (Integer) values[1];
+                        }
+                        long key = ((long) cx << 32) ^ (cz & 0xFFFFFFFFL);
+                        return chunks.computeIfAbsent(key, k -> {
+                            try {
+                                var chunk = fakeChunk();
+                                var sections = new net.minecraft.world.level.chunk.LevelChunkSection[24];
+                                for (int i = 0; i < 24; i++) {
+                                    var section = new LoggedSection(cx, cz, i - 4, log);
+                                    for (int y = 0; y < 16; y++) {
+                                        for (int z = 0; z < 16; z++) {
+                                            for (int x = 0; x < 16; x++) {
+                                                section.setBlockState(x, y, z, synth(mode, (cx << 4) + x, ((i - 4) << 4) + y, (cz << 4) + z), false);
+                                            }
+                                        }
+                                    }
+                                    section.filling = false;
+                                    sections[i] = section;
+                                }
+                                setField(net.minecraft.world.level.chunk.ChunkAccess.class, chunk, "sections", sections);
+                                return chunk;
+                            } catch (Exception e) {
+                                throw new IllegalStateException(e);
+                            }
+                        });
+                    }
+                    default -> {
+                        if (method.isDefault()) return InvocationHandler.invokeDefault(proxy, method, values);
+                        throw new UnsupportedOperationException(method.toString());
+                    }
+                }
+            });
+        return new Level(level, null, log, chunks);
+    }
+
     static void features(PrintWriter out) {
         var registry = world.lookupOrThrow(net.minecraft.core.registries.Registries.FEATURE);
-        List<String> kinds = List.of("SimpleBlockFeature", "ScatteredOreFeature", "DiskFeature", "BlockColumnFeature");
+        List<String> kinds = List.of("SimpleBlockFeature", "ScatteredOreFeature", "DiskFeature", "BlockColumnFeature", "OreFeature");
         registry.listElements().sorted(java.util.Comparator.comparing(h -> h.key().identifier().toString())).forEach(holder -> {
             var feature = holder.value();
             String name = holder.key().identifier().toString();
@@ -393,7 +490,8 @@ public final class LeafFeatureOracle {
             for (int s = 0; s < SEEDS.length; s++) {
                 long seed = SEEDS[s];
                 for (int[] origin : ORIGINS) {
-                    Level level = newLevel(s % 2);
+                    boolean ore = feature.getClass().getSimpleName().equals("OreFeature");
+                    Level level = ore ? oreLevel(s % 2, origin[0] >> 4, origin[2] >> 4, 1 - s % 2) : newLevel(s % 2);
                     RandomSource random = random(seed);
                     String result;
                     try {
@@ -456,6 +554,7 @@ public final class LeafFeatureOracle {
         access.setAccessible(true);
         unsafe = access.get(null);
         allocate = Class.forName("sun.misc.Unsafe").getMethod("allocateInstance", Class.class);
+        containerFactory = net.minecraft.world.level.chunk.PalettedContainerFactory.create(world);
         synthStates = new BlockState[SYNTH.length];
         solidStates = new BlockState[SOLID.length];
         for (int i = 0; i < SOLID.length; i++) {

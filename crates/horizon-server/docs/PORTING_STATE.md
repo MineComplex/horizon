@@ -66,8 +66,14 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   the real survival rules (8,010 rows). 26.3's block state JSON is `{"id","properties"}`, not `Name`/`Properties`
   (fixed in `DecodeContext::block_state` and `settings.rs`). Feature-order cycles name their involved sources as
   `FeatureSorter.tryReducingError` does (`FeatureCycle::message`; Java prints a `Biome@<identity hash>`; we print the plain biome id, the user's decision).
-  Not yet: `ore` (needs `BulkSectionAccess` over proto-chunk sections; `OreFeature` writes sections directly),
-  `random_patch`/`flower`/`no_bonemeal_flower`, mossy-carpet `simple_block` (level random), `schedule_tick` on a
+- Worldgen WP4 `ore` (`src/worldgen/feature/ore.rs`): `OreFeature` + `canPlaceOre` over `FeatureWorld::{ensure_can_write,
+  section_block,set_section_block}` (`BulkSectionAccess`: `RegionWorld` reads and writes the proto chunk's section, no
+  heightmap or post-processing; `GenerationRegion::is_writable` is `isWithinWriteZone`). `RuleTest` gained 26.3's
+  `all_of`/`any_of`/`not`/`height_match` and takes the position. `random_patch`, `flower` and `no_bonemeal_flower` do
+  NOT exist in 26.3 (no such feature type in `FeatureTypes`, none in the data; flowers are `simple_block` features), so
+  there is nothing to port. `LeafFeatureOracle` ore rows: every `ore` feature x 4 seeds x 6 origins, two worlds (heightmap
+  formula, write zone radius 1 and 0), section writes compared in order.
+  Not yet: mossy-carpet `simple_block` (level random), `schedule_tick` on a
   region (the proto chunk keeps no ticks), block entities / POI / `getPostProcessPos` on `setBlock` (WP6).
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
