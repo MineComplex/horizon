@@ -160,18 +160,21 @@ fn an_empty_whitelist_refuses_everyone_but_operators() {
         ..rules(20, 0)
     };
     let refused = Some(Reason::Literal(NOT_WHITELISTED.into()));
-    assert_eq!(lists.can_player_login(&notch(), &on), refused);
+    assert_eq!(lists.can_player_login(&notch(), &on).unwrap(), refused);
     // Off: nobody is asked.
-    assert_eq!(lists.can_player_login(&notch(), &rules(20, 0)), None);
+    assert_eq!(
+        lists.can_player_login(&notch(), &rules(20, 0)).unwrap(),
+        None
+    );
     // On, listed or operator.
     lists.whitelist.add(WhitelistEntry { user: notch() });
     lists
         .ops
         .add(op(jeb(), PermissionLevel::Gamemasters, false));
-    assert_eq!(lists.can_player_login(&notch(), &on), None);
-    assert_eq!(lists.can_player_login(&jeb(), &on), None);
+    assert_eq!(lists.can_player_login(&notch(), &on).unwrap(), None);
+    assert_eq!(lists.can_player_login(&jeb(), &on).unwrap(), None);
     let other = NameAndId::offline("Other");
-    assert_eq!(lists.can_player_login(&other, &on), refused);
+    assert_eq!(lists.can_player_login(&other, &on).unwrap(), refused);
 }
 
 #[test]
@@ -180,20 +183,23 @@ fn a_full_server_refuses_all_but_operators_that_bypass() {
     let mut lists = lists(dir.path());
     let full = rules(2, 2);
     let refused = Some(Reason::translatable("multiplayer.disconnect.server_full"));
-    assert_eq!(lists.can_player_login(&notch(), &full), refused);
-    assert_eq!(lists.can_player_login(&notch(), &rules(3, 2)), None);
+    assert_eq!(lists.can_player_login(&notch(), &full).unwrap(), refused);
+    assert_eq!(
+        lists.can_player_login(&notch(), &rules(3, 2)).unwrap(),
+        None
+    );
     lists.ops.add(op(notch(), PermissionLevel::Owners, false));
-    assert_eq!(lists.can_player_login(&notch(), &full), refused);
+    assert_eq!(lists.can_player_login(&notch(), &full).unwrap(), refused);
     lists.ops.add(op(notch(), PermissionLevel::Owners, true));
-    assert_eq!(lists.can_player_login(&notch(), &full), None);
+    assert_eq!(lists.can_player_login(&notch(), &full).unwrap(), None);
     // The whitelist comes first.
     let both = LoginRules {
         using_whitelist: true,
         ..full
     };
-    assert_eq!(lists.can_player_login(&notch(), &both), None);
+    assert_eq!(lists.can_player_login(&notch(), &both).unwrap(), None);
     assert_eq!(
-        lists.can_player_login(&jeb(), &both),
+        lists.can_player_login(&jeb(), &both).unwrap(),
         Some(Reason::Literal(NOT_WHITELISTED.into()))
     );
 }
@@ -207,7 +213,7 @@ fn the_whitelist_message_with_codes_is_a_component() {
         whitelist_message: "§cNot §lwhitelisted",
         ..rules(20, 0)
     };
-    let Some(Reason::Component(json)) = lists.can_player_login(&notch(), &on) else {
+    let Some(Reason::Component(json)) = lists.can_player_login(&notch(), &on).unwrap() else {
         panic!("a component")
     };
     assert_eq!(

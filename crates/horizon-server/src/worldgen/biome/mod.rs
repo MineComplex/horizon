@@ -9,6 +9,7 @@
 //! - [`codec`]: a level stem's `biome_source` (JSON, or `level.dat` NBT converted to it) and the
 //!   multi-noise presets from the data generator's `biome_parameters` reports.
 //! - [`zoom`]: `BiomeManager.getBiome` as Leaf computes it.
+//! - [`search`]: `findBiomeHorizontal` (the strongholds' ring search).
 //! - [`spawn`]: where a new level's spawn search starts (`NoiseSpawnFinder`).
 //!
 //! Copied from Horizon's `horizon-world::worldgen::{biome, biome_source}` and adapted: biomes are
@@ -17,6 +18,7 @@
 //! `BiomeChunk` storage is not copied: the proto chunk's sections hold the biomes.
 
 pub mod codec;
+pub mod search;
 pub mod spawn;
 pub mod zoom;
 
@@ -28,6 +30,7 @@ use super::data::LevelDensity;
 use super::density::{DensityContext, NodeId};
 use super::proto_chunk::ProtoChunk;
 use super::settings::RouterField;
+pub use search::find_biome_horizontal;
 
 /// `TheEndBiomeSource`'s five biomes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

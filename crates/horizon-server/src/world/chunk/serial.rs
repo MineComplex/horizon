@@ -227,7 +227,7 @@ impl<F: SectionFlags> ChunkCodec<'_, F> {
         let Some(Tag::String(status)) = get(tag, "Status") else {
             return Ok(None);
         };
-        if let Some(version) = get(tag, "DataVersion").and_then(int_value)
+        if let Some(version) = get(tag, "DataVersion").and_then(Tag::int_value)
             && version > DATA_VERSION
         {
             return Err(ChunkReadError::NewerVersion(version));
@@ -333,7 +333,7 @@ impl<F: SectionFlags> ChunkCodec<'_, F> {
                 .map_err(|b| ChunkReadError::LightLength(b.len())),
             _ => Ok(None),
         };
-        let state = |key| get(tag, key).map(|t| int_value(t).unwrap_or(0));
+        let state = |key| get(tag, key).map(|t| t.int_value().unwrap_or(0));
         Ok(SectionData {
             y,
             section,
@@ -665,21 +665,9 @@ fn put(map: &mut Compound, key: &str, value: Tag) {
 fn floor_int(v: f64) -> i32 {
     v.floor() as i32
 }
-/// `NumericTag.intValue`.
-fn int_value(tag: &Tag) -> Option<i32> {
-    Some(match *tag {
-        Tag::Byte(v) => v.into(),
-        Tag::Short(v) => v.into(),
-        Tag::Int(v) => v,
-        Tag::Long(v) => v as i32,
-        Tag::Float(v) => floor_int(f32::from_bits(v).into()),
-        Tag::Double(v) => floor_int(f64::from_bits(v)),
-        _ => return None,
-    })
-}
 /// `NumericTag.byteValue`.
 fn byte_value(tag: &Tag) -> Option<i8> {
-    int_value(tag).map(|v| v as i8)
+    tag.int_value().map(|v| v as i8)
 }
 /// `NumericTag.longValue`: a float truncates, a double floors.
 fn long_value(tag: &Tag) -> Option<i64> {
@@ -687,9 +675,9 @@ fn long_value(tag: &Tag) -> Option<i64> {
         Tag::Long(v) => v,
         Tag::Float(v) => f32::from_bits(v) as i64,
         Tag::Double(v) => f64::from_bits(v).floor() as i64,
-        _ => i64::from(int_value(tag)?),
+        _ => i64::from(tag.int_value()?),
     })
 }
 fn int_or(map: &Compound, key: &str, default: i32) -> i32 {
-    get(map, key).and_then(int_value).unwrap_or(default)
+    get(map, key).and_then(Tag::int_value).unwrap_or(default)
 }

@@ -28,6 +28,14 @@ fn fiddle(seed: i64) -> f64 {
     ((((seed as u64) >> 24) & 1023) as f64 - 512.0) * (0.9 / 1024.0)
 }
 
+/// `BiomeManager.obfuscateSeed`: the first 8 bytes of SHA-256 over the seed, both little-endian
+/// (Guava's `hashLong`/`asLong`).
+pub fn obfuscate_seed(seed: i64) -> i64 {
+    use sha2::Digest;
+    let hash = sha2::Sha256::digest(seed.to_le_bytes());
+    i64::from_le_bytes(hash[..8].try_into().expect("8 bytes"))
+}
+
 /// A level's `BiomeManager` zoom.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BiomeZoom {
@@ -108,6 +116,13 @@ pub fn noise_quart_at_block(block: BlockPos) -> [i32; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn obfuscated_seed_is_guava_sha256() {
+        // `Hashing.sha256().hashLong(seed).asLong()` from Guava 33.6 (`BiomeManager.obfuscateSeed`).
+        assert_eq!(obfuscate_seed(0), 8_794_265_229_978_523_055);
+        assert_eq!(obfuscate_seed(12345), 293_737_985_876_514_017);
+    }
 
     /// Leaf's loop written out per corner, without shared prefixes or early exits.
     fn reference(seed: i64, block: BlockPos) -> [i32; 3] {

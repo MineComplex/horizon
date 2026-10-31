@@ -586,13 +586,6 @@ fn a_wrong_keep_alive_times_out() {
 }
 
 #[test]
-fn obfuscated_seed_is_guava_sha256() {
-    // `Hashing.sha256().hashLong(seed).asLong()` from Guava 33.6 (`BiomeManager.obfuscateSeed`).
-    assert_eq!(obfuscate_seed(0), 8_794_265_229_978_523_055);
-    assert_eq!(obfuscate_seed(12345), 293_737_985_876_514_017);
-}
-
-#[test]
 fn a_taken_port_fails_to_start() {
     let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let mut config = config(20);

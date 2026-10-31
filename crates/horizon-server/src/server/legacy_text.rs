@@ -45,12 +45,22 @@ struct Decoded {
     bungee: bool,
 }
 
-/// `LegacyComponentSerializer.legacySection().deserialize(input)` as a vanilla component.
-pub fn deserialize(input: &str) -> FormattedText {
-    node_to_text(&parse(input))
+/// What Adventure's `deserialize` throws: a `§#rrggbb` code that overlaps a later code makes
+/// `String.substring(from, to)` fail with a `StringIndexOutOfBoundsException`.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("java.lang.StringIndexOutOfBoundsException: begin {begin}, end {end}, length {length}")]
+pub struct StringIndexOutOfBounds {
+    pub begin: usize,
+    pub end: usize,
+    pub length: usize,
 }
 
-fn parse(input: &str) -> Node {
+/// `LegacyComponentSerializer.legacySection().deserialize(input)` as a vanilla component.
+pub fn deserialize(input: &str) -> Result<FormattedText, StringIndexOutOfBounds> {
+    parse(input).map(|node| node_to_text(&node))
+}
+
+fn parse(input: &str) -> Result<Node, StringIndexOutOfBounds> {
     let s: Vec<char> = input.chars().collect();
     // `input.lastIndexOf('§', input.length() - 2)`.
     let last_section = |from: isize| -> Option<usize> {
@@ -61,10 +71,10 @@ fn parse(input: &str) -> Node {
             .map(|i| i as usize)
     };
     let Some(mut next) = last_section(s.len() as isize - 2) else {
-        return Node {
+        return Ok(Node {
             content: input.to_owned(),
             ..Node::default()
-        };
+        });
     };
     let mut parts: Vec<Node> = Vec::new();
     let mut current: Option<Node> = None;
@@ -86,8 +96,12 @@ fn parse(input: &str) -> Node {
                     },
                     None => Node::default(),
                 });
-                // (Java's `substring` throws when a hex code overlaps a later one.)
-                let text = s.get(from..pos).unwrap_or_default();
+                // Java's `substring` throws when a hex code overlaps a later one.
+                let text = s.get(from..pos).ok_or(StringIndexOutOfBounds {
+                    begin: from,
+                    end: pos,
+                    length: s.len(),
+                })?;
                 current.as_mut().expect("just made").content = text.iter().collect();
             } else if current.is_none() {
                 current = Some(Node::default());
@@ -108,14 +122,14 @@ fn parse(input: &str) -> Node {
     parts.extend(current);
     let remaining: String = s[..pos].iter().collect();
     if parts.len() == 1 && remaining.is_empty() {
-        return parts.remove(0);
+        return Ok(parts.remove(0));
     }
     parts.reverse();
-    Node {
+    Ok(Node {
         content: remaining,
         children: parts,
         ..Node::default()
-    }
+    })
 }
 
 /// `determineFormatType` then `decodeTextFormat`; `pos` is just after the code character.
@@ -195,7 +209,26 @@ mod tests {
 
     /// The component as vanilla's JSON, which is what a client reads.
     fn json(input: &str) -> String {
-        deserialize(input).to_json().to_string()
+        deserialize(input).unwrap().to_json().to_string()
+    }
+
+    #[test]
+    fn random_text_never_fails_where_java_cannot() {
+        let alphabet = ['§', '§', '#', 'x', 'a', '1', 'f', '+', 'Z'];
+        let mut state = 0x9e3779b97f4a7c15u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..300_000 {
+            let len = (next() % 24) as usize;
+            let s: String = (0..len)
+                .map(|_| alphabet[(next() % alphabet.len() as u64) as usize])
+                .collect();
+            assert!(deserialize(&s).is_ok(), "{s:?}");
+        }
     }
 
     // Expected values are worked out by hand from Adventure 5.2.0's `deserialize` (see the module doc).

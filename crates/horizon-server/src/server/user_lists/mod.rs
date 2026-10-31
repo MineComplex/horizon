@@ -99,23 +99,32 @@ impl UserLists {
 
     /// `PlayerList.canPlayerLogin`: why this login is refused, if it is. First the whitelist
     /// (operators pass), then a full server (operators with `bypassesPlayerLimit` pass).
-    pub fn can_player_login(&self, user: &NameAndId, rules: &LoginRules<'_>) -> Option<Reason> {
+    ///
+    /// `isWhiteListedLogin` deserializes `messages.whitelist` on every call, listed or not and
+    /// whitelist on or off, so a message Adventure cannot read fails every login here (`Err`).
+    pub fn can_player_login(
+        &self,
+        user: &NameAndId,
+        rules: &LoginRules<'_>,
+    ) -> Result<Option<Reason>, legacy_text::StringIndexOutOfBounds> {
+        let refusal = whitelist_refusal(rules.whitelist_message)?;
         if rules.using_whitelist && !self.is_op(user) && !self.whitelist.contains(user) {
-            return Some(whitelist_refusal(rules.whitelist_message));
+            return Ok(Some(refusal));
         }
         let full =
             i64::try_from(rules.online_players).unwrap_or(i64::MAX) >= rules.max_players.into();
-        (full && !self.can_bypass_player_limit(user))
-            .then(|| Reason::translatable("multiplayer.disconnect.server_full"))
+        Ok((full && !self.can_bypass_player_limit(user))
+            .then(|| Reason::translatable("multiplayer.disconnect.server_full")))
     }
 }
 
 /// The kick of `isWhiteListedLogin`: the message as `legacySection().deserialize` makes it. A text
 /// without `§` is a plain literal, which vanilla writes as a bare string.
-fn whitelist_refusal(message: &str) -> Reason {
-    if message.contains('§') {
-        Reason::component(&legacy_text::deserialize(message))
+fn whitelist_refusal(message: &str) -> Result<Reason, legacy_text::StringIndexOutOfBounds> {
+    let component = legacy_text::deserialize(message)?;
+    Ok(if message.contains('§') {
+        Reason::component(&component)
     } else {
         Reason::Literal(message.to_owned())
-    }
+    })
 }

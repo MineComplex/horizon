@@ -1,12 +1,13 @@
 use serde_json::value::RawValue;
 
-use super::placement::{LevelParams, LevelPlacements, find_biome_horizontal, ring_searches};
+use super::placement::{LevelParams, LevelPlacements, ring_searches};
 use super::start::{ChunkStructures, StructureStart, create_references, hash_set_order};
 use super::*;
 use crate::core::position::ChunkPos;
 use crate::nbt::{Compound, JavaString, Tag};
 use crate::server::config::{STRUCTURE_SALTS, SpigotWorldSeeds};
 use crate::util::random::{LegacyRandom, RandomSource, WorldgenRandom};
+use crate::worldgen::biome::find_biome_horizontal;
 
 const BIOMES: [&str; 3] = ["minecraft:plains", "minecraft:ocean", "minecraft:the_void"];
 

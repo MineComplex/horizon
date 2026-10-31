@@ -44,7 +44,7 @@
 //! The overworld's chunk I/O answers are drained at the start of each tick (Paper's
 //! `runAllTasksAtTickStart`), also while the server is paused, as Moonrise completes chunk loads on
 //! its own executor.
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc as std_mpsc;
@@ -76,6 +76,7 @@ use crate::network::play::clientbound::{self as cb, GameType};
 use crate::network::play::join::{self, JoinStep};
 use crate::network::{ConnectionState, Reason};
 use crate::registry::Registries;
+use crate::worldgen::biome::zoom::obfuscate_seed;
 
 /// Leaf's `misc.rebrand.server-mod-name` default (`leaf-global.yml`'s value is not read yet).
 const BRAND: &str = "Leaf";
@@ -761,7 +762,9 @@ impl Server {
             }
             let profile = &login.request.forwarded.profile;
             if !login.waiting {
-                if let Some(reason) = self.can_player_login(profile) {
+                if let Some(reason) =
+                    self.can_player_login(login.request.forwarded.address, profile)
+                {
                     let _ = login.request.reply.send(LoginVerdict::Deny(reason));
                     continue;
                 }
@@ -781,15 +784,24 @@ impl Server {
         }
     }
 
-    /// `PlayerList.canPlayerLogin` (see the module's notes).
-    fn can_player_login(&self, profile: &GameProfile) -> Option<Reason> {
+    /// `PlayerList.canPlayerLogin` (see the module's notes). Where Java's call throws (a
+    /// `messages.whitelist` Adventure cannot read, see `legacy_text`), the exception reaches
+    /// `ServerConnectionListener.tick`, which logs "Failed to handle packet for {address}" and
+    /// answers "Internal server error": that login ends, the server goes on.
+    fn can_player_login(&self, address: IpAddr, profile: &GameProfile) -> Option<Reason> {
         let rules = LoginRules {
             using_whitelist: self.config.white_list,
             whitelist_message: &self.config.whitelist_message,
             max_players: self.config.max_players,
             online_players: self.players.len(),
         };
-        self.user_lists.can_player_login(&profile.into(), &rules)
+        match self.user_lists.can_player_login(&profile.into(), &rules) {
+            Ok(refusal) => refusal,
+            Err(e) => {
+                tracing::warn!("Failed to handle packet for /{address}: {e}");
+                Some(Reason::Literal("Internal server error".into()))
+            }
+        }
     }
 
     /// `disconnectAllPlayersWithProfile`: true when some had to go.
@@ -847,7 +859,7 @@ impl Server {
                 "multiplayer.disconnect.duplicate_login",
             ))
         } else {
-            self.can_player_login(&profile)
+            self.can_player_login(c.peer.conn.address.ip(), &profile)
         };
         let ready = c.spawn.as_ref().and_then(|s| s.ready.clone());
         let (Some(spawn), None) = (ready, refusal.clone()) else {
@@ -1126,14 +1138,6 @@ impl Server {
         self.runtime.shutdown_timeout(Duration::from_secs(1));
         self.exit_code.unwrap_or(0)
     }
-}
-
-/// `BiomeManager.obfuscateSeed`: the first 8 bytes of SHA-256 over the seed, both little-endian
-/// (Guava's `hashLong`/`asLong`).
-fn obfuscate_seed(seed: i64) -> i64 {
-    use sha2::Digest;
-    let hash = sha2::Sha256::digest(seed.to_le_bytes());
-    i64::from_le_bytes(hash[..8].try_into().expect("8 bytes"))
 }
 
 /// `GameType.byId` over the network ids.
