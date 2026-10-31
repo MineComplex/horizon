@@ -170,6 +170,11 @@ impl Player {
         self.loader.sent_count()
     }
 
+    /// The chunk was sent to this player (changes in it are sent to the player).
+    pub fn has_sent_chunk(&self, pos: ChunkPos) -> bool {
+        self.loader.has_sent(pos)
+    }
+
     /// `teleport`: a new id, the position awaited until the client accepts it.
     fn teleport(&mut self, conn: &Connection, position: [f64; 3]) {
         let id = self.begin_teleport(position);

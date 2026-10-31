@@ -59,6 +59,7 @@ pub fn clientbound(name: &str) -> Option<u8> {
 
 /// Clientbound ids this module encodes or the join sequence names.
 pub mod cb {
+    pub const BLOCK_UPDATE: u8 = 8;
     pub const CHANGE_DIFFICULTY: u8 = 10;
     pub const CHUNK_BATCH_FINISHED: u8 = 11;
     pub const CHUNK_BATCH_START: u8 = 12;
@@ -69,6 +70,7 @@ pub mod cb {
     pub const GAME_EVENT: u8 = 39;
     pub const INITIALIZE_BORDER: u8 = 44;
     pub const KEEP_ALIVE: u8 = 45;
+    pub const LEVEL_EVENT: u8 = 43;
     pub const LEVEL_CHUNK_WITH_LIGHT: u8 = 46;
     pub const LIGHT_UPDATE: u8 = 49;
     pub const LOGIN: u8 = 50;
@@ -76,6 +78,7 @@ pub mod cb {
     pub const PLAYER_INFO_UPDATE: u8 = 71;
     pub const PLAYER_POSITION: u8 = 73;
     pub const RESPAWN: u8 = 84;
+    pub const SECTION_BLOCKS_UPDATE: u8 = 82;
     pub const SET_CHUNK_CACHE_CENTER: u8 = 96;
     pub const SET_CHUNK_CACHE_RADIUS: u8 = 97;
     pub const SET_DEFAULT_SPAWN_POSITION: u8 = 99;

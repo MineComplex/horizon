@@ -622,21 +622,23 @@ impl Server {
     }
 
     /// `tickChildren`'s loop over the levels, in `MinecraftServer.levels`' order (Leaf's parallel
-    /// world ticking is off by default): each level's `ServerChunkCache.tick` (the only part of
-    /// `ServerLevel.tick` ported): expired tickets, level updates, the chunk loader of each player
-    /// in that level, then unloads and autosave.
+    /// world ticking is off by default): each level's `ServerLevel.tick` as far as it is ported:
+    /// while the game runs normally the border and the game time, then the scheduled block and
+    /// fluid ticks (their level events sent to the players near them as they happen); then
+    /// `ServerChunkCache.tick`: expired tickets, level updates, the chunk loader of each player
+    /// in that level, the changed blocks broadcast to the players they were sent to, then
+    /// unloads and autosave.
     fn tick_levels(&mut self) {
         let now = self.now_ns();
         let runs = self.rate.runs_normally();
         for index in 0..self.world.levels.len() {
             if runs {
-                // `ServerLevel.tick`: the border, then the game time.
+                // `ServerLevel.tick`: the border, then the game time, then the scheduled ticks.
                 self.world.tick_level_time(index);
-                // `ServerLevel.tick` runs the scheduled block and fluid ticks here, after the
-                // game time (`level.tick_scheduled_ticks(..)`). Not called yet: there is no
-                // block behaviour to run, and dropping the ticks a world has saved would lose
-                // them at the next save. The containers, their loading and their saving are
-                // live (`world::ticks`, `chunk_system::manager`).
+                let level = &mut self.world.levels[index];
+                level.tick_scheduled_ticks();
+                let events = level.take_level_events();
+                self.send_level_events(index, &events);
             }
             let level = &mut self.world.levels[index];
             level.tick_tickets();
@@ -645,7 +647,37 @@ impl Server {
                     j.player.tick_chunks(level, &j.peer.conn, now);
                 }
             }
+            for (chunk, packets) in level.broadcast_changes() {
+                for j in self
+                    .players
+                    .iter()
+                    .filter(|j| j.player.level == index && j.player.has_sent_chunk(chunk))
+                {
+                    for packet in &packets {
+                        j.peer.conn.send(packet.clone());
+                    }
+                }
+            }
             level.tick_unloads(level.overrides.game_time);
+        }
+    }
+
+    /// `PlayerList.broadcast(null, pos, 64, dimension, ClientboundLevelEventPacket)` per event:
+    /// the players of the level closer than 64 blocks to the position.
+    fn send_level_events(&self, index: usize, events: &[crate::server::level::LevelEvent]) {
+        for e in events {
+            let packet = cb::level_event(e.event, e.pos, e.data, false);
+            for j in self.players.iter().filter(|j| j.player.level == index) {
+                let [x, y, z] = j.player.position;
+                let (dx, dy, dz) = (
+                    f64::from(e.pos.x) - x,
+                    f64::from(e.pos.y) - y,
+                    f64::from(e.pos.z) - z,
+                );
+                if dx * dx + dy * dy + dz * dz < 64.0 * 64.0 {
+                    j.peer.conn.send(packet.clone());
+                }
+            }
         }
     }
 
