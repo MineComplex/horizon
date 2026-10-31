@@ -27,6 +27,9 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 - Worldgen WP1 (`src/worldgen/`): noise, density program (arena enum), worldgen registries, proto chunk.
   Bit-equal on 774,162 values (`LeafDensityOracle`); as fast as Horizon's `Arc<dyn>` tree on volumes
   (572 µs/chunk), ~9% faster on points.
+- Worldgen WP2 slice (`src/worldgen/{climate,biome}`): climate parameters + Moonrise R-tree search,
+  multi-noise/fixed/checkerboard/end biome sources, BiomeManager zoom (Leaf's 0087 order), BIOMES step
+  (Paper's fill order), NoiseSpawnFinder. `LeafBiomeOracle`: 2 seeds x 5 stems, ~109k rows, all equal.
 
 ## Reusable Rust pieces (use these, don't add parallel ones)
 `src/util/{random,jmath,number_text}`, `src/core/{position,geometry}`, `src/nbt.rs`, `src/azalea/{buf,chat,
@@ -34,12 +37,11 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## In progress (wave 1, 2026-10-31; branches merged by cherry-pick)
-- WP2 slice: climate, multi-noise biome source, BiomeManager zoom, BIOMES step (`src/worldgen/{climate,biome}`).
 - WP5 slice: structure/structure_set data, spread placement + Spigot salts, StructureStart NBT (`src/worldgen/structure`).
 - 4.B.1: Moonrise tickets/holders, unload with save, autosave (`src/server/level.rs`, `src/world/`).
 
 ## Next
-WP2 rest (terrain fill, aquifer) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
+WP2 rest (biome predicates, terrain fill, aquifer, Purpur end void rings; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
 placement, trees); WP5 pieces (jigsaw, templates, legacy); WP6 driver + Moonrise-shaped scheduler.
 Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops/bans), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
