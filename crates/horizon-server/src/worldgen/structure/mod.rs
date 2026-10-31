@@ -109,7 +109,7 @@ pub(crate) struct BiomeLookup<'a> {
 
 impl BiomeLookup<'_> {
     /// `RegistryCodecs.homogeneousList(Registries.BIOME)`: `"#tag"`, an id, or a list of ids.
-    fn decode(&self, raw: &RawValue) -> Result<BiomeSet, DecodeError> {
+    pub(crate) fn decode(&self, raw: &RawValue) -> Result<BiomeSet, DecodeError> {
         let id = |name: &str| {
             let name = identifier(name)?;
             self.ids

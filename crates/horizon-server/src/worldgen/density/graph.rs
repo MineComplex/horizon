@@ -544,6 +544,15 @@ impl DensityGraph {
         &self.noises
     }
 
+    /// A registered noise's definition by id, for systems that seed their own instance of it
+    /// (the surface rules' noises).
+    pub fn noise_definition(&self, name: &str) -> Option<&NormalNoise> {
+        self.noises
+            .iter()
+            .find(|entry| entry.name == name)
+            .map(|entry| &entry.definition)
+    }
+
     /// Registers a named density function and returns its registry holder.
     pub fn register_function(
         &mut self,

@@ -10,6 +10,7 @@
 //! | End void rings | `purpur.yml` | `settings.generate-end-void-rings` | `false` |
 //! | Lagging flag | `purpur.yml` | `settings.lagging-threshold` | `19.0` |
 //! | 5 s TPS in `getTPS()` | `config/leaf-global.yml` | `misc.including-5s-in-get-tps` | `true` |
+//! | Flat bedrock | `config/paper-world-defaults.yml` | `environment.generate-flat-bedrock` ([`load_generate_flat_bedrock`]) | `false` |
 //! | Chunk autosave, unloads | `config/paper-world-defaults.yml` | `chunks.{auto-save-interval, max-auto-save-chunks-per-tick, min-chunk-unload-count, min-chunk-unload-fraction, delay-chunk-unloads-by}` | `default` (6000), `24`, `50`, `0.05`, `10s` |
 //!
 //! The per-world `paper-world.yml` overrides are not read yet (one world, the defaults apply).
@@ -727,6 +728,37 @@ pub fn load_paper_world_defaults(dir: &Path) -> Result<ChunkSettings, ConfigErro
         tracing::error!("Could not save {}: {e}", path.display());
     }
     Ok(settings)
+}
+
+/// `environment.generate-flat-bedrock` of `paper-world-defaults.yml` in `dir` (Paper's
+/// `WorldConfiguration.Environment`, read with Configurate's boolean coercion): whether the bedrock
+/// floor and roof are one flat layer. Read only: the file is written back by
+/// [`load_paper_world_defaults`] until the rest of the world settings are ported.
+pub fn load_generate_flat_bedrock(dir: &Path) -> Result<bool, ConfigError> {
+    let path = dir.join("paper-world-defaults.yml");
+    let file = file_name(&path);
+    let doc = match YamlDocument::read(&path) {
+        Ok(None) => return Ok(false),
+        Ok(Some(text)) => YamlDocument::parse(&text).map_err(|source| ConfigError::Syntax {
+            file: file.clone(),
+            source,
+        })?,
+        Err(source) => return Err(ConfigError::Io { file, source }),
+    };
+    match doc.get("environment.generate-flat-bedrock") {
+        Value::Null => Ok(false),
+        Value::Bool(flat) => Ok(flat),
+        Value::Str(s) if s.eq_ignore_ascii_case("true") => Ok(true),
+        Value::Str(s) if s.eq_ignore_ascii_case("false") => Ok(false),
+        other => Err(ConfigError::Invalid {
+            file,
+            path: "environment, generate-flat-bedrock",
+            message: format!(
+                "Failed to coerce input value of type {} to boolean",
+                other.java_string().unwrap_or_default()
+            ),
+        }),
+    }
 }
 
 /// Configurate's int scalar: an int (its low 32 bits), an integral float, or a number's text.

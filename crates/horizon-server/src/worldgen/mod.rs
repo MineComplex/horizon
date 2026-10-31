@@ -12,6 +12,8 @@
 //! - [`biome`]: biome sources, the BIOMES step, the biome zoom and the spawn finder.
 //! - [`aquifer`]: the underground fluids and barriers (`Aquifer`).
 //! - [`terrain`]: the noise fill (`NoiseChunk`, `doFill`) of a proto chunk.
+//! - [`surface`]: the surface rules (`buildSurface`) with Paper's optionally flat bedrock, a biome's
+//!   temperature.
 //! - [`proto_chunk`]: the chunk the generation steps write into before it becomes a
 //!   `LevelChunk`.
 //! - [`structure`]: the structure registries, where structures start (with Paper's
@@ -38,6 +40,7 @@ pub mod placement;
 pub mod proto_chunk;
 pub mod settings;
 pub mod structure;
+pub mod surface;
 pub mod terrain;
 
 #[cfg(test)]

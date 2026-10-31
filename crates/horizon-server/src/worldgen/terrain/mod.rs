@@ -23,7 +23,7 @@ use crate::world::chunk::{SectionFlags, StateFlags};
 use crate::world::level_chunk::HeightmapFlags;
 
 #[cfg(test)]
-mod oracle_tests;
+pub(crate) mod oracle_tests;
 
 /// Why a chunk's terrain could not be filled. Vanilla's data never fails; a datapack can.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]

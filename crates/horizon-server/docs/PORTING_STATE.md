@@ -33,6 +33,15 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 - Worldgen WP2 terrain (`src/worldgen/{aquifer,terrain}`): `NoiseChunk` fill + aquifer onto the proto chunk, WG
   heightmaps, fluid marks, base column/height. `LeafTerrainOracle`: 224 chunks (15.2M blocks) + 84 columns, all
   equal; 3.5 ms per overworld chunk (release).
+- Worldgen WP3 first part (`src/worldgen/surface`): the `material_rule`/`material_condition` registries decoded into
+  arenas (with Paper's `optionally_flat_bedrock_material_condition`; its bedrock rules come in the `vanilla` pack),
+  `SurfaceSystem::build_surface` (`NoiseBasedChunkGenerator.buildSurface`: rule per block, clay bands, ore veins,
+  eroded badlands pillars, frozen ocean icebergs) and biome temperatures (`BiomeClimates`, in `WorldgenData`).
+  `LeafSurfaceOracle`: 312 chunks (23.9M blocks, 4.0M changed by the surface; 7 noise settings x 2 seeds over the stems'
+  real biome sources, plus chunks of 35 biomes and 16 of the eroded badlands) and 4,154 temperatures, all equal;
+  4.6 ms per overworld chunk (release). Flat bedrock (`environment.generate-flat-bedrock`, read by
+  `config::load_generate_flat_bedrock`) cannot run on the vanilla jar: `flat_bedrock_is_one_layer` checks Paper's
+  arithmetic through the real rules. Carvers are the rest of WP3.
 - Worldgen WP5 slice (`src/worldgen/structure`): structure/structure_set registries + tags, random spread,
   frequency reducers, exclusion zones, ring geometry (biome search as a closure), Spigot `seed-*` salts
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
@@ -63,7 +72,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 rest (feature implementations, trees, state providers, block survival rules, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
+WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`) → WP3 rest (carvers, `topMaterial` for them); WP4 rest (feature implementations, trees, state providers, block survival rules, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
 Core: dimension switching (portals, `/execute in`, `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

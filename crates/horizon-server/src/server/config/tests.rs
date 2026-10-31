@@ -312,6 +312,22 @@ fn paper_world_defaults_chunk_settings() {
     assert!(load_paper_world_defaults(d).is_err());
 }
 
+#[test]
+fn paper_world_defaults_flat_bedrock_flag() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path();
+    assert!(!load_generate_flat_bedrock(d).unwrap());
+    let write_flag = |text: &str| std::fs::write(d.join("paper-world-defaults.yml"), text).unwrap();
+    write_flag("environment:\n  generate-flat-bedrock: true\n");
+    assert!(load_generate_flat_bedrock(d).unwrap());
+    write_flag("environment:\n  generate-flat-bedrock: 'false'\n");
+    assert!(!load_generate_flat_bedrock(d).unwrap());
+    write_flag("chunks:\n  auto-save-interval: 300\n");
+    assert!(!load_generate_flat_bedrock(d).unwrap());
+    write_flag("environment:\n  generate-flat-bedrock: maybe\n");
+    assert!(load_generate_flat_bedrock(d).is_err());
+}
+
 /// Bukkit splits `world-settings.<world>.<key>` on `.`: a dotted world name nests, and falls back
 /// to `world-settings.default` for what its section lacks. A top-level key holding the dots does
 /// not match.

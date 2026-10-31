@@ -4,18 +4,16 @@
 //! what it needs from it ([`WorldgenData::compile_level`]).
 //!
 //! Decoded so far: `worldgen/noise`, `worldgen/density_function` and `worldgen/noise_settings`
-//! (into one [`DensityGraph`]), Paper's flat bedrock conditions of the bedrock rules, and
-//! `worldgen/structure` and `worldgen/structure_set` with `tags/worldgen/structure`
+//! (into one [`DensityGraph`]), `worldgen/material_rule` and `material_condition` (the surface
+//! rules, [`MaterialRules`], with each biome's climate), and `worldgen/structure` and `worldgen/structure_set` with `tags/worldgen/structure`
 //! ([`StructureRegistry`]). The other worldgen registries are kept as parsed JSON
-//! ([`RawRegistry`]) for the packages that decode them (surface rules, carvers, features,
-//! presets).
+//! ([`RawRegistry`]) for the packages that decode them (carvers, features, presets).
 
 use serde_json::value::RawValue;
 
-use super::anchor::{OPTIONALLY_FLAT_BEDROCK, OptionallyFlatBedrock};
 use super::aquifer::AquiferRandom;
 use super::climate::Parameter;
-use super::codec::{DecodeError, DensityLoader, decode_noise, object, optional, string};
+use super::codec::{DecodeError, DensityLoader, decode_noise};
 use super::density::{
     DensityCompiler, DensityGraph, DensityProgram, FunctionId, NodeId, ProgramError,
 };
@@ -25,6 +23,8 @@ use super::structure::{
     BiomeLookup, InlineElements, StructureId, StructureRegistry, decode_structure,
     decode_structure_set,
 };
+use super::surface::rules::MaterialRules;
+use super::surface::temperature::{BiomeClimate, BiomeClimates};
 use crate::block::BlockStates;
 use crate::registry::{DataPack, ElementFile, WORLDGEN, for_each_element, load_tags, registry_dir};
 
@@ -52,9 +52,10 @@ pub struct WorldgenData {
     graph: DensityGraph,
     /// `worldgen/noise_settings` in registration order.
     noise_settings: Vec<(String, NoiseGeneratorSettings)>,
-    /// Paper's conditions in `worldgen/material_rule`, by rule id (until surface rules decode
-    /// the whole registry).
-    flat_bedrock: Vec<(String, OptionallyFlatBedrock)>,
+    /// `worldgen/material_rule` and `material_condition`, with Paper's bedrock condition.
+    surface: MaterialRules,
+    /// Each biome's climate (by registry id) and the fixed temperature noises.
+    climates: BiomeClimates,
     structures: StructureRegistry,
     features: FeatureRegistry,
     raw: Vec<RawRegistry>,
@@ -73,6 +74,9 @@ pub struct LevelDensity {
     /// The settings' `spawn_target` points with their functions compiled (what
     /// `NoiseSpawnFinder` samples through `RandomState.samplersWithContext`).
     pub spawn_target: Vec<Vec<(NodeId, Parameter)>>,
+    /// The density functions of the settings' surface rule (its ore veins') compiled into the
+    /// program.
+    pub surface_functions: Vec<(FunctionId, NodeId)>,
 }
 
 impl LevelDensity {
@@ -81,6 +85,14 @@ impl LevelDensity {
     }
     pub fn aquifer(&self, field: AquiferField) -> Option<NodeId> {
         self.aquifers.map(|roots| roots[field as usize])
+    }
+    /// A function of the surface rule's ore veins, compiled with the level.
+    pub fn surface_node(&self, function: FunctionId) -> NodeId {
+        self.surface_functions
+            .iter()
+            .find(|(id, _)| *id == function)
+            .expect("the level compiles every function of its surface rule")
+            .1
     }
 }
 
@@ -123,15 +135,35 @@ impl WorldgenData {
             noise_settings.push((file.id.to_owned(), settings));
             Ok(())
         })?;
-        let mut flat_bedrock = Vec::new();
-        for_each_element(packs, "minecraft:worldgen/material_rule", |file| {
-            let raw = parse(&file)?;
-            if let Some(condition) = find_flat_bedrock(&raw).map_err(|e| error(&file, e))? {
-                flat_bedrock.push((file.id.to_owned(), condition));
-            }
-            Ok(())
+        let (biome_ids, biome_climates) = load_biomes(packs, &error, &parse)?;
+        let biome_tags = load_tags(packs, &registry_dir("minecraft:worldgen/biome"), |id| {
+            biome_ids.iter().position(|b| b == id).map(|i| i as i32)
+        });
+        let biomes = BiomeLookup {
+            ids: &biome_ids,
+            tags: &biome_tags,
+        };
+        let material = |registry| -> Result<Vec<(String, Box<RawValue>)>, WorldgenError> {
+            let mut elements = Vec::new();
+            for_each_element(packs, registry, |file| {
+                elements.push((file.id.to_owned(), parse(&file)?));
+                Ok(())
+            })?;
+            Ok(elements)
+        };
+        let surface = MaterialRules::decode(
+            &material("minecraft:worldgen/material_rule")?,
+            &material("minecraft:worldgen/material_condition")?,
+            &biomes,
+            &mut loader,
+            blocks,
+        )
+        .map_err(|source| WorldgenError {
+            file: "minecraft:worldgen/material_rule".into(),
+            pack: "<registry>".into(),
+            source,
         })?;
-        let structures = load_structures(packs, &error, &parse)?;
+        let structures = load_structures(packs, &biomes, &error, &parse)?;
         let mut raw = Vec::new();
         for name in WORLDGEN {
             if matches!(
@@ -139,6 +171,8 @@ impl WorldgenData {
                 "minecraft:worldgen/noise"
                     | "minecraft:worldgen/density_function"
                     | "minecraft:worldgen/noise_settings"
+                    | "minecraft:worldgen/material_rule"
+                    | "minecraft:worldgen/material_condition"
                     | "minecraft:worldgen/structure"
                     | "minecraft:worldgen/structure_set"
                     | "minecraft:worldgen/feature"
@@ -156,7 +190,8 @@ impl WorldgenData {
         Ok(Self {
             graph,
             noise_settings,
-            flat_bedrock,
+            surface,
+            climates: BiomeClimates::new(biome_climates),
             structures,
             features: FeatureRegistry::load(packs, blocks)?,
             raw,
@@ -188,12 +223,14 @@ impl WorldgenData {
         self.noise_settings.iter().map(|(name, _)| name.as_str())
     }
 
-    /// Paper's flat bedrock condition of a material rule, where it has one.
-    pub fn flat_bedrock(&self, rule: &str) -> Option<&OptionallyFlatBedrock> {
-        self.flat_bedrock
-            .iter()
-            .find(|(name, _)| name == rule)
-            .map(|(_, condition)| condition)
+    /// The surface rules (`worldgen/material_rule`, `material_condition`).
+    pub fn surface_rules(&self) -> &MaterialRules {
+        &self.surface
+    }
+
+    /// Every biome's climate, for temperatures.
+    pub fn climates(&self) -> &BiomeClimates {
+        &self.climates
     }
 
     /// A registry kept as JSON.
@@ -271,39 +308,52 @@ impl WorldgenData {
             })
             .collect::<Result<Vec<_>, ProgramError>>()?;
         let extra = compile(extra)?;
+        let surface_functions = match self.surface.element(&settings.material_rule) {
+            Some(rule) => {
+                let functions = self.surface.ore_functions(rule);
+                let nodes = compile(&functions)?;
+                functions.into_iter().zip(nodes).collect()
+            }
+            None => Vec::new(),
+        };
         let density = LevelDensity {
             program: compiler.finish(),
             router: router.try_into().expect("eight router roots"),
             aquifers: aquifers.map(|nodes| nodes.try_into().expect("six aquifer roots")),
             aquifer_random: AquiferRandom::new(seed, settings.legacy_random_source),
             spawn_target,
+            surface_functions,
         };
         Ok((density, extra))
     }
+}
+
+/// The `worldgen/biome` ids in registration order, with each biome's climate.
+fn load_biomes(
+    packs: &[DataPack],
+    error: &impl Fn(&ElementFile<'_>, DecodeError) -> WorldgenError,
+    parse: &impl Fn(&ElementFile<'_>) -> Result<Box<RawValue>, WorldgenError>,
+) -> Result<(Vec<String>, Vec<BiomeClimate>), WorldgenError> {
+    let (mut ids, mut climates) = (Vec::new(), Vec::new());
+    for_each_element(packs, "minecraft:worldgen/biome", |file| {
+        ids.push(file.id.to_owned());
+        climates.push(BiomeClimate::decode(&parse(&file)?).map_err(|e| error(&file, e))?);
+        Ok::<_, WorldgenError>(())
+    })?;
+    Ok((ids, climates))
 }
 
 /// `worldgen/structure` (biomes resolved through `worldgen/biome` and its tags), then
 /// `worldgen/structure_set` (which may name sets registered after it), then the structure tags.
 fn load_structures(
     packs: &[DataPack],
+    biomes: &BiomeLookup<'_>,
     error: &impl Fn(&ElementFile<'_>, DecodeError) -> WorldgenError,
     parse: &impl Fn(&ElementFile<'_>) -> Result<Box<RawValue>, WorldgenError>,
 ) -> Result<StructureRegistry, WorldgenError> {
-    let mut biome_ids = Vec::new();
-    for_each_element(packs, "minecraft:worldgen/biome", |file| {
-        biome_ids.push(file.id.to_owned());
-        Ok::<_, WorldgenError>(())
-    })?;
-    let biome_tags = load_tags(packs, &registry_dir("minecraft:worldgen/biome"), |id| {
-        biome_ids.iter().position(|b| b == id).map(|i| i as i32)
-    });
-    let biomes = BiomeLookup {
-        ids: &biome_ids,
-        tags: &biome_tags,
-    };
     let mut registry = StructureRegistry::default();
     for_each_element(packs, "minecraft:worldgen/structure", |file| {
-        let structure = decode_structure(file.id, parse(&file)?, &biomes);
+        let structure = decode_structure(file.id, parse(&file)?, biomes);
         registry
             .structures
             .push(structure.map_err(|e| error(&file, e))?);
@@ -327,7 +377,7 @@ fn load_structures(
             &raw,
             &registry.structures,
             &set_ids,
-            &biomes,
+            biomes,
             &mut inline,
         )
         .map_err(|source| WorldgenError { file, pack, source })?;
@@ -354,38 +404,4 @@ fn load_structures(
         })
         .collect();
     Ok(registry)
-}
-
-/// Paper's condition inside a bedrock rule: `condition` rules whose `if_true` is the condition,
-/// or `not` of it (the roof).
-fn find_flat_bedrock(raw: &RawValue) -> Result<Option<OptionallyFlatBedrock>, DecodeError> {
-    if !raw.get().starts_with('{') {
-        return Ok(None);
-    }
-    let rule = object(raw)?;
-    match optional(&rule, "if_true") {
-        Some(condition) => find_flat_bedrock_condition(condition),
-        None => Ok(None),
-    }
-}
-
-fn find_flat_bedrock_condition(
-    condition: &RawValue,
-) -> Result<Option<OptionallyFlatBedrock>, DecodeError> {
-    if !condition.get().starts_with('{') {
-        return Ok(None);
-    }
-    let fields = object(condition)?;
-    match optional(&fields, "type")
-        .map(string)
-        .transpose()?
-        .as_deref()
-    {
-        Some(OPTIONALLY_FLAT_BEDROCK) => OptionallyFlatBedrock::decode(condition).map(Some),
-        Some("minecraft:not") => match fields.get("invert") {
-            Some(inner) => find_flat_bedrock_condition(inner),
-            None => Ok(None),
-        },
-        _ => Ok(None),
-    }
 }

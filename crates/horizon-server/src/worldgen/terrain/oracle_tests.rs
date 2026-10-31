@@ -28,18 +28,18 @@ use crate::worldgen::noise::DensityVolume;
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::settings::RouterField;
 
-fn env_path(name: &str) -> Option<PathBuf> {
+pub(crate) fn env_path(name: &str) -> Option<PathBuf> {
     std::env::var_os(name).map(PathBuf::from)
 }
 
 /// The real registries, block table and per-state data (`tools/leaf_server/README.md`).
-struct Real {
-    data: WorldgenData,
-    blocks: BlockStates,
-    state_data: BlockStateData,
+pub(crate) struct Real {
+    pub(crate) data: WorldgenData,
+    pub(crate) blocks: BlockStates,
+    pub(crate) state_data: BlockStateData,
 }
 
-fn load_real() -> Option<Real> {
+pub(crate) fn load_real() -> Option<Real> {
     let jar = env_path("HORIZON_VANILLA_JAR")?;
     let blocks = BlockStates::load(&env_path("HORIZON_SERVER_BLOCKS_JSON")?).expect("blocks.json");
     let state_data = BlockStateData::load(&env_path("HORIZON_SERVER_BLOCK_STATES")?, &blocks)
@@ -55,11 +55,11 @@ fn load_real() -> Option<Real> {
 }
 
 impl Real {
-    fn factory(&self) -> ContainerFactory {
+    pub(crate) fn factory(&self) -> ContainerFactory {
         ContainerFactory::new(self.blocks.state_count(), 64, 0)
     }
     /// The WG heightmaps' predicates: `!isAir()` and the `blocks_motion_in_heightmap` blocks.
-    fn heightmap_table(&self, motion: &HashSet<&str>) -> HeightmapTable {
+    pub(crate) fn heightmap_table(&self, motion: &HashSet<&str>) -> HeightmapTable {
         HeightmapTable::new(self.blocks.state_count(), |state| {
             let opaque = !self.state_data.is_air(state);
             let motion = motion.contains(self.blocks.block_name(self.blocks.block(state)));
@@ -67,7 +67,7 @@ impl Real {
                 | u8::from(motion) << Heightmap::OceanFloorWg as u8
         })
     }
-    fn chunk(&self, pos: ChunkPos, min_y: i32, height: i32) -> ProtoChunk {
+    pub(crate) fn chunk(&self, pos: ChunkPos, min_y: i32, height: i32) -> ProtoChunk {
         let void_air = self.blocks.block_by_name("minecraft:void_air").unwrap();
         ProtoChunk::new(
             pos,
@@ -80,7 +80,7 @@ impl Real {
 }
 
 /// `id*count` runs, as the oracle writes them.
-fn expand(runs: &[&str]) -> Vec<u32> {
+pub(crate) fn expand(runs: &[&str]) -> Vec<u32> {
     runs.iter()
         .flat_map(|run| {
             let (id, count) = run.split_once('*').expect("a run");

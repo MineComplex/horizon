@@ -339,6 +339,15 @@ WP1's trait stubs); WP6 integrates.
   `WorldGenerationContext.level()`); carver configs from the `worldgen/carver` registry; uncarvable tag from block tags.
 - **Java-shape fixes**: `biome_temperature.rs:37` static noises → `LazyLock` constant or `WorldgenData` field; carver
   biome cache (`generator.rs:746`) dropped (biomes come with the job).
+- **Done (first part, `S/worldgen/surface`, ~1.6k lines rustfmt'd)**: surface rules and Paper's flat bedrock; the other
+  files above (`material_condition/*`, `material_extensions`, `material_stage`, `material_surface`, `biome_temperature`)
+  were rewritten, not copied line by line: rules are arenas of enums decoded from the datapacks' registries, the seeded
+  noises and random factories are per-level (`SurfaceSystem`), biomes come from a closure, the temperature noises are
+  `WorldgenData` data (`BiomeClimates`), vanilla's condition result caches are dropped (only the biome, the noises, the
+  secondary depth and the preliminary surface are cached per column/block), `biome_weather` waits for WP4 (it is feature
+  code). `topMaterial` (carvers' use) is left for the carver part. `LeafSurfaceOracle`: 312 chunks + 4,154 temperatures
+  equal; Paper's flag derived (`flat_bedrock_is_one_layer`); `config::load_generate_flat_bedrock` reads it (not wired to
+  `bootstrap` yet: `SurfaceSystem::new` takes it).
 - **Verify**: `test_material_condition_parity.py`, `test_material_rule_library_parity.py`,
   `test_material_stage_parity.py`, `test_material_surface_parity.py`, `test_material_extension_parity.py`,
   `test_biome_temperature_parity.py`, `test_carving_geometry_parity.py`, `test_carving_mask_parity.py`,
