@@ -430,12 +430,16 @@ fn the_commands_packet_follows_the_level() {
             .collect::<Vec<_>>()
     };
     assert_eq!(count(0), ["list"]);
-    assert_eq!(count(2), ["difficulty", "list", "seed", "time", "weather"]);
+    assert_eq!(
+        count(2),
+        ["difficulty", "list", "locate", "seed", "time", "weather"]
+    );
     assert_eq!(
         count(4),
         [
             "difficulty",
             "list",
+            "locate",
             "seed",
             "tick",
             "time",

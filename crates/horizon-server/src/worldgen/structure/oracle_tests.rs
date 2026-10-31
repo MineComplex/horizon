@@ -171,7 +171,8 @@ fn structure_placement_matches_java() {
     let mut counts: Vec<_> = counts.into_iter().collect();
     counts.sort();
     println!("compared: {counts:?}");
-    assert_eq!(counts.len(), 5, "every kind of row");
+    // Five kinds compared here, and the `realring` rows (counted, compared in `worldgen::locate`).
+    assert_eq!(counts.len(), 6, "every kind of row");
     // The 26.3 jar's registries, all decoded.
     let villages = registry.tag("minecraft:village").map_or(0, <[_]>::len);
     println!(

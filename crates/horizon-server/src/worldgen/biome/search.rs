@@ -150,7 +150,7 @@ pub fn out_from_origin(origin: i32, lower: i32, upper: i32, step: i32) -> Vec<i3
 
 /// `BlockPos.spiralAround(ZERO, radius, EAST, SOUTH)`: the (x, z) offsets from the centre
 /// outwards, in vanilla's order: the centre, then legs of growing length east, south, west and
-/// north (`4 * radius + 1` legs, so the last one runs a block past the square, as vanilla's).
+/// north, ending at the corner of the `(2 * radius + 1)` square.
 pub fn spiral_around(radius: i32) -> impl Iterator<Item = (i32, i32)> {
     const DIRECTIONS: [(i32, i32); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
     let legs = 4 * radius;
@@ -187,7 +187,7 @@ mod tests {
     fn spiral_walks_out_from_the_centre() {
         let walk: Vec<_> = spiral_around(1).collect();
         assert_eq!(
-            walk[..9],
+            walk[..],
             [
                 (0, 0),
                 (1, 0),
@@ -200,7 +200,7 @@ mod tests {
                 (1, -1)
             ]
         );
-        assert_eq!(walk.len(), 10);
+        assert_eq!(walk.len(), 9);
         assert_eq!(spiral_around(0).collect::<Vec<_>>(), [(0, 0)]);
     }
 
