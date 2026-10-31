@@ -134,6 +134,16 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
   priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
 
+- 4.B.3 scheduled ticks (`src/world/ticks.rs`, `LeafTicksOracle`): `LevelChunkTicks` (by `DRAIN_ORDER`, one per type and
+  position, pending saved ticks, Moonrise's dirty flag), `LevelTicks` (collect/drain by `INTRA_TICK_DRAIN_ORDER` with the
+  per-tick limit, `will_tick_this_tick`, `clear_area`, `copy_area`), `ProtoChunkTicks` (saved with proto chunks now), typed
+  `block_ticks`/`fluid_ticks` in `serial.rs`. `ChunkHolderManager.ticks` registers a chunk's containers at FULL, unpacks
+  them at BLOCK_TICKING, packs them at every save and removes them after the unload save; pending ticks keep a chunk unsaved.
+  `Level::tick_scheduled_ticks(block, fluid)` runs them in `ServerLevel.tick`'s order (Paper's 65,536 limits) but is NOT
+  called yet: no block behaviour, and a no-op would drop saved ticks. `LeafTicksOracle`: 14 scenarios, 1,835 ops, 590 ticks
+  run, 13 codec cases, equal; Moonrise's dirty flag derived from sources; ties between containers unpacked from disk break
+  by position then chunk (vanilla's order there depends on a hash map). Checked live: two runs of the release binary on one
+  fresh world (save, reload). Open: call the runner, per-world `max-block-ticks`/`max-fluid-ticks`, debug-world skip.
 - Paper world settings per level (`server/config::load_paper_world`, `level::PaperWorld`): each level creates/reads
   `<dimension folder>/paper-world.yml` as it opens (`createWorldConfig`: new file = Paper's per-world header + `_version`,
   a file without `_version` warned about and given it, saved with its own values only) and reads `chunks.*` and
@@ -161,8 +171,7 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
 - User lists: no commands to edit them; `enforce-whitelist` not ported; Gson's lenient reading and bins of 8+
   colliding keys differ; saves are synchronous (Leaf's are async).
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
-- Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
-  block/fluid ticks don't mark a chunk unsaved; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `chunk-loading-*` rates not read.
+- Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `chunk-loading-*` rates not read.
 - Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
   weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
   off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets
