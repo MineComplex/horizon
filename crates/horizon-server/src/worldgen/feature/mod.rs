@@ -7,25 +7,37 @@
 //! [`sort`] orders the features of a set of biomes per step (`FeatureSorter`).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::value::RawValue;
 
 use crate::block::BlockStates;
+use crate::core::position::BlockPos;
 use crate::registry::{DataPack, ElementFile, for_each_element, load_tags, registry_dir};
-use crate::util::random::LegacyRandom;
+use crate::util::random::{LegacyRandom, RandomSource};
 use crate::worldgen::codec::{DecodeError, object, required, string};
 use crate::worldgen::data::WorldgenError;
 use crate::worldgen::noise::SimplexNoise;
-use crate::worldgen::placement::{DecodeContext, FLUIDS, PlacementModifier};
-use crate::worldgen::state_provider::{NamedProviders, ProviderContext};
+use crate::worldgen::placement::{
+    DecodeContext, FLUIDS, FeaturePlacer, PlaceError, PlacementError, PlacementModifier,
+};
+use crate::worldgen::state_provider::{NamedProviders, ProviderContext, ProviderError};
 use crate::worldgen::structure::BiomeSet;
+use tree::TreeBlocksCell;
 
+pub mod decorate;
+#[cfg(test)]
+mod decorate_oracle_tests;
+pub mod misc;
 #[cfg(test)]
 mod oracle_tests;
 pub mod ore;
+pub mod patch;
 pub mod rule_test;
+pub mod select;
 pub mod simple;
 pub mod sort;
+pub mod tree;
 pub use simple::{Feature, FeatureWorld};
 
 /// A `worldgen/feature` element's (a configured feature's) index.
@@ -87,6 +99,15 @@ pub struct FeatureRegistry {
     info_noise: SimplexNoise,
 }
 
+/// Why a feature could not be placed.
+fn placement_error(error: PlacementError) -> ProviderError {
+    match error {
+        PlacementError::Random(e) => ProviderError::Random(e),
+        PlacementError::World(e) => ProviderError::World(e),
+        PlacementError::NoTopFeature => ProviderError::Invalid("a placed feature without a biome"),
+    }
+}
+
 impl FeatureRegistry {
     pub fn configured(&self, id: ConfiguredFeatureId) -> &ConfiguredFeature {
         &self.configured[id.0 as usize]
@@ -128,6 +149,52 @@ impl FeatureRegistry {
         &self.info_noise
     }
 
+    /// `Feature.place` of a configured feature: false for one whose type is not ported yet.
+    pub fn place_configured<W: FeatureWorld, R: RandomSource>(
+        &self,
+        id: ConfiguredFeatureId,
+        world: &mut W,
+        random: &mut R,
+        origin: BlockPos,
+    ) -> Result<bool, ProviderError> {
+        match &self.configured(id).feature {
+            Some(feature) => feature.place(self, world, random, origin),
+            None => Err(ProviderError::Invalid("the feature type is not ported")),
+        }
+    }
+
+    /// `PlacedFeature.place(level, generator, random, origin)`: its placement chain, without a
+    /// biome check (what the selector features call).
+    pub fn place_placed<W: FeatureWorld, R: RandomSource>(
+        &self,
+        id: PlacedFeatureId,
+        world: &mut W,
+        random: &mut R,
+        origin: BlockPos,
+    ) -> Result<bool, ProviderError> {
+        self.place_placed_checked(id, false, world, random, origin)
+    }
+
+    /// `FeaturePlacer.place` (`biome_check` false) or `placeWithBiomeCheck`.
+    pub fn place_placed_checked<W: FeatureWorld, R: RandomSource>(
+        &self,
+        id: PlacedFeatureId,
+        biome_check: bool,
+        world: &mut W,
+        random: &mut R,
+        origin: BlockPos,
+    ) -> Result<bool, ProviderError> {
+        let configured = self.placed(id).feature;
+        FeaturePlacer::default()
+            .place(self, id, biome_check, world, random, origin, |w, r, at| {
+                self.place_configured(configured, w, r, at)
+            })
+            .map_err(|e| match e {
+                PlaceError::Placement(e) => placement_error(e),
+                PlaceError::Feature(e) => e,
+            })
+    }
+
     /// Decodes the feature registries of `packs` (bottom to top).
     pub fn load(packs: &[DataPack], blocks: &BlockStates) -> Result<Self, WorldgenError> {
         let error = |file: &ElementFile<'_>, source: DecodeError| WorldgenError {
@@ -161,6 +228,7 @@ impl FeatureRegistry {
             fluid_tags: &fluid_tags,
         };
 
+        let trees = Arc::new(TreeBlocksCell::new(&block_tags));
         let mut named = Vec::new();
         for_each_element(packs, "minecraft:worldgen/block_state_provider", |file| {
             named.push((file.id.to_owned(), parse(&file)?));
@@ -173,7 +241,7 @@ impl FeatureRegistry {
         let mut configured = Vec::new();
         let mut configured_ids = HashMap::new();
         for_each_element(packs, "minecraft:worldgen/feature", |file| {
-            let feature = decode_configured(file.id, &parse(&file)?, &providers)
+            let feature = decode_configured(file.id, &parse(&file)?, &providers, &trees)
                 .map_err(|e| error(&file, e))?;
             configured_ids.insert(
                 file.id.to_owned(),
@@ -193,6 +261,7 @@ impl FeatureRegistry {
                 &mut configured,
                 &names,
                 &providers,
+                &trees,
             )
             .map_err(|e| error(&file, e))?;
             placed_ids.insert(file.id.to_owned(), PlacedFeatureId(placed.len() as u32));
@@ -222,6 +291,7 @@ impl FeatureRegistry {
                 configured_ids: &configured_ids,
                 names: &names,
                 providers: &providers,
+                trees: &trees,
             };
             let steps =
                 decode_biome_features(&parse(&file)?, &mut lookup, &mut placed, &mut configured)
@@ -229,6 +299,70 @@ impl FeatureRegistry {
             biomes.push(BiomeFeatures::new(steps));
             Ok::<_, WorldgenError>(())
         })?;
+
+        // The placed features that configured features name (selectors) and the pale moss patch.
+        let mut index = 0;
+        let pale_moss = configured_ids.get(tree::PALE_MOSS_PATCH).copied();
+        while index < configured.len() {
+            let Some(mut feature) = configured[index].feature.take() else {
+                index += 1;
+                continue;
+            };
+            let owner = configured[index].id.clone();
+            let mut resolve = || -> Result<(), DecodeError> {
+                let mut lookup = PlacedLookup {
+                    ids: &placed_ids,
+                    tags: &placed_tags,
+                    owner: &owner,
+                    configured_ids: &configured_ids,
+                    names: &names,
+                    providers: &providers,
+                    trees: &trees,
+                };
+                match &mut feature {
+                    Feature::Select(selector) => {
+                        for refs in selector.refs_mut() {
+                            if let Some(raw) = refs.take_pending() {
+                                let ids = resolve_entries(
+                                    &raw,
+                                    &mut lookup,
+                                    &mut placed,
+                                    &mut configured,
+                                )?;
+                                refs.resolve(ids);
+                            }
+                        }
+                    }
+                    Feature::Patch(patch) => {
+                        let refs = patch.refs_mut();
+                        if let Some(raw) = refs.take_pending() {
+                            let ids =
+                                resolve_entries(&raw, &mut lookup, &mut placed, &mut configured)?;
+                            refs.resolve(ids);
+                        }
+                    }
+                    Feature::Tree(tree) => {
+                        if let Some(patch) = pale_moss {
+                            tree.set_pale_moss_patch(patch);
+                        }
+                    }
+                    Feature::FallenTree(tree) => {
+                        if let Some(patch) = pale_moss {
+                            tree.set_pale_moss_patch(patch);
+                        }
+                    }
+                    _ => {}
+                }
+                Ok(())
+            };
+            resolve().map_err(|source| WorldgenError {
+                file: owner.clone(),
+                pack: "<registry>".into(),
+                source,
+            })?;
+            configured[index].feature = Some(feature);
+            index += 1;
+        }
 
         Ok(Self {
             configured,
@@ -245,12 +379,13 @@ fn decode_configured(
     id: &str,
     raw: &RawValue,
     ctx: &ProviderContext<'_>,
+    trees: &Arc<TreeBlocksCell>,
 ) -> Result<ConfiguredFeature, DecodeError> {
     let fields = object(raw)?;
     let kind = crate::worldgen::codec::identifier(&string(required(&fields, "type")?)?)?;
     Ok(ConfiguredFeature {
         id: id.to_owned(),
-        feature: Feature::decode(&kind, raw, ctx)?,
+        feature: Feature::decode(&kind, raw, ctx, trees)?,
         kind,
         config: raw.to_owned(),
     })
@@ -265,6 +400,7 @@ fn decode_placed(
     configured: &mut Vec<ConfiguredFeature>,
     names: &DecodeContext<'_>,
     providers: &ProviderContext<'_>,
+    trees: &Arc<TreeBlocksCell>,
 ) -> Result<PlacedFeature, DecodeError> {
     let fields = object(raw)?;
     let reference = required(&fields, "feature")?;
@@ -273,6 +409,7 @@ fn decode_placed(
             &format!("{id}#feature"),
             reference,
             providers,
+            trees,
         )?);
         ConfiguredFeatureId(configured.len() as u32 - 1)
     } else {
@@ -302,6 +439,7 @@ struct PlacedLookup<'a> {
     configured_ids: &'a HashMap<String, ConfiguredFeatureId>,
     names: &'a DecodeContext<'a>,
     providers: &'a ProviderContext<'a>,
+    trees: &'a Arc<TreeBlocksCell>,
 }
 
 /// `BiomeGenerationSettings.CODEC`'s `features`: per step a `HolderSet<PlacedFeature>` (an id,
@@ -316,47 +454,60 @@ fn decode_biome_features(
     let steps: Vec<Box<RawValue>> = serde_json::from_str(required(&fields, "features")?.get())?;
     let mut result = Vec::with_capacity(steps.len());
     for step in &steps {
-        let entries: Vec<Box<RawValue>> = if step.get().starts_with('[') {
-            serde_json::from_str(step.get())?
-        } else {
-            vec![step.clone()]
-        };
-        let mut features = Vec::new();
-        for entry in &entries {
-            if entry.get().starts_with('{') {
-                let id = format!("{}#placed{}", lookup.owner, placed.len());
-                placed.push(decode_placed(
-                    &id,
-                    entry,
-                    lookup.configured_ids,
-                    configured,
-                    lookup.names,
-                    lookup.providers,
-                )?);
-                features.push(PlacedFeatureId(placed.len() as u32 - 1));
-                continue;
-            }
-            let name = string(entry)?;
-            match name.strip_prefix('#') {
-                Some(tag) => {
-                    let tag = crate::worldgen::codec::identifier(tag)?;
-                    let (_, members) =
-                        lookup.tags.iter().find(|(t, _)| *t == tag).ok_or_else(|| {
-                            DecodeError::Registry(format!(
-                                "Missing tag: #{tag} in worldgen/placed_feature"
-                            ))
-                        })?;
-                    features.extend_from_slice(members);
-                }
-                None => {
-                    let name = crate::worldgen::codec::identifier(&name)?;
-                    features.push(*lookup.ids.get(&name).ok_or_else(|| {
-                        DecodeError::Registry(format!("Missing placed feature: {name}"))
-                    })?);
-                }
-            }
-        }
+        let features = resolve_entries(step, lookup, placed, configured)?;
         result.push(features);
     }
     Ok(result)
+}
+
+/// A `HolderSet<PlacedFeature>` (an id, `#tag`, or a list of ids and inline placed features) as
+/// ids. Inline placed features are added to the registry.
+fn resolve_entries(
+    raw: &RawValue,
+    lookup: &mut PlacedLookup<'_>,
+    placed: &mut Vec<PlacedFeature>,
+    configured: &mut Vec<ConfiguredFeature>,
+) -> Result<Vec<PlacedFeatureId>, DecodeError> {
+    let entries: Vec<Box<RawValue>> = if raw.get().starts_with('[') {
+        serde_json::from_str(raw.get())?
+    } else {
+        vec![raw.to_owned()]
+    };
+    let mut features = Vec::new();
+    for entry in &entries {
+        if entry.get().starts_with('{') {
+            let id = format!("{}#placed{}", lookup.owner, placed.len());
+            placed.push(decode_placed(
+                &id,
+                entry,
+                lookup.configured_ids,
+                configured,
+                lookup.names,
+                lookup.providers,
+                lookup.trees,
+            )?);
+            features.push(PlacedFeatureId(placed.len() as u32 - 1));
+            continue;
+        }
+        let name = string(entry)?;
+        match name.strip_prefix('#') {
+            Some(tag) => {
+                let tag = crate::worldgen::codec::identifier(tag)?;
+                let (_, members) =
+                    lookup.tags.iter().find(|(t, _)| *t == tag).ok_or_else(|| {
+                        DecodeError::Registry(format!(
+                            "Missing tag: #{tag} in worldgen/placed_feature"
+                        ))
+                    })?;
+                features.extend_from_slice(members);
+            }
+            None => {
+                let name = crate::worldgen::codec::identifier(&name)?;
+                features.push(*lookup.ids.get(&name).ok_or_else(|| {
+                    DecodeError::Registry(format!("Missing placed feature: {name}"))
+                })?);
+            }
+        }
+    }
+    Ok(features)
 }

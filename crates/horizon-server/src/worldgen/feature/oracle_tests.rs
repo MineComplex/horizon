@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 use serde_json::value::RawValue;
 
-use super::{Feature, FeatureWorld, PlacedFeatureId};
+use super::{ConfiguredFeatureId, Feature, FeatureRegistry, FeatureWorld, PlacedFeatureId};
 use crate::block::survival::{BlockSurvival, SurvivalError, SurvivalWorld};
 use crate::block::{BlockState, BlockStateData, BlockStates};
 use crate::core::position::BlockPos;
@@ -221,6 +221,8 @@ struct TestWorld<'a> {
     synth: Vec<BlockState>,
     solid: Vec<BlockState>,
     water: BlockState,
+    /// `ground`'s palette: air, stone, grass_block, podzol, dirt, moss_block, sand.
+    ground: [BlockState; 7],
     writes: HashMap<(i32, i32, i32), BlockState>,
     log: Vec<String>,
     marks: Vec<String>,
@@ -240,6 +242,16 @@ impl<'a> TestWorld<'a> {
             synth: SYNTH.split_whitespace().map(state).collect(),
             solid: SOLID.split_whitespace().map(state).collect(),
             water: state("water"),
+            ground: [
+                "air",
+                "stone",
+                "grass_block",
+                "podzol",
+                "dirt",
+                "moss_block",
+                "sand",
+            ]
+            .map(state),
             writes: HashMap::new(),
             log: Vec::new(),
             marks: Vec::new(),
@@ -252,6 +264,9 @@ impl<'a> TestWorld<'a> {
         }
         let hash =
             mix(x.wrapping_mul(73856093) ^ y.wrapping_mul(19349663) ^ z.wrapping_mul(83492791));
+        if self.mode >= 2 {
+            return self.ground(x, y, z, hash);
+        }
         if self.mode == 1 && (51..=80).contains(&y) {
             return self.water;
         }
@@ -261,6 +276,45 @@ impl<'a> TestWorld<'a> {
             &self.synth
         };
         palette[hash.rem_euclid(palette.len() as i32) as usize]
+    }
+}
+
+/// The oracle's `groundY`.
+fn ground_y(x: i32, z: i32) -> i32 {
+    62 + mix((x >> 2).wrapping_mul(7919) ^ (z >> 2).wrapping_mul(104729)).rem_euclid(4)
+}
+
+impl TestWorld<'_> {
+    /// The oracle's `ground` (modes 2 and 3).
+    fn ground(&self, x: i32, y: i32, z: i32, hash: i32) -> BlockState {
+        let [air, stone, grass, podzol, dirt, moss, sand] = self.ground;
+        let g = ground_y(x, z);
+        if y > g {
+            if self.mode == 3 && y <= 63 {
+                return self.water;
+            }
+            let pillar = mix(x
+                .wrapping_mul(31)
+                .wrapping_add(z.wrapping_mul(17))
+                .wrapping_add(11))
+            .rem_euclid(97)
+                == 0;
+            let tall = mix(x.wrapping_mul(5).wrapping_add(z.wrapping_mul(3))).rem_euclid(9);
+            if pillar && y >= g + 3 && y <= g + 3 + tall {
+                return stone;
+            }
+            return air;
+        }
+        if y == g {
+            return match hash.rem_euclid(10) {
+                0 => podzol,
+                1 => dirt,
+                2 => moss,
+                3 => sand,
+                _ => grass,
+            };
+        }
+        if y >= g - 3 { dirt } else { stone }
     }
 }
 
@@ -290,7 +344,17 @@ impl PlacementWorld for TestWorld<'_> {
         WorldGenerationContext::new(-64, 384, 63)
     }
     /// The oracle's `oreHeight`: the first free y.
-    fn height(&self, _: Heightmap, x: i32, z: i32) -> Result<i32, WorldError> {
+    fn height(&self, kind: Heightmap, x: i32, z: i32) -> Result<i32, WorldError> {
+        if self.mode >= 2 {
+            // The oracle's `groundHeight`: the ocean floor ignores the water.
+            let g = ground_y(x, z);
+            let ocean = matches!(kind, Heightmap::OceanFloor | Heightmap::OceanFloorWg);
+            return Ok(if !ocean && self.mode == 3 {
+                g.max(63)
+            } else {
+                g
+            } + 1);
+        }
         Ok(if self.mode == 1 {
             51
         } else {
@@ -333,6 +397,9 @@ impl FeatureWorld for TestWorld<'_> {
             .push(format!("tick {},{},{},{delay}", pos.x, pos.y, pos.z));
         Ok(())
     }
+    fn schedule_fluid_tick(&mut self, pos: BlockPos, _: u8, delay: i32) -> Result<(), WorldError> {
+        self.schedule_tick(pos, delay)
+    }
     fn ensure_can_write(&self, pos: BlockPos) -> Result<bool, WorldError> {
         let ([x, z], radius) = self.write_zone;
         Ok((pos.x >> 4).abs_diff(x) as i32 <= radius && (pos.z >> 4).abs_diff(z) as i32 <= radius)
@@ -352,6 +419,18 @@ impl FeatureWorld for TestWorld<'_> {
         if (-64..320).contains(&pos.y) {
             self.marks.push(format!("{},{},{}", pos.x, pos.y, pos.z));
         }
+        Ok(())
+    }
+    fn update_shape_at_face(
+        &mut self,
+        _: BlockPos,
+        _: crate::core::geometry::Direction,
+        _: i32,
+    ) -> Result<(), WorldError> {
+        // Block behaviour: the oracle leaves out the ticks it causes.
+        Ok(())
+    }
+    fn store_beehive_occupants(&mut self, _: BlockPos, _: &[i32]) -> Result<(), WorldError> {
         Ok(())
     }
 }
@@ -422,7 +501,7 @@ fn check_feature(f: &Fixture, fields: &[&str]) -> bool {
     // The oracle's `oreLevel` writes the origin's chunk, and its neighbours when mode is 0.
     let at = origin(pos);
     world.write_zone = ([at.x >> 4, at.z >> 4], 1 - world.mode);
-    let got = match feature.place(&mut world, &mut random, at) {
+    let got = match feature.place(registry, &mut world, &mut random, at) {
         Ok(placed) => placed.to_string(),
         Err(_) => "error".into(),
     };
@@ -438,6 +517,96 @@ fn check_feature(f: &Fixture, fields: &[&str]) -> bool {
         "feature {name} seed {seed} at {pos}"
     );
     !log.is_empty()
+}
+
+/// Whether the feature and everything it places is implemented.
+fn fully_ported(registry: &FeatureRegistry, id: ConfiguredFeatureId, depth: u32) -> bool {
+    let Some(feature) = &registry.configured(id).feature else {
+        return false;
+    };
+    if depth > 8 {
+        return false;
+    }
+    match feature {
+        Feature::Select(selector) => selector
+            .placed()
+            .into_iter()
+            .all(|p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
+        Feature::Patch(patch) => patch
+            .placed()
+            .iter()
+            .all(|&p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
+        Feature::Tree(tree) => !tree.places_pale_moss(),
+        Feature::FallenTree(tree) => !tree.places_pale_moss(),
+        _ => true,
+    }
+}
+
+/// A `feature2` row: a feature over the ground worlds, the oracle's `features2`.
+fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
+    let [_, name, seed, pos, result, log, marks, next] = fields else {
+        panic!("a feature2 row")
+    };
+    let registry = f.worldgen.features();
+    let id = registry.configured_id(name).unwrap();
+    if !fully_ported(registry, id, 0) {
+        return None;
+    }
+    let feature = registry.configured(id).feature.as_ref().unwrap();
+    // The oracle's mode: 2 + (seed index & 1), the seeds' order being SEEDS2's.
+    const SEEDS2: [&str; 8] = [
+        "1",
+        "987654321012",
+        "31337",
+        "4242424242",
+        "77",
+        "88",
+        "99",
+        "123456789",
+    ];
+    let index = SEEDS2.iter().position(|s| s == seed).unwrap();
+    let mut world = TestWorld::new(f, 2 + (index & 1) as i32);
+    let mut random = XoroshiroRandom::new(seed.parse().unwrap());
+    let at = origin(pos);
+    world.write_zone = ([at.x >> 4, at.z >> 4], 1);
+    let got = match feature.place(registry, &mut world, &mut random, at) {
+        Ok(placed) => placed.to_string(),
+        // `MossyCarpetBlock.placeAt` draws from the region's own random: not ported.
+        Err(ProviderError::Invalid("mossy carpet placement is not ported")) => return None,
+        Err(e) => {
+            assert_eq!(*result, "error", "{name} seed {seed} at {pos}: {e}");
+            "error".into()
+        }
+    };
+    world.marks.sort();
+    let tail = random.next_long();
+    let ours = format!(
+        "{got}\t{}\t{}\t{tail}",
+        world.log.join(";"),
+        world.marks.join(";")
+    );
+    let theirs = format!("{result}\t{log}\t{marks}\t{next}");
+    if ours != theirs {
+        // The first entry that differs, with its neighbours, instead of both whole logs.
+        let (a, b): (Vec<&str>, Vec<&str>) = (
+            ours.split([';', '\t']).collect(),
+            theirs.split([';', '\t']).collect(),
+        );
+        let at = a
+            .iter()
+            .zip(&b)
+            .position(|(x, y)| x != y)
+            .unwrap_or(a.len().min(b.len()));
+        let window = |v: &[&str]| v[at.saturating_sub(3)..(at + 3).min(v.len())].join(" | ");
+        panic!(
+            "feature2 {name} seed {seed} at {pos}: entry {at} of {} (ours) / {} (java) differs\nours:   {}\njava:   {}",
+            a.len(),
+            b.len(),
+            window(&a),
+            window(&b)
+        );
+    }
+    Some(!log.is_empty())
 }
 
 /// `a:0,1 b:1,0`: source names with their features, as indices into the oracle's five trees.
@@ -478,8 +647,17 @@ fn features_match_java() {
     let text = std::fs::read_to_string(path).unwrap();
     let (mut survive_rows, mut survive_cases, mut survive_true) = (0, 0, 0);
     let (mut providers, mut features, mut wrote, mut cycles) = (0, 0, 0, 0);
+    let (mut features2, mut wrote2, mut skipped2) = (0, 0, 0);
+    // HORIZON_FEATURE_ROWS=feature2,provider limits the rows checked (to iterate on one kind).
+    let only = std::env::var("HORIZON_FEATURE_ROWS").ok();
     for line in text.lines() {
         let fields: Vec<&str> = line.split('\t').collect();
+        if only
+            .as_ref()
+            .is_some_and(|only| !only.split(',').any(|k| k == fields[0]))
+        {
+            continue;
+        }
         match fields[0] {
             "survive" => {
                 let (cases, yes) = check_survival(&f, fields[1].parse().unwrap(), fields[2]);
@@ -499,10 +677,17 @@ fn features_match_java() {
                 wrote += usize::from(check_feature(&f, &fields));
                 features += 1;
             }
+            "feature2" => match check_feature2(&f, &fields) {
+                Some(wrote) => {
+                    features2 += 1;
+                    wrote2 += usize::from(wrote);
+                }
+                None => skipped2 += 1,
+            },
             other => panic!("unknown row {other}"),
         }
     }
     eprintln!(
-        "features_match_java: {survive_rows} states, {survive_cases} canSurvive cases ({survive_true} true), {cycles} sorter cycles, {providers} provider rows, {features} feature rows ({wrote} wrote blocks), all equal"
+        "features_match_java: {survive_rows} states, {survive_cases} canSurvive cases ({survive_true} true), {cycles} sorter cycles, {providers} provider rows, {features} feature rows ({wrote} wrote blocks), {features2} ground feature rows ({wrote2} wrote blocks; {skipped2} skipped for features not ported), all equal"
     );
 }

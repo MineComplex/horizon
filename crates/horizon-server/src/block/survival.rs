@@ -869,6 +869,28 @@ impl<W: SurvivalWorld> Eval<'_, W> {
     }
 }
 
+/// `Block.isFaceFull(shape, face)` (`SupportType.FULL.isSupporting`): whether the shape's face
+/// covers the whole face of the block. A shape the cache cannot answer for counts as not full.
+pub fn shape_fills_face(shape: &VoxelShape, face: Direction) -> bool {
+    full_supports::<()>(shape, face).unwrap_or(false)
+}
+
+/// `MultifaceBlock.canAttachTo` / `VineBlock.isAcceptableNeighbour` for the neighbour state that
+/// `direction` leads to: a sturdy face, else a collision shape whose face fills the block's.
+/// `None` for a state with a dynamic shape (its shape asks a block entity).
+pub fn can_attach_to(
+    data: &BlockStateData,
+    neighbor: BlockState,
+    direction: Direction,
+) -> Option<bool> {
+    let face = direction.opposite();
+    if data.is_face_sturdy(neighbor, face, SupportType::Full) {
+        return Some(true);
+    }
+    data.collision_shape(neighbor)
+        .map(|shape| shape_fills_face(shape, face))
+}
+
 /// `SupportType.FULL.isSupporting(shape, face)`.
 fn full_supports<E>(shape: &VoxelShape, face: Direction) -> Result<bool, SurvivalError<E>> {
     let face = shape.face_shape(face).map_err(shape_error)?;

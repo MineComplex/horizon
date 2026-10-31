@@ -10,7 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::block::BlockState;
+use crate::block::{BlockId, BlockState};
 use crate::core::position::{BlockPos, ChunkPos};
 use crate::nbt::Compound;
 use crate::world::chunk::serial::Heightmap;
@@ -19,6 +19,23 @@ use crate::world::chunk::{
 };
 use crate::world::level_chunk::{HeightmapFlags, heightmaps_after};
 use crate::worldgen::structure::start::ChunkStructures;
+
+/// What a scheduled tick will tick.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TickTarget {
+    Block(BlockId),
+    /// A fluid (`StateFluid::fluid`).
+    Fluid(u8),
+}
+
+/// A tick scheduled while the chunk is generated (`ProtoChunkTicks`): the position, what ticks and
+/// the delay in ticks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScheduledTick {
+    pub pos: BlockPos,
+    pub target: TickTarget,
+    pub delay: i32,
+}
 
 /// A chunk being generated (see the module docs).
 #[derive(Clone, Debug)]
@@ -37,6 +54,9 @@ pub struct ProtoChunk {
     pub entities: Vec<Compound>,
     /// `structureStarts` and `structureReferences`.
     pub structures: ChunkStructures,
+    /// The ticks scheduled so far, in order (`ProtoChunkTicks.schedule` drops a repeat of the
+    /// same target at the same position).
+    pub ticks: Vec<ScheduledTick>,
 }
 
 fn column(x: i32, z: i32) -> usize {
@@ -65,6 +85,18 @@ impl ProtoChunk {
             block_entities: BTreeMap::new(),
             entities: Vec::new(),
             structures: ChunkStructures::default(),
+            ticks: Vec::new(),
+        }
+    }
+
+    /// `ProtoChunkTicks.schedule`.
+    pub fn schedule_tick(&mut self, pos: BlockPos, target: TickTarget, delay: i32) {
+        if !self
+            .ticks
+            .iter()
+            .any(|t| t.pos == pos && t.target == target)
+        {
+            self.ticks.push(ScheduledTick { pos, target, delay });
         }
     }
 

@@ -84,6 +84,29 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   formula, write zone radius 1 and 0), section writes compared in order.
   Not yet: mossy-carpet `simple_block` (level random), `schedule_tick` on a
   region (the proto chunk keeps no ticks), block entities / POI / `getPostProcessPos` on `setBlock` (WP6).
+- Worldgen WP4 rest (`src/worldgen/feature/{tree/,select,misc,patch,decorate}.rs`): `Feature` gained `tree` and
+  `fallen_tree` (trunk, foliage and mangrove root placers, all decorators, sizes, `updateLeaves`; copied from Horizon and
+  rebuilt on the block tables, `TreeBlocksCell` builds the classifications on the first tree), the selectors (`random_selector`,
+  `simple_random_selector`, `random_boolean_selector`, `weighted_random_selector`, `sequence`, `overlay`; their placed features
+  are JSON until `FeatureRegistry::load` resolves them), `spring_feature`, `block_pile`, `vines`, `underwater_magma`, `bamboo`,
+  `random_neighbor_spread`, `vegetation_patch` and `waterlogged_vegetation_patch`; `FeatureRegistry::{place_configured,
+  place_placed}` place nested features. The `HashSet<BlockPos>`s whose order feeds draws (trunks, leaves, a patch's ground) are
+  `tree::PosSet` over `tree/hash_order.rs` (HashMap buckets, resizes and tree bins; copied from Horizon, user decision pending:
+  rule 2 vs bit-equality). The proto chunk records scheduled ticks (`ProtoChunk::ticks`). `decorate.rs`:
+  `apply_biome_decoration` = `ChunkGenerator.addVanillaDecorations` over a `RegionWorld` (3 x 3 chunks' biomes, the generator's
+  `FeatureSorter` steps, `setDecorationSeed`/`setFeatureSeed`, `placeWithBiomeCheck`); structures are a `StructureDecorator`
+  callback (`NoStructures` for none) and `skip` names placed features not to run. Paper's configurable feature seeds are not read.
+  Chunks must have status `terrain` (26.3: writes update the four final heightmaps); the driver primes missing ones first.
+  `LeafFeatureOracle`: + `feature2` rows (every tree, fallen tree, selector, patch and small feature over ground levels, 8
+  seeds x 8 columns; ticks left out of the rows), `LeafDecorationOracle`: whole chunks (`decorate_oracle_tests.rs`).
+  `StructureTemplate.updateShapeAtEdge` is walked face by face (`FeatureWorld::update_shape_at_face`), what a block does on a
+  neighbour's change is WP6 (the oracle rows leave the ticks out; chunk rows can differ where it changes a state).
+  Not ported feature types (configured features in 26.3's data, by biomes using them): freeze_top_layer, multiface_growth,
+  geode, monster_room, lake (each in ~55 overworld biomes), fossil, huge_brown/red_mushroom, huge_fungus, blue_ice, iceberg,
+  template, speleothem(_cluster), large_dripstone, root_system, block_blob, netherrack_replace_blobs, delta_feature,
+  stepped_column_cluster, sculk_patch, chorus_plant, end_*, spike, single_block_pillar, projected_random_patchy_square,
+  coral_tree/claw, no_op, bonus_chest. Mossy-carpet `simple_block` (region random), pale moss patch in the oracles (needs
+  `getLevel()`), block entities (beehive occupants are drawn, not stored), POI and `getPostProcessPos` on `setBlock` are WP6.
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
@@ -117,7 +140,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; per-world `paper-world.yml` flat bedrock); WP4 rest (trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `decorate`/`generate_start`, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates; per-world `paper-world.yml` flat bedrock); WP4 rest (the feature types listed under WP4 rest above; `updateShape` after features, the probable cause of the 3 differing decoration chunks); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

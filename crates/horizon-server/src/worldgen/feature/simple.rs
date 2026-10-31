@@ -10,8 +10,15 @@
 
 use serde_json::value::RawValue;
 
+use std::sync::Arc;
+
+use super::FeatureRegistry;
+use super::misc::Misc;
 use super::ore::{self, OreConfig};
+use super::patch::VegetationPatch;
 use super::rule_test::RuleTest;
+use super::select::Selector;
+use super::tree::{FallenTreeFeature, TreeBlocksCell, TreeFeature};
 use crate::block::BlockState;
 use crate::block::flags::{FLAG_AIR, FLAG_DOUBLE_PLANT, FLAG_MOSSY_CARPET};
 use crate::core::geometry::Direction;
@@ -23,7 +30,7 @@ use crate::worldgen::placement::world::SurvivalRules;
 use crate::worldgen::placement::{
     BlockPredicate, IntProvider, PlacementWorld, RegionWorld, WorldError,
 };
-use crate::worldgen::proto_chunk::OutsideRegion;
+use crate::worldgen::proto_chunk::{OutsideRegion, TickTarget};
 use crate::worldgen::state_provider::{BlockStateProvider, ProviderContext, ProviderError};
 
 /// What a feature asks of the level besides reading it.
@@ -37,6 +44,13 @@ pub trait FeatureWorld: PlacementWorld {
     ) -> Result<bool, WorldError>;
     /// `scheduleTick(pos, block at pos, delay)`.
     fn schedule_tick(&mut self, pos: BlockPos, delay: i32) -> Result<(), WorldError>;
+    /// `scheduleTick(pos, fluid, delay)`, the fluid being a `StateFluid::fluid`.
+    fn schedule_fluid_tick(
+        &mut self,
+        pos: BlockPos,
+        fluid: u8,
+        delay: i32,
+    ) -> Result<(), WorldError>;
     /// `getChunk(pos).markPosForPostProcessing(pos)`.
     fn mark_postprocessing(&mut self, pos: BlockPos) -> Result<(), WorldError>;
     /// `WorldGenLevel.ensureCanWrite(pos)`: whether the position lies in a chunk the step may write.
@@ -47,6 +61,17 @@ pub trait FeatureWorld: PlacementWorld {
     /// `LevelChunkSection.setBlockState(x, y, z, state, false)`: the section alone changes, with
     /// no heightmap, post-processing or block entity bookkeeping.
     fn set_section_block(&mut self, pos: BlockPos, state: BlockState) -> Result<(), WorldError>;
+    /// `LevelAccessor.neighborShapeChanged` for the voxel at `pos` and its neighbour in
+    /// `direction`, as `StructureTemplate.updateShapeAtEdge` calls it. What a block does about a
+    /// changed neighbour is the block behaviour port's; a world without it does nothing.
+    fn update_shape_at_face(
+        &mut self,
+        pos: BlockPos,
+        direction: Direction,
+        flags: i32,
+    ) -> Result<(), WorldError>;
+    /// A `BeehiveBlockEntity` the feature put bees in (`BeehiveDecorator`): `ticksInHive` of each.
+    fn store_beehive_occupants(&mut self, pos: BlockPos, ticks: &[i32]) -> Result<(), WorldError>;
 }
 
 impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
@@ -64,9 +89,22 @@ impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
             Err(_) => Ok(false),
         }
     }
-    fn schedule_tick(&mut self, _: BlockPos, _: i32) -> Result<(), WorldError> {
-        // The proto chunk keeps no scheduled ticks yet.
-        Err(WorldError::Unsupported("scheduled ticks"))
+    fn schedule_tick(&mut self, pos: BlockPos, delay: i32) -> Result<(), WorldError> {
+        let state = self.region.block_state(pos).map_err(WorldError::Outside)?;
+        let block = self.blocks.block(state);
+        let chunk = self.region.chunk_mut(pos.chunk())?;
+        chunk.schedule_tick(pos, TickTarget::Block(block), delay);
+        Ok(())
+    }
+    fn schedule_fluid_tick(
+        &mut self,
+        pos: BlockPos,
+        fluid: u8,
+        delay: i32,
+    ) -> Result<(), WorldError> {
+        let chunk = self.region.chunk_mut(pos.chunk())?;
+        chunk.schedule_tick(pos, TickTarget::Fluid(fluid), delay);
+        Ok(())
     }
     fn mark_postprocessing(&mut self, pos: BlockPos) -> Result<(), WorldError> {
         let chunk = self.region.chunk_mut(pos.chunk())?;
@@ -86,6 +124,19 @@ impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
     fn set_section_block(&mut self, pos: BlockPos, state: BlockState) -> Result<(), WorldError> {
         let chunk = self.region.chunk_mut(pos.chunk())?;
         chunk.set_block_raw(pos.x, pos.y, pos.z, state, self.data);
+        Ok(())
+    }
+    fn update_shape_at_face(
+        &mut self,
+        _: BlockPos,
+        _: Direction,
+        _: i32,
+    ) -> Result<(), WorldError> {
+        // Block behaviour (`updateShape`) is WP6's; nothing reacts to a neighbour yet.
+        Ok(())
+    }
+    fn store_beehive_occupants(&mut self, _: BlockPos, _: &[i32]) -> Result<(), WorldError> {
+        // The proto chunk keeps no block entity data yet (WP6).
         Ok(())
     }
 }
@@ -115,6 +166,11 @@ pub enum Feature {
         allowed_placement: BlockPredicate,
         prioritize_tip: bool,
     },
+    Tree(Box<TreeFeature>),
+    FallenTree(Box<FallenTreeFeature>),
+    Select(Selector),
+    Misc(Misc),
+    Patch(VegetationPatch),
 }
 
 fn direction(raw: &RawValue) -> Result<Direction, DecodeError> {
@@ -135,7 +191,17 @@ impl Feature {
         kind: &str,
         raw: &RawValue,
         ctx: &ProviderContext<'_>,
+        trees: &Arc<TreeBlocksCell>,
     ) -> Result<Option<Self>, DecodeError> {
+        if let Some(selector) = Selector::decode(kind, raw)? {
+            return Ok(Some(Self::Select(selector)));
+        }
+        if let Some(patch) = VegetationPatch::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Patch(patch)));
+        }
+        if let Some(misc) = Misc::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Misc(misc)));
+        }
         let fields = object(raw)?;
         debug_assert_eq!(type_of(&fields)?, kind);
         let names = ctx.names;
@@ -183,18 +249,41 @@ impl Feature {
                     prioritize_tip: boolean(required(&fields, "prioritize_tip")?)?,
                 }
             }
+            "minecraft:tree" => Self::Tree(Box::new(TreeFeature::decode(raw, ctx, trees.clone())?)),
+            "minecraft:fallen_tree" => Self::FallenTree(Box::new(FallenTreeFeature::decode(
+                raw,
+                ctx,
+                trees.clone(),
+            )?)),
             _ => return Ok(None),
         }))
     }
 
     /// `Feature.place(level, generator, random, origin)`.
-    pub fn place<W: FeatureWorld>(
+    pub fn place<W: FeatureWorld, R: RandomSource>(
         &self,
+        registry: &FeatureRegistry,
         world: &mut W,
-        random: &mut impl RandomSource,
+        random: &mut R,
         origin: BlockPos,
     ) -> Result<bool, ProviderError> {
+        let at = [origin.x, origin.y, origin.z];
         match self {
+            Self::Select(selector) => selector.place(registry, world, random, origin),
+            Self::Misc(misc) => misc.place(world, random, origin),
+            Self::Patch(patch) => patch.place(registry, world, random, origin),
+            Self::Tree(tree) => {
+                let mut nested = |id, w: &mut W, r: &mut R, at: [i32; 3]| {
+                    registry.place_configured(id, w, r, BlockPos::new(at[0], at[1], at[2]))
+                };
+                tree.place(world, random, at, &mut nested)
+            }
+            Self::FallenTree(tree) => {
+                let mut nested = |id, w: &mut W, r: &mut R, at: [i32; 3]| {
+                    registry.place_configured(id, w, r, BlockPos::new(at[0], at[1], at[2]))
+                };
+                tree.place(world, random, at, &mut nested)
+            }
             Self::SimpleBlock {
                 provider,
                 schedule_tick,

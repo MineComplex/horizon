@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -198,7 +199,50 @@ public final class LeafFeatureOracle {
         + "grass_block sand gravel clay").split(" ");
     static BlockState[] solidStates;
 
+    /**
+     * Modes 2 and 3 are ground for the trees and the features that need a surface: a terrace of 4 x 4 columns whose
+     * top is y 62..65 (grass, some podzol, dirt, moss, sand), dirt 3 deep, stone below, sparse stone pillars above,
+     * and in mode 3 water up to y 63. `groundY` and `ground` are repeated by `ground_*` in oracle_tests.rs.
+     */
+    static int groundY(int x, int z) {
+        return 62 + Math.floorMod(mix((x >> 2) * 7919 ^ (z >> 2) * 104729), 4);
+    }
+
+    static BlockState block(String name) {
+        return BuiltInRegistries.BLOCK.getValue(Identifier.parse("minecraft:" + name)).defaultBlockState();
+    }
+
+    static BlockState ground(int mode, int x, int y, int z) {
+        int g = groundY(x, z);
+        int hash = mix(x * 73856093 ^ y * 19349663 ^ z * 83492791);
+        if (y > g) {
+            if (mode == 3 && y <= 63) return net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
+            if (Math.floorMod(mix(x * 31 + z * 17 + 11), 97) == 0 && y >= g + 3 && y <= g + 3 + Math.floorMod(mix(x * 5 + z * 3), 9)) {
+                return block("stone");
+            }
+            return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        }
+        if (y == g) {
+            return switch (Math.floorMod(hash, 10)) {
+                case 0 -> block("podzol");
+                case 1 -> block("dirt");
+                case 2 -> block("moss_block");
+                case 3 -> block("sand");
+                default -> block("grass_block");
+            };
+        }
+        return y >= g - 3 ? block("dirt") : block("stone");
+    }
+
+    /** WorldGenLevel.getHeight(type, x, z): the first free y of the type's column (mode 2, 3). */
+    static int groundHeight(int mode, String type, int x, int z) {
+        int g = groundY(x, z);
+        boolean ocean = type.startsWith("OCEAN_FLOOR");
+        return (!ocean && mode == 3 ? Math.max(g, 63) : g) + 1;
+    }
+
     static BlockState synth(int mode, int x, int y, int z) {
+        if (mode >= 2) return ground(mode, x, y, z);
         int hash = mix(x * 73856093 ^ y * 19349663 ^ z * 83492791);
         if (mode == 1 && y <= 50) return solidStates[Math.floorMod(hash, solidStates.length)];
         if (mode == 1 && y <= 80) return net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
@@ -244,6 +288,7 @@ public final class LeafFeatureOracle {
         var writes = new java.util.HashMap<BlockPos, BlockState>();
         var log = new ArrayList<String>();
         var chunks = new java.util.HashMap<Long, net.minecraft.world.level.chunk.ChunkAccess>();
+        var entities = new java.util.HashMap<BlockPos, net.minecraft.world.level.block.entity.BlockEntity>();
         WorldGenLevel level = (WorldGenLevel) Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),
             new Class<?>[] {WorldGenLevel.class}, (proxy, method, values) -> {
                 switch (method.getName()) {
@@ -256,6 +301,28 @@ public final class LeafFeatureOracle {
                         BlockPos at = ((BlockPos) values[0]).immutable();
                         BlockState written = writes.get(at);
                         return (written != null ? written : synth(mode, at.getX(), at.getY(), at.getZ())).getFluidState();
+                    }
+                    case "getBlockEntity" -> {
+                        // WorldGenRegion.getBlockEntity makes the block's entity from the proto chunk's DUMMY tag.
+                        if (values.length == 2) return InvocationHandler.invokeDefault(proxy, method, values);
+                        BlockPos at = ((BlockPos) values[0]).immutable();
+                        BlockState written = writes.get(at);
+                        BlockState there = written != null ? written : synth(mode, at.getX(), at.getY(), at.getZ());
+                        if (!there.hasBlockEntity()) return null;
+                        return entities.computeIfAbsent(at, k ->
+                            ((net.minecraft.world.level.block.EntityBlock) there.getBlock()).newBlockEntity(k, there));
+                    }
+                    case "isStateAtPosition" -> {
+                        BlockPos at = ((BlockPos) values[0]).immutable();
+                        BlockState written = writes.get(at);
+                        BlockState there = written != null ? written : synth(mode, at.getX(), at.getY(), at.getZ());
+                        return ((java.util.function.Predicate<BlockState>) values[1]).test(there);
+                    }
+                    case "isFluidAtPosition" -> {
+                        BlockPos at = ((BlockPos) values[0]).immutable();
+                        BlockState written = writes.get(at);
+                        BlockState there = written != null ? written : synth(mode, at.getX(), at.getY(), at.getZ());
+                        return ((java.util.function.Predicate<net.minecraft.world.level.material.FluidState>) values[1]).test(there.getFluidState());
                     }
                     case "setBlock" -> {
                         BlockPos at = ((BlockPos) values[0]).immutable();
@@ -287,7 +354,19 @@ public final class LeafFeatureOracle {
                         return -64;
                     }
                     case "getHeight" -> {
+                        if (values != null && values.length == 3 && mode < 2) {
+                            return oreHeight(mode, (Integer) values[1], (Integer) values[2]);
+                        }
+                        if (values != null && values.length == 3) {
+                            return groundHeight(mode, ((net.minecraft.world.level.levelgen.Heightmap.Types) values[0]).name(),
+                                (Integer) values[1], (Integer) values[2]);
+                        }
                         return 384;
+                    }
+                    case "getRandom" -> {
+                        // The ground levels only (the older rows have no level random: MossyCarpetBlock.placeAt throws).
+                        if (mode < 2) throw new UnsupportedOperationException(method.toString());
+                        return random(0L);
                     }
                     case "getSeaLevel" -> {
                         return 63;
@@ -481,7 +560,8 @@ public final class LeafFeatureOracle {
 
     static void features(PrintWriter out) {
         var registry = world.lookupOrThrow(net.minecraft.core.registries.Registries.FEATURE);
-        List<String> kinds = List.of("SimpleBlockFeature", "ScatteredOreFeature", "DiskFeature", "BlockColumnFeature", "OreFeature");
+        List<String> kinds = List.of("SimpleBlockFeature", "ScatteredOreFeature", "DiskFeature", "BlockColumnFeature", "OreFeature",
+            "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature");
         registry.listElements().sorted(java.util.Comparator.comparing(h -> h.key().identifier().toString())).forEach(holder -> {
             var feature = holder.value();
             String name = holder.key().identifier().toString();
@@ -501,6 +581,49 @@ public final class LeafFeatureOracle {
                     }
                     out.println("feature\t" + name + "\t" + seed + "\t" + origin[0] + " " + origin[1] + " " + origin[2] + "\t" + result
                         + "\t" + String.join(";", level.log()) + "\t" + postProcessing(level) + "\t" + random.nextLong());
+                }
+            }
+        });
+    }
+
+    static final long[] SEEDS2 = {1L, 987654321012L, 31337L, 4242424242L, 77L, 88L, 99L, 123456789L};
+    static final int[][] COLUMNS = {{0, 0}, {13, -5}, {-40, 33}, {100, 7}, {8, 8}, {-3, -9}, {57, -61}, {-25, -18}};
+
+    /**
+     * The tree and selector features over the ground levels (modes 2 and 3, by seed): at each column's first free y.
+     * `tick` entries are left out: scheduled ticks come from the blocks' `updateShape`, which is block behaviour.
+     * Rows: feature2 <name> <seed> <origin> <placed> <writes> <marks> <next long>
+     */
+    static void features2(PrintWriter out, Set<String> kinds) {
+        var registry = world.lookupOrThrow(net.minecraft.core.registries.Registries.FEATURE);
+        var biomes = world.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+        var settings = world.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS)
+            .getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD);
+        var plains = biomes.getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
+        var generator = new net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator(
+            new net.minecraft.world.level.biome.FixedBiomeSource(plains), settings);
+        registry.listElements().sorted(java.util.Comparator.comparing(h -> h.key().identifier().toString())).forEach(holder -> {
+            var feature = holder.value();
+            String name = holder.key().identifier().toString();
+            if (!kinds.contains(feature.getClass().getSimpleName())) return;
+            String only = System.getenv("ORACLE_ONLY");
+            if (only != null && !java.util.Arrays.asList(only.split(",")).contains(name)) return;
+            for (int s = 0; s < SEEDS2.length; s++) {
+                for (int[] column : COLUMNS) {
+                    int mode = 2 + (s & 1);
+                    int y = groundY(column[0], column[1]) + 1;
+                    Level level = newLevel(mode);
+                    RandomSource random = random(SEEDS2[s]);
+                    String result;
+                    try {
+                        result = String.valueOf(feature.place(level.level(), generator, random, new BlockPos(column[0], y, column[1])));
+                    } catch (RuntimeException e) {
+                        result = "error";
+                        if (System.getenv("ORACLE_ONLY") != null) e.printStackTrace();
+                    }
+                    String log = level.log().stream().filter(entry -> !entry.startsWith("tick")).collect(java.util.stream.Collectors.joining(";"));
+                    out.println("feature2\t" + name + "\t" + SEEDS2[s] + "\t" + column[0] + " " + y + " " + column[1] + "\t" + result
+                        + "\t" + log + "\t" + postProcessing(level) + "\t" + random.nextLong());
                 }
             }
         });
@@ -564,10 +687,15 @@ public final class LeafFeatureOracle {
             synthStates[i] = BuiltInRegistries.BLOCK.getValue(Identifier.parse("minecraft:" + SYNTH[i])).defaultBlockState();
         }
         try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(Path.of(args[0])))) {
-            survival(out);
-            cycles(out);
-            providers(out);
-            features(out);
+            if (System.getenv("ORACLE_ONLY") == null) {
+                survival(out);
+                cycles(out);
+                providers(out);
+                features(out);
+            }
+            features2(out, Set.of("TreeFeature", "FallenTreeFeature", "RandomSelectorFeature", "SimpleRandomSelectorFeature",
+                "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
+                "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature"));
         }
     }
 }

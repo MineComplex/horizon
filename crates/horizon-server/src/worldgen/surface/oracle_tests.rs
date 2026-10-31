@@ -77,12 +77,24 @@ impl BiomeChunks {
         center: ChunkPos,
         seed: i64,
     ) -> Self {
+        Self::build_radius(real, stem, biome_count, center, seed, 1)
+    }
+
+    /// The chunks within `radius` of `center`, row by row, with a fresh search state.
+    pub(crate) fn build_radius(
+        real: &Real,
+        stem: &Stem,
+        biome_count: u32,
+        center: ChunkPos,
+        seed: i64,
+        radius: i32,
+    ) -> Self {
         let settings = real.data.noise_settings(&stem.settings).unwrap();
         let factory = crate::world::chunk::ContainerFactory::new(1, biome_count, 0);
         let mut search = ClimateSearch::default();
         let mut chunks = HashMap::new();
-        for dz in -1..=1 {
-            for dx in -1..=1 {
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
                 let pos = ChunkPos::new(center.x + dx, center.z + dz);
                 let mut chunk = ProtoChunk::new(
                     pos,
@@ -101,6 +113,11 @@ impl BiomeChunks {
             zoom: BiomeZoom::new(obfuscate_seed(seed)),
             search,
         }
+    }
+
+    /// A chunk with its biomes.
+    pub(crate) fn chunk(&self, pos: ChunkPos) -> &ProtoChunk {
+        &self.chunks[&pos]
     }
 
     /// `BiomeManager.getBiome(pos)`.
