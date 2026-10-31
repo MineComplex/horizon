@@ -138,8 +138,8 @@ pub fn bootstrap(
     )?;
     let bukkit = config::load_bukkit(&path(&paths.bukkit_settings))?;
     let purpur = config::load_purpur(&path(&paths.purpur_settings))?;
-    let paper_world_chunks =
-        config::load_paper_world_defaults(&path(&paths.paper_settings_directory))?;
+    // Each level reads it again under its own `paper-world.yml` (`World::open`).
+    config::load_paper_world_defaults(&path(&paths.paper_settings_directory))?;
     tracing::info!(
         "Default game type: {}",
         properties
@@ -157,7 +157,6 @@ pub fn bootstrap(
             paper,
             bukkit,
             purpur,
-            paper_world_chunks,
         },
         language,
         vanilla_jar,

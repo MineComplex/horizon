@@ -314,19 +314,85 @@ fn paper_world_defaults_chunk_settings() {
 }
 
 #[test]
-fn paper_world_defaults_flat_bedrock_flag() {
+fn paper_world_flat_bedrock_flag() {
     let dir = tempfile::tempdir().unwrap();
-    let d = dir.path();
-    assert!(!load_generate_flat_bedrock(d).unwrap());
-    let write_flag = |text: &str| std::fs::write(d.join("paper-world-defaults.yml"), text).unwrap();
+    let (config, world) = (dir.path().join("config"), dir.path().join("w"));
+    std::fs::create_dir_all(&config).unwrap();
+    let flat = || {
+        load_paper_world(&config, &world, "minecraft:overworld").map(|s| s.generate_flat_bedrock)
+    };
+    assert!(!flat().unwrap());
+    let write_flag =
+        |text: &str| std::fs::write(config.join("paper-world-defaults.yml"), text).unwrap();
     write_flag("environment:\n  generate-flat-bedrock: true\n");
-    assert!(load_generate_flat_bedrock(d).unwrap());
+    assert!(flat().unwrap());
     write_flag("environment:\n  generate-flat-bedrock: 'false'\n");
-    assert!(!load_generate_flat_bedrock(d).unwrap());
+    assert!(!flat().unwrap());
     write_flag("chunks:\n  auto-save-interval: 300\n");
-    assert!(!load_generate_flat_bedrock(d).unwrap());
+    assert!(!flat().unwrap());
     write_flag("environment:\n  generate-flat-bedrock: maybe\n");
-    assert!(load_generate_flat_bedrock(d).is_err());
+    assert!(flat().is_err());
+}
+
+/// `createWorldConfig`: a missing `paper-world.yml` is created with the per-world header and only
+/// `_version`; what a world file sets wins over the defaults, key by key (`mergeFrom`); a `null` is
+/// missing; the world file is saved with its own values only.
+#[test]
+fn paper_world_overrides_the_defaults_per_level() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = dir.path().join("config");
+    let nether = dir.path().join("world/dimensions/minecraft/the_nether");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(
+        config.join("paper-world-defaults.yml"),
+        "chunks:\n  auto-save-interval: 300\n  max-auto-save-chunks-per-tick: 8\n",
+    )
+    .unwrap();
+    let settings = load_paper_world(&config, &nether, "minecraft:the_nether").unwrap();
+    assert_eq!(settings.chunks.auto_save_interval, 300);
+    assert!(!settings.generate_flat_bedrock);
+    let text = read(&nether.join("paper-world.yml"));
+    assert_eq!(
+        text,
+        "# This is a world configuration file for Paper.\n\
+         # This file may start empty but can be filled with settings to override ones in the config/paper-world-defaults.yml\n\
+         # \n\
+         # For more information, see https://docs.papermc.io/paper/reference/configuration/#per-world-configuration\n\
+         # \n\
+         # World: minecraft:the_nether\n\n_version: 31\n"
+    );
+
+    std::fs::write(
+        nether.join("paper-world.yml"),
+        "chunks:\n  auto-save-interval: 40\n  max-auto-save-chunks-per-tick: ~\nenvironment:\n  generate-flat-bedrock: true\n",
+    )
+    .unwrap();
+    let settings = load_paper_world(&config, &nether, "minecraft:the_nether").unwrap();
+    assert_eq!(
+        settings,
+        PaperWorldSettings {
+            chunks: ChunkSettings {
+                auto_save_interval: 40,
+                max_auto_save_chunks_per_tick: 8,
+                ..ChunkSettings::default()
+            },
+            generate_flat_bedrock: true,
+        }
+    );
+    // A file without `_version` gets it; nothing from the defaults is written into it.
+    let text = read(&nether.join("paper-world.yml"));
+    assert!(
+        text.contains("\n\n_version: 31\nchunks:\n  auto-save-interval: 40\n"),
+        "{text}"
+    );
+    assert!(!text.contains(": 8") && !text.contains("300"), "{text}");
+
+    std::fs::write(
+        nether.join("paper-world.yml"),
+        "chunks:\n  auto-save-interval: often\n",
+    )
+    .unwrap();
+    assert!(load_paper_world(&config, &nether, "minecraft:the_nether").is_err());
 }
 
 /// Bukkit splits `world-settings.<world>.<key>` on `.`: a dotted world name nests, and falls back

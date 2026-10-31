@@ -10,10 +10,10 @@
 //! | End void rings | `purpur.yml` | `settings.generate-end-void-rings` | `false` |
 //! | Lagging flag | `purpur.yml` | `settings.lagging-threshold` | `19.0` |
 //! | 5 s TPS in `getTPS()` | `config/leaf-global.yml` | `misc.including-5s-in-get-tps` | `true` |
-//! | Flat bedrock | `config/paper-world-defaults.yml` | `environment.generate-flat-bedrock` ([`load_generate_flat_bedrock`]) | `false` |
+//! | Flat bedrock | `config/paper-world-defaults.yml`, `<dimension>/paper-world.yml` | `environment.generate-flat-bedrock` ([`load_paper_world`]) | `false` |
 //! | Chunk autosave, unloads | `config/paper-world-defaults.yml` | `chunks.{auto-save-interval, max-auto-save-chunks-per-tick, min-chunk-unload-count, min-chunk-unload-fraction, delay-chunk-unloads-by}` | `default` (6000), `24`, `50`, `0.05`, `10s` |
 //!
-//! The per-world `paper-world.yml` overrides are not read yet (one world, the defaults apply).
+//! Each level's `paper-world.yml` overrides the world defaults ([`load_paper_world`]).
 //!
 //! Not here: `proxies.proxy-protocol` and BungeeCord (removed by MineComplex's cleanup patches);
 //! `gale-global.yml` (its `misc.last-tick-time-in-tps-command` no longer reaches `/tps` after
@@ -357,8 +357,6 @@ pub struct YamlConfigs {
     pub spigot: SpigotConfig,
     pub paper: PaperGlobalConfig,
     pub bukkit: BukkitConfig,
-    /// `paper-world-defaults.yml`'s `chunks`.
-    pub paper_world_chunks: ChunkSettings,
     pub purpur: PurpurConfig,
 }
 
@@ -663,8 +661,150 @@ pub fn load_paper_world_defaults(dir: &Path) -> Result<ChunkSettings, ConfigErro
     if doc.get("_version") == Value::Null {
         doc.set("_version", Value::Int(PAPER_WORLD_VERSION.into()));
     }
+    let ChunksRead {
+        settings,
+        auto_save,
+        delay,
+    } = read_chunk_settings(&doc, &file)?;
+    let (max_per_tick, min_count, fraction) = (
+        settings.max_auto_save_chunks_per_tick,
+        settings.min_chunk_unload_count,
+        settings.min_chunk_unload_fraction,
+    );
+    doc.set(
+        "chunks.auto-save-interval",
+        auto_save.map_or(Value::Str("default".into()), |v| Value::Int(v.into())),
+    );
+    doc.set(
+        "chunks.max-auto-save-chunks-per-tick",
+        Value::Int(max_per_tick as i128),
+    );
+    doc.set(
+        "chunks.min-chunk-unload-count",
+        Value::Int(min_count as i128),
+    );
+    doc.set("chunks.min-chunk-unload-fraction", Value::Float(fraction));
+    doc.set(
+        "chunks.delay-chunk-unloads-by",
+        Value::Str(delay.as_str().into()),
+    );
+    if let Err(e) = write(
+        &path,
+        &doc.to_text(PAPER_WORLD_DEFAULTS_HEADER, "# ", KeyOrder::Sorted),
+    ) {
+        tracing::error!("Could not save {}: {e}", path.display());
+    }
+    Ok(settings)
+}
+
+/// `WorldConfiguration.Environment.generateFlatBedrock`, read with Configurate's boolean coercion:
+/// whether the bedrock floor and roof are one flat layer.
+fn read_flat_bedrock(doc: &YamlDocument, file: &str) -> Result<bool, ConfigError> {
+    match doc.get("environment.generate-flat-bedrock") {
+        Value::Null => Ok(false),
+        Value::Bool(flat) => Ok(flat),
+        Value::Str(s) if s.eq_ignore_ascii_case("true") => Ok(true),
+        Value::Str(s) if s.eq_ignore_ascii_case("false") => Ok(false),
+        other => Err(ConfigError::Invalid {
+            file: file.to_owned(),
+            path: "environment, generate-flat-bedrock",
+            message: format!(
+                "Failed to coerce input value of type {} to boolean",
+                other.java_string().unwrap_or_default()
+            ),
+        }),
+    }
+}
+
+/// Paper's world settings this port reads, as one level sees them (its `paper-world.yml` over
+/// `paper-world-defaults.yml`).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PaperWorldSettings {
+    pub chunks: ChunkSettings,
+    /// `environment.generate-flat-bedrock`.
+    pub generate_flat_bedrock: bool,
+}
+
+/// `PaperConfigurations.WORLD_HEADER` for the level `world_key`.
+fn paper_world_header(world_key: &str) -> String {
+    format!(
+        "This is a world configuration file for Paper.
+This file may start empty but can be filled with settings to override ones in the config/paper-world-defaults.yml
+
+For more information, see https://docs.papermc.io/paper/reference/configuration/#per-world-configuration
+
+World: {world_key}"
+    )
+}
+
+/// `Configurations.createWorldConfig` for the level `world_key` (`minecraft:overworld`), whose
+/// folder is `world_dir` (`LevelStorageAccess.getDimensionPath`): `paper-world.yml` there is created
+/// empty with `_version` when missing (a file without one is warned about and given it), saved with
+/// only its own values, then merged over `paper-world-defaults.yml` in `config_dir`
+/// (`ConfigurationNode.mergeFrom`: what the world file sets wins). Run after
+/// [`load_paper_world_defaults`] wrote the defaults. Paper's version transforms of older world files
+/// are not ported (both files are read at the current version).
+pub fn load_paper_world(
+    config_dir: &Path,
+    world_dir: &Path,
+    world_key: &str,
+) -> Result<PaperWorldSettings, ConfigError> {
+    let read = |path: &Path| -> Result<Option<YamlDocument>, ConfigError> {
+        let file = file_name(path);
+        match YamlDocument::read(path) {
+            Ok(None) => Ok(None),
+            Ok(Some(text)) => YamlDocument::parse(&text)
+                .map(Some)
+                .map_err(|source| ConfigError::Syntax { file, source }),
+            Err(source) => Err(ConfigError::Io { file, source }),
+        }
+    };
+    let defaults = read(&config_dir.join("paper-world-defaults.yml"))?.unwrap_or_default();
+    let path = world_dir.join("paper-world.yml");
+    let file = file_name(&path);
+    let mut world = match read(&path)? {
+        Some(doc) => {
+            match doc.get("_version") {
+                Value::Null => tracing::warn!(
+                    "The world config file for {world_key} didn't have a version set, assuming latest"
+                ),
+                Value::Int(v) if v > PAPER_WORLD_VERSION.into() => tracing::error!(
+                    "Loading a newer configuration than is supported ({v} > {PAPER_WORLD_VERSION})! You may have to backup & delete the {world_key} config file to start the server."
+                ),
+                _ => {}
+            }
+            doc
+        }
+        None => YamlDocument::default(),
+    };
+    if world.get("_version") == Value::Null {
+        world.set("_version", Value::Int(PAPER_WORLD_VERSION.into()));
+    }
+    if let Err(e) = write(
+        &path,
+        &world.to_text(&paper_world_header(world_key), "# ", KeyOrder::Sorted),
+    ) {
+        tracing::error!("Could not save {}: {e}", path.display());
+    }
+    world.merge_from(&defaults);
+    Ok(PaperWorldSettings {
+        chunks: read_chunk_settings(&world, &file)?.settings,
+        generate_flat_bedrock: read_flat_bedrock(&world, &file)?,
+    })
+}
+
+/// The `chunks` settings as Configurate maps them, and the raw values a save of the defaults file
+/// writes back (`auto-save-interval` as read, `delay-chunk-unloads-by`'s text).
+struct ChunksRead {
+    settings: ChunkSettings,
+    auto_save: Option<i32>,
+    delay: String,
+}
+
+/// `WorldConfiguration.Chunks` from a world (or world defaults) node.
+fn read_chunk_settings(doc: &YamlDocument, file: &str) -> Result<ChunksRead, ConfigError> {
     let invalid = |path, message| ConfigError::Invalid {
-        file: file.clone(),
+        file: file.to_owned(),
         path,
         message,
     };
@@ -693,7 +833,7 @@ pub fn load_paper_world_defaults(dir: &Path) -> Result<ChunkSettings, ConfigErro
     }
     .filter(|&v| v >= 0);
     let int = |key: &'static str, default: usize| -> Result<usize, ConfigError> {
-        configurate_int(&doc, &format!("chunks.{key}"))
+        configurate_int(doc, &format!("chunks.{key}"))
             .map(|v| v.map_or(default, |v| v.max(0) as usize))
             .map_err(|m| invalid(key, m))
     };
@@ -739,61 +879,11 @@ pub fn load_paper_world_defaults(dir: &Path) -> Result<ChunkSettings, ConfigErro
         min_chunk_unload_fraction: fraction,
         delay_chunk_unloads_by: duration_seconds(&delay) * 20,
     };
-    doc.set(
-        "chunks.auto-save-interval",
-        auto_save.map_or(Value::Str("default".into()), |v| Value::Int(v.into())),
-    );
-    doc.set(
-        "chunks.max-auto-save-chunks-per-tick",
-        Value::Int(max_per_tick as i128),
-    );
-    doc.set(
-        "chunks.min-chunk-unload-count",
-        Value::Int(min_count as i128),
-    );
-    doc.set("chunks.min-chunk-unload-fraction", Value::Float(fraction));
-    doc.set(
-        "chunks.delay-chunk-unloads-by",
-        Value::Str(delay.as_str().into()),
-    );
-    if let Err(e) = write(
-        &path,
-        &doc.to_text(PAPER_WORLD_DEFAULTS_HEADER, "# ", KeyOrder::Sorted),
-    ) {
-        tracing::error!("Could not save {}: {e}", path.display());
-    }
-    Ok(settings)
-}
-
-/// `environment.generate-flat-bedrock` of `paper-world-defaults.yml` in `dir` (Paper's
-/// `WorldConfiguration.Environment`, read with Configurate's boolean coercion): whether the bedrock
-/// floor and roof are one flat layer. Read only: the file is written back by
-/// [`load_paper_world_defaults`] until the rest of the world settings are ported.
-pub fn load_generate_flat_bedrock(dir: &Path) -> Result<bool, ConfigError> {
-    let path = dir.join("paper-world-defaults.yml");
-    let file = file_name(&path);
-    let doc = match YamlDocument::read(&path) {
-        Ok(None) => return Ok(false),
-        Ok(Some(text)) => YamlDocument::parse(&text).map_err(|source| ConfigError::Syntax {
-            file: file.clone(),
-            source,
-        })?,
-        Err(source) => return Err(ConfigError::Io { file, source }),
-    };
-    match doc.get("environment.generate-flat-bedrock") {
-        Value::Null => Ok(false),
-        Value::Bool(flat) => Ok(flat),
-        Value::Str(s) if s.eq_ignore_ascii_case("true") => Ok(true),
-        Value::Str(s) if s.eq_ignore_ascii_case("false") => Ok(false),
-        other => Err(ConfigError::Invalid {
-            file,
-            path: "environment, generate-flat-bedrock",
-            message: format!(
-                "Failed to coerce input value of type {} to boolean",
-                other.java_string().unwrap_or_default()
-            ),
-        }),
-    }
+    Ok(ChunksRead {
+        settings,
+        auto_save,
+        delay,
+    })
 }
 
 /// Configurate's int scalar: an int (its low 32 bits), an integral float, or a number's text.

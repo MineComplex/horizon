@@ -134,6 +134,12 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
   priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
 
+- Paper world settings per level (`server/config::load_paper_world`, `level::PaperWorld`): each level creates/reads
+  `<dimension folder>/paper-world.yml` as it opens (`createWorldConfig`: new file = Paper's per-world header + `_version`,
+  a file without `_version` warned about and given it, saved with its own values only) and reads `chunks.*` and
+  `environment.generate-flat-bedrock` from it merged over `paper-world-defaults.yml` (`mergeFrom`; `null` = missing).
+  Derived from Paper's sources (no Configurate oracle); unit tests + `real_binary_session` on a fresh world (3 files made,
+  clean stop). Not ported: Paper's version transforms of older world files.
 - User lists (`src/server/user_lists/`): whitelist and ops as MineComplex's Leaf has them (its cleanup removed
   the ban lists, so none): files as Gson writes them, Paper's `ConcurrentHashMap` save order, `.backup` of
   unreadable files, login order (whitelist with operators past it, then full server with `bypassesPlayerLimit`),
@@ -147,7 +153,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; per-world `paper-world.yml` flat bedrock); WP4 rest (the feature types listed under WP4 rest above; `updateShape` after features, the probable cause of the 3 differing decoration chunks); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); WP4 rest (the feature types listed under WP4 rest above; `updateShape` after features, the probable cause of the 3 differing decoration chunks); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
@@ -156,7 +162,7 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
   colliding keys differ; saves are synchronous (Leaf's are async).
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
 - Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
-  block/fluid ticks don't mark a chunk unsaved; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `paper-world.yml` per world and `chunk-loading-*` rates not read.
+  block/fluid ticks don't mark a chunk unsaved; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `chunk-loading-*` rates not read.
 - Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
   weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
   off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets

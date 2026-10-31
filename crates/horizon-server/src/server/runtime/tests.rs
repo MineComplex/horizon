@@ -22,7 +22,8 @@ use crate::network::play::ids::{cb as play_cb, sb as play_sb};
 use crate::registry::tests::pack;
 use crate::registry::{DataPack, KnownPack, parse_builtin};
 use crate::server::chunk_system::ChunkSettings;
-use crate::server::level::{END, NETHER, OVERWORLD, WorldSettings, WorldTables};
+use crate::server::config::PaperWorldSettings;
+use crate::server::level::{END, NETHER, OVERWORLD, PaperWorld, WorldSettings, WorldTables};
 use crate::server::level_data::{BorderSettings, LevelOverrides};
 use crate::server::player_data::PlayerDataStorage;
 use crate::server::player_data::SavedPlayer;
@@ -198,7 +199,10 @@ fn start_with(
             storage::Difficulty::Normal,
             false,
         ),
-        chunks,
+        paper_world: PaperWorld::Fixed(PaperWorldSettings {
+            chunks,
+            ..Default::default()
+        }),
         allow_nether: true,
         allow_end: true,
         generation: Default::default(),
@@ -1079,7 +1083,7 @@ fn a_disabled_nether_and_end_are_not_loaded() {
             storage::Difficulty::Normal,
             false,
         ),
-        chunks: ChunkSettings::default(),
+        paper_world: PaperWorld::Fixed(PaperWorldSettings::default()),
         allow_nether,
         allow_end,
         generation: Default::default(),

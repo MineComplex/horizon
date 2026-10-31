@@ -34,10 +34,10 @@ use std::sync::mpsc::Receiver;
 use tracing::{error, info, warn};
 
 use super::chunk_system::{
-    ChunkHolderManager, ChunkSettings, ChunkStorage, GenerationJob, GenerationPool,
-    GenerationResult, LoadedChunk, TicketType,
+    ChunkHolderManager, ChunkStorage, GenerationJob, GenerationPool, GenerationResult, LoadedChunk,
+    TicketType,
 };
-use super::config::SpigotConfig;
+use super::config::{self, ConfigError, PaperWorldSettings, SpigotConfig};
 use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, Respawn, WorldBorder};
 use super::player_data::PlayerDataStorage;
 use crate::block::flags::BlockStateData;
@@ -240,6 +240,9 @@ pub enum WorldError {
     /// `spigot.yml` seeds are not numbers).
     #[error("Exception initializing level {level}: {message}")]
     Generator { level: String, message: String },
+    /// `PaperConfigurations.createWorldConfig`: a level's `paper-world.yml` can't be read.
+    #[error("Could not create world config for {level}: {source}")]
+    PaperWorld { level: String, source: ConfigError },
 }
 
 /// The worldgen registries and multi-noise presets (startup's, shared by the levels).
@@ -257,8 +260,6 @@ pub struct GenerationSettings<'a> {
     pub level_type: &'a str,
     /// `generate-structures` for a new world.
     pub generate_structures: bool,
-    /// Paper's `environment.generate-flat-bedrock`.
-    pub flat_bedrock: bool,
     /// Purpur's `settings.generate-end-void-rings`.
     pub end_void_rings: bool,
     /// `spigot.yml`'s structure seeds (`None`: the jar's salts).
@@ -271,9 +272,35 @@ impl Default for GenerationSettings<'_> {
             level_seed: None,
             level_type: "minecraft:normal",
             generate_structures: true,
-            flat_bedrock: false,
             end_void_rings: false,
             spigot: None,
+        }
+    }
+}
+
+/// Where levels get Paper's world settings (`chunks`, `environment.generate-flat-bedrock`).
+#[derive(Clone, Copy, Debug)]
+pub enum PaperWorld<'a> {
+    /// Paper's files: `paper-world-defaults.yml` in this config folder, under each level's own
+    /// `paper-world.yml` ([`config::load_paper_world`]).
+    Files(&'a Path),
+    /// The same settings for every level, no files (tests).
+    Fixed(PaperWorldSettings),
+}
+
+impl PaperWorld<'_> {
+    /// The settings of the level `key` stored in `dimension_dir`.
+    fn for_level(&self, key: &str, dimension_dir: &Path) -> Result<PaperWorldSettings, WorldError> {
+        match self {
+            PaperWorld::Fixed(settings) => Ok(*settings),
+            PaperWorld::Files(config_dir) => {
+                config::load_paper_world(config_dir, dimension_dir, key).map_err(|source| {
+                    WorldError::PaperWorld {
+                        level: key.to_owned(),
+                        source,
+                    }
+                })
+            }
         }
     }
 }
@@ -295,8 +322,8 @@ pub struct WorldSettings<'a> {
     pub sync_chunk_writes: bool,
     /// For a world without `level.dat`: `gamemode`, `difficulty`, `hardcore`.
     pub new_world: (GameType, Difficulty, bool),
-    /// Paper's `chunks` world settings.
-    pub chunks: ChunkSettings,
+    /// Where each level's Paper world settings come from.
+    pub paper_world: PaperWorld<'a>,
     /// `misc.enable-nether` of `paper-global.yml` (`CraftServer.getAllowNether`).
     pub allow_nether: bool,
     /// `settings.allow-end` of `bukkit.yml` (`CraftServer.getAllowEnd`).
@@ -407,13 +434,17 @@ impl World {
                 .as_ref()
                 .map_or(overworld_structures, |w| w.generate_structures);
             let region = storage.region_path(&stem.key, "region");
+            // Paper makes the level's world config as the level is constructed.
+            let paper = settings
+                .paper_world
+                .for_level(&stem.key, &storage.dimension_path(&stem.key))?;
             levels.push(Level::open(
                 stem,
                 stem.world_name(settings.level_name),
                 (seed, generate_structures),
                 LevelStart::new(saved, &data),
                 &region,
-                settings,
+                (settings, &paper),
                 tables,
             )?);
         }
@@ -755,7 +786,7 @@ impl Level {
         (seed, generate_structures): (i64, bool),
         start: LevelStart,
         region: &Path,
-        settings: &WorldSettings<'_>,
+        (settings, paper): (&WorldSettings<'_>, &PaperWorldSettings),
         tables: &WorldTables,
     ) -> Result<Self, WorldError> {
         let types = tables
@@ -830,7 +861,7 @@ impl Level {
             &world_name,
             (seed, generate_structures),
             (min_y, height, biome_count as u32, plains),
-            settings,
+            (settings, paper),
             tables,
             &heightmaps,
         )?;
@@ -884,7 +915,7 @@ impl Level {
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
-            chunks: ChunkHolderManager::new(backend, settings.chunks),
+            chunks: ChunkHolderManager::new(backend, paper.chunks),
             generator,
             io_events,
             gen_events,
@@ -902,7 +933,7 @@ impl Level {
         world_name: &str,
         (seed, generate_structures): (i64, bool),
         (min_y, height, biome_count, plains): (i32, i32, u32, u32),
-        settings: &WorldSettings<'_>,
+        (settings, paper): (&WorldSettings<'_>, &PaperWorldSettings),
         tables: &WorldTables,
         heightmaps: &Arc<HeightmapTable>,
     ) -> Result<Option<Arc<LevelGenerator>>, WorldError> {
@@ -951,7 +982,7 @@ impl Level {
                 stem: noise_stem,
                 seed,
                 generate_structures,
-                flat_bedrock: settings.generation.flat_bedrock,
+                flat_bedrock: paper.generate_flat_bedrock,
                 end_void_rings: settings.generation.end_void_rings,
                 spigot_seeds,
                 min_section_y: min_y >> 4,
@@ -1374,7 +1405,7 @@ mod tests {
             compression: Compression::Gzip,
             sync_chunk_writes: false,
             new_world: (GameType::Survival, Difficulty::Normal, false),
-            chunks: ChunkSettings::default(),
+            paper_world: PaperWorld::Fixed(PaperWorldSettings::default()),
             allow_nether,
             allow_end,
             generation: GenerationSettings::default(),

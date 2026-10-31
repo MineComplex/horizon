@@ -183,6 +183,13 @@ impl YamlDocument {
         }
     }
 
+    /// `ConfigurationNode.mergeFrom`: each value of `other` that this document lacks (a missing key,
+    /// or a `null`, which Configurate treats as missing) is copied in; mappings on both sides merge key
+    /// by key; any other value this document has wins.
+    pub fn merge_from(&mut self, other: &Self) {
+        merge_mapping(&mut self.root, &other.root);
+    }
+
     /// The text a save writes: `header` as `# ` comment lines (`blank_line` for its empty lines), a blank
     /// line, then the document in block style with 2-space indents, as SnakeYAML writes it.
     pub fn to_text(&self, header: &str, blank_line: &str, order: KeyOrder) -> String {
@@ -231,6 +238,24 @@ fn find<'m>(map: &'m MappingOwned, key: &str) -> Option<&'m YamlOwned> {
 
 fn find_key(map: &MappingOwned, key: &str) -> Option<YamlOwned> {
     map.keys().find(|k| key_text(k) == Some(key)).cloned()
+}
+
+/// [`YamlDocument::merge_from`] for one mapping.
+fn merge_mapping(into: &mut MappingOwned, from: &MappingOwned) {
+    for (key, value) in from {
+        let Some(text) = key_text(key) else {
+            continue;
+        };
+        let Some(slot) = find_key(into, text).and_then(|k| into.get_mut(&k)) else {
+            into.insert(key.clone(), value.clone());
+            continue;
+        };
+        match (&mut *slot, value) {
+            (YamlOwned::Mapping(m), YamlOwned::Mapping(f)) => merge_mapping(m, f),
+            (slot, value) if resolve_node(slot) == Value::Null => *slot = value.clone(),
+            _ => {}
+        }
+    }
 }
 
 fn resolve_node(node: &YamlOwned) -> Value<'_> {

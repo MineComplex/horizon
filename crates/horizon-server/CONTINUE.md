@@ -63,7 +63,7 @@ patches):
 Known stand-ins (documented in the code): no world generation, so a chunk not on disk stays missing
 (the chunk holders keep it in `awaiting_generation`) and the send queue waits on its neighbours;
 pending block/fluid ticks don't make chunks unsaved (raw NBT); no entity/POI chunks; Paper's player
-autosave (`player-auto-save`) and `paper-world.yml` per-world overrides not read; Paper's
+autosave (`player-auto-save`) not read; Paper's
 `chunk-loading-basic/advanced` rates at their defaults; no movement checks; default game rules/world border/clocks; only the overworld; no block
 entities in chunk packets; whitelist/ops/bans files not ported; `bukkit.yml` not read (its shutdown
 message default is hard-coded); comments admins add to YAML files are dropped on save.

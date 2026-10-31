@@ -10,8 +10,9 @@ use horizon_server::{
     registry::{self, DataPack, Registries},
     server::{
         bootstrap::{self, BootstrapOptions, ServerPaths},
-        config,
-        level::{GenerationSettings, World, WorldSettings, WorldTables, WorldgenTables},
+        level::{
+            GenerationSettings, PaperWorld, World, WorldSettings, WorldTables, WorldgenTables,
+        },
         runtime::{self, RuntimeConfig, Server, StartError},
         server_properties::{CommandLineOverrides, StartupOptions},
     },
@@ -169,13 +170,6 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    let flat_bedrock = match config::load_generate_flat_bedrock(&paper_dir) {
-        Ok(flat) => flat,
-        Err(e) => {
-            tracing::error!("Failed to start the minecraft server: {e}");
-            return std::process::ExitCode::FAILURE;
-        }
-    };
     let properties = config.properties.properties();
     let tables = WorldTables {
         blocks: Arc::new(config.blocks),
@@ -192,14 +186,13 @@ fn main() -> std::process::ExitCode {
             Difficulty::by_name(properties.difficulty.name()).unwrap_or(Difficulty::Normal),
             properties.hardcore,
         ),
-        chunks: config.yaml.paper_world_chunks,
+        paper_world: PaperWorld::Files(&paper_dir),
         allow_nether: config.yaml.paper.enable_nether,
         allow_end: config.yaml.bukkit.allow_end,
         generation: GenerationSettings {
             level_seed: properties.level_seed,
             level_type: &properties.level_type,
             generate_structures: properties.generate_structures,
-            flat_bedrock,
             end_void_rings: config.yaml.purpur.generate_end_void_rings,
             spigot: Some(&config.yaml.spigot),
         },
