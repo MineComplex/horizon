@@ -29,11 +29,12 @@ fn missing_files_are_written_with_defaults() {
         purpur,
         PurpurConfig {
             verbose: false,
-            lagging_threshold: 19.0
+            lagging_threshold: 19.0,
+            generate_end_void_rings: false
         }
     );
     let text = read(&d.join("purpur.yml"));
-    assert!(text.ends_with("# Docs: https://purpurmc.org/docs \n\nverbose: false\nconfig-version: 49\nsettings:\n  lagging-threshold: 19.0\n"), "{text}");
+    assert!(text.ends_with("# Docs: https://purpurmc.org/docs \n\nverbose: false\nconfig-version: 49\nsettings:\n  lagging-threshold: 19.0\n  generate-end-void-rings: false\n"), "{text}");
 
     let paper = load_paper_global(&d.join("config"), None).unwrap();
     assert_eq!(
@@ -98,14 +99,15 @@ fn bukkit_files_keep_what_they_do_not_read() {
     let path = dir.path().join("purpur.yml");
     std::fs::write(
         &path,
-        "verbose: on\nsettings:\n  lagging-threshold: 1_8.5\n",
+        "verbose: on\nsettings:\n  lagging-threshold: 1_8.5\n  generate-end-void-rings: true\n",
     )
     .unwrap();
     assert_eq!(
         load_purpur(&path).unwrap(),
         PurpurConfig {
             verbose: true,
-            lagging_threshold: 18.5
+            lagging_threshold: 18.5,
+            generate_end_void_rings: true
         }
     );
     std::fs::write(&path, "settings:\n  lagging-threshold: fast\n").unwrap();

@@ -1,8 +1,8 @@
 //! `EndIslandFunction`: 26.3's outer End island density (the central island comes from the
 //! terrain graph). Copied from Horizon's `horizon-core::density::end_islands`.
 //!
-//! Purpur's `settings.generate-end-void-rings` (off by default, Leaf keeps the default) is not
-//! ported: with it off the function is vanilla's.
+//! Purpur's `settings.generate-end-void-rings` (off by default) is ported as `void_rings`: with it
+//! off the function is vanilla's.
 
 use super::ops::{java_max, java_min};
 use crate::util::random::{LegacyRandom, RandomSource};
@@ -11,14 +11,33 @@ use crate::worldgen::noise::{DensityVolume, SimplexNoise};
 #[derive(Clone, Debug)]
 pub struct EndIslands {
     noise: SimplexNoise,
+    /// Purpur's `generateEndVoidRings`.
+    void_rings: bool,
+}
+
+/// `doffs` of Purpur's patch: `clamp(100 - sqrt(x*x + z*z) * 8, -100, 80)` (ints squared and
+/// summed in `int` arithmetic, `Mth.sqrt` a float square root) with the rings, else -100.
+fn base_height(x: i32, z: i32, void_rings: bool) -> f32 {
+    if !void_rings {
+        return -100.0;
+    }
+    let squared = x.wrapping_mul(x).wrapping_add(z.wrapping_mul(z));
+    java_min(
+        java_max(
+            100.0 - ((squared as f32) as f64).sqrt() as f32 * 8.0,
+            -100.0,
+        ),
+        80.0,
+    )
 }
 
 impl EndIslands {
-    pub fn new(world_seed: i64) -> Self {
+    pub fn new(world_seed: i64, void_rings: bool) -> Self {
         let mut random = LegacyRandom::new(world_seed);
         random.consume_count(17_292);
         Self {
             noise: SimplexNoise::with_skipped_offsets(&mut random, true),
+            void_rings,
         }
     }
 
@@ -29,7 +48,7 @@ impl EndIslands {
         let center_z = z / 2;
         let local_x = x % 2;
         let local_z = z % 2;
-        let mut height = -100.0;
+        let mut height = base_height(x, z, self.void_rings);
         for offset_x in -12_i32..=12 {
             for offset_z in -12_i32..=12 {
                 let island_x = i64::from(center_x.wrapping_add(offset_x));
@@ -139,6 +158,25 @@ impl EndIslands {
 mod tests {
     use super::*;
 
+    /// Derived from Purpur's patch (`doffs = clamp(100 - sqrt(sx*sx + sz*sz) * 8, -100, 80)`),
+    /// not run against a jar: the vanilla jar has no such flag.
+    #[test]
+    fn void_rings_follow_purpurs_formula() {
+        assert_eq!(base_height(3, 4, false), -100.0);
+        assert_eq!(base_height(0, 0, true), 80.0); // 100 clamped
+        assert_eq!(base_height(1, 0, true), 80.0); // 92 clamped
+        assert_eq!(base_height(3, 4, true), 60.0); // 100 - 5 * 8
+        assert_eq!(base_height(-6, 8, true), 20.0); // 100 - 10 * 8
+        assert_eq!(base_height(13, 0, true), -4.0);
+        assert_eq!(base_height(100, -100, true), -100.0);
+        // The squares wrap like Java's ints; the result is still clamped.
+        assert!((-100.0..=80.0).contains(&base_height(i32::MAX, i32::MAX, true)));
+        let plain = EndIslands::new(12345, false);
+        let rings = EndIslands::new(12345, true);
+        // Far from any island the density is the base height, which differs by the flag.
+        assert_ne!(plain.density(0, 0), rings.density(0, 0));
+    }
+
     #[test]
     fn end_island_volumes_match_scalar_at_truncation_and_world_boundaries() {
         let cases = [
@@ -155,7 +193,7 @@ mod tests {
             ([1, 4, 1], [-15, 0, -17], [1, 1, 1]),
         ];
         for seed in [0, 12345, -1, i64::MIN, i64::MAX] {
-            let islands = EndIslands::new(seed);
+            let islands = EndIslands::new(seed, false);
             let compare = |volume: DensityVolume| {
                 let mut output = vec![123.0; volume.size()];
                 islands.fill(&mut output, volume);

@@ -7,6 +7,7 @@
 //! | Late ticks run back to back | `config/paper-global.yml` | `misc.catch-up-ticks` | `default` (5) |
 //! | Commands sent to clients | `spigot.yml` | `commands.tab-complete`, `commands.send-namespaced` | `0`, `false` (Leaf; Spigot `true`) |
 //! | Structure salts | `spigot.yml` | `world-settings.<world or default>.seed-*` ([`STRUCTURE_SALTS`], `seed-buriedtreasure`, `seed-mineshaft`, `seed-stronghold`) | the 26.3 jar's salts, `10387320`, `default`, `default` |
+//! | End void rings | `purpur.yml` | `settings.generate-end-void-rings` | `false` |
 //! | Lagging flag | `purpur.yml` | `settings.lagging-threshold` | `19.0` |
 //! | 5 s TPS in `getTPS()` | `config/leaf-global.yml` | `misc.including-5s-in-get-tps` | `true` |
 //! | Chunk autosave, unloads | `config/paper-world-defaults.yml` | `chunks.{auto-save-interval, max-auto-save-chunks-per-tick, min-chunk-unload-count, min-chunk-unload-fraction, delay-chunk-unloads-by}` | `default` (6000), `24`, `50`, `0.05`, `10s` |
@@ -308,6 +309,8 @@ impl SpigotConfig {
 pub struct PurpurConfig {
     pub verbose: bool,
     pub lagging_threshold: f64,
+    /// `settings.generate-end-void-rings`: Purpur's rings of void around the End's main island.
+    pub generate_end_void_rings: bool,
 }
 
 /// The `leaf-global.yml` settings read so far.
@@ -476,6 +479,7 @@ pub fn load_purpur(path: &Path) -> Result<PurpurConfig, ConfigError> {
     let config = PurpurConfig {
         verbose,
         lagging_threshold: file.double("settings.lagging-threshold", 19.0),
+        generate_end_void_rings: file.bool("settings.generate-end-void-rings", false),
     };
     file.save(PURPUR_HEADER);
     Ok(config)

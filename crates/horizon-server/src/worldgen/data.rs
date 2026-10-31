@@ -197,9 +197,10 @@ impl WorldgenData {
         &self,
         settings: &NoiseGeneratorSettings,
         seed: i64,
+        end_void_rings: bool,
     ) -> Result<LevelDensity, ProgramError> {
         Ok(self
-            .compile_roots(self.graph.clone(), settings, seed, &[])?
+            .compile_roots(self.graph.clone(), settings, seed, end_void_rings, &[])?
             .0)
     }
 
@@ -210,6 +211,7 @@ impl WorldgenData {
         &self,
         settings: &NoiseGeneratorSettings,
         seed: i64,
+        end_void_rings: bool,
         extra: &[&RawValue],
     ) -> Result<(LevelDensity, Vec<NodeId>), WorldgenError> {
         let mut graph = self.graph.clone();
@@ -224,7 +226,7 @@ impl WorldgenData {
             .map(|raw| loader.decode(raw, 0))
             .collect::<Result<Vec<_>, _>>()
             .map_err(error)?;
-        self.compile_roots(graph, settings, seed, &roots)
+        self.compile_roots(graph, settings, seed, end_void_rings, &roots)
             .map_err(|e| error(DecodeError::Registry(e.to_string())))
     }
 
@@ -233,9 +235,11 @@ impl WorldgenData {
         graph: DensityGraph,
         settings: &NoiseGeneratorSettings,
         seed: i64,
+        end_void_rings: bool,
         extra: &[FunctionId],
     ) -> Result<(LevelDensity, Vec<NodeId>), ProgramError> {
-        let mut compiler = DensityCompiler::new(graph, seed, settings.legacy_random_source)?;
+        let mut compiler =
+            DensityCompiler::new(graph, seed, settings.legacy_random_source, end_void_rings)?;
         let mut compile = |roots: &[FunctionId]| {
             roots
                 .iter()

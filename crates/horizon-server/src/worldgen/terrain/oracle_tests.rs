@@ -117,7 +117,9 @@ fn terrain_matches_java() {
             .entry((key.to_owned(), seed))
             .or_insert_with(|| {
                 let settings = real.data.noise_settings(key).expect("settings");
-                real.data.compile_level(settings, seed).expect("a level")
+                real.data
+                    .compile_level(settings, seed, false)
+                    .expect("a level")
             })
             .clone()
     };
@@ -280,7 +282,7 @@ fn terrain_fill_speed() {
     let mut context = DensityContext::cached();
     for key in ["minecraft:overworld", "minecraft:nether", "minecraft:end"] {
         let settings = real.data.noise_settings(key).unwrap();
-        let level = real.data.compile_level(settings, 12345).unwrap();
+        let level = real.data.compile_level(settings, 12345, false).unwrap();
         let terrain = NoiseTerrain::new(&level, settings, &real.blocks).unwrap();
         let mut run = |count: i32| {
             let start = Instant::now();

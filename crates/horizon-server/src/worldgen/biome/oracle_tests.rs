@@ -103,7 +103,7 @@ fn biomes_match_java() {
                 let stem = decode_noise_generator(&generator, &biomes, &presets).unwrap();
                 let settings = data.noise_settings(&stem.settings).unwrap();
                 level = Some(Level {
-                    density: data.compile_level(settings, long(3)).unwrap(),
+                    density: data.compile_level(settings, long(3), false).unwrap(),
                     source: stem.biome_source,
                     tree,
                     min_y: settings.noise.min_y,

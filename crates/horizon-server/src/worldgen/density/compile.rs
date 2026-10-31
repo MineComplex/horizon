@@ -33,6 +33,8 @@ enum Factory {
 pub struct DensityCompiler {
     graph: DensityGraph,
     seed: i64,
+    /// Purpur's `generateEndVoidRings`, for the End islands.
+    end_void_rings: bool,
     factory: Factory,
     program: DensityProgram,
     /// The seeded instance of each graph noise, by `NoiseId`.
@@ -48,7 +50,12 @@ pub struct DensityCompiler {
 impl DensityCompiler {
     /// `RandomState.create`'s compile context: every registered noise is instantiated now (from
     /// `fromHashOf(name)`), so the program needs no lazily filled instance map.
-    pub fn new(graph: DensityGraph, seed: i64, legacy_random: bool) -> Result<Self, ProgramError> {
+    pub fn new(
+        graph: DensityGraph,
+        seed: i64,
+        legacy_random: bool,
+        end_void_rings: bool,
+    ) -> Result<Self, ProgramError> {
         let factory = if legacy_random {
             Factory::Legacy(LegacyRandom::new(seed).fork_positional())
         } else {
@@ -89,6 +96,7 @@ impl DensityCompiler {
         Ok(Self {
             graph,
             seed,
+            end_void_rings,
             factory,
             program,
             noise_refs,
@@ -250,9 +258,10 @@ impl DensityCompiler {
             GraphNode::WorldField(field) => self.push(Node::Field(field)),
             // Without old-world blending (not ported) `blend_density` is its input.
             GraphNode::BlendDensity(input) => self.compile_raw(input)?,
-            GraphNode::EndIslands => {
-                self.push(Node::EndIslands(Box::new(EndIslands::new(self.seed))))
-            }
+            GraphNode::EndIslands => self.push(Node::EndIslands(Box::new(EndIslands::new(
+                self.seed,
+                self.end_void_rings,
+            )))),
             GraphNode::Noise {
                 noise,
                 xz_scale,

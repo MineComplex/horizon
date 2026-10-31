@@ -98,7 +98,7 @@ fn density_matches_java() {
             .or_insert_with(|| {
                 let noise_settings = data.noise_settings(settings).expect("settings");
                 let (density, nodes) = data
-                    .compile_level_with(noise_settings, seed, &noise_refs)
+                    .compile_level_with(noise_settings, seed, false, &noise_refs)
                     .expect("compiles");
                 let noises = noise_ids
                     .iter()
@@ -185,7 +185,7 @@ fn density_program_speed() {
     use std::time::{Duration, Instant};
     let data = load_jar_data().expect("HORIZON_VANILLA_JAR is not set");
     let settings = data.noise_settings("minecraft:overworld").unwrap();
-    let density = data.compile_level(settings, 12345).unwrap();
+    let density = data.compile_level(settings, 12345, false).unwrap();
     let program = &density.program;
     let final_density = density.router(RouterField::FinalDensity);
     let mut best = (Duration::MAX, Duration::MAX);
