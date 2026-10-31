@@ -128,23 +128,21 @@ impl StructureStart {
         tag
     }
 
-    /// `loadStaticStart`: `None` (logged) for an unknown structure id.
-    pub fn load(registry: &StructureRegistry, tag: &Compound) -> Option<Self> {
+    /// `loadStaticStart`: `Ok(None)` (logged) for an unknown structure id; `Err` for a malformed
+    /// one, where `Identifier.parse` throws and the chunk's load fails.
+    pub fn load(registry: &StructureRegistry, tag: &Compound) -> Result<Option<Self>, String> {
         let get = |key: &str| tag.get(&JavaString::from(key));
         let id = match get("id") {
             Some(Tag::String(id)) => id.to_string_lossy(),
             _ => String::new(),
         };
         if id == INVALID_START_ID {
-            return Some(Self::invalid());
+            return Ok(Some(Self::invalid()));
         }
-        // Vanilla's `Identifier.parse` throws on a malformed id; it is an unknown one here.
-        let Some(structure) = parse_identifier(&id)
-            .ok()
-            .and_then(|name| registry.structure_id(&name))
-        else {
+        let name = parse_identifier(&id)?;
+        let Some(structure) = registry.structure_id(&name) else {
             tracing::error!("Unknown stucture id: {id}");
-            return None;
+            return Ok(None);
         };
         let int = |key: &str| get(key).and_then(Tag::int_value).unwrap_or(0);
         let chunk = ChunkPos::new(int("ChunkX"), int("ChunkZ"));
@@ -172,13 +170,13 @@ impl StructureStart {
                 .collect(),
             _ => Vec::new(),
         };
-        Some(Self::new(
+        Ok(Some(Self::new(
             registry,
             structure,
             chunk,
             int("references"),
             children,
-        ))
+        )))
     }
 }
 
@@ -265,8 +263,12 @@ impl ChunkStructures {
 
     /// The `structures` tag of the chunk at `chunk` (`unpackStructureStart`,
     /// `unpackStructureReferences`): unknown structures are logged and dropped, as are references
-    /// more than 8 chunks away.
-    pub fn load(registry: &StructureRegistry, tag: &Compound, chunk: ChunkPos) -> Self {
+    /// more than 8 chunks away. A start whose inner `id` is malformed fails the load.
+    pub fn load(
+        registry: &StructureRegistry,
+        tag: &Compound,
+        chunk: ChunkPos,
+    ) -> Result<Self, String> {
         let compound = |tag: &Compound, key: &str| match tag.get(&JavaString::from(key)) {
             Some(Tag::Compound(inner)) => inner.clone(),
             _ => Compound::new(),
@@ -285,7 +287,7 @@ impl ChunkStructures {
                 Tag::Compound(start) => start.clone(),
                 _ => Compound::new(),
             };
-            if let Some(mut start) = StructureStart::load(registry, &start_tag) {
+            if let Some(mut start) = StructureStart::load(registry, &start_tag)? {
                 if let Some(Tag::Compound(values)) = start_tag.get(&JavaString::from(BUKKIT_VALUES))
                 {
                     start.bukkit_values = Some(values.clone());
@@ -332,7 +334,7 @@ impl ChunkStructures {
             };
             *slot = ordered;
         }
-        structures
+        Ok(structures)
     }
 }
 

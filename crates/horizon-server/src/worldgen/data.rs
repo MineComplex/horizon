@@ -20,7 +20,8 @@ use super::density::{
 };
 use super::settings::{AquiferField, NoiseGeneratorSettings, RouterField};
 use super::structure::{
-    BiomeLookup, StructureId, StructureRegistry, decode_structure, decode_structure_set,
+    BiomeLookup, InlineElements, StructureId, StructureRegistry, decode_structure,
+    decode_structure_set,
 };
 use crate::block::BlockStates;
 use crate::registry::{DataPack, ElementFile, WORLDGEN, for_each_element, load_tags, registry_dir};
@@ -301,11 +302,21 @@ fn load_structures(
         Ok::<_, WorldgenError>(())
     })?;
     let set_ids: Vec<String> = sets.iter().map(|(id, ..)| id.clone()).collect();
+    let mut inline = InlineElements::default();
     for (id, raw, file, pack) in sets {
-        let set = decode_structure_set(&id, &raw, &registry.structures, &set_ids, &biomes)
-            .map_err(|source| WorldgenError { file, pack, source })?;
+        let set = decode_structure_set(
+            &id,
+            &raw,
+            &registry.structures,
+            &set_ids,
+            &biomes,
+            &mut inline,
+        )
+        .map_err(|source| WorldgenError { file, pack, source })?;
         registry.sets.push(set);
     }
+    registry.structures.extend(inline.structures);
+    registry.sets.extend(inline.sets);
     let structure_ids = |id: &str| {
         let index = registry.structures.iter().position(|s| s.id == id)?;
         Some(index as i32)

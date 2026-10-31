@@ -75,7 +75,7 @@ impl Value<'_> {
 }
 
 /// One YAML file: an ordered tree whose scalars keep their source text and style.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct YamlDocument {
     root: MappingOwned,
 }

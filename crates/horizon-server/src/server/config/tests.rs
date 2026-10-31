@@ -297,3 +297,23 @@ fn paper_world_defaults_chunk_settings() {
     .unwrap();
     assert!(load_paper_world_defaults(d).is_err());
 }
+
+/// Bukkit splits `world-settings.<world>.<key>` on `.`: a dotted world name nests, and falls back
+/// to `world-settings.default` for what its section lacks. A top-level key holding the dots does
+/// not match.
+#[test]
+fn dotted_world_names_nest_like_bukkit_paths() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("spigot.yml");
+    std::fs::write(
+        &path,
+        "world-settings:\n  default:\n    seed-village: 7\n    seed-desert: 8\n  my:\n    world:\n      seed-village: 3\n  other.world:\n    seed-village: 99\n",
+    )
+    .unwrap();
+    let spigot = load_spigot(&path).unwrap();
+    let nested = spigot.world_seeds("my.world").unwrap();
+    assert_eq!(nested.salt("villages"), Some(3));
+    assert_eq!(nested.salt("desert_pyramids"), Some(8));
+    let literal = spigot.world_seeds("other.world").unwrap();
+    assert_eq!(literal.salt("villages"), Some(7));
+}

@@ -40,7 +40,15 @@ fn registry(structures: &[(&str, String)], sets: &[(&str, String)]) -> Structure
     let set_ids: Vec<String> = sets.iter().map(|(id, _)| id.to_string()).collect();
     let sets = (sets.iter())
         .map(|(id, json)| {
-            decode_structure_set(id, &raw(json), &structures, &set_ids, &lookup).unwrap()
+            decode_structure_set(
+                id,
+                &raw(json),
+                &structures,
+                &set_ids,
+                &lookup,
+                &mut InlineElements::default(),
+            )
+            .unwrap()
         })
         .collect();
     StructureRegistry {
@@ -251,6 +259,7 @@ fn invalid_elements_are_rejected() {
             &structures,
             &["x:set".into()],
             &lookup,
+            &mut InlineElements::default(),
         )
     };
     assert!(
@@ -289,7 +298,104 @@ fn invalid_elements_are_rejected() {
         .is_ok()
     );
     let json = set_json(&[("x:y", 0)], &spread(1, 8, 2, ""));
-    assert!(decode_structure_set("x:set", &raw(&json), &structures, &[], &lookup).is_err());
+    let inline = &mut InlineElements::default();
+    assert!(decode_structure_set("x:set", &raw(&json), &structures, &[], &lookup, inline).is_err());
+}
+
+/// `StructureSet.CODEC` and its entries take a registered id or the element itself.
+#[test]
+fn inline_structures_and_sets_decode_like_registered_ones() {
+    let ids: Vec<String> = BIOMES.iter().map(|b| b.to_string()).collect();
+    let lookup = BiomeLookup {
+        ids: &ids,
+        tags: &[],
+    };
+    let registered =
+        [decode_structure("x:y", raw(&structure_json("[]", "none")), &lookup).unwrap()];
+    let set_ids = ["x:set".to_owned(), "x:other".to_owned()];
+    let decode = |json: &str, inline: &mut InlineElements| {
+        decode_structure_set("x:set", &raw(json), &registered, &set_ids, &lookup, inline)
+    };
+
+    // An inline structure takes the next id after the registered ones.
+    let mut inline = InlineElements::default();
+    let entries = format!(
+        r#"[{{"structure":{},"weight":3}},{{"structure":"x:y","weight":1}}]"#,
+        structure_json("[]", "beard_thin")
+    );
+    let json = format!(
+        r#"{{"structures":{entries},"placement":{}}}"#,
+        spread(1, 8, 2, "")
+    );
+    let set = decode(&json, &mut inline).unwrap();
+    assert_eq!(set.structures, [(StructureId(1), 3), (StructureId(0), 1)]);
+    assert_eq!(inline.structures.len(), 1);
+    assert_eq!(
+        inline.structures[0].terrain_adaptation,
+        TerrainAdjustment::BeardThin
+    );
+    assert!(!set.inline);
+
+    // An inline exclusion set takes the next id after the registered sets and is not a candidate.
+    let mut inline = InlineElements::default();
+    let zone = format!(
+        r#","exclusion_zone":{{"other_set":{},"chunk_count":4}}"#,
+        set_json(&[("x:y", 2)], &spread(7, 8, 2, ""))
+    );
+    let set = decode(
+        &set_json(&[("x:y", 1)], &spread(1, 8, 2, &zone)),
+        &mut inline,
+    )
+    .unwrap();
+    let Placement::RandomSpread(RandomSpread {
+        spreading: Spreading {
+            exclusion_zone: Some(zone),
+            ..
+        },
+        ..
+    }) = set.placement
+    else {
+        panic!("a random spread with an exclusion zone")
+    };
+    assert_eq!(zone.other_set, StructureSetId(2));
+    assert_eq!(zone.chunk_count, 4);
+    assert_eq!(inline.sets.len(), 1);
+    assert!(inline.sets[0].inline);
+    assert_eq!(inline.sets[0].structures, [(StructureId(0), 2)]);
+
+    // A malformed inline element is still an error.
+    let bad = decode(
+        r#"{"structures":[{"structure":{"type":"minecraft:jigsaw"},"weight":1}],"placement":{}}"#,
+        &mut InlineElements::default(),
+    );
+    assert!(bad.is_err());
+}
+
+/// `StructureStart.loadStaticStart` parses the inner id (`Identifier.parse` throws); the starts'
+/// keys only `tryParse`.
+#[test]
+fn malformed_start_id_fails_the_load_but_unknown_ones_are_skipped() {
+    let registry = vanilla_like();
+    let chunk = ChunkPos::new(0, 0);
+    let load = |key: &str, id: &str| {
+        let tag = Compound::from([(
+            "starts".into(),
+            Tag::compound([(key, Tag::compound([("id", Tag::String(id.into()))]))]),
+        )]);
+        ChunkStructures::load(&registry, &tag, chunk)
+    };
+    assert!(load("minecraft:village", "Not A:Valid Id").is_err());
+    assert_eq!(
+        load("minecraft:village", "minecraft:nothing")
+            .unwrap()
+            .starts()
+            .count(),
+        0
+    );
+    assert_eq!(
+        load("Bad Key", "Not A:Valid Id").unwrap().starts().count(),
+        0
+    );
 }
 
 /// Paper's `injectSpigot` (derived from the patched sources): a `minecraft:` random-spread set
@@ -631,7 +737,7 @@ fn chunk_structures_round_trip_and_filter() {
         starts[&JavaString::from("minecraft:treasure")],
         Tag::compound([("id", Tag::String("INVALID".into()))])
     );
-    let loaded = ChunkStructures::load(&registry, &tag, chunk);
+    let loaded = ChunkStructures::load(&registry, &tag, chunk).unwrap();
     assert_eq!(loaded.start(village), Some(&start));
     assert_eq!(loaded.start(treasure), Some(&StructureStart::invalid()));
     // Loaded references come in the hash set's order.
@@ -666,7 +772,7 @@ fn chunk_structures_round_trip_and_filter() {
             ]),
         ),
     ]);
-    let loaded = ChunkStructures::load(&registry, &tag, chunk);
+    let loaded = ChunkStructures::load(&registry, &tag, chunk).unwrap();
     assert_eq!(
         loaded.starts().count(),
         0,

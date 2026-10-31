@@ -153,7 +153,7 @@ pub struct LevelParams<'a> {
     pub ring_seed: i64,
     /// `getDimensionOrigin`.
     pub origin: ChunkPos,
-    /// The candidate sets in registry order: every set, or a flat level's structure overrides.
+    /// The candidate sets in registry order: every registered set (never an `inline` one), or a flat level's structure overrides.
     pub sets: &'a [StructureSetId],
     /// `biomeSource.possibleBiomes()`.
     pub possible_biomes: &'a BiomeSet,

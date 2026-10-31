@@ -141,7 +141,7 @@ pub struct PaperGlobalConfig {
 }
 
 /// The `spigot.yml` settings read so far.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SpigotConfig {
     /// `commands.tab-complete`: below 0 no commands are sent; otherwise the command packet is sent and
     /// completion starts at that many characters.
@@ -211,11 +211,11 @@ impl SeedSection {
     }
 }
 
-/// `world-settings.default` and each world's own section.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// The `spigot.yml` document, read per level at `world-settings.<world>.<key>` as
+/// `SpigotWorldConfig` does: Bukkit splits a path on `.`, so a world name with dots nests.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SeedSections {
-    default: SeedSection,
-    worlds: Vec<(String, SeedSection)>,
+    doc: YamlDocument,
 }
 
 /// A level's structure seeds (`SpigotWorldConfig`'s seed fields).
@@ -257,14 +257,11 @@ impl SpigotConfig {
     /// A parsable but non-integer `seed-mineshaft`/`seed-stronghold` (`1.5`, or out of range) fails
     /// as `Integer.parseInt`/`Long.parseLong` does, which stops the level's creation in Leaf.
     pub fn world_seeds(&self, world: &str) -> Result<SpigotWorldSeeds, ConfigError> {
-        let sections = &self.seed_sections;
-        let own = sections
-            .worlds
-            .iter()
-            .rev() // SnakeYAML keeps a duplicate key's last value
-            .find(|(name, _)| name == world)
-            .map(|(_, section)| section);
-        let default = &sections.default;
+        let doc = &self.seed_sections.doc;
+        let own_section = SeedSection::read(doc, &format!("world-settings.{world}"));
+        let own = Some(&own_section);
+        let default_section = SeedSection::read(doc, "world-settings.default");
+        let default = &default_section;
         let mut seeds = SpigotWorldSeeds::default();
         for (i, salt) in seeds.salts.iter_mut().enumerate() {
             *salt = own
@@ -459,14 +456,7 @@ pub fn load_spigot(path: &Path) -> Result<SpigotConfig, ConfigError> {
         );
     }
     let seed_sections = SeedSections {
-        default: SeedSection::read(&file.doc, "world-settings.default"),
-        worlds: (file.doc.keys("world-settings").into_iter())
-            .filter(|world| world != "default")
-            .map(|world| {
-                let section = SeedSection::read(&file.doc, &format!("world-settings.{world}"));
-                (world, section)
-            })
-            .collect(),
+        doc: file.doc.clone(),
     };
     let config = SpigotConfig {
         tab_complete,

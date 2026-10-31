@@ -240,6 +240,16 @@ pub struct StructureSet {
     /// Structures and their weights, in the file's order.
     pub structures: Vec<(StructureId, i32)>,
     pub placement: Placement,
+    /// Written inline in another set's file (a direct `Holder`): never a candidate for a level.
+    pub inline: bool,
+}
+
+/// The elements written inline in `worldgen/structure_set` files while decoding. They take the
+/// ids after the registered ones, so they are appended to the registry once every file is decoded.
+#[derive(Debug, Default)]
+pub struct InlineElements {
+    pub structures: Vec<Structure>,
+    pub sets: Vec<StructureSet>,
 }
 
 /// The structure registries, decoded.
@@ -310,45 +320,72 @@ pub(crate) fn decode_structure(
     })
 }
 
-/// `StructureSet.DIRECT_CODEC`. References to structures and sets must name registered elements
-/// (vanilla also accepts inline elements there; no datapack we know of uses them).
+/// `StructureSet.DIRECT_CODEC`. A reference to a structure or set (a `RegistryFileCodec`) is an id
+/// naming a registered element, or the element itself written inline, which is decoded the same
+/// way and kept in `inline`.
 pub(crate) fn decode_structure_set(
     id: &str,
     raw: &RawValue,
     structures: &[Structure],
     set_ids: &[String],
     biomes: &BiomeLookup<'_>,
+    inline: &mut InlineElements,
 ) -> Result<StructureSet, DecodeError> {
+    let context = SetContext {
+        owner: id,
+        registered: structures,
+        set_ids,
+        biomes,
+    };
     let fields = object(raw)?;
     let entries: Vec<Box<RawValue>> = serde_json::from_str(required(&fields, "structures")?.get())?;
     let structures = entries
         .iter()
         .map(|entry| {
             let entry = object(entry)?;
-            let name = identifier(&string(required(&entry, "structure")?)?)?;
-            let index = (structures.iter().position(|s| s.id == name))
-                .ok_or_else(|| DecodeError::Registry(format!("Missing structure: {name}")))?;
+            let reference = required(&entry, "structure")?;
+            let index = if reference.get().starts_with('{') {
+                let index = context.registered.len() + inline.structures.len();
+                let inline_id = format!("{id}#inline{index}");
+                let structure = decode_structure(&inline_id, reference.to_owned(), biomes)?;
+                inline.structures.push(structure);
+                index
+            } else {
+                let name = identifier(&string(reference)?)?;
+                (context.registered.iter().position(|s| s.id == name))
+                    .ok_or_else(|| DecodeError::Registry(format!("Missing structure: {name}")))?
+            };
             let weight = int_range(required(&entry, "weight")?, "weight", 1, i32::MAX)?;
             Ok((StructureId(index as u32), weight))
         })
         .collect::<Result<_, DecodeError>>()?;
-    let placement = decode_placement(&object(required(&fields, "placement")?)?, set_ids, biomes)?;
+    let placement = decode_placement(&object(required(&fields, "placement")?)?, &context, inline)?;
     Ok(StructureSet {
         id: id.to_owned(),
         structures,
         placement,
+        inline: false,
     })
+}
+
+/// What decoding one set's references needs: the registered elements and the owner's id.
+struct SetContext<'a> {
+    owner: &'a str,
+    registered: &'a [Structure],
+    set_ids: &'a [String],
+    biomes: &'a BiomeLookup<'a>,
 }
 
 fn decode_placement(
     fields: &Object,
-    set_ids: &[String],
-    biomes: &BiomeLookup<'_>,
+    context: &SetContext<'_>,
+    inline: &mut InlineElements,
 ) -> Result<Placement, DecodeError> {
+    let biomes = context.biomes;
     let int = |name: &'static str, low, high| int_range(required(fields, name)?, name, low, high);
     match identifier(&string(required(fields, "type")?)?)?.as_str() {
         "minecraft:random_spread" => {
-            let spreading = decode_spreading(fields, set_ids)?;
+            let spreading = decode_spreading(fields, context, inline)?;
             let spacing = int("spacing", 0, 4096)?;
             let separation = int("separation", 0, 4096)?;
             if spacing <= separation {
@@ -372,7 +409,7 @@ fn decode_placement(
             }))
         }
         "minecraft:concentric_rings" => Ok(Placement::ConcentricRings(ConcentricRings {
-            spreading: decode_spreading(fields, set_ids)?,
+            spreading: decode_spreading(fields, context, inline)?,
             distance: int("distance", 0, 1023)?,
             spread: int("spread", 0, 1023)?,
             count: int("count", 1, 4095)?,
@@ -386,7 +423,11 @@ fn decode_placement(
 }
 
 /// `AbstractSpreadingStructurePlacement.placementCodec`.
-fn decode_spreading(fields: &Object, set_ids: &[String]) -> Result<Spreading, DecodeError> {
+fn decode_spreading(
+    fields: &Object,
+    context: &SetContext<'_>,
+    inline: &mut InlineElements,
+) -> Result<Spreading, DecodeError> {
     let locate_offset = match optional(fields, "locate_offset") {
         None => [0; 3],
         Some(raw) => {
@@ -430,9 +471,27 @@ fn decode_spreading(fields: &Object, set_ids: &[String]) -> Result<Spreading, De
         None => None,
         Some(raw) => {
             let zone = object(raw)?;
-            let name = identifier(&string(required(&zone, "other_set")?)?)?;
-            let index = (set_ids.iter().position(|id| *id == name))
-                .ok_or_else(|| DecodeError::Registry(format!("Missing structure set: {name}")))?;
+            let reference = required(&zone, "other_set")?;
+            let index = if reference.get().starts_with('{') {
+                let inline_id = format!("{}#inline_set", context.owner);
+                let mut set = decode_structure_set(
+                    &inline_id,
+                    reference,
+                    context.registered,
+                    context.set_ids,
+                    context.biomes,
+                    inline,
+                )?;
+                set.inline = true;
+                let index = context.set_ids.len() + inline.sets.len();
+                inline.sets.push(set);
+                index
+            } else {
+                let name = identifier(&string(reference)?)?;
+                (context.set_ids.iter().position(|id| *id == name)).ok_or_else(|| {
+                    DecodeError::Registry(format!("Missing structure set: {name}"))
+                })?
+            };
             Some(ExclusionZone {
                 other_set: StructureSetId(index as u32),
                 chunk_count: int_range(required(&zone, "chunk_count")?, "chunk_count", 1, 16)?,
