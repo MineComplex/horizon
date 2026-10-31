@@ -212,10 +212,18 @@ public final class LeafFeatureOracle {
         return BuiltInRegistries.BLOCK.getValue(Identifier.parse("minecraft:" + name)).defaultBlockState();
     }
 
+    /** Mode 4 (blue ice and icebergs) is a sea: the ground 8 lower, water up to y 63 with packed ice in a sixth of it. */
+    static int groundY(int mode, int x, int z) {
+        return groundY(x, z) - (mode == 4 ? 8 : 0);
+    }
+
     static BlockState ground(int mode, int x, int y, int z) {
-        int g = groundY(x, z);
+        int g = groundY(mode, x, z);
         int hash = mix(x * 73856093 ^ y * 19349663 ^ z * 83492791);
         if (y > g) {
+            if (mode == 4 && y <= 63) {
+                return Math.floorMod(hash, 6) == 0 ? block("packed_ice") : net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
+            }
             if (mode == 3 && y <= 63) return net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
             if (Math.floorMod(mix(x * 31 + z * 17 + 11), 97) == 0 && y >= g + 3 && y <= g + 3 + Math.floorMod(mix(x * 5 + z * 3), 9)) {
                 return block("stone");
@@ -236,9 +244,19 @@ public final class LeafFeatureOracle {
 
     /** WorldGenLevel.getHeight(type, x, z): the first free y of the type's column (mode 2, 3). */
     static int groundHeight(int mode, String type, int x, int z) {
-        int g = groundY(x, z);
+        int g = groundY(mode, x, z);
         boolean ocean = type.startsWith("OCEAN_FLOOR");
-        return (!ocean && mode == 3 ? Math.max(g, 63) : g) + 1;
+        return (!ocean && mode >= 3 ? Math.max(g, 63) : g) + 1;
+    }
+
+    /** The biome of a position, by formula over its quart (`biome` in oracle_tests.rs repeats it). */
+    static final String[] BIOMES = ("plains snowy_plains frozen_ocean ice_spikes taiga snowy_slopes deep_frozen_ocean ocean "
+        + "jagged_peaks frozen_peaks snowy_taiga swamp desert grove").split(" ");
+
+    static Holder<net.minecraft.world.level.biome.Biome> biomeAt(int x, int y, int z) {
+        String name = BIOMES[Math.floorMod(mix((x >> 2) * 3 ^ (z >> 2) * 5 ^ (y >> 2) * 7), BIOMES.length)];
+        return world.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME).getOrThrow(
+            net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, Identifier.parse("minecraft:" + name)));
     }
 
     static BlockState synth(int mode, int x, int y, int z) {
@@ -336,8 +354,12 @@ public final class LeafFeatureOracle {
                         log.add("tick " + at.getX() + "," + at.getY() + "," + at.getZ() + "," + values[2]);
                         return null;
                     }
-                    case "getRawBrightness" -> {
+                    case "getRawBrightness", "getBrightness" -> {
                         return 0;
+                    }
+                    case "getBiome" -> {
+                        BlockPos at = (BlockPos) values[0];
+                        return biomeAt(at.getX(), at.getY(), at.getZ());
                     }
                     case "getChunk" -> {
                         BlockPos at = (BlockPos) values[0];
@@ -610,8 +632,10 @@ public final class LeafFeatureOracle {
             if (only != null && !java.util.Arrays.asList(only.split(",")).contains(name)) return;
             for (int s = 0; s < SEEDS2.length; s++) {
                 for (int[] column : COLUMNS) {
-                    int mode = 2 + (s & 1);
-                    int y = groundY(column[0], column[1]) + 1;
+                    String kind = feature.getClass().getSimpleName();
+                    boolean sea = kind.equals("BlueIceFeature") || kind.equals("IcebergFeature");
+                    int mode = sea ? 4 : 2 + (s & 1);
+                    int y = sea ? 56 + s % 6 : groundY(column[0], column[1]) + 1;
                     Level level = newLevel(mode);
                     RandomSource random = random(SEEDS2[s]);
                     String result;
@@ -695,7 +719,8 @@ public final class LeafFeatureOracle {
             }
             features2(out, Set.of("TreeFeature", "FallenTreeFeature", "RandomSelectorFeature", "SimpleRandomSelectorFeature",
                 "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
-                "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature"));
+                "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature", "RandomNeighborSpreadFeature",
+                "SnowAndFreezeFeature", "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature"));
         }
     }
 }

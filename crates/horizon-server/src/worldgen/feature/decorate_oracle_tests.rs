@@ -294,27 +294,7 @@ fn decoration_matches_java() {
         decorate_time.as_secs_f64() * 1000.0 / f64::from(chunks.max(1))
     );
     println!("chunks by note: {by_note:?}");
-    // Known differences (the user's decision, 2026-10-31: merged, fixed next): a few plants next
-    // to trees, probably `updateShape` after features, which is not ported. Any other failure, or
-    // one of these disappearing (then remove it here), fails the test.
-    const KNOWN: [&str; 3] = [
-        "minecraft:overworld 12345 chunk -75 332 (spread): chunk (-1, 0) block 15 86 7 is 2363 not 0",
-        "minecraft:overworld 12345 chunk -75 332 (spread): chunk (0, 0) block 11 82 9 is 10107 not 2363",
-        "minecraft:large_biomes 12345 chunk 50 -60 (listed): chunk (0, 0) block 4 69 10 is 14773 not 0",
-    ];
-    if only.is_none() {
-        let known: Vec<&str> = KNOWN
-            .iter()
-            .copied()
-            .filter(|k| failures.iter().any(|f| f == k))
-            .collect();
-        assert_eq!(
-            known.len(),
-            KNOWN.len(),
-            "a known difference is gone: {KNOWN:?}"
-        );
-        failures.retain(|f| !KNOWN.contains(&f.as_str()));
-    }
+    // `updateShape` of the plants a tree's edge touches is `feature::shape`'s; every chunk is equal.
     assert!(
         failures.is_empty(),
         "{} failures, the first:\n{}",

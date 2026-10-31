@@ -23,20 +23,26 @@ use crate::worldgen::placement::{
 };
 use crate::worldgen::state_provider::{NamedProviders, ProviderContext, ProviderError};
 use crate::worldgen::structure::BiomeSet;
+use crate::worldgen::surface::temperature::{BiomeClimate, BiomeClimates};
 use tree::TreeBlocksCell;
 
 pub mod decorate;
 #[cfg(test)]
 mod decorate_oracle_tests;
+pub mod ice;
+pub mod lake;
 pub mod misc;
+pub mod mushroom;
 #[cfg(test)]
 mod oracle_tests;
 pub mod ore;
 pub mod patch;
 pub mod rule_test;
 pub mod select;
+pub mod shape;
 pub mod simple;
 pub mod sort;
+pub mod terrain;
 pub mod tree;
 pub use simple::{Feature, FeatureWorld};
 
@@ -97,6 +103,10 @@ pub struct FeatureRegistry {
     biomes: Vec<BiomeFeatures>,
     /// `Biome.BIOME_INFO_NOISE`, which `noise_based_count` and `noise_threshold_count` read.
     info_noise: SimplexNoise,
+    /// Every biome's temperature (`Biome.getTemperature`), which freezing and snow read.
+    climates: BiomeClimates,
+    /// `Biome.hasPrecipitation`, by biome id.
+    precipitation: Vec<bool>,
 }
 
 /// Why a feature could not be placed.
@@ -147,6 +157,13 @@ impl FeatureRegistry {
     }
     pub fn info_noise(&self) -> &SimplexNoise {
         &self.info_noise
+    }
+    pub fn climates(&self) -> &BiomeClimates {
+        &self.climates
+    }
+    /// `Biome.hasPrecipitation`.
+    pub fn has_precipitation(&self, biome: u32) -> bool {
+        self.precipitation[biome as usize]
     }
 
     /// `Feature.place` of a configured feature: false for one whose type is not ported yet.
@@ -283,7 +300,12 @@ impl FeatureRegistry {
         .collect::<Vec<_>>();
 
         let mut biomes = Vec::new();
+        let mut climates = Vec::new();
+        let mut precipitation = Vec::new();
         for_each_element(packs, "minecraft:worldgen/biome", |file| {
+            let raw = parse(&file)?;
+            climates.push(BiomeClimate::decode(&raw).map_err(|e| error(&file, e))?);
+            precipitation.push(has_precipitation(&raw).map_err(|e| error(&file, e))?);
             let mut lookup = PlacedLookup {
                 ids: &placed_ids,
                 tags: &placed_tags,
@@ -293,9 +315,8 @@ impl FeatureRegistry {
                 providers: &providers,
                 trees: &trees,
             };
-            let steps =
-                decode_biome_features(&parse(&file)?, &mut lookup, &mut placed, &mut configured)
-                    .map_err(|e| error(&file, e))?;
+            let steps = decode_biome_features(&raw, &mut lookup, &mut placed, &mut configured)
+                .map_err(|e| error(&file, e))?;
             biomes.push(BiomeFeatures::new(steps));
             Ok::<_, WorldgenError>(())
         })?;
@@ -370,8 +391,15 @@ impl FeatureRegistry {
             placed_tags,
             biomes,
             info_noise: SimplexNoise::with_skipped_offsets(&mut LegacyRandom::new(2345), true),
+            climates: BiomeClimates::new(climates),
+            precipitation,
         })
     }
+}
+
+/// `Biome.ClimateSettings.hasPrecipitation`.
+fn has_precipitation(raw: &RawValue) -> Result<bool, DecodeError> {
+    crate::worldgen::codec::boolean(required(&object(raw)?, "has_precipitation")?)
 }
 
 /// `Feature.DIRECT_CODEC`: dispatched on `type`; the rest is the feature's own to decode.

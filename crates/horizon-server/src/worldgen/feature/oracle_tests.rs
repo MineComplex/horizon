@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use serde_json::value::RawValue;
 
+use super::terrain::Terrain;
 use super::{ConfiguredFeatureId, Feature, FeatureRegistry, FeatureWorld, PlacedFeatureId};
 use crate::block::survival::{BlockSurvival, SurvivalError, SurvivalWorld};
 use crate::block::{BlockState, BlockStateData, BlockStates};
@@ -81,6 +82,8 @@ struct Fixture {
     fluid_tags: Vec<(String, Vec<i32>)>,
     named: Vec<(String, Box<RawValue>)>,
     worldgen: WorldgenData,
+    /// The `worldgen/biome` ids in registration order.
+    biome_names: Vec<String>,
 }
 
 impl Fixture {
@@ -120,7 +123,14 @@ impl Fixture {
         })
         .unwrap();
         let worldgen = WorldgenData::load(packs, &blocks).expect("the worldgen registries");
+        let mut biome_names = Vec::new();
+        for_each_element(packs, "minecraft:worldgen/biome", |file| {
+            biome_names.push(file.id.to_owned());
+            Ok::<_, ()>(())
+        })
+        .unwrap();
         Self {
+            biome_names,
             blocks,
             data,
             survival,
@@ -221,8 +231,10 @@ struct TestWorld<'a> {
     synth: Vec<BlockState>,
     solid: Vec<BlockState>,
     water: BlockState,
-    /// `ground`'s palette: air, stone, grass_block, podzol, dirt, moss_block, sand.
-    ground: [BlockState; 7],
+    /// `ground`'s palette: air, stone, grass_block, podzol, dirt, moss_block, sand, packed_ice.
+    ground: [BlockState; 8],
+    /// The registry ids of the oracle's `BIOMES`.
+    biomes: Vec<u32>,
     writes: HashMap<(i32, i32, i32), BlockState>,
     log: Vec<String>,
     marks: Vec<String>,
@@ -250,8 +262,16 @@ impl<'a> TestWorld<'a> {
                 "dirt",
                 "moss_block",
                 "sand",
+                "packed_ice",
             ]
             .map(state),
+            biomes: BIOMES
+                .split_whitespace()
+                .map(|name| {
+                    let name = format!("minecraft:{name}");
+                    f.biome_names.iter().position(|b| *b == name).unwrap() as u32
+                })
+                .collect(),
             writes: HashMap::new(),
             log: Vec::new(),
             marks: Vec::new(),
@@ -279,17 +299,33 @@ impl<'a> TestWorld<'a> {
     }
 }
 
+/// The oracle's `BIOMES`.
+const BIOMES: &str = "plains snowy_plains frozen_ocean ice_spikes taiga snowy_slopes deep_frozen_ocean ocean \
+jagged_peaks frozen_peaks snowy_taiga swamp desert grove";
+
 /// The oracle's `groundY`.
 fn ground_y(x: i32, z: i32) -> i32 {
     62 + mix((x >> 2).wrapping_mul(7919) ^ (z >> 2).wrapping_mul(104729)).rem_euclid(4)
 }
 
+/// The oracle's `groundY(mode, x, z)`: mode 4 is a sea, its ground 8 lower.
+fn ground_y_in(mode: i32, x: i32, z: i32) -> i32 {
+    ground_y(x, z) - if mode == 4 { 8 } else { 0 }
+}
+
 impl TestWorld<'_> {
     /// The oracle's `ground` (modes 2 and 3).
     fn ground(&self, x: i32, y: i32, z: i32, hash: i32) -> BlockState {
-        let [air, stone, grass, podzol, dirt, moss, sand] = self.ground;
-        let g = ground_y(x, z);
+        let [air, stone, grass, podzol, dirt, moss, sand, packed_ice] = self.ground;
+        let g = ground_y_in(self.mode, x, z);
         if y > g {
+            if self.mode == 4 && y <= 63 {
+                return if hash.rem_euclid(6) == 0 {
+                    packed_ice
+                } else {
+                    self.water
+                };
+            }
             if self.mode == 3 && y <= 63 {
                 return self.water;
             }
@@ -347,9 +383,9 @@ impl PlacementWorld for TestWorld<'_> {
     fn height(&self, kind: Heightmap, x: i32, z: i32) -> Result<i32, WorldError> {
         if self.mode >= 2 {
             // The oracle's `groundHeight`: the ocean floor ignores the water.
-            let g = ground_y(x, z);
+            let g = ground_y_in(self.mode, x, z);
             let ocean = matches!(kind, Heightmap::OceanFloor | Heightmap::OceanFloorWg);
-            return Ok(if !ocean && self.mode == 3 {
+            return Ok(if !ocean && self.mode >= 3 {
                 g.max(63)
             } else {
                 g
@@ -364,8 +400,12 @@ impl PlacementWorld for TestWorld<'_> {
     fn block_state(&self, pos: BlockPos) -> Result<BlockState, WorldError> {
         Ok(self.at(pos.x, pos.y, pos.z))
     }
-    fn biome(&self, _: BlockPos) -> Result<u32, WorldError> {
-        Err(WorldError::Unsupported("biomes"))
+    /// The oracle's `biomeAt`.
+    fn biome(&self, pos: BlockPos) -> Result<u32, WorldError> {
+        let hash = mix((pos.x >> 2).wrapping_mul(3)
+            ^ (pos.z >> 2).wrapping_mul(5)
+            ^ (pos.y >> 2).wrapping_mul(7));
+        Ok(self.biomes[hash.rem_euclid(self.biomes.len() as i32) as usize])
     }
     fn block_survives(&self, state: BlockState, pos: BlockPos) -> Result<bool, WorldError> {
         let at = [pos.x, pos.y, pos.z];
@@ -553,7 +593,8 @@ fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
         return None;
     }
     let feature = registry.configured(id).feature.as_ref().unwrap();
-    // The oracle's mode: 2 + (seed index & 1), the seeds' order being SEEDS2's.
+    // The oracle's mode: 2 + (seed index & 1), the seeds' order being SEEDS2's; the seas of the
+    // blue ice and the iceberg are mode 4.
     const SEEDS2: [&str; 8] = [
         "1",
         "987654321012",
@@ -565,7 +606,11 @@ fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
         "123456789",
     ];
     let index = SEEDS2.iter().position(|s| s == seed).unwrap();
-    let mut world = TestWorld::new(f, 2 + (index & 1) as i32);
+    let sea = matches!(
+        feature,
+        Feature::Terrain(Terrain::BlueIce(_) | Terrain::Iceberg { .. })
+    );
+    let mut world = TestWorld::new(f, if sea { 4 } else { 2 + (index & 1) as i32 });
     let mut random = XoroshiroRandom::new(seed.parse().unwrap());
     let at = origin(pos);
     world.write_zone = ([at.x >> 4, at.z >> 4], 1);
@@ -582,7 +627,12 @@ fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
     let tail = random.next_long();
     let ours = format!(
         "{got}\t{}\t{}\t{tail}",
-        world.log.join(";"),
+        // The oracle leaves the ticks out (they come from block behaviour).
+        (world.log.iter())
+            .filter(|entry| !entry.starts_with("tick"))
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(";"),
         world.marks.join(";")
     );
     let theirs = format!("{result}\t{log}\t{marks}\t{next}");

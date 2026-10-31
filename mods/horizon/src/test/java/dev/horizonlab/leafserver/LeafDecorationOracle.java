@@ -14,8 +14,9 @@
 // (WorldGenRegion needs a ServerLevel). The loop is repeated here because addVanillaDecorations reads the
 // Paper world config. No structures are placed, and the features whose type horizon-server has not ported
 // yet (UNPORTED below, the complement of PORTED) are skipped, which leaves the others unchanged: each feature
-// has its own seeded random. `updateShape` after a tree is the block behaviour port's (WP6): a tree's edge
-// does whatever the real blocks do here, so a chunk where that matters would differ.
+// has its own seeded random. `updateShape` after a tree runs the real blocks' here; horizon-server answers it
+// for plants and vines only (feature/shape.rs), the rest is the block behaviour port's (WP6), so a chunk
+// where another block reacts to a tree's edge would differ.
 // Rows (block ids are Block.getId, runs are id*count in section order y, z, x):
 //   stem <settings> <world preset> <stem> <seed> <biome names...>      possibleBiomes() in the generator's order
 //   chunk <settings> <world preset> <stem> <seed> <cx> <cz> <minY> <height> <placed> <skipped> <note>
@@ -102,7 +103,8 @@ public final class LeafDecorationOracle {
         "BlockColumnFeature", "TreeFeature", "FallenTreeFeature", "RandomSelectorFeature", "SimpleRandomSelectorFeature",
         "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
         "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature",
-        "RandomNeighborSpreadFeature", "VegetationPatchFeature", "WaterloggedVegetationPatchFeature");
+        "RandomNeighborSpreadFeature", "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SnowAndFreezeFeature",
+        "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature");
 
     static boolean unported(PlacedFeature placed) {
         return placed.getFeatures().anyMatch(LeafDecorationOracle::unported);

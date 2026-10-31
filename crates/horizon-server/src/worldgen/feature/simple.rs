@@ -18,6 +18,7 @@ use super::ore::{self, OreConfig};
 use super::patch::VegetationPatch;
 use super::rule_test::RuleTest;
 use super::select::Selector;
+use super::terrain::Terrain;
 use super::tree::{FallenTreeFeature, TreeBlocksCell, TreeFeature};
 use crate::block::BlockState;
 use crate::block::flags::{FLAG_AIR, FLAG_DOUBLE_PLANT, FLAG_MOSSY_CARPET};
@@ -128,12 +129,12 @@ impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
     }
     fn update_shape_at_face(
         &mut self,
-        _: BlockPos,
-        _: Direction,
-        _: i32,
+        pos: BlockPos,
+        direction: Direction,
+        flags: i32,
     ) -> Result<(), WorldError> {
-        // Block behaviour (`updateShape`) is WP6's; nothing reacts to a neighbour yet.
-        Ok(())
+        // Only plants answer yet (`shape`); the rest of `updateShape` is the block behaviour port's.
+        super::shape::update_shape_at_face(self, pos, direction, flags)
     }
     fn store_beehive_occupants(&mut self, _: BlockPos, _: &[i32]) -> Result<(), WorldError> {
         // The proto chunk keeps no block entity data yet (WP6).
@@ -171,6 +172,7 @@ pub enum Feature {
     Select(Selector),
     Misc(Misc),
     Patch(VegetationPatch),
+    Terrain(Terrain),
 }
 
 fn direction(raw: &RawValue) -> Result<Direction, DecodeError> {
@@ -201,6 +203,9 @@ impl Feature {
         }
         if let Some(misc) = Misc::decode(kind, raw, ctx)? {
             return Ok(Some(Self::Misc(misc)));
+        }
+        if let Some(terrain) = Terrain::decode(kind, raw, ctx)? {
+            return Ok(Some(Self::Terrain(terrain)));
         }
         let fields = object(raw)?;
         debug_assert_eq!(type_of(&fields)?, kind);
@@ -272,6 +277,7 @@ impl Feature {
             Self::Select(selector) => selector.place(registry, world, random, origin),
             Self::Misc(misc) => misc.place(world, random, origin),
             Self::Patch(patch) => patch.place(registry, world, random, origin),
+            Self::Terrain(terrain) => terrain.place(registry, world, random, origin),
             Self::Tree(tree) => {
                 let mut nested = |id, w: &mut W, r: &mut R, at: [i32; 3]| {
                     registry.place_configured(id, w, r, BlockPos::new(at[0], at[1], at[2]))
