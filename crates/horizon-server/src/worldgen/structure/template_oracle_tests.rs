@@ -177,6 +177,9 @@ impl PlacementWorld for World<'_> {
 }
 
 impl FeatureWorld for World<'_> {
+    fn has_level_random(&self) -> bool {
+        self.level_random.is_some()
+    }
     fn level_boolean(&mut self) -> Result<bool, WorldError> {
         let random = self.level_random.as_mut();
         random

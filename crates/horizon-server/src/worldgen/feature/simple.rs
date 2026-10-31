@@ -88,6 +88,11 @@ pub trait FeatureWorld: PlacementWorld {
     fn level_int_bound(&mut self, _bound: i32) -> Result<i32, WorldError> {
         Err(WorldError::Unsupported("level random"))
     }
+    /// Whether `WorldGenLevel.getRandom()` answers (taken before a draw where vanilla takes the
+    /// random first and draws later, as `MossyCarpetBlock.placeAt(level, pos, level.getRandom())`).
+    fn has_level_random(&self) -> bool {
+        false
+    }
     /// `WorldGenLevel.getSeed()`: the level's seed (the geode's noise reads it).
     fn world_seed(&self) -> Result<i64, WorldError> {
         Err(WorldError::Unsupported("the level seed"))
@@ -108,6 +113,9 @@ pub trait FeatureWorld: PlacementWorld {
 }
 
 impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
+    fn has_level_random(&self) -> bool {
+        true
+    }
     fn level_boolean(&mut self) -> Result<bool, WorldError> {
         Ok(self.random.next_boolean())
     }
@@ -485,6 +493,10 @@ fn mossy_carpet_place_at<W: FeatureWorld>(
     pos: BlockPos,
     flags: i32,
 ) -> Result<(), ProviderError> {
+    // `level.getRandom()` is an argument: taken before anything is placed.
+    if !world.has_level_random() {
+        return Err(WorldError::Unsupported("level random").into());
+    }
     let blocks = world.blocks();
     let carpet = (blocks.block_by_name("minecraft:pale_moss_carpet"))
         .ok_or(ProviderError::Invalid("no pale moss carpet"))?;

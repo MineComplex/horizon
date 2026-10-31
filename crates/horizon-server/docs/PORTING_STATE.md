@@ -90,14 +90,29 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   piece kinds saved/loaded by piece id (`StructurePiece::Legacy`; ids not ported stay `Saved`). Chests, spawners, minecart chests
   and mobs a placement makes go to `PieceOutput` (no block entities or entities exist yet; `place_start` drops them), as templates'
   do. `DesertPyramidStructure.afterPlace` runs after the pieces. `LeafLegacyStructuresOracle`: 9 structures x 2 seeds, 54 starts,
-  3,275 pieces (saved NBT equal, start tags equal and reloaded), 44 chunk placements (65,192 `setBlock` calls, block entities with
-  loot tables/seeds/spawner entities, entities, both random streams), 0 failures. Open: (1) `StartPlacer` places clones of the
-  region's starts, so what placing changes in a piece (settled `HPos`, `hasPlacedChest`, a buried treasure's box, a spawner placed)
-  is lost between chunks: WP6 must place the starts in the chunks that hold them; (2) `FeatureWorld::level_boolean/level_float`
-  (`WorldGenLevel.getRandom`, the desert pyramid's cellar) default to unsupported: the region world must supply its random;
-  (3) a loaded ocean monument has no rooms: `MonumentBuilding::regenerate` is `regeneratePiecesAfterLoad` and needs the level
-  seed at load; (4) the oracle cannot make a witch, cat or elder guardian (no server), so those entities are not compared;
-  (5) mineshafts read `BiomeTags.MINESHAFT_BLOCKING` and monuments `required_ocean_monument_surrounding` from the structure registry.
+  3,275 pieces (saved NBT equal, start tags equal and reloaded; a reloaded monument's regenerated rooms equal the generated ones),
+  44 chunk placements (65,192 `setBlock` calls, block entities with
+  loot tables/seeds/spawner entities, entities, both random streams), 0 failures. Open: (1) the oracle cannot make a witch, cat
+  or elder guardian (no server), so those entities are not compared; (2) mineshafts read `BiomeTags.MINESHAFT_BLOCKING` and
+  monuments `required_ocean_monument_surrounding` from the structure registry.
+- Live structures (stage 0, WP6 part): FEATURES places the starts the chunk references with the region's random and keeps what
+  placing changes in their pieces. The start is held by its origin chunk (up to 8 chunks away, a read-only snapshot in the step),
+  so the step works on copies and sends back each changed piece, old and new (`start::PieceChange`, `GenerationRegion::
+  defer_piece_changes`, `GenerationResult::piece_changes`); the tick thread applies a change to the origin chunk only if the
+  piece there is still the old one (`ChunkStructures::apply_change`: the first step to finish wins, as the first placement
+  settles a piece in vanilla; steps run one after another give vanilla's result), copying the proto snapshot on write, through
+  the saved `structures` tag for a full chunk, and after the step for a chunk another step is writing. `RegionWorld::random` is
+  `WorldGenRegion.getRandom()` (legacy or xoroshiro root by `legacy_random_source`): desert pyramid cellar, mansion allays,
+  `MossyCarpetBlock.placeAt` (`simple_block`). `StructureStart::load` takes the level seed (monument rooms regenerated).
+  TERRAIN binds `Beardifier.forStructuresInChunk` (`generator/structures.rs::beardifier_for`). `LeafStructureChunksOracle` /
+  `structure_chunks_match_java` (`HORIZON_STRUCTURE_CHUNKS_ORACLE`): 55 cases, 31 overworld structures (villages, mineshafts,
+  shipwrecks, monuments, desert/jungle pyramids, swamp huts, igloos, ruined portals, trial chambers, buried treasure, ocean
+  ruins, outposts, trail ruins, ancient cities, mansions, strongholds, abandoned camps) x 2 seeds, the 2 x 2 chunks at each start
+  through STRUCTURE_STARTS..FEATURES (structures on, 400 chunks of starts per case), 21,120 sections, 736 `structures` tags,
+  26 piece changes carried between chunks, the generation heightmaps and stored biomes: 0 failures. Not structures', counted
+  apart: 13 chunks whose stored biomes differ from Java's at one quart (a BIOMES discrepancy: lush caves, deep dark, snowy vs
+  plain taiga...) and 20 blocks next to them; 3 fence sides (`FenceBlock.updateShape` after a tree beside it: block behaviour).
+  The oracle places template pieces with `setKnownShape(true)` as the other structure oracles do (updateShape not ported).
 - Worldgen WP4a first part (`src/worldgen/{feature,placement}`): `worldgen/feature` (type + raw JSON) and
   `placed_feature` registries, tags, each biome's features per step, the feature sorter, placement
   modifiers (all 18), block predicates, int/height providers, `FeaturePlacer` over a narrow `PlacementWorld`
@@ -193,12 +208,12 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   `LeafChunkGenOracle`: pyramid + generationStatus + 96 chunks (overworld/nether/end x 2 seeds, structures off) equal.
   FEATURES runs the decoration (`generator/decorate.rs` over `apply_biome_decoration`, the generator's `FeatureSorter`
   steps over `possibleBiomes()`, the real survival rules; a feature-order cycle fails the level's start with the biome ids).
-  Its stand-ins: no structure pieces, feature types not ported skipped (`feature::decorate::unported_features`), a feature
+  Its stand-ins: what pieces leave for block entities and entities is dropped, feature types not ported skipped (`feature::decorate::unported_features`), a feature
   error ends that chunk's decoration with a warning. Heightmaps as vanilla reads them: a `full` neighbour answers the `_WG`
   kinds from the final ones (`ImposterProtoChunk.fixType`), a missing one is primed on first read and kept
   (`ProtoChunk::height_or_prime`; primed in a read-only neighbour's snapshot, it is not kept past the step).
   Checked live: `real_binary_session` and `real_binary_dimension_change` on a fresh world, no warnings.
-  Stand-ins: `structures::generate_start` (pieces) is a no-op awaiting WP5; Starlight not
+  Stand-ins: Starlight not
   ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
   priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
 
@@ -266,7 +281,7 @@ Order: 1 first; 2 and 3 can run in parallel; 4 before 5; 6 in pieces any time af
 the plugin API (no plugins for now), datagen-only code in `data/`.
 
 ## Next (stage 0 details)
-WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`; a loaded monument regenerates its rooms with the level seed); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates; BIOMES differs from Java at single quarts in ~1.5% of chunks: `structure_chunks_match_java` lists 13, e.g. seed 12345 chunk (40,-27) quart (162,25,-108) snowy_taiga in Java, taiga here); WP5 rest (ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: flat/debug generators, Starlight (carvers' light sources), block entities and entities from structure pieces.
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

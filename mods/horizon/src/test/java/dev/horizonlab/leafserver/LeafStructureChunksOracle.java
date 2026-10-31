@@ -21,10 +21,13 @@
 //   first), and the features horizon-server has not ported skipped (LeafDecorationOracle's PORTED).
 // Like Leaf's chunks (Object2ObjectArrayMap, LongArraySet), the chunks keep their starts and references in
 // insertion order. As in the other structure oracles, template pieces place with knownShape (block behaviour's
-// updateShape is not ported). Entities are not ported: the fake ServerLevel enables no feature, so EntityType.create
-// makes none (and no finalizeSpawn draws from the region's random; were one made, its draws would not come from it).
+// updateShape is not ported). Entities are made (what pieces draw for them, such as a chest minecart's loot seed, is
+// in the structure's random) but not kept, and what their finalizeSpawn draws from the level's random comes from
+// another random: entities are not ported, and the region random is compared through what pieces and features draw.
 // Rows (block ids are Block.getId, runs are id*count in section order y, z, x):
 //   case <seed> <structure> <start x> <start z> <starts placed in A>
+//   bio <cx> <cz> <name*count...>             the stored biomes of T, quarts in y, z, x order
+//   hm <cx> <cz> <type> <256 first-free heights, z then x>   OCEAN_FLOOR_WG and WORLD_SURFACE_WG of T after TERRAIN
 //   sec <cx> <cz> <index> <runs...>            every section of the chunks of T after A's decoration
 //   struct <cx> <cz> <structures tag, canonical>   chunks with starts or references (packStructureData)
 
@@ -248,10 +251,9 @@ public final class LeafStructureChunksOracle {
             return 1;
         }
 
-        /** No feature enabled: EntityType.create makes no entity (entities are not ported). */
         @Override
         public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
-            return net.minecraft.world.flag.FeatureFlagSet.of();
+            return net.minecraft.world.flag.FeatureFlags.VANILLA_SET;
         }
 
         @Override
@@ -435,6 +437,9 @@ public final class LeafStructureChunksOracle {
                                 return null;
                             }
                         });
+                    }
+                    case "environmentAttributes" -> {
+                        return net.minecraft.world.attribute.EnvironmentAttributeReader.EMPTY;
                     }
                     case "getCurrentDifficultyAt" -> {
                         return new net.minecraft.world.DifficultyInstance(net.minecraft.world.Difficulty.NORMAL, 0L, 0L, 0.0f);
@@ -621,6 +626,10 @@ public final class LeafStructureChunksOracle {
                     BiomeManager.obfuscateSeed(seed));
                 WorldGenLevel global = level(w, null, biomeManager, null);
                 StructureManager manager = new StructureManager(global, new WorldOptions(seed, true, false), null);
+                // Mobs' finalizeSpawn asks the level's structures (cat variants).
+                var managerField = net.minecraft.server.level.ServerLevel.class.getDeclaredField("structureManager");
+                managerField.setAccessible(true);
+                managerField.set(w.server, manager);
                 // STRUCTURE_STARTS: T (x0 - 1 .. x0 + 2) and 8 more.
                 for (int z = z0 - 9; z <= z0 + 10; z++) {
                     for (int x = x0 - 9; x <= x0 + 10; x++) {
@@ -660,6 +669,37 @@ public final class LeafStructureChunksOracle {
                         Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                             Heightmap.Types.OCEAN_FLOOR, Heightmap.Types.WORLD_SURFACE));
                         chunk.setPersistedStatus(ChunkStatus.TERRAIN);
+                    }
+                }
+                // The generation heightmaps after TERRAIN, as FEATURES reads them.
+                StringBuilder heightRows = new StringBuilder();
+                for (int z = z0 - 1; z <= z0 + 2; z++) {
+                    for (int x = x0 - 1; x <= x0 + 2; x++) {
+                        var chunk = w.chunks.get(key(x, z));
+                        // Its stored biomes, quart by quart (y, z, x), as runs of names.
+                        heightRows.append("bio ").append(x).append(' ').append(z);
+                        String last = null;
+                        int count = 0;
+                        for (int qy = MIN_Y >> 2; qy < (MIN_Y + HEIGHT) >> 2; qy++) {
+                            for (int qz = 0; qz < 4; qz++) for (int qx = 0; qx < 4; qx++) {
+                                String name = chunk.getNoiseBiome((x << 2) + qx, qy, (z << 2) + qz).unwrapKey().orElseThrow().identifier().toString();
+                                if (name.equals(last)) {
+                                    count++;
+                                } else {
+                                    if (last != null) heightRows.append(' ').append(last).append('*').append(count);
+                                    last = name;
+                                    count = 1;
+                                }
+                            }
+                        }
+                        heightRows.append(' ').append(last).append('*').append(count).append('\n');
+                        for (var type : List.of(Heightmap.Types.OCEAN_FLOOR_WG, Heightmap.Types.WORLD_SURFACE_WG)) {
+                            heightRows.append("hm ").append(x).append(' ').append(z).append(' ').append(type.getSerializationKey());
+                            for (int zz = 0; zz < 16; zz++) for (int xx = 0; xx < 16; xx++) {
+                                heightRows.append(' ').append(chunk.getHeight(type, xx, zz) + 1);
+                            }
+                            heightRows.append('\n');
+                        }
                     }
                 }
                 int placedStarts = 0;
@@ -725,6 +765,7 @@ public final class LeafStructureChunksOracle {
                 }
                 out.append("case ").append(seed).append(' ').append(target.getKey()).append(' ').append(x0).append(' ').append(z0)
                     .append(' ').append(placedStarts).append('\n');
+                out.append(heightRows);
                 int[] ids = new int[4096];
                 for (int z = z0 - 1; z <= z0 + 2; z++) {
                     for (int x = x0 - 1; x <= x0 + 2; x++) {

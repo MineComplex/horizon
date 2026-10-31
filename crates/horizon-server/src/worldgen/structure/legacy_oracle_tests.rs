@@ -122,6 +122,9 @@ impl FeatureWorld for LegacyWorld<'_> {
     fn store_beehive_occupants(&mut self, pos: BlockPos, ticks: &[i32]) -> Result<(), WorldError> {
         self.inner.store_beehive_occupants(pos, ticks)
     }
+    fn has_level_random(&self) -> bool {
+        true
+    }
     fn level_boolean(&mut self) -> Result<bool, WorldError> {
         Ok(self.level_random.next_boolean())
     }
