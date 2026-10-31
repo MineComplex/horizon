@@ -123,7 +123,14 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   (no `level.dat`) are created from `server.properties` (`level-type` preset, `level-seed`, `generate-structures`);
   `setInitialSpawn` per non-initialized level. Proto chunks saved/loaded (`generator/convert.rs`).
   `LeafChunkGenOracle`: pyramid + generationStatus + 96 chunks (overworld/nether/end x 2 seeds, structures off) equal.
-  Stand-ins: `decorate` (FEATURES) and `structures::generate_start` (pieces) are no-ops awaiting WP4/WP5; Starlight not
+  FEATURES runs the decoration (`generator/decorate.rs` over `apply_biome_decoration`, the generator's `FeatureSorter`
+  steps over `possibleBiomes()`, the real survival rules; a feature-order cycle fails the level's start with the biome ids).
+  Its stand-ins: no structure pieces, feature types not ported skipped (`feature::decorate::unported_features`), a feature
+  error ends that chunk's decoration with a warning. Heightmaps as vanilla reads them: a `full` neighbour answers the `_WG`
+  kinds from the final ones (`ImposterProtoChunk.fixType`), a missing one is primed on first read and kept
+  (`ProtoChunk::height_or_prime`; primed in a read-only neighbour's snapshot, it is not kept past the step).
+  Checked live: `real_binary_session` and `real_binary_dimension_change` on a fresh world, no warnings.
+  Stand-ins: `structures::generate_start` (pieces) is a no-op awaiting WP5; Starlight not
   ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
   priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
 

@@ -143,6 +143,16 @@ fn chunk_generation_matches_java() {
                             blocks: blocks.clone(),
                             flags: flags.clone(),
                             heightmaps: heightmaps.clone().expect("the masks row"),
+                            // The oracle stops before FEATURES: no tags needed.
+                            survival: Arc::new(
+                                crate::block::survival::BlockSurvival::new(
+                                    &blocks,
+                                    &flags,
+                                    &[],
+                                    &[],
+                                )
+                                .expect("the survival rules"),
+                            ),
                         },
                         LevelGeneratorSettings {
                             stem,

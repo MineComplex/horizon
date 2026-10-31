@@ -9,6 +9,7 @@
 //! come with their systems.
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use crate::block::{BlockId, BlockState};
 use crate::core::position::{BlockPos, ChunkPos};
@@ -46,6 +47,9 @@ pub struct ProtoChunk {
     sections: Vec<LevelChunkSection>,
     /// First free heights above the minimum, by `Heightmap as usize`.
     heightmaps: [Option<BitStorage>; 6],
+    /// Heightmaps the chunk lacked, primed when first read through a shared reference
+    /// ([`Self::height_or_prime`]); `heightmaps` wins once it has the kind.
+    lazy_heightmaps: [OnceLock<BitStorage>; 6],
     /// Per section: packed local positions (`x | y << 4 | z << 8`), in order, duplicates kept.
     postprocessing: Vec<Vec<u16>>,
     /// `minecraft:void_air`, what reads outside the height give.
@@ -80,6 +84,7 @@ impl ProtoChunk {
                 .map(|_| LevelChunkSection::empty(factory))
                 .collect(),
             heightmaps: Default::default(),
+            lazy_heightmaps: Default::default(),
             postprocessing: vec![Vec::new(); section_count],
             void_air,
             block_entities: BTreeMap::new(),
@@ -206,6 +211,54 @@ impl ProtoChunk {
     pub fn height_at(&self, kind: Heightmap, x: i32, z: i32) -> Option<i32> {
         let map = self.heightmaps[kind as usize].as_ref()?;
         Some(map.get(column(x, z)) as i32 + self.min_y() - 1)
+    }
+
+    /// `ChunkAccess.getHeight`: a missing heightmap is primed from the blocks as they are now and
+    /// kept (writes of a status from `terrain` on update only the final four, so a primed
+    /// world-generation heightmap stays as it was primed). A `full` chunk is read as
+    /// `ImposterProtoChunk` reads it: the world-generation kinds give the final ones.
+    pub fn height_or_prime(
+        &self,
+        kind: Heightmap,
+        x: i32,
+        z: i32,
+        heightmap_flags: &impl HeightmapFlags,
+    ) -> i32 {
+        let kind = if self.status == ChunkStatus::Full {
+            match kind {
+                Heightmap::WorldSurfaceWg => Heightmap::WorldSurface,
+                Heightmap::OceanFloorWg => Heightmap::OceanFloor,
+                kind => kind,
+            }
+        } else {
+            kind
+        };
+        let map = match &self.heightmaps[kind as usize] {
+            Some(map) => map,
+            None => self.lazy_heightmaps[kind as usize]
+                .get_or_init(|| self.scan_heightmap(kind, heightmap_flags)),
+        };
+        map.get(column(x, z)) as i32 + self.min_y() - 1
+    }
+
+    /// One heightmap as `Heightmap.primeHeightmaps` builds it, without storing it.
+    fn scan_heightmap(&self, kind: Heightmap, heightmap_flags: &impl HeightmapFlags) -> BitStorage {
+        let mut map = BitStorage::new(self.heightmap_bits(), 256);
+        let highest = self.sections.iter().rposition(|s| !s.has_only_air());
+        let top = highest.map_or(self.min_y(), |i| (self.min_section_y + i as i32) << 4) + 16;
+        let min_y = self.min_y();
+        for i in 0..256 {
+            let (x, z) = ((i % 16) as i32, (i / 16) as i32);
+            let found = (min_y..top).rev().find(|&y| {
+                let state = self.block_state(x, y, z);
+                state != BlockState::AIR
+                    && heightmap_flags.heightmap_mask(state) >> kind as u8 & 1 != 0
+            });
+            if let Some(y) = found {
+                map.set(i, (y + 1 - min_y) as u32);
+            }
+        }
+        map
     }
 
     /// The heightmap's raw words (for saving).
@@ -529,6 +582,33 @@ mod tests {
         c.mark_postprocessing(2, 0, 2);
         c.mark_postprocessing(2, 0, 2);
         assert_eq!(c.postprocessing()[4], vec![2 | 2 << 8, 2 | 2 << 8]);
+    }
+
+    #[test]
+    fn missing_heightmaps_are_primed_on_first_read() {
+        let (stone, water) = (BlockState(1), BlockState(2));
+        let mut c = chunk(0, 0);
+        c.set_status(ChunkStatus::Features);
+        c.set_block_state(1, 10, 1, stone, &Flags, &Flags);
+        // Primed from the blocks as they are at the first read, then kept as primed.
+        assert_eq!(c.height_or_prime(Heightmap::OceanFloorWg, 1, 1, &Flags), 10);
+        c.set_block_state(1, 20, 1, stone, &Flags, &Flags);
+        assert_eq!(c.height_or_prime(Heightmap::OceanFloorWg, 1, 1, &Flags), 10);
+        assert_eq!(c.height_or_prime(Heightmap::OceanFloor, 1, 1, &Flags), 20);
+        // A full chunk answers the world generation kinds from the final ones.
+        let mut full = chunk(1, 0);
+        full.set_status(ChunkStatus::Full);
+        full.set_block_state(3, 5, 3, stone, &Flags, &Flags);
+        full.set_block_state(3, 6, 3, water, &Flags, &Flags);
+        assert_eq!(
+            full.height_or_prime(Heightmap::OceanFloorWg, 3, 3, &Flags),
+            5
+        );
+        assert_eq!(
+            full.height_or_prime(Heightmap::WorldSurfaceWg, 3, 3, &Flags),
+            6
+        );
+        assert_eq!(full.heightmap(Heightmap::OceanFloorWg), None);
     }
 
     #[test]

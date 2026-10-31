@@ -149,7 +149,7 @@ fn level_chunk(pos: ChunkPos, status: ChunkStatus) -> LevelChunk {
 fn answer(m: &mut ChunkHolderManager<Fake>, missing: &[ChunkPos]) {
     for pos in std::mem::take(&mut m.storage_mut().loads) {
         let chunk = (!missing.contains(&pos))
-            .then(|| LoadedChunk::Level(level_chunk(pos, ChunkStatus::Full)));
+            .then(|| LoadedChunk::Level(Box::new(level_chunk(pos, ChunkStatus::Full))));
         m.chunk_loaded(pos, chunk);
     }
 }

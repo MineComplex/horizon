@@ -18,7 +18,6 @@ use std::time::{Duration, Instant};
 
 use super::decorate::{NoStructures, apply_biome_decoration};
 use super::sort::StepFeatureData;
-use super::{ConfiguredFeatureId, Feature, FeatureRegistry};
 use crate::block::{BlockId, BlockState};
 use crate::core::position::ChunkPos;
 use crate::registry::{DataPack, Registries, load_tags, registry_dir};
@@ -36,28 +35,6 @@ use crate::worldgen::surface::SurfaceSystem;
 use crate::worldgen::surface::oracle_tests::{BiomeChunks, Stem};
 use crate::worldgen::terrain::NoiseTerrain;
 use crate::worldgen::terrain::oracle_tests::{env_path, expand, load_real};
-
-/// The oracle's `PORTED` (a feature class) over the registry: whether the feature and everything
-/// it places is implemented, and does not place the pale moss patch (not ported).
-fn fully_ported(registry: &FeatureRegistry, id: ConfiguredFeatureId, depth: u32) -> bool {
-    if depth > 8 {
-        return false;
-    }
-    match &registry.configured(id).feature {
-        None => false,
-        Some(Feature::Select(selector)) => selector
-            .placed()
-            .into_iter()
-            .all(|p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
-        Some(Feature::Patch(patch)) => patch
-            .placed()
-            .iter()
-            .all(|&p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
-        Some(Feature::Tree(tree)) => !tree.places_pale_moss(),
-        Some(Feature::FallenTree(tree)) => !tree.places_pale_moss(),
-        Some(_) => true,
-    }
-}
 
 #[test]
 #[ignore = "needs the real 26.3 data and HORIZON_DECORATION_ORACLE (tools/leaf_server/README.md)"]
@@ -251,7 +228,7 @@ fn decoration_matches_java() {
                         survival: rules,
                     };
                     // Skipped on both sides: the types not ported, by the oracle's `PORTED`.
-                    let skipped = skip_unported(registry, &steps);
+                    let skipped = super::decorate::unported_features(registry, &steps);
                     apply_biome_decoration(
                         &mut world,
                         registry,
@@ -317,6 +294,27 @@ fn decoration_matches_java() {
         decorate_time.as_secs_f64() * 1000.0 / f64::from(chunks.max(1))
     );
     println!("chunks by note: {by_note:?}");
+    // Known differences (the user's decision, 2026-10-31: merged, fixed next): a few plants next
+    // to trees, probably `updateShape` after features, which is not ported. Any other failure, or
+    // one of these disappearing (then remove it here), fails the test.
+    const KNOWN: [&str; 3] = [
+        "minecraft:overworld 12345 chunk -75 332 (spread): chunk (-1, 0) block 15 86 7 is 2363 not 0",
+        "minecraft:overworld 12345 chunk -75 332 (spread): chunk (0, 0) block 11 82 9 is 10107 not 2363",
+        "minecraft:large_biomes 12345 chunk 50 -60 (listed): chunk (0, 0) block 4 69 10 is 14773 not 0",
+    ];
+    if only.is_none() {
+        let known: Vec<&str> = KNOWN
+            .iter()
+            .copied()
+            .filter(|k| failures.iter().any(|f| f == k))
+            .collect();
+        assert_eq!(
+            known.len(),
+            KNOWN.len(),
+            "a known difference is gone: {KNOWN:?}"
+        );
+        failures.retain(|f| !KNOWN.contains(&f.as_str()));
+    }
     assert!(
         failures.is_empty(),
         "{} failures, the first:\n{}",
@@ -329,16 +327,4 @@ fn decoration_matches_java() {
             .join("\n")
     );
     assert!(chunks > 0);
-}
-
-/// The placed features of the steps that are not fully ported.
-fn skip_unported(
-    registry: &FeatureRegistry,
-    steps: &[StepFeatureData],
-) -> HashSet<super::PlacedFeatureId> {
-    steps
-        .iter()
-        .flat_map(|step| step.features().iter().copied())
-        .filter(|&p| !fully_ported(registry, registry.placed(p).feature, 0))
-        .collect()
 }

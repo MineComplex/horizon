@@ -1,12 +1,18 @@
 //! The FEATURES step's decoration (`ChunkGenerator.applyBiomeDecoration`): the entry point the
-//! pipeline calls. The decoration driver (structures' pieces placed into the region, then each
-//! biome's placed features per step, with Paper's feature seeds) is being written separately; this
-//! is a no-op until it is wired here.
+//! pipeline calls, over [`crate::worldgen::feature::decorate::apply_biome_decoration`].
+//!
+//! Stand-ins until they are ported: structure pieces are not placed (no structure decorator yet),
+//! feature types not ported are skipped, and a feature that fails (mossy carpet placement) ends
+//! the chunk's decoration with a warning instead of failing the chunk.
 
 use super::LevelGenerator;
+use crate::worldgen::anchor::WorldGenerationContext;
+use crate::worldgen::feature::decorate::{NoStructures, apply_biome_decoration};
+use crate::worldgen::placement::RegionWorld;
+use crate::worldgen::placement::survival::BlockSurvivalRules;
 use crate::worldgen::proto_chunk::GenerationRegion;
 
-/// Why a chunk's decoration failed (a datapack's feature that cannot be placed).
+/// Why a chunk's decoration failed.
 #[derive(Debug, thiserror::Error)]
 #[error("decoration failed: {0}")]
 pub struct DecorateError(pub String);
@@ -22,6 +28,49 @@ pub fn decorate(
     generator: &LevelGenerator,
     region: &mut GenerationRegion<'_>,
 ) -> Result<(), DecorateError> {
-    let _ = (generator, region);
+    let tables = &generator.tables;
+    let settings = generator.settings();
+    let (min_y, height) = (
+        generator.min_section_y * 16,
+        generator.section_count as i32 * 16,
+    );
+    let level = WorldGenerationContext::new(min_y, height, settings.sea_level);
+    // `new WorldGenerationContext(generator, level)`: the level's height clamped to the noise's.
+    let generator_context = WorldGenerationContext::new(
+        min_y.max(settings.noise.min_y),
+        height.min(settings.noise.height),
+        settings.sea_level,
+    );
+    let center = region.center();
+    let mut world = RegionWorld {
+        region,
+        heightmaps: &tables.heightmaps,
+        blocks: &tables.blocks,
+        data: &tables.flags,
+        level,
+        generator: generator_context,
+        zoom: generator.zoom,
+        survival: BlockSurvivalRules {
+            rules: &tables.survival,
+            blocks: &tables.blocks,
+            data: &tables.flags,
+        },
+    };
+    let result = apply_biome_decoration(
+        &mut world,
+        tables.data.features(),
+        &generator.feature_steps,
+        Some(&generator.possible_biomes),
+        generator.seed,
+        &mut NoStructures,
+        |p| generator.unported_features.contains(&p),
+    );
+    if let Err(e) = result {
+        tracing::warn!(
+            "Chunk [{}, {}]: {e}; its decoration stops there",
+            center.x,
+            center.z
+        );
+    }
     Ok(())
 }

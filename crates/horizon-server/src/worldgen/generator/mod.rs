@@ -66,6 +66,13 @@ pub enum GeneratorError {
     Fluids(String),
     #[error("the block table lacks grass, mycelium, dirt or void air")]
     Blocks,
+    /// `FeatureSorter`'s cycle; `sources` are the biome ids its indices point into, which the
+    /// caller names (the message lists biome ids, the user's decision).
+    #[error("feature order cycle among biome sources {:?}", cycle.involved)]
+    FeatureCycle {
+        cycle: crate::worldgen::feature::sort::FeatureCycle,
+        sources: Vec<u32>,
+    },
 }
 
 /// Why a generation step failed for a chunk (Moonrise logs it and the chunk's generation stops).
@@ -90,6 +97,8 @@ pub struct GeneratorTables {
     pub blocks: Arc<BlockStates>,
     pub flags: Arc<BlockStateData>,
     pub heightmaps: Arc<HeightmapTable>,
+    /// The blocks' `canSurvive` rules over the data-pack tags (features' placement checks).
+    pub survival: Arc<crate::block::survival::BlockSurvival>,
 }
 
 /// What one level's generator is made from.
@@ -128,6 +137,10 @@ pub struct LevelGenerator {
     section_count: usize,
     factory: ContainerFactory,
     void_air: BlockState,
+    /// `FeatureSorter.buildFeaturesPerStep` over the biome source's `possibleBiomes()`.
+    feature_steps: Vec<crate::worldgen::feature::sort::StepFeatureData>,
+    /// The placed features whose type is not ported yet: skipped (a stand-in).
+    unported_features: std::collections::HashSet<crate::worldgen::feature::PlacedFeatureId>,
 }
 
 impl std::fmt::Debug for LevelGenerator {
@@ -157,6 +170,15 @@ impl LevelGenerator {
             .map_err(|e| GeneratorError::Density(e.to_string()))?;
         let source = level.stem.biome_source;
         let possible_biomes = BiomeSet::new(source.possible_biomes());
+        let features = tables.data.features();
+        let feature_steps = features
+            .features_per_step(&source.possible_biomes())
+            .map_err(|cycle| GeneratorError::FeatureCycle {
+                cycle,
+                sources: source.possible_biomes(),
+            })?;
+        let unported_features =
+            crate::worldgen::feature::decorate::unported_features(features, &feature_steps);
         let origin = find_spawn_position(&density)
             .map_or(ChunkPos::new(0, 0), |[x, z]| ChunkPos::new(x >> 4, z >> 4));
         let registry = tables.data.structures();
@@ -195,6 +217,8 @@ impl LevelGenerator {
             section_count: level.section_count,
             factory: level.factory,
             void_air,
+            feature_steps,
+            unported_features,
             tables,
         };
         generator.worker()?;

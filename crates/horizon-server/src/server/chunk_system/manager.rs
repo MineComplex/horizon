@@ -82,8 +82,8 @@ pub trait ChunkStorage {
 /// A chunk read from disk.
 #[derive(Debug)]
 pub enum LoadedChunk {
-    Level(LevelChunk),
-    Proto(ProtoChunk, ProtoExtras),
+    Level(Box<LevelChunk>),
+    Proto(Box<ProtoChunk>, Box<ProtoExtras>),
 }
 
 /// Paper's `chunks` world settings that the chunk system reads (`paper-world-defaults.yml`).
@@ -994,13 +994,10 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             return;
         }
         h.chunk = Some(match chunk {
-            Some(LoadedChunk::Level(chunk)) => Held::Level {
-                chunk: Box::new(chunk),
-                view: None,
-            },
+            Some(LoadedChunk::Level(chunk)) => Held::Level { chunk, view: None },
             Some(LoadedChunk::Proto(chunk, extras)) => Held::Proto {
-                chunk: Arc::new(chunk),
-                extras: Box::new(extras),
+                chunk: Arc::new(*chunk),
+                extras,
             },
             None => Held::Proto {
                 chunk: Arc::new(self.storage.empty_chunk(pos)),

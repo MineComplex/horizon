@@ -19,10 +19,6 @@ use crate::worldgen::proto_chunk::{GenerationRegion, OutsideRegion};
 pub enum WorldError {
     #[error(transparent)]
     Outside(#[from] OutsideRegion),
-    /// `ChunkAccess.getHeight` primes a missing heightmap; a region is read-only, so its chunks
-    /// must carry the heightmaps placement asks for.
-    #[error("heightmap {0:?} is not present on the chunk")]
-    NoHeightmap(Heightmap),
     #[error("the world has no {0}")]
     Unsupported(&'static str),
 }
@@ -119,10 +115,7 @@ impl<S: SurvivalRules> PlacementWorld for RegionWorld<'_, '_, S> {
             .chunk(BlockPos::new(x, 0, z).chunk())
             .ok_or(OutsideRegion(BlockPos::new(x, 0, z).chunk()))?;
         // `WorldGenRegion.getHeight` is the chunk's `getHeight` plus one.
-        let top = chunk
-            .height_at(kind, x & 15, z & 15)
-            .ok_or(WorldError::NoHeightmap(kind))?;
-        Ok(top + 1)
+        Ok(chunk.height_or_prime(kind, x & 15, z & 15, self.heightmaps) + 1)
     }
     fn block_state(&self, pos: BlockPos) -> Result<BlockState, WorldError> {
         Ok(self.region.block_state(pos)?)

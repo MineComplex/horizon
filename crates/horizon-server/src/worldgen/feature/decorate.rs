@@ -20,7 +20,9 @@ use crate::core::position::{BlockPos, ChunkPos};
 use crate::util::random::{WorldgenRandom, XoroshiroRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::feature::sort::StepFeatureData;
-use crate::worldgen::feature::{FeatureRegistry, FeatureWorld, PlacedFeatureId};
+use crate::worldgen::feature::{
+    ConfiguredFeatureId, Feature, FeatureRegistry, FeatureWorld, PlacedFeatureId,
+};
 use crate::worldgen::placement::world::SurvivalRules;
 use crate::worldgen::placement::{PlacementWorld, RegionWorld};
 use crate::worldgen::proto_chunk::OutsideRegion;
@@ -221,4 +223,39 @@ pub fn decorate<W: FeatureWorld>(
         }
     }
     Ok(())
+}
+
+/// The placed features of `steps` that place a feature type not ported yet (directly or through a
+/// selector or patch): the decoration skips them until they are (a stand-in; see PORTING_STATE).
+pub fn unported_features(
+    registry: &FeatureRegistry,
+    steps: &[StepFeatureData],
+) -> std::collections::HashSet<PlacedFeatureId> {
+    steps
+        .iter()
+        .flat_map(|step| step.features().iter().copied())
+        .filter(|&p| !fully_ported(registry, registry.placed(p).feature, 0))
+        .collect()
+}
+
+/// Whether the feature and everything it places is implemented, and does not place the pale moss
+/// patch (not ported): the decoration oracle's `PORTED`.
+fn fully_ported(registry: &FeatureRegistry, id: ConfiguredFeatureId, depth: u32) -> bool {
+    if depth > 8 {
+        return false;
+    }
+    match &registry.configured(id).feature {
+        None => false,
+        Some(Feature::Select(selector)) => selector
+            .placed()
+            .into_iter()
+            .all(|p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
+        Some(Feature::Patch(patch)) => patch
+            .placed()
+            .iter()
+            .all(|&p| fully_ported(registry, registry.placed(p).feature, depth + 1)),
+        Some(Feature::Tree(tree)) => !tree.places_pale_moss(),
+        Some(Feature::FallenTree(tree)) => !tree.places_pale_moss(),
+        Some(_) => true,
+    }
 }

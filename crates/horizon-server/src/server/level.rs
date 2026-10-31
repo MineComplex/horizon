@@ -64,7 +64,7 @@ use crate::worldgen::generator::convert::{
     ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
 };
 use crate::worldgen::generator::{
-    GeneratorTables, LevelGenerator, LevelGeneratorSettings, respawn_pos_in_column,
+    GeneratorError, GeneratorTables, LevelGenerator, LevelGeneratorSettings, respawn_pos_in_column,
 };
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
@@ -713,6 +713,41 @@ fn block_tag(tables: &WorldTables, tag: &str) -> HashSet<crate::block::BlockId> 
         .collect()
 }
 
+/// The blocks' `canSurvive` rules over the data-pack block and fluid tags, as registry ids of
+/// the block table and of the fluids `worldgen/placement` names.
+fn block_survival(
+    tables: &WorldTables,
+) -> Result<crate::block::survival::BlockSurvival, crate::block::survival::SurvivalDataError> {
+    let tags = |registry: &str, id: &dyn Fn(&str) -> Option<i32>| -> Vec<(String, Vec<i32>)> {
+        let Some(registry) = tables.registries.builtin(registry) else {
+            return Vec::new();
+        };
+        (registry.tags.0.iter())
+            .map(|(tag, ids)| {
+                let ids = (ids.iter())
+                    .filter_map(|&i| registry.entries.get(i as usize))
+                    .filter_map(|name| id(name))
+                    .collect();
+                (tag.clone(), ids)
+            })
+            .collect()
+    };
+    let block_tags = tags("minecraft:block", &|name| {
+        tables.blocks.block_by_name(name).map(|b| b.0 as i32)
+    });
+    let fluid_tags = tags("minecraft:fluid", &|name| {
+        (crate::worldgen::placement::FLUIDS.iter())
+            .position(|f| *f == name)
+            .map(|i| i as i32)
+    });
+    crate::block::survival::BlockSurvival::new(
+        &tables.blocks,
+        &tables.block_data,
+        &block_tags,
+        &fluid_tags,
+    )
+}
+
 impl Level {
     fn open(
         stem: &Stem,
@@ -910,6 +945,7 @@ impl Level {
                 blocks: tables.blocks.clone(),
                 flags: tables.block_data.clone(),
                 heightmaps: heightmaps.clone(),
+                survival: Arc::new(block_survival(tables).map_err(|e| error(e.to_string()))?),
             },
             LevelGeneratorSettings {
                 stem: noise_stem,
@@ -923,7 +959,12 @@ impl Level {
                 factory: ContainerFactory::new(tables.blocks.state_count(), biome_count, plains),
             },
         )
-        .map_err(|e| error(e.to_string()))?;
+        .map_err(|e| match e {
+            GeneratorError::FeatureCycle { cycle, sources } => {
+                error(cycle.message(|i| biomes.name(sources[i]).unwrap_or("?").to_owned()))
+            }
+            e => error(e.to_string()),
+        })?;
         Ok(Some(Arc::new(generator)))
     }
 
@@ -970,17 +1011,19 @@ impl Level {
             };
             let chunk = match result {
                 Ok(Some(data)) if data.status == ChunkStatus::Full => {
-                    Some(LoadedChunk::Level(LevelChunk::from_data(
+                    Some(LoadedChunk::Level(Box::new(LevelChunk::from_data(
                         *data,
                         self.section_count,
                         &self.tables.factory,
                         &*self.heightmaps,
-                    )))
+                    ))))
                 }
                 Ok(Some(data)) => {
                     let storage = self.chunks.storage();
                     match proto_from_data(*data, storage.shape(), storage.structures()) {
-                        Ok((chunk, extras)) => Some(LoadedChunk::Proto(chunk, extras)),
+                        Ok((chunk, extras)) => {
+                            Some(LoadedChunk::Proto(Box::new(chunk), Box::new(extras)))
+                        }
                         Err(e) => {
                             error!(
                                 "Failed to parse chunk data for task: [{}, {}] in {}, chunk data will be lost: {e}",
