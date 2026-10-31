@@ -54,24 +54,24 @@ fn mix(h: i32) -> i32 {
     h ^ ((h as u32) >> 13) as i32
 }
 
-fn ground(x: i32, z: i32) -> i32 {
+pub(super) fn ground(x: i32, z: i32) -> i32 {
     58 + mix(x.wrapping_mul(31) ^ z.wrapping_mul(17) ^ 0x5bd1).rem_euclid(8)
 }
 
-struct Fixture {
-    blocks: BlockStates,
-    data: BlockStateData,
-    block_tags: Vec<(String, Vec<i32>)>,
-    lists: ProcessorLists,
-    templates: StructureTemplates,
-    deep: Vec<BlockState>,
-    top: Vec<BlockState>,
-    water: BlockState,
-    air: BlockState,
+pub(super) struct Fixture {
+    pub(super) blocks: BlockStates,
+    pub(super) data: BlockStateData,
+    pub(super) block_tags: Vec<(String, Vec<i32>)>,
+    pub(super) lists: ProcessorLists,
+    pub(super) templates: StructureTemplates,
+    pub(super) deep: Vec<BlockState>,
+    pub(super) top: Vec<BlockState>,
+    pub(super) water: BlockState,
+    pub(super) air: BlockState,
 }
 
 impl Fixture {
-    fn load() -> Self {
+    pub(super) fn load() -> Self {
         let var =
             |name: &str| std::env::var_os(name).unwrap_or_else(|| panic!("{name} is not set"));
         let mut jar = VanillaJar::open(var("HORIZON_VANILLA_JAR").as_ref()).expect("the 26.3 jar");
@@ -134,11 +134,11 @@ impl Fixture {
     }
 }
 
-struct World<'a> {
-    f: &'a Fixture,
-    writes: HashMap<BlockPos, BlockState>,
-    sets: Vec<String>,
-    ticks: Vec<String>,
+pub(super) struct World<'a> {
+    pub(super) f: &'a Fixture,
+    pub(super) writes: HashMap<BlockPos, BlockState>,
+    pub(super) sets: Vec<String>,
+    pub(super) ticks: Vec<String>,
 }
 
 impl PlacementWorld for World<'_> {

@@ -56,6 +56,7 @@ fn registry(structures: &[(&str, String)], sets: &[(&str, String)]) -> Structure
         structures,
         sets,
         tags: Vec::new(),
+        ..StructureRegistry::default()
     }
 }
 
@@ -684,13 +685,13 @@ fn find_biome_horizontal_picks_like_vanilla() {
     assert_eq!(random.next_int(), LegacyRandom::new(1).next_int());
 }
 
-fn piece(bb: [i32; 6]) -> Compound {
-    Compound::from([
+fn piece(bb: [i32; 6]) -> super::start::StructurePiece {
+    super::start::StructurePiece::Saved(Compound::from([
         ("id".into(), Tag::String("minecraft:btp".into())),
         ("BB".into(), Tag::IntArray(bb.to_vec())),
         ("O".into(), Tag::Int(-1)),
         ("GD".into(), Tag::Int(0)),
-    ])
+    ]))
 }
 
 #[test]

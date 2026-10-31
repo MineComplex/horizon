@@ -421,7 +421,7 @@ impl<'g> GenerationWorker<'g> {
             | ChunkStatus::Spawn => {}
             ChunkStatus::StructureStarts => {
                 if generator.generate_structures {
-                    structures::create_structures(generator, region.chunk_mut(center)?);
+                    structures::create_structures(self, region.chunk_mut(center)?);
                 }
             }
             ChunkStatus::StructureReferences => structures::create_references_in(region)?,
