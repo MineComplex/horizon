@@ -223,6 +223,31 @@ impl FeatureRegistry {
             })
     }
 
+    /// `placeWithBiomeCheck` for a feature the generator's settings list for the only biome the
+    /// chunk has (a flat generator's, whose lakes are not in the biome's own lists): the biome
+    /// filters pass, nothing else differs (they draw no random).
+    pub fn place_placed_listed<W: FeatureWorld, R: RandomSource>(
+        &self,
+        id: PlacedFeatureId,
+        world: &mut W,
+        random: &mut R,
+        origin: BlockPos,
+    ) -> Result<bool, ProviderError> {
+        let placed = self.placed(id);
+        let modifiers: Vec<PlacementModifier> = (placed.placement.iter())
+            .filter(|m| !matches!(m, PlacementModifier::Biome))
+            .cloned()
+            .collect();
+        FeaturePlacer::default()
+            .place_chain(self, &modifiers, None, world, random, origin, |w, r, at| {
+                self.place_configured(placed.feature, w, r, at)
+            })
+            .map_err(|e| match e {
+                PlaceError::Placement(e) => placement_error(e),
+                PlaceError::Feature(e) => e,
+            })
+    }
+
     /// Gives the fossils their templates and processor lists, which load after the registries.
     pub fn attach_templates(
         &mut self,

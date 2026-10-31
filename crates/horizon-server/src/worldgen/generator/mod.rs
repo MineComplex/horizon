@@ -17,17 +17,23 @@
 //! `light` with `isLightCorrect` false, as Moonrise leaves a chunk it did not light, and clients
 //! get no light data), flat and debug generators, old-world blending and below-zero retrogen.
 
+pub mod any;
 pub mod convert;
 pub mod decorate;
+pub mod fixed;
+pub mod flat_settings;
 pub mod legacy_structures;
 pub mod pyramid;
 pub mod structures;
 
 #[cfg(test)]
+mod fixed_tests;
+#[cfg(test)]
 mod oracle_tests;
 
 use std::sync::Arc;
 
+pub use any::{ChunkGenerator, ChunkWorker, SharedGenerator};
 pub use decorate::decorate;
 
 use crate::block::flags::BlockStateData;

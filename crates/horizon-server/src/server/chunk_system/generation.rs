@@ -18,7 +18,7 @@ use std::time::Instant;
 
 use crate::core::position::ChunkPos;
 use crate::world::chunk::ChunkStatus;
-use crate::worldgen::generator::{GenerationWorker, LevelGenerator};
+use crate::worldgen::generator::{ChunkGenerator, ChunkWorker};
 use crate::worldgen::proto_chunk::{GenerationRegion, ProtoChunk, RegionChunk};
 
 /// One generation step for a worker.
@@ -46,7 +46,7 @@ pub struct GenerationResult {
 }
 
 /// `ChunkUpgradeGenericStatusTask.run` on a worker: the region built from the job, the step run.
-pub fn execute(worker: &mut GenerationWorker<'_>, job: GenerationJob) -> GenerationResult {
+pub fn execute(worker: &mut ChunkWorker<'_>, job: GenerationJob) -> GenerationResult {
     let start = Instant::now();
     let GenerationJob {
         pos,
@@ -109,7 +109,7 @@ pub struct GenerationPool {
 impl GenerationPool {
     /// `threads` workers for `generator`, answering on `results`.
     pub fn spawn(
-        generator: Arc<LevelGenerator>,
+        generator: Arc<ChunkGenerator>,
         threads: usize,
         results: Sender<GenerationResult>,
         name: &str,
@@ -155,7 +155,7 @@ impl Drop for GenerationPool {
     }
 }
 
-fn work(generator: &LevelGenerator, queue: &Queue, results: &Sender<GenerationResult>) {
+fn work(generator: &ChunkGenerator, queue: &Queue, results: &Sender<GenerationResult>) {
     let mut worker = match generator.worker() {
         Ok(worker) => Some(worker),
         Err(e) => {

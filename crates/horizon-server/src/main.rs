@@ -203,6 +203,7 @@ fn main() -> std::process::ExitCode {
             generate_structures: properties.generate_structures,
             end_void_rings: config.yaml.purpur.generate_end_void_rings,
             spigot: Some(&config.yaml.spigot),
+            generator_settings: Some(&properties.generator_settings),
         },
     };
     let _ = language::install(config.language);

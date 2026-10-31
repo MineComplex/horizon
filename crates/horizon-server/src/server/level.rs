@@ -16,9 +16,9 @@
 //! workers run the status pipeline's steps (`worldgen::generator`), both handing their answers back
 //! as messages, which [`Level::tick_io`] drains at the start of each tick. Chunks are saved when
 //! unloaded and by autosave when changed, and all of them on stop. A level whose stem is a
-//! `minecraft:noise` generator generates the chunks its region files do not have; the flat and
-//! debug generators are not ported: there such a chunk never finishes (logged once per level)
-//! and is never sent.
+//! `minecraft:noise`, `minecraft:flat` or `minecraft:debug` generator generates the chunks its
+//! region files do not have; a level with another generator (a datapack's) never finishes such a
+//! chunk (logged once per level) and never sends it.
 //!
 //! **Blocks.** A [`Level`] is the `world::block_update::BlockLevel` the block-change path and the
 //! fluids run on: `setBlock` writes its loaded chunks (heightmaps, unsaved), its neighbour updater
@@ -75,8 +75,11 @@ use crate::worldgen::data::WorldgenData;
 use crate::worldgen::generator::convert::{
     ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
 };
+use crate::worldgen::generator::fixed::{FixedGenerator, FixedGeneratorSettings, FixedKind};
+use crate::worldgen::generator::flat_settings::{FlatLookup, FlatSettings};
 use crate::worldgen::generator::{
-    GeneratorError, GeneratorTables, LevelGenerator, LevelGeneratorSettings, respawn_pos_in_column,
+    ChunkGenerator, GeneratorError, GeneratorTables, LevelGenerator, LevelGeneratorSettings,
+    respawn_pos_in_column,
 };
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
@@ -200,9 +203,25 @@ fn new_world_gen_settings(
         find("minecraft:normal")
     })?;
     let preset: serde_json::Value = serde_json::from_str(raw.get()).ok()?;
-    let Tag::Compound(dimensions) = json_to_nbt(preset.get("dimensions")?) else {
+    let Tag::Compound(mut dimensions) = json_to_nbt(preset.get("dimensions")?) else {
         return None;
     };
+    // `worldPreset.is(WorldPresets.FLAT)`: the overworld's generator is replaced by the parsed
+    // `generator-settings` (a parse that fails is logged and keeps the preset's).
+    if name == "minecraft:flat"
+        && let Some(settings) = generation.generator_settings
+    {
+        match flat_settings_tag(settings, tables) {
+            Ok(settings) => {
+                if let Some(Tag::Compound(overworld)) = dimensions.get_mut(&OVERWORLD.into())
+                    && let Some(Tag::Compound(generator)) = overworld.get_mut(&"generator".into())
+                {
+                    generator.insert("settings".into(), settings);
+                }
+            }
+            Err(message) => error!("{message}"),
+        }
+    }
     Some(WorldGenSettings {
         seed: generation.level_seed.unwrap_or_else(rand::random),
         generate_structures: generation.generate_structures,
@@ -210,6 +229,31 @@ fn new_world_gen_settings(
         legacy_custom_options: None,
         dimensions,
     })
+}
+
+/// `FlatLevelGeneratorSettings.CODEC` over `generator-settings`, written as a level saves it.
+fn flat_settings_tag(
+    settings: &serde_json::Map<String, serde_json::Value>,
+    tables: &WorldTables,
+) -> Result<Tag, String> {
+    let worldgen = tables.worldgen.as_ref().ok_or("no worldgen data")?;
+    let biome_registry = tables
+        .registries
+        .synced("minecraft:worldgen/biome")
+        .ok_or("the registries have no minecraft:worldgen/biome")?;
+    let biomes = crate::worldgen::biome::codec::BiomeIds::new(biome_registry);
+    let lookup = FlatLookup {
+        biomes: &biomes,
+        blocks: &tables.blocks,
+        structures: worldgen.data.structures(),
+    };
+    let value = serde_json::Value::Object(settings.clone());
+    let flat = FlatSettings::decode(&value, &lookup).map_err(|e| e.to_string())?;
+    Ok(json_to_nbt(&flat.to_json(
+        &tables.blocks,
+        &biomes,
+        worldgen.data.structures(),
+    )))
 }
 
 /// A world preset's JSON as `WorldGenSettings.CODEC` writes it in NBT (strings, compounds,
@@ -281,6 +325,8 @@ pub struct GenerationSettings<'a> {
     pub end_void_rings: bool,
     /// `spigot.yml`'s structure seeds (`None`: the jar's salts).
     pub spigot: Option<&'a SpigotConfig>,
+    /// `generator-settings` (a flat level type reads them as `FlatLevelGeneratorSettings`).
+    pub generator_settings: Option<&'a serde_json::Map<String, serde_json::Value>>,
 }
 
 impl Default for GenerationSettings<'_> {
@@ -291,6 +337,7 @@ impl Default for GenerationSettings<'_> {
             generate_structures: true,
             end_void_rings: false,
             spigot: None,
+            generator_settings: None,
         }
     }
 }
@@ -686,7 +733,7 @@ impl ChunkStorage for LevelChunks {
                 if !std::mem::replace(&mut self.refusal_logged, true) {
                     warn!(
                         "Chunk [{}, {}] of {} is not on disk, and this level's generator is not \
-                         ported (flat and debug worlds): it is not sent (further chunks are not logged)",
+                         ported: it is not sent (further chunks are not logged)",
                         job.pos.x, job.pos.z, self.dimension
                     );
                 }
@@ -756,7 +803,7 @@ pub struct Level {
     /// The chunk holders, over the region I/O and generation workers.
     pub chunks: ChunkHolderManager<LevelChunks>,
     /// The level's generator (`None`: its stem's generator is not ported).
-    pub generator: Option<Arc<LevelGenerator>>,
+    pub generator: Option<Arc<ChunkGenerator>>,
     io_events: Receiver<ChunkIoEvent>,
     gen_events: Receiver<GenerationResult>,
     tables: Arc<CodecTables<BlockStateData>>,
@@ -1036,7 +1083,7 @@ impl Level {
         (settings, paper): (&WorldSettings<'_>, &PaperWorldSettings),
         tables: &WorldTables,
         heightmaps: &Arc<HeightmapTable>,
-    ) -> Result<Option<Arc<LevelGenerator>>, WorldError> {
+    ) -> Result<Option<Arc<ChunkGenerator>>, WorldError> {
         let (Some(worldgen), Some(generator)) = (&tables.worldgen, &stem.generator) else {
             return Ok(None);
         };
@@ -1051,6 +1098,19 @@ impl Level {
             },
             _ => String::new(),
         };
+        if kind == "minecraft:flat" || kind == "minecraft:debug" {
+            return Self::fixed_generator(
+                &kind,
+                generator,
+                (stem, world_name),
+                (seed, generate_structures),
+                (min_y, height, biome_count, plains),
+                settings,
+                tables,
+                heightmaps,
+            )
+            .map(Some);
+        }
         if kind != "minecraft:noise" {
             warn!(
                 "Level {world_name}: the {kind} generator is not ported; its chunks are not generated"
@@ -1096,7 +1156,86 @@ impl Level {
             }
             e => error(e.to_string()),
         })?;
-        Ok(Some(Arc::new(generator)))
+        Ok(Some(Arc::new(generator.into())))
+    }
+
+    /// `FlatLevelSource` (its saved `settings`) or `DebugLevelSource` (over plains).
+    #[allow(clippy::too_many_arguments)]
+    fn fixed_generator(
+        kind: &str,
+        generator: &Tag,
+        (stem, world_name): (&Stem, &str),
+        (seed, generate_structures): (i64, bool),
+        (min_y, height, biome_count, plains): (i32, i32, u32, u32),
+        settings: &WorldSettings<'_>,
+        tables: &WorldTables,
+        heightmaps: &Arc<HeightmapTable>,
+    ) -> Result<Arc<ChunkGenerator>, WorldError> {
+        let error = |message: String| WorldError::Generator {
+            level: world_name.to_owned(),
+            message,
+        };
+        let worldgen = tables
+            .worldgen
+            .as_ref()
+            .ok_or_else(|| error("no worldgen data".into()))?;
+        let biome_registry = tables
+            .registries
+            .synced("minecraft:worldgen/biome")
+            .ok_or_else(|| WorldError::Registry("minecraft:worldgen/biome".into()))?;
+        let biomes = crate::worldgen::biome::codec::BiomeIds::new(biome_registry);
+        let (kind, biome) = if kind == "minecraft:debug" {
+            (FixedKind::Debug, plains)
+        } else {
+            let json = match generator {
+                Tag::Compound(g) => g
+                    .get(&"settings".into())
+                    .map(crate::registry::nbt_json::nbt_to_json)
+                    .unwrap_or(serde_json::Value::Null),
+                _ => serde_json::Value::Null,
+            };
+            let lookup = FlatLookup {
+                biomes: &biomes,
+                blocks: &tables.blocks,
+                structures: worldgen.data.structures(),
+            };
+            let flat = FlatSettings::decode(&json, &lookup).map_err(|e| error(e.to_string()))?;
+            let biome = flat.biome;
+            (FixedKind::Flat(flat), biome)
+        };
+        let spigot_seeds = match settings.generation.spigot {
+            Some(spigot) => spigot
+                .world_seeds(&stem.key)
+                .map_err(|e| error(e.to_string()))?,
+            None => Default::default(),
+        };
+        let generator = FixedGenerator::new(
+            GeneratorTables {
+                data: worldgen.data.clone(),
+                blocks: tables.blocks.clone(),
+                flags: tables.block_data.clone(),
+                heightmaps: heightmaps.clone(),
+                survival: Arc::new(block_survival(tables).map_err(|e| error(e.to_string()))?),
+            },
+            FixedGeneratorSettings {
+                kind,
+                biome,
+                biome_is_void: biomes.name(biome) == Some("minecraft:the_void"),
+                seed,
+                generate_structures,
+                spigot_seeds,
+                min_section_y: min_y >> 4,
+                section_count: (height / 16) as usize,
+                factory: ContainerFactory::new(tables.blocks.state_count(), biome_count, plains),
+            },
+        )
+        .map_err(|e| match e {
+            GeneratorError::FeatureCycle { cycle, sources } => {
+                error(cycle.message(|i| biomes.name(sources[i]).unwrap_or("?").to_owned()))
+            }
+            e => error(e.to_string()),
+        })?;
+        Ok(Arc::new(generator.into()))
     }
 
     /// `SavedDataStorage.saveAndJoin` for what changed: the overrides, the border and the clocks.
