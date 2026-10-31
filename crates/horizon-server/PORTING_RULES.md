@@ -218,6 +218,37 @@ Multiple block-state registries.
 Prefer a single well-defined implementation per responsibility.
 Refactor callers to use shared native Rust components
 
+### 17 Agent Workflow
+
+Goal: minimize total input and output tokens across the whole agent workflow, not merely the main
+agent's context. Prefer focused execution, shared project documentation and efficient handoffs over large
+agent teams repeatedly reading the same codebase.
+
+- **Shared discovery once.** Keep `docs/PORTING_STATE.md` current (architecture decisions, completed
+  migrations, reusable Rust crates, unresolved issues, next tasks); agents read it instead of re-analysing
+  the repository.
+- **Delegate narrowly.** A subagent gets only its task, relevant paths, required interfaces, constraints and
+  acceptance criteria — never the full conversation history.
+- **Models.** Haiku: file discovery, simple searches, dependency inventory. Sonnet: routine implementation,
+  migration and testing. Opus: complex architecture, unsafe Rust, ownership design, difficult bugs.
+- **Limit parallelism.** Prefer 2–3 focused subagents for independent tasks; none for trivial work; no
+  agents that only summarize, supervise or relay another agent's work.
+- **Do not duplicate implementation work.** Assign distinct modules; avoid concurrent edits to the same files.
+- **Read and print little.** Search symbols and paths before opening large files; read only relevant
+  ranges; never dump Java source trees, generated files, Cargo logs or full diffs into context — save large
+  outputs to files and inspect the relevant sections.
+- **Keep contexts focused.** Compact long sessions after milestones; start fresh contexts for unrelated
+  tasks, keeping essential decisions in project files.
+- **Maintain correctness.** Never omit necessary testing, source inspection or compatibility validation
+  solely to reduce tokens.
+
+Every subagent returns a concise report, without narration or source listings:
+1. Task completed
+2. Files changed
+3. Important architectural decisions
+4. Tests executed and results
+5. Remaining blockers
+
 ## Final Instructions
 
 We are building a fully native Minecraft server in Rust. We are NOT building a Java-to-Rust compatibility
