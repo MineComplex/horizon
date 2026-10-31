@@ -168,6 +168,14 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   run, 13 codec cases, equal; Moonrise's dirty flag derived from sources; ties between containers unpacked from disk break
   by position then chunk (vanilla's order there depends on a hash map). Checked live: two runs of the release binary on one
   fresh world (save, reload). Open: call the runner, per-world `max-block-ticks`/`max-fluid-ticks`, debug-world skip.
+- Commands (`src/command/exec.rs`, `src/server/commands/`): vanilla's executor (frames, forks, limits at the 65,536 defaults
+  until game rules exist, `ResultCallback` enum) over the tree's key and `&mut Server`; `CommandSource` as plain data (console:
+  `System chat:` feedback, ops broadcast). Ported: `difficulty`, `list`, `seed`, `tick`, `time`, `weather`, `op`, `deop`,
+  `save-all`/`save-off`/`save-on`, `stop`, `whitelist`; commands packet per op level at join and on `/op`/`/deop`.
+  `LeafCommandsOracle`: 583 rows equal (parse results/errors, usage, packet bytes levels 0-4, rendering); command bodies derived
+  from sources. Stand-ins: bare `@a/@p/@r` only; no `usercache.json`; weather not ticked or saved; `save-off` only stops the
+  periodic `level.dat` save; `help`/`say`/`defaultgamemode` not in the final sources. Left: `/time of`, timeline queries, tab
+  completion, selector options.
 - Paper world settings per level (`server/config::load_paper_world`, `level::PaperWorld`): each level creates/reads
   `<dimension folder>/paper-world.yml` as it opens (`createWorldConfig`: new file = Paper's per-world header + `_version`,
   a file without `_version` warned about and given it, saved with its own values only) and reads `chunks.*` and
