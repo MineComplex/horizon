@@ -21,7 +21,7 @@ use crate::world::chunk::{
 };
 use crate::world::level_chunk::{HeightmapFlags, heightmaps_after};
 use crate::world::ticks::{ProtoChunkTicks, TickPriority};
-use crate::worldgen::structure::start::ChunkStructures;
+use crate::worldgen::structure::start::{ChunkStructures, PieceChange};
 
 /// What a scheduled tick will tick.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -415,6 +415,9 @@ pub struct GenerationRegion<'a> {
     center: ChunkPos,
     radius: i32,
     chunks: Vec<RegionChunk<'a>>,
+    /// What the step's structure placement changed in starts held by the region's chunks, for
+    /// the chunk system to apply to them once the step is done ([`PieceChange`]).
+    piece_changes: Vec<PieceChange>,
 }
 
 /// A region access outside its chunks, or a write outside its write radius: vanilla logs it
@@ -443,11 +446,22 @@ impl<'a> GenerationRegion<'a> {
             center,
             radius,
             chunks,
+            piece_changes: Vec::new(),
         }
     }
 
     pub fn center(&self) -> ChunkPos {
         self.center
+    }
+
+    /// Records piece changes for the chunks holding their starts (see [`PieceChange`]).
+    pub fn defer_piece_changes(&mut self, changes: impl IntoIterator<Item = PieceChange>) {
+        self.piece_changes.extend(changes);
+    }
+
+    /// The piece changes the step made, in order.
+    pub fn take_piece_changes(&mut self) -> Vec<PieceChange> {
+        std::mem::take(&mut self.piece_changes)
     }
 
     fn slot(&self, pos: ChunkPos) -> Option<usize> {

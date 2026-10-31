@@ -11,6 +11,7 @@ use crate::worldgen::anchor::WorldGenerationContext;
 use crate::worldgen::feature::decorate::apply_biome_decoration;
 use crate::worldgen::placement::RegionWorld;
 use crate::worldgen::placement::survival::BlockSurvivalRules;
+use crate::worldgen::placement::world::RegionRandom;
 use crate::worldgen::proto_chunk::GenerationRegion;
 use crate::worldgen::structure::piece_place::{PieceTables, StartPlacer, writable_area};
 
@@ -80,6 +81,7 @@ pub fn decorate(
             data: &tables.flags,
         },
         seed: generator.seed,
+        random: RegionRandom::new(generator.seed, settings.legacy_random_source, center),
     };
     let result = apply_biome_decoration(
         &mut world,
@@ -97,5 +99,8 @@ pub fn decorate(
             center.z
         );
     }
+    // The pieces the starts' placement changed go back to the chunks holding the starts.
+    let changes = structures.finish();
+    region.defer_piece_changes(changes);
     Ok(())
 }

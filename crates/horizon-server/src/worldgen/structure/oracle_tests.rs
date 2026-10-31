@@ -139,7 +139,7 @@ fn structure_placement_matches_java() {
                 let Tag::Compound(input) = parse_snbt(input).unwrap().0 else {
                     panic!("{line}");
                 };
-                let start = StructureStart::load(registry, &input).unwrap();
+                let start = StructureStart::load(registry, &input, 0).unwrap();
                 match output {
                     "null" => assert!(start.is_none(), "{line}"),
                     output => {

@@ -362,8 +362,14 @@ fn legacy_structures_match_java() {
                         ));
                     }
                     // Loading the tag back and saving it again gives the same tag.
-                    match StructureStart::load(registry, &saved) {
+                    match StructureStart::load(registry, &saved, seed) {
                         Ok(Some(loaded)) => {
+                            // A monument's rooms are not saved: loading makes them again
+                            // (`regeneratePiecesAfterLoad`), equal to the generated ones.
+                            if name == "minecraft:monument" && loaded.children != start.children {
+                                failures
+                                    .push(format!("{label}: the loaded monument's rooms differ"));
+                            }
                             let again = canonical_string(&Tag::Compound(
                                 loaded.create_tag(registry, chunk),
                             ));
@@ -402,6 +408,7 @@ fn legacy_structures_match_java() {
                         writes: HashMap::new(),
                         sets: Vec::new(),
                         ticks: Vec::new(),
+                        level_random: None,
                     },
                     level_random: LegacyRandom::new(seed ^ target.pack()),
                 };

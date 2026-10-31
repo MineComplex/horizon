@@ -340,7 +340,7 @@ fn jigsaw_matches_java() {
                     // elements, as vanilla does: equal unless the expansion hack grew them).
                     // Elements are compared by what they save: a pool element listed by several
                     // pools has one copy per pool, and loading finds the first.
-                    let loaded = StructureStart::load(registry, &saved).unwrap().unwrap();
+                    let loaded = StructureStart::load(registry, &saved, 0).unwrap().unwrap();
                     let same = |a: &StructurePiece, b: &StructurePiece| match (a, b) {
                         (StructurePiece::Jigsaw(a), StructurePiece::Jigsaw(b)) => {
                             registry.pools.element_tag(a.element)
@@ -409,6 +409,7 @@ fn jigsaw_matches_java() {
                     writes: HashMap::new(),
                     sets: Vec::new(),
                     ticks: Vec::new(),
+                    level_random: None,
                 };
                 let mut random = WorldgenRandom::new(XoroshiroRandom::new(seed ^ target.pack()));
                 let reference = reference_of(start).unwrap();

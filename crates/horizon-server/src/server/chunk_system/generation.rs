@@ -20,6 +20,7 @@ use crate::core::position::ChunkPos;
 use crate::world::chunk::ChunkStatus;
 use crate::worldgen::generator::{GenerationWorker, LevelGenerator};
 use crate::worldgen::proto_chunk::{GenerationRegion, ProtoChunk, RegionChunk};
+use crate::worldgen::structure::start::PieceChange;
 
 /// One generation step for a worker.
 #[derive(Debug)]
@@ -42,6 +43,9 @@ pub struct GenerationResult {
     /// The written chunks (each the worker's copy), or why the step failed (`None`: the level
     /// cannot generate, already logged).
     pub result: Result<Vec<ProtoChunk>, Option<String>>,
+    /// What the step's structure placement changed in starts held by chunks of its region
+    /// (written or not), for the tick thread to apply to them.
+    pub piece_changes: Vec<PieceChange>,
     pub nanos: u64,
 }
 
@@ -64,6 +68,7 @@ pub fn execute(worker: &mut GenerationWorker<'_>, job: GenerationJob) -> Generat
             shared.push(Some(chunk));
         }
     }
+    let piece_changes;
     let result = {
         let mut owned_iter = owned.iter_mut();
         let region_chunks: Vec<RegionChunk<'_>> = shared
@@ -74,14 +79,17 @@ pub fn execute(worker: &mut GenerationWorker<'_>, job: GenerationJob) -> Generat
             })
             .collect();
         let mut region = GenerationRegion::new(pos, radius, region_chunks);
-        worker
+        let result = worker
             .run(status, &mut region)
-            .map_err(|e| Some(e.to_string()))
+            .map_err(|e| Some(e.to_string()));
+        piece_changes = region.take_piece_changes();
+        result
     };
     GenerationResult {
         pos,
         status,
         result: result.map(|()| owned),
+        piece_changes,
         nanos: u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX),
     }
 }
@@ -182,6 +190,7 @@ fn work(generator: &LevelGenerator, queue: &Queue, results: &Sender<GenerationRe
                 pos: job.pos,
                 status: job.status,
                 result: Err(Some("no generation worker".into())),
+                piece_changes: Vec::new(),
                 nanos: 0,
             },
         };

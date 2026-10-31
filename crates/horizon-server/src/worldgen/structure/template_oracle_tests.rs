@@ -29,7 +29,7 @@ use crate::core::position::BlockPos;
 use crate::nbt::{JavaString, Tag};
 use crate::registry::{DataPack, load_tags, registry_dir};
 use crate::server::vanilla_jar::VanillaJar;
-use crate::util::random::{LegacyRandom, RandomSource};
+use crate::util::random::{LegacyRandom, RandomSource, XoroshiroRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::anchor::WorldGenerationContext;
 use crate::worldgen::density::StructureBounds;
@@ -139,6 +139,8 @@ pub(super) struct World<'a> {
     pub(super) writes: HashMap<BlockPos, BlockState>,
     pub(super) sets: Vec<String>,
     pub(super) ticks: Vec<String>,
+    /// `level.getRandom()`, for the oracles that give one.
+    pub(super) level_random: Option<XoroshiroRandom>,
 }
 
 impl PlacementWorld for World<'_> {
@@ -175,6 +177,25 @@ impl PlacementWorld for World<'_> {
 }
 
 impl FeatureWorld for World<'_> {
+    fn level_boolean(&mut self) -> Result<bool, WorldError> {
+        let random = self.level_random.as_mut();
+        random
+            .map(|r| r.next_boolean())
+            .ok_or(WorldError::Unsupported("level random"))
+    }
+    fn level_float(&mut self) -> Result<f32, WorldError> {
+        let random = self.level_random.as_mut();
+        random
+            .map(|r| r.next_float())
+            .ok_or(WorldError::Unsupported("level random"))
+    }
+    fn level_int_bound(&mut self, bound: i32) -> Result<i32, WorldError> {
+        let random = self.level_random.as_mut();
+        let random = random.ok_or(WorldError::Unsupported("level random"))?;
+        random
+            .next_int_bound(bound)
+            .map_err(|_| WorldError::Unsupported("a positive bound"))
+    }
     fn set_block(
         &mut self,
         pos: BlockPos,
@@ -438,6 +459,7 @@ fn check_case(f: &Fixture, fields: &[&str]) -> Vec<String> {
         writes: HashMap::new(),
         sets: Vec::new(),
         ticks: Vec::new(),
+        level_random: None,
     };
     let cx = PlaceContext {
         known: f.lists.known(),

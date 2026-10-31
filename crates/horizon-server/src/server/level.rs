@@ -73,13 +73,15 @@ use crate::world::ticks::TickPriority;
 use crate::worldgen::biome::codec::{BiomePresets, decode_noise_generator_nbt};
 use crate::worldgen::data::WorldgenData;
 use crate::worldgen::generator::convert::{
-    ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
+    ChunkShape, ProtoExtras, apply_piece_change_to_level, proto_from_data, proto_into_level_chunk,
+    proto_to_data,
 };
 use crate::worldgen::generator::{
     GeneratorError, GeneratorTables, LevelGenerator, LevelGeneratorSettings, respawn_pos_in_column,
 };
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
+use crate::worldgen::structure::start::PieceChange;
 
 /// Paper's `environment.max-block-ticks` and `max-fluid-ticks` defaults (`paper-world-defaults.yml`;
 /// the per-world files are not read yet).
@@ -647,6 +649,8 @@ pub struct LevelChunks {
     structures: Option<Arc<WorldgenData>>,
     empty_structures: StructureRegistry,
     void_air: BlockState,
+    /// `WorldOptions.seed` (saved structure starts are read with it).
+    seed: i64,
     /// Steps a level without a generator cannot run: they fail on the next tick.
     refused: Vec<GenerationResult>,
     refusal_logged: bool,
@@ -694,6 +698,7 @@ impl ChunkStorage for LevelChunks {
                     pos: job.pos,
                     status: job.status,
                     result: Err(None),
+                    piece_changes: Vec::new(),
                     nanos: 0,
                 });
             }
@@ -715,7 +720,7 @@ impl ChunkStorage for LevelChunks {
         )
     }
     fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk {
-        match proto_from_data(chunk.to_data(), self.shape(), self.structures()) {
+        match proto_from_data(chunk.to_data(), self.shape(), self.structures(), self.seed) {
             Ok((view, _)) => view,
             Err(_) => {
                 let mut view = self.shape().empty(chunk.pos());
@@ -723,6 +728,9 @@ impl ChunkStorage for LevelChunks {
                 view
             }
         }
+    }
+    fn apply_piece_change(&self, chunk: &mut LevelChunk, change: &PieceChange) -> bool {
+        apply_piece_change_to_level(chunk, self.structures(), self.seed, change)
     }
 }
 
@@ -985,6 +993,7 @@ impl Level {
             structures: tables.worldgen.as_ref().map(|w| w.data.clone()),
             empty_structures: StructureRegistry::default(),
             void_air,
+            seed,
             refused: Vec::new(),
             refusal_logged: false,
             dimension: stem.key.clone(),
@@ -1151,7 +1160,12 @@ impl Level {
                 }
                 Ok(Some(data)) => {
                     let storage = self.chunks.storage();
-                    match proto_from_data(*data, storage.shape(), storage.structures()) {
+                    match proto_from_data(
+                        *data,
+                        storage.shape(),
+                        storage.structures(),
+                        storage.seed,
+                    ) {
                         Ok((chunk, extras)) => {
                             Some(LoadedChunk::Proto(Box::new(chunk), Box::new(extras)))
                         }

@@ -28,6 +28,7 @@ use crate::core::position::BlockPos;
 use crate::core::position::ChunkPos;
 use crate::nbt::{Compound, JavaString, Tag};
 use crate::registry::parse_identifier;
+use crate::util::random::{LegacyRandom, WorldgenRandom};
 use crate::worldgen::density::{StructureBounds, TerrainAdjustment};
 
 /// `StructureStart.INVALID_START_ID`.
@@ -299,9 +300,15 @@ impl StructureStart {
         tag
     }
 
-    /// `loadStaticStart`: `Ok(None)` (logged) for an unknown structure id; `Err` for a malformed
-    /// one, where `Identifier.parse` throws and the chunk's load fails.
-    pub fn load(registry: &StructureRegistry, tag: &Compound) -> Result<Option<Self>, String> {
+    /// `loadStaticStart(context, tag, seed)`: `Ok(None)` (logged) for an unknown structure id;
+    /// `Err` for a malformed one, where `Identifier.parse` throws and the chunk's load fails. An
+    /// ocean monument's rooms are not saved: they are made again from the level `seed`
+    /// (`OceanMonumentStructure.regeneratePiecesAfterLoad`).
+    pub fn load(
+        registry: &StructureRegistry,
+        tag: &Compound,
+        seed: i64,
+    ) -> Result<Option<Self>, String> {
         let get = |key: &str| tag.get(&JavaString::from(key));
         let id = match get("id") {
             Some(Tag::String(id)) => id.to_string_lossy(),
@@ -317,7 +324,7 @@ impl StructureStart {
         };
         let int = |key: &str| get(key).and_then(Tag::int_value).unwrap_or(0);
         let chunk = ChunkPos::new(int("ChunkX"), int("ChunkZ"));
-        let children = match get("Children") {
+        let mut children: Vec<StructurePiece> = match get("Children") {
             Some(Tag::List(children)) => children
                 .iter()
                 .filter_map(|child| {
@@ -376,6 +383,9 @@ impl StructureStart {
                 .collect(),
             _ => Vec::new(),
         };
+        if registry.structure(structure).kind == "minecraft:ocean_monument" {
+            regenerate_monument(&mut children, chunk, seed);
+        }
         Ok(Some(Self::new(
             registry,
             structure,
@@ -384,6 +394,40 @@ impl StructureStart {
             children,
         )))
     }
+}
+
+/// `OceanMonumentStructure.regeneratePiecesAfterLoad`: the building made again (rooms included)
+/// from the start chunk's large-feature random, at the saved building's corner and orientation.
+/// The first piece is the building in every monument start; another kind is left as loaded.
+fn regenerate_monument(children: &mut Vec<StructurePiece>, chunk: ChunkPos, seed: i64) {
+    let Some(StructurePiece::Legacy(LegacyPiece::Monument(building))) = children.first() else {
+        return;
+    };
+    let mut random = WorldgenRandom::new(LegacyRandom::new(0));
+    random.set_large_feature_seed(seed, chunk.x, chunk.z);
+    let building = building.regenerate(&mut random);
+    *children = vec![StructurePiece::Legacy(LegacyPiece::Monument(building))];
+}
+
+/// What placing a start's piece changed in it (`StructureStart.placeInChunk` mutates the pieces:
+/// a legacy piece's settled height, the chests and spawners it has placed, a buried treasure's
+/// box, a shipwreck's height, an igloo's box), to be kept by the chunk holding the start.
+///
+/// Vanilla's pieces are objects shared by every chunk's FEATURES step; here a step works on copies
+/// of the starts it places (their origin chunks are read-only snapshots, up to 8 chunks away) and
+/// sends back each piece it changed, old and new. The chunk system applies a change to the origin
+/// chunk only if the piece there is still the old one ([`ChunkStructures::apply_change`]): the
+/// first step to finish wins, as the first placement settles a piece in vanilla; steps run one after
+/// another give vanilla's result exactly.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PieceChange {
+    /// The chunk holding the start.
+    pub origin: ChunkPos,
+    pub structure: StructureId,
+    /// The piece's index in the start's children.
+    pub index: usize,
+    pub before: StructurePiece,
+    pub after: StructurePiece,
 }
 
 /// A chunk's structure starts and references (`ChunkAccess.structureStarts`,
@@ -420,6 +464,26 @@ impl ChunkStructures {
         (self.references.iter())
             .find(|(s, _)| *s == structure)
             .map_or(&[], |(_, keys)| keys.as_slice())
+    }
+
+    /// Whether [`Self::apply_change`] would change the piece: the chunk holds the start and the
+    /// piece is still as the change found it.
+    pub fn accepts(&self, change: &PieceChange) -> bool {
+        self.start(change.structure)
+            .and_then(|start| start.children.get(change.index))
+            .is_some_and(|piece| *piece == change.before)
+    }
+
+    /// A piece change of a start this chunk holds (see [`PieceChange`]): true when it applied.
+    pub fn apply_change(&mut self, change: &PieceChange) -> bool {
+        if !self.accepts(change) {
+            return false;
+        }
+        let (_, start) = (self.starts.iter_mut())
+            .find(|(s, _)| *s == change.structure)
+            .expect("accepted");
+        start.children[change.index] = change.after.clone();
+        true
     }
 
     /// `getAllReferences`.
@@ -469,11 +533,13 @@ impl ChunkStructures {
 
     /// The `structures` tag of the chunk at `chunk` (`unpackStructureStart`,
     /// `unpackStructureReferences`): unknown structures are logged and dropped, as are references
-    /// more than 8 chunks away. A start whose inner `id` is malformed fails the load.
+    /// more than 8 chunks away. A start whose inner `id` is malformed fails the load. `seed` is the
+    /// level's (a monument's rooms are made again with it).
     pub fn load(
         registry: &StructureRegistry,
         tag: &Compound,
         chunk: ChunkPos,
+        seed: i64,
     ) -> Result<Self, String> {
         let compound = |tag: &Compound, key: &str| match tag.get(&JavaString::from(key)) {
             Some(Tag::Compound(inner)) => inner.clone(),
@@ -493,7 +559,7 @@ impl ChunkStructures {
                 Tag::Compound(start) => start.clone(),
                 _ => Compound::new(),
             };
-            if let Some(mut start) = StructureStart::load(registry, &start_tag)? {
+            if let Some(mut start) = StructureStart::load(registry, &start_tag, seed)? {
                 if let Some(Tag::Compound(values)) = start_tag.get(&JavaString::from(BUKKIT_VALUES))
                 {
                     start.bukkit_values = Some(values.clone());

@@ -65,6 +65,7 @@ use crate::world::ticks::{LevelChunkTicks, ScheduledTicks};
 use crate::worldgen::generator::convert::ProtoExtras;
 use crate::worldgen::generator::pyramid::{Pyramids, next_status, status_facts};
 use crate::worldgen::proto_chunk::ProtoChunk;
+use crate::worldgen::structure::start::PieceChange;
 
 /// Where chunks are read, written and generated: the region workers and the level's generation
 /// workers (`server::level`), a recording fake in tests. Loads are answered later through
@@ -85,6 +86,9 @@ pub trait ChunkStorage {
     fn level_chunk(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> LevelChunk;
     /// A full chunk as a generation step's neighbour sees it (an `ImposterProtoChunk`).
     fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk;
+    /// A piece change ([`PieceChange`]) for a start a full chunk holds (in its saved
+    /// `structures`): true when it applied.
+    fn apply_piece_change(&self, chunk: &mut LevelChunk, change: &PieceChange) -> bool;
 }
 
 /// A chunk read from disk.
@@ -388,6 +392,9 @@ pub struct ChunkHolderManager<S> {
     ready: VecDeque<ChunkPos>,
     /// The chunks running steps write.
     writing: HashSet<ChunkPos>,
+    /// Piece changes for starts held by chunks a running step writes: applied when that step's
+    /// chunks are back ([`Self::apply_piece_change`]).
+    pending_piece_changes: HashMap<ChunkPos, Vec<PieceChange>>,
     current_tick: i64,
     /// The level's game time, as the chunks it starts ticking unpack their ticks at
     /// ([`Self::set_game_time`]).
@@ -423,6 +430,7 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             autosave: BTreeSet::new(),
             ready: VecDeque::new(),
             writing: HashSet::new(),
+            pending_piece_changes: HashMap::new(),
             current_tick: 0,
             game_time: 0,
             ticks: ScheduledTicks::default(),
@@ -1110,12 +1118,17 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             pos,
             status,
             result,
+            piece_changes,
             nanos,
         } = done;
         let write_radius = status_facts(status).write_radius.min(1);
+        let mut freed = Vec::new();
         for dz in -write_radius..=write_radius {
             for dx in -write_radius..=write_radius {
-                self.writing.remove(&ChunkPos::new(pos.x + dx, pos.z + dz));
+                let at = ChunkPos::new(pos.x + dx, pos.z + dz);
+                if self.writing.remove(&at) {
+                    freed.push(at);
+                }
             }
         }
         let running = self.holders.get(&pos).is_some_and(|h| {
@@ -1123,24 +1136,42 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
                 .as_ref()
                 .is_some_and(|t| t.status == status && t.phase == Phase::Running)
         });
+        let (result, written) = match result {
+            Ok(written) if running => (Ok(()), written),
+            Ok(_) => (Ok(()), Vec::new()),
+            Err(e) => (Err(e), Vec::new()),
+        };
+        // The written copies replace the holders' chunks before any piece change reaches them.
+        for chunk in written {
+            let at = chunk.pos();
+            if let Some(Held::Proto {
+                chunk: slot,
+                extras,
+            }) = self.holders.get_mut(&at).and_then(|h| h.chunk.as_mut())
+            {
+                *slot = Arc::new(chunk);
+                extras.unsaved = true;
+            }
+        }
+        // Changes waiting for the chunks this step wrote, then the step's own (a step that did
+        // not complete changed nothing).
+        for at in freed {
+            for change in self.pending_piece_changes.remove(&at).unwrap_or_default() {
+                self.apply_piece_change(change);
+            }
+        }
+        if running && result.is_ok() {
+            for change in piece_changes {
+                self.apply_piece_change(change);
+            }
+        }
         if !running {
             return;
         }
         match result {
-            Ok(written) => {
+            Ok(()) => {
                 self.generated.steps += 1;
                 self.generated.nanos += nanos;
-                for chunk in written {
-                    let at = chunk.pos();
-                    if let Some(Held::Proto {
-                        chunk: slot,
-                        extras,
-                    }) = self.holders.get_mut(&at).and_then(|h| h.chunk.as_mut())
-                    {
-                        *slot = Arc::new(chunk);
-                        extras.unsaved = true;
-                    }
-                }
                 self.complete(pos, status);
             }
             Err(Some(e)) => {
@@ -1156,6 +1187,38 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         }
         self.run_ready();
         self.process_pending_full();
+    }
+
+    /// A piece change for the start a chunk holds (the start's chunk, at `structure_starts` or
+    /// later: a dependency of every step that places it, so it is loaded). A chunk a running step
+    /// writes gets it once that step is back; otherwise the holder's chunk takes it if its piece is
+    /// still as the change found it (copied first when steps share the snapshot).
+    fn apply_piece_change(&mut self, change: PieceChange) {
+        let at = change.origin;
+        if self.writing.contains(&at) {
+            self.pending_piece_changes
+                .entry(at)
+                .or_default()
+                .push(change);
+            return;
+        }
+        let Some(held) = self.holders.get_mut(&at).and_then(|h| h.chunk.as_mut()) else {
+            return;
+        };
+        match held {
+            Held::Proto { chunk, extras } => {
+                if chunk.structures.accepts(&change) {
+                    Arc::make_mut(chunk).structures.apply_change(&change);
+                    extras.unsaved = true;
+                }
+            }
+            Held::Level { chunk, view } => {
+                if self.storage.apply_piece_change(chunk, &change) {
+                    chunk.mark_unsaved();
+                    *view = None;
+                }
+            }
+        }
     }
 
     /// `handleFullStatusChange`: steps towards the pending status, in Moonrise's order.

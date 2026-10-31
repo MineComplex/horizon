@@ -222,7 +222,7 @@ fn template_structures_match_java() {
                     ));
                 }
                 // The saved start loaded back, saved again.
-                match StructureStart::load(registry, &saved) {
+                match StructureStart::load(registry, &saved, 0) {
                     Ok(Some(reloaded)) => {
                         let again =
                             canonical_string(&Tag::Compound(reloaded.create_tag(registry, chunk)));
@@ -259,22 +259,17 @@ fn template_structures_match_java() {
                     writes: HashMap::new(),
                     sets: Vec::new(),
                     ticks: Vec::new(),
+                    level_random: Some(XoroshiroRandom::new(seed ^ 77)),
                 };
                 let mut random = WorldgenRandom::new(XoroshiroRandom::new(seed ^ target.pack()));
-                let mut level_random = XoroshiroRandom::new(seed ^ 77);
                 let mut out = PieceOutput::default();
                 let Some(start) = starts.get_mut(&key) else {
                     failures.push(format!("{label}: no start"));
                     continue;
                 };
-                if let Err(e) = tables.place_start(
-                    start,
-                    &mut world,
-                    &mut random,
-                    &mut chunk_box,
-                    &mut level_random,
-                    &mut out,
-                ) {
+                if let Err(e) =
+                    tables.place_start(start, &mut world, &mut random, &mut chunk_box, &mut out)
+                {
                     failures.push(format!("{label}: rust error {e}"));
                 }
                 counts.entry(f[1].to_owned()).or_default();
@@ -340,6 +335,7 @@ fn template_structures_match_java() {
                 }
                 // A spawned mob's `finalizeSpawn` draws from the level random too: with the entity port.
                 let spawned = (out.events.iter()).any(|e| matches!(e, PieceEvent::Spawn { .. }));
+                let level_random = world.level_random.as_mut().expect("the level random");
                 let level_next = level_random.next_long().to_string();
                 if !spawned && level_next != f[10] {
                     failures.push(format!("{label}: level random {level_next} not {}", f[10]));
