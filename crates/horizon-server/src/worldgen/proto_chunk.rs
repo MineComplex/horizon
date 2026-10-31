@@ -286,6 +286,19 @@ impl ProtoChunk {
         )
     }
 
+    /// `ChunkAccess.fillBiomesFromNoise`: every section, bottom to top, refilled by Paper's
+    /// section fill (`LevelChunkSection::fill_biomes_from_noise`) from `biome` at absolute quart
+    /// coordinates.
+    pub fn fill_biomes_from_noise(&mut self, mut biome: impl FnMut([i32; 3]) -> u32) {
+        let (quart_x, quart_z) = (self.pos.x.wrapping_shl(2), self.pos.z.wrapping_shl(2));
+        for (i, section) in self.sections.iter_mut().enumerate() {
+            let quart_y = (self.min_section_y + i as i32) << 2;
+            section.fill_biomes_from_noise(|x, y, z| {
+                biome([quart_x + x as i32, quart_y + y as i32, quart_z + z as i32])
+            });
+        }
+    }
+
     /// Whether a state is air by the section flags (generation's `isAir`).
     pub fn is_air(state: BlockState, flags: &impl SectionFlags) -> bool {
         flags.section_flags(state).has(StateFlags::AIR)
@@ -368,6 +381,14 @@ impl<'a> GenerationRegion<'a> {
         let chunk_pos = ChunkPos::new(pos.x >> 4, pos.z >> 4);
         self.chunk(chunk_pos)
             .map(|chunk| chunk.block_state(pos.x, pos.y, pos.z))
+            .ok_or(OutsideRegion(chunk_pos))
+    }
+
+    /// `WorldGenRegion.getNoiseBiome`: the stored biome of the chunk holding the quart.
+    pub fn noise_biome(&self, quart: [i32; 3]) -> Result<u32, OutsideRegion> {
+        let chunk_pos = ChunkPos::new(quart[0] >> 2, quart[2] >> 2);
+        self.chunk(chunk_pos)
+            .map(|chunk| chunk.noise_biome(quart[0], quart[1], quart[2]))
             .ok_or(OutsideRegion(chunk_pos))
     }
 

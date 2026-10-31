@@ -195,6 +195,33 @@ fn write_payload(value: &Value, out: &mut Vec<u8>) -> Result<(), NbtJsonError> {
     Ok(())
 }
 
+/// `NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, tag)`: numbers stay numbers (a float widened
+/// exactly, so reading it back as a float gives the same value), strings, lists and compounds
+/// map across, arrays become lists of numbers. For decoding NBT data (`level.dat`'s level
+/// stems) with the JSON codecs. `End` has no JSON form (`null`).
+pub fn nbt_to_json(tag: &crate::nbt::Tag) -> Value {
+    use crate::nbt::Tag;
+    match tag {
+        Tag::End => Value::Null,
+        Tag::Byte(v) => (*v).into(),
+        Tag::Short(v) => (*v).into(),
+        Tag::Int(v) => (*v).into(),
+        Tag::Long(v) => (*v).into(),
+        Tag::Float(bits) => f64::from(f32::from_bits(*bits)).into(),
+        Tag::Double(bits) => f64::from_bits(*bits).into(),
+        Tag::ByteArray(v) => v.iter().map(|b| Value::from(*b as i8)).collect(),
+        Tag::String(s) => s.to_string_lossy().into(),
+        Tag::List(items) => items.iter().map(nbt_to_json).collect(),
+        Tag::Compound(map) => Value::Object(
+            map.iter()
+                .map(|(k, v)| (k.to_string_lossy(), nbt_to_json(v)))
+                .collect(),
+        ),
+        Tag::IntArray(v) => v.iter().map(|i| Value::from(*i)).collect(),
+        Tag::LongArray(v) => v.iter().map(|i| Value::from(*i)).collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

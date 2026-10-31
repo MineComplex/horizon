@@ -11,6 +11,7 @@
 use serde_json::value::RawValue;
 
 use super::anchor::{OPTIONALLY_FLAT_BEDROCK, OptionallyFlatBedrock};
+use super::climate::Parameter;
 use super::codec::{DecodeError, DensityLoader, decode_noise, object, optional, string};
 use super::density::{
     DensityCompiler, DensityGraph, DensityProgram, FunctionId, NodeId, ProgramError,
@@ -57,6 +58,9 @@ pub struct LevelDensity {
     pub router: [NodeId; 8],
     /// By [`AquiferField`].
     pub aquifers: Option<[NodeId; 6]>,
+    /// The settings' `spawn_target` points with their functions compiled (what
+    /// `NoiseSpawnFinder` samples through `RandomState.samplersWithContext`).
+    pub spawn_target: Vec<Vec<(NodeId, Parameter)>>,
 }
 
 impl LevelDensity {
@@ -221,11 +225,24 @@ impl WorldgenData {
         };
         let router = compile(&settings.router)?;
         let aquifers = settings.aquifers.map(|roots| compile(&roots)).transpose()?;
+        let spawn_target = settings
+            .spawn_target
+            .iter()
+            .map(|point| {
+                let functions: Vec<FunctionId> = point.parameters.iter().map(|p| p.0).collect();
+                let nodes = compile(&functions)?;
+                Ok(nodes
+                    .into_iter()
+                    .zip(point.parameters.iter().map(|p| p.1))
+                    .collect())
+            })
+            .collect::<Result<Vec<_>, ProgramError>>()?;
         let extra = compile(extra)?;
         let density = LevelDensity {
             program: compiler.finish(),
             router: router.try_into().expect("eight router roots"),
             aquifers: aquifers.map(|nodes| nodes.try_into().expect("six aquifer roots")),
+            spawn_target,
         };
         Ok((density, extra))
     }

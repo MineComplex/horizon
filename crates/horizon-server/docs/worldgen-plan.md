@@ -303,6 +303,20 @@ WP1's trait stubs); WP6 integrates.
   `test_biome_chunk_parity.py`, `test_biome_zoom_parity.py`, `test_terrain_parity.py` (VanillaTerrainOracle: final
   density, aquifers, fluid post-processing, WG heightmaps), `test_chunk_generation_parity.py --phase terrain` once WP3
   lands, `test_world_spawn_parity.py`.
+- **Done (2026-10-31, first slice):** `S/worldgen/climate/{mod,index}.rs` (from `W/climate*`; `settings.rs`'s
+  `ClimateParameter` moved here as `climate::Parameter`), `S/worldgen/biome/{mod,codec,zoom,spawn}.rs` (from
+  `W/biome.rs`, `W/biome_source*`, `W/spawn_finder.rs`, `HC/biome.rs`), `ProtoChunk::fill_biomes_from_noise`,
+  `GenerationRegion::noise_biome`, `LevelDensity::spawn_target`, `registry::nbt_json::nbt_to_json` (level.dat
+  stems). Not copied: `W/biome_chunk.rs` (the proto chunk's sections already store biomes with Paper's fill),
+  `HC/biome/seed_hash.rs` (`sha2`; `server/runtime.rs` already has `obfuscate_seed`), the quantized-JSON
+  import format, `BiomeRegion`, the retrogen and blending resolvers (26.3 worlds only). Leaf deltas found:
+  Moonrise's R-tree search (same results as vanilla's), Paper's section fill order (0 0 0 first, then y, z, x:
+  decides palette order and the search's previous result), Leaf's zoom summing x²+y²+z² (vanilla z²+y²+x²; equal
+  on all 52,096 oracle samples). Verified by `LeafBiomeOracle.java` + `biome::oracle_tests` (counts in
+  ARCHITECTURE.md).
+- **Left:** `W/biome_predicate.rs`, `W/terrain.rs` (fill), `aquifer.rs` + `aquifer/*`, Purpur's end void rings,
+  flat/debug generators' biome sources (WP6), wiring `BiomeSource`/`LevelDensity` into the level and the
+  scheduler (BIOMES jobs owning a `ClimateSearch` per worker), spawn origin at level creation.
 
 ### WP3 — Surface rules and carvers (rest of TERRAIN) (~5k lines)
 

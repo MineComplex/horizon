@@ -8,6 +8,8 @@
 //!   tables ([`data::WorldgenData`]), and the per-level compilation of their noise settings.
 //! - [`settings`]: `noise_settings` (heights, router, aquifer roots, spawn targets...).
 //! - [`anchor`]: vertical anchors and Paper's optionally flat bedrock condition.
+//! - [`climate`]: climate parameters, the climate sampler and the biome search tree.
+//! - [`biome`]: biome sources, the BIOMES step, the biome zoom and the spawn finder.
 //! - [`proto_chunk`]: the chunk the generation steps write into before it becomes a
 //!   `LevelChunk`.
 //!
@@ -16,6 +18,8 @@
 //! crate.
 
 pub mod anchor;
+pub mod biome;
+pub mod climate;
 pub mod codec;
 pub mod data;
 pub mod density;

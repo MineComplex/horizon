@@ -105,6 +105,16 @@ registries from the jar, the proto chunk), bit-equal to 26.3's `RandomState` sam
 (`LeafDensityOracle.java`) and as fast as Horizon's `Arc<dyn>` tree on chunk volumes, ~9% faster on
 single points (`density_program_speed`, 2026-10-31).
 
+**Biomes (WP2, first slice, 2026-10-31).** `worldgen/climate` (parameters, the six-field climate
+sampler on the level's density program, the R-tree with Moonrise's search; the previous result is a
+`ClimateSearch` the worker owns instead of a thread-local) and `worldgen/biome` (the four biome
+sources as one enum over biome registry ids; the level stem's `biome_source` from JSON or
+`level.dat` NBT; the multi-noise presets from the data generator's `biome_parameters` reports; the
+BIOMES step filling a `ProtoChunk` with Paper's section order; Leaf's `BiomeManager` zoom; the
+noise spawn finder). Checked against the 26.3 classes (`LeafBiomeOracle.java`): 7,599 preset
+entries, 23,980 climate targets, 23,980 quart biomes, 880 chunk sections (biomes and container
+bytes), 6 spawn positions and 52,096 zoomed quarts, all equal, over two seeds and five stems.
+
 **A client gets into the world (2026-10-30).** Startup loads the registries (one `Arc`), opens
 `level-name` with its `session.lock` and `level.dat` (a missing world is not created: generation is
 not ported, said in the log) and the overworld's region I/O workers with `region-file-compression`

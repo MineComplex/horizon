@@ -7,6 +7,7 @@
 
 use serde_json::value::RawValue;
 
+use super::climate::Parameter;
 use super::codec::{
     DecodeError, DensityLoader, Object, boolean, identifier, int_range, object, optional, required,
     string,
@@ -131,57 +132,10 @@ impl AquiferField {
     }
 }
 
-/// `Climate.Parameter`: a quantized interval (`Climate.quantizeCoord`: times 10000, truncated).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ClimateParameter {
-    pub min: i64,
-    pub max: i64,
-}
-
-impl ClimateParameter {
-    pub fn quantize(value: f32) -> i64 {
-        (value * 10_000.0) as i64
-    }
-
-    /// The scalar, two-element list or min/max object codec, values in [-2, 2].
-    pub fn decode(raw: &RawValue) -> Result<Self, DecodeError> {
-        fn bounded(raw: &RawValue) -> Result<f32, DecodeError> {
-            let value = super::codec::float(raw)?;
-            if value.total_cmp(&-2.0).is_lt() || value.total_cmp(&2.0).is_gt() {
-                return Err(DecodeError::Field("climate float bounds"));
-            }
-            Ok(value)
-        }
-        let (min, max) = if raw.get().starts_with('[') {
-            let values: Vec<Box<RawValue>> = serde_json::from_str(raw.get())?;
-            if values.len() != 2 {
-                return Err(DecodeError::Field("climate interval length"));
-            }
-            (bounded(&values[0])?, bounded(&values[1])?)
-        } else if raw.get().starts_with('{') {
-            let object = object(raw)?;
-            (
-                bounded(required(&object, "min")?)?,
-                bounded(required(&object, "max")?)?,
-            )
-        } else {
-            let value = bounded(raw)?;
-            (value, value)
-        };
-        if min.total_cmp(&max).is_gt() {
-            return Err(DecodeError::Field("climate interval order"));
-        }
-        Ok(Self {
-            min: Self::quantize(min),
-            max: Self::quantize(max),
-        })
-    }
-}
-
 /// `SpawnTargetPoint`: density functions and the intervals the spawn search wants them in.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpawnTargetPoint {
-    pub parameters: Vec<(FunctionId, ClimateParameter)>,
+    pub parameters: Vec<(FunctionId, Parameter)>,
 }
 
 /// One `debug_functions` entry (vanilla's debug renderer; kept because the codec validates it).
@@ -264,7 +218,7 @@ impl NoiseGeneratorSettings {
                             .map(|(name, interval)| {
                                 let function =
                                     densities.decode(&serde_json::value::to_raw_value(name)?, 0)?;
-                                Ok((function, ClimateParameter::decode(interval)?))
+                                Ok((function, Parameter::decode(interval)?))
                             })
                             .collect::<Result<_, DecodeError>>()?;
                         Ok(SpawnTargetPoint { parameters })
