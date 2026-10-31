@@ -215,6 +215,37 @@ impl CommandError {
     pub fn color_invalid(name: &str) -> Self {
         Self::new("argument.color.invalid", vec![name.into_arg()])
     }
+    /// `IdentifierArgument.ERROR_INVALID`.
+    pub fn id_invalid() -> Self {
+        Self::new("argument.id.invalid", Vec::new())
+    }
+    /// `EntitySelectorParser.ERROR_MISSING_SELECTOR_TYPE`.
+    pub fn selector_missing() -> Self {
+        Self::new("argument.entity.selector.missing", Vec::new())
+    }
+    /// `EntitySelectorParser.ERROR_UNKNOWN_SELECTOR_TYPE`.
+    pub fn selector_unknown(selector: &str) -> Self {
+        Self::new(
+            "argument.entity.selector.unknown",
+            vec![selector.into_arg()],
+        )
+    }
+    /// `EntitySelectorParser.ERROR_SELECTORS_NOT_ALLOWED`.
+    pub fn selector_not_allowed() -> Self {
+        Self::new("argument.entity.selector.not_allowed", Vec::new())
+    }
+    /// `EntityArgument.ERROR_ONLY_PLAYERS_ALLOWED`.
+    pub fn only_players_allowed() -> Self {
+        Self::new("argument.player.entities", Vec::new())
+    }
+    /// `EntityArgument.NO_PLAYERS_FOUND`.
+    pub fn no_players_found() -> Self {
+        Self::new("argument.entity.notfound.player", Vec::new())
+    }
+    /// `GameProfileArgument.ERROR_UNKNOWN_PLAYER`.
+    pub fn player_unknown() -> Self {
+        Self::new("argument.player.unknown", Vec::new())
+    }
     /// `HexColorArgument.ERROR_INVALID_HEX`.
     pub fn hex_color_invalid(value: &str) -> Self {
         Self::new("argument.hexcolor.invalid", vec![value.into_arg()])

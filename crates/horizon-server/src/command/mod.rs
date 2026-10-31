@@ -27,13 +27,14 @@
 mod argument;
 mod coordinates;
 mod error;
+pub mod exec;
 pub mod network;
 mod reader;
 mod suggestion;
 mod tree;
 mod values;
 
-pub use argument::{ArgumentType, ArgumentValue, StringKind};
+pub use argument::{ArgumentType, ArgumentValue, ProfileTarget, SelectorKind, StringKind};
 pub use coordinates::{CommandOrigin, Coordinates, WorldCoordinate, local_position};
 pub use error::CommandError;
 pub use reader::StringReader;

@@ -5,7 +5,8 @@ use uuid::Uuid;
 
 use super::{
     Angle, ArgumentType, ArgumentValue, CommandError, Coordinates, DoubleRange, IntRange,
-    ScoreOperation, StringRange, StringReader, Suggestions, SuggestionsBuilder, Swizzle, TeamColor,
+    ProfileTarget, ScoreOperation, StringRange, StringReader, Suggestions, SuggestionsBuilder,
+    Swizzle, TeamColor,
 };
 
 /// A node of a [`CommandTree`]. Ids are indexes; nodes are never removed, so an id stays valid for the
@@ -897,6 +898,11 @@ impl<'a, K: Copy> CommandContext<'a, K> {
         }
     }
 
+    /// `IdentifierArgument.getId`, written `namespace:path`.
+    pub fn identifier(&self, name: &str) -> Option<&str> {
+        self.string(name)
+    }
+
     pub fn string(&self, name: &str) -> Option<&str> {
         match self.argument(name)? {
             ArgumentValue::String(v) => Some(v),
@@ -964,6 +970,14 @@ impl<'a, K: Copy> CommandContext<'a, K> {
     /// `HexColorArgument.getHexColor`: the opaque ARGB colour (`0xFFRRGGBB` as an `i32`).
     pub fn hex_color(&self, name: &str) -> Option<i32> {
         self.integer(name)
+    }
+
+    /// `GameProfileArgument`'s result.
+    pub fn profile(&self, name: &str) -> Option<&ProfileTarget> {
+        match self.argument(name)? {
+            ArgumentValue::GameProfile(v) => Some(v),
+            _ => None,
+        }
     }
 
     pub fn team_color(&self, name: &str) -> Option<TeamColor> {

@@ -71,11 +71,13 @@ pub mod parser_id {
     pub const INTEGER: i32 = 3;
     pub const LONG: i32 = 4;
     pub const STRING: i32 = 5;
+    pub const GAME_PROFILE: i32 = 7;
     pub const BLOCK_POS: i32 = 8;
     pub const COLUMN_POS: i32 = 9;
     pub const VEC3: i32 = 10;
     pub const VEC2: i32 = 11;
     pub const TEAM_COLOR: i32 = 16;
+    pub const RESOURCE_LOCATION: i32 = 36;
     pub const HEX_COLOR: i32 = 17;
     pub const OPERATION: i32 = 26;
     pub const ANGLE: i32 = 28;
@@ -156,6 +158,8 @@ fn write_argument_type(ty: &ArgumentType, buf: &mut impl Write) -> io::Result<()
         ArgumentType::Operation => parser_id::OPERATION.azalea_write_var(buf),
         ArgumentType::TeamColor => parser_id::TEAM_COLOR.azalea_write_var(buf),
         ArgumentType::HexColor => parser_id::HEX_COLOR.azalea_write_var(buf),
+        ArgumentType::GameProfile => parser_id::GAME_PROFILE.azalea_write_var(buf),
+        ArgumentType::Identifier => parser_id::RESOURCE_LOCATION.azalea_write_var(buf),
     }
 }
 
@@ -215,6 +219,8 @@ fn read_argument_type(buf: &mut Cursor<&[u8]>) -> Result<ArgumentType, BufReadEr
         parser_id::OPERATION => ArgumentType::Operation,
         parser_id::TEAM_COLOR => ArgumentType::TeamColor,
         parser_id::HEX_COLOR => ArgumentType::HexColor,
+        parser_id::GAME_PROFILE => ArgumentType::GameProfile,
+        parser_id::RESOURCE_LOCATION => ArgumentType::Identifier,
         id => {
             let name = usize::try_from(id)
                 .ok()

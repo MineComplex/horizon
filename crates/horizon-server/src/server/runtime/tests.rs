@@ -33,7 +33,7 @@ use crate::world::level_chunk::{HeightmapTable, LevelChunk, heightmaps_after};
 use crate::world::level_storage::{self as storage, LevelData, LevelStorageAccess};
 use crate::world::storage::compression::Compression;
 
-fn config(max_players: i32) -> RuntimeConfig {
+pub(super) fn config(max_players: i32) -> RuntimeConfig {
     RuntimeConfig {
         server_ip: "127.0.0.1".into(),
         server_port: 0,
@@ -46,6 +46,8 @@ fn config(max_players: i32) -> RuntimeConfig {
         online_mode: false,
         proxy_online_mode: true,
         white_list: false,
+        enforce_whitelist: false,
+        op_permission_level: PermissionLevel::Owners,
         whitelist_message: "You are not whitelisted on this server!".into(),
         user_lists_dir: PathBuf::new(),
         pause_when_empty_seconds: -1,
@@ -180,7 +182,7 @@ fn start(config: RuntimeConfig, chunks: ChunkSettings) -> (Server, tempfile::Tem
 }
 
 /// [`start`], after `before` has written files into the server folder.
-fn start_with(
+pub(super) fn start_with(
     mut config: RuntimeConfig,
     chunks: ChunkSettings,
     before: impl FnOnce(&Path),

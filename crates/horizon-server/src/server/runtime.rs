@@ -9,8 +9,8 @@
 //!   through one queue of [`NetEvent`]s and, once joined, a queue per connection each way.
 //! - **The console** is a plain thread reading stdin lines into the control queue
 //!   ([`spawn_console`]). Paper's jline console (`TerminalConsoleAppender`) brings history and
-//!   completion; no commands are ported yet, so lines on stdin are what the console needs today
-//!   (`rustyline` is the replacement once completion has commands to complete).
+//!   completion; lines on stdin are what the console needs today (`rustyline` is the replacement
+//!   for completion). Each line runs as a command of the server's own source (see `commands`).
 //! - **Signals** (Ctrl-C, SIGTERM) are a task on the runtime that posts to the same control queue,
 //!   in place of Paper's `ServerShutdownThread` (which halts the loop and lets it stop the server).
 //!
@@ -61,12 +61,12 @@ use super::chunk_system::ticket::{ENTITY_TICKING_LEVEL, FULL_LEVEL};
 use super::level::{Level, World, WorldError};
 use super::player::{NewPlayer, Player, Spawn, chunk_of};
 use super::player_data::SavedPlayer;
+use super::server_properties::PermissionLevel;
 use super::tick_loop::{
     EmptyPause, EmptyTick, TickAction, TickClock, TickLoopConfig, TickTimeSamples,
 };
 use super::tick_rate::TickRateManager;
 use super::user_lists::{LoginRules, UserLists};
-use crate::command::network::CommandsPacket;
 use crate::command::wrap_degrees;
 use crate::core::position::ChunkPos;
 use crate::network::configuration::{Action, Configuration, PlayHandoff, Settings};
@@ -103,6 +103,10 @@ pub struct RuntimeConfig {
     /// Paper's `isProxyOnlineMode`: duplicates are also found by name.
     pub proxy_online_mode: bool,
     pub white_list: bool,
+    /// `enforce-whitelist`: turning the whitelist on or removing someone kicks the unlisted.
+    pub enforce_whitelist: bool,
+    /// `op-permission-level`: the level `/op` gives.
+    pub op_permission_level: PermissionLevel,
     /// Spigot's `messages.whitelist`, transformed.
     pub whitelist_message: String,
     /// The folder of `whitelist.json` and `ops.json`.
@@ -142,6 +146,8 @@ impl RuntimeConfig {
             online_mode: properties.online_mode,
             proxy_online_mode: properties.online_mode || (velocity.enabled && velocity.online_mode),
             white_list: properties.white_list,
+            enforce_whitelist: properties.enforce_whitelist,
+            op_permission_level: properties.op_permission_level,
             whitelist_message: config.yaml.spigot.whitelist_message.clone(),
             user_lists_dir: PathBuf::from("."),
             pause_when_empty_seconds: properties.pause_when_empty_seconds,
@@ -413,6 +419,8 @@ pub struct Server {
     exit_code: Option<u8>,
     /// `HORIZON_TEST_HOOKS=1`: the console accepts `horizon-test-move`.
     test_hooks: bool,
+    /// The command tree and what commands keep between lines.
+    pub commands: commands::State,
 }
 
 impl Server {
@@ -500,6 +508,7 @@ impl Server {
             session_id: None,
             exit_code: None,
             test_hooks: std::env::var("HORIZON_TEST_HOOKS").is_ok_and(|v| v == "1"),
+            commands: commands::State::new(),
         })
     }
 
@@ -586,7 +595,7 @@ impl Server {
                 // Paper's incremental saving: player saves are not ported; `level.dat` on a
                 // full save (the chunks autosave in the level tick).
                 let period = self.config.autosave_period;
-                if period > 0 && self.tick_count % period == 0 {
+                if period > 0 && self.tick_count % period == 0 && !self.commands.no_save {
                     self.world.save_level_data();
                 }
                 let spent = i64::try_from(start.elapsed().as_nanos()).unwrap_or(i64::MAX);
@@ -715,6 +724,8 @@ impl Server {
         while let Ok(control) = self.control.try_recv() {
             self.handle_control(control);
         }
+        // What `/tick` and the tick loop asked of the rate manager (packets, the sprint report).
+        self.drain_tick_rate_events();
     }
 
     /// A configuring connection's packets, its listener's tick and its spawn preparation:
@@ -1247,11 +1258,11 @@ impl Server {
                         other.peer.conn.send(packet.clone());
                     }
                 }
-                // No command is ported: Paper's empty tree (only the root).
+                // `Commands.sendCommands`: what the player's level allows.
                 JoinStep::Commands => joined
                     .peer
                     .conn
-                    .send(cb::commands(&CommandsPacket::empty())),
+                    .send(cb::commands(&self.commands_packet(&joined.player.profile))),
                 missing => tracing::debug!("Join step {missing:?} skipped: not ported yet"),
             }
         }
@@ -1263,22 +1274,20 @@ impl Server {
                 Signal::Terminate => 143,
             }),
             Control::Console(line) => {
-                // `performPrefixedCommand`: one leading slash is dropped.
+                // `SimpleTerminalConsole` trims the line and skips an empty one; the command then
+                // runs for the server's source (`handleConsoleInput`).
                 let command = line.trim();
-                let command = command.strip_prefix('/').unwrap_or(command);
                 if self.test_hooks
-                    && let Some(args) = command.strip_prefix("horizon-test-move ")
+                    && let Some(args) = command
+                        .strip_prefix('/')
+                        .unwrap_or(command)
+                        .strip_prefix("horizon-test-move ")
                 {
                     self.test_move(args);
                     return;
                 }
-                match command {
-                    "" => {}
-                    "stop" => {
-                        tracing::info!("Stopping the server");
-                        self.halt(0);
-                    }
-                    _ => tracing::warn!("Unknown command (commands are not ported yet): {command}"),
+                if !command.is_empty() {
+                    self.run_console_command(command);
                 }
             }
         }
@@ -1402,6 +1411,11 @@ pub fn spawn_console(control: std_mpsc::Sender<Control>) -> std::io::Result<()> 
         })
         .map(drop)
 }
+
+/// The commands: the tree, the executor's host and each command (a child module for the server's
+/// private state).
+#[path = "commands/mod.rs"]
+pub mod commands;
 
 #[cfg(test)]
 mod tests;

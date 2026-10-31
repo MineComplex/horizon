@@ -80,6 +80,12 @@ pub enum ArgumentType {
     TeamColor,
     /// `hex_color`: `RGB` or `RRGGBB`, parsed to an opaque ARGB `Integer` (`0xFFRRGGBB`).
     HexColor,
+    /// `game_profile` (`GameProfileArgument`): a name, or a player selector. Only the bare
+    /// selectors `@a`, `@p` and `@r` are parsed (entity selector options need entities).
+    GameProfile,
+    /// `resource_location` (`IdentifierArgument.id()`): an identifier, `minecraft:` by default; the value
+    /// is a [`ArgumentValue::String`] with the namespace written out.
+    Identifier,
 }
 
 impl ArgumentType {
@@ -219,6 +225,8 @@ impl ArgumentType {
             Self::TeamColor => ArgumentValue::TeamColor(TeamColor::parse(reader)?),
             // An `Integer`, as in vanilla.
             Self::HexColor => ArgumentValue::Integer(parse_hex_color(reader)?),
+            Self::GameProfile => ArgumentValue::GameProfile(parse_game_profile(reader)?),
+            Self::Identifier => ArgumentValue::String(parse_identifier(reader)?),
         })
     }
 
@@ -278,8 +286,104 @@ impl ArgumentType {
             Self::Operation => &["=", ">", "<"],
             Self::TeamColor => &["red", "green"],
             Self::HexColor => HEX_COLOR_EXAMPLES,
+            Self::GameProfile => &[
+                "Player",
+                "0123",
+                "dd12be42-52a9-4a91-a8a1-11c01849e498",
+                "@e",
+            ],
+            Self::Identifier => &["foo", "foo:bar", "012"],
         }
     }
+}
+
+/// `Identifier.read`: the characters an identifier may hold, then `Identifier.tryParse` (one `:` at most,
+/// a namespace of `[a-z0-9_.-]` and a path that also allows `/`). A bad one is `argument.id.invalid`
+/// with the reader back at the start.
+fn parse_identifier(reader: &mut StringReader) -> Result<String, CommandError> {
+    let start = reader.cursor();
+    while reader.can_read() {
+        let c = reader.peek();
+        if matches!(c, '0'..='9' | 'a'..='z' | '_' | ':' | '/' | '.' | '-') {
+            reader.skip();
+        } else {
+            break;
+        }
+    }
+    let text = &reader.string()[start..reader.cursor()];
+    let (namespace, path) = match text.split_once(':') {
+        Some(("", path)) => ("minecraft", path),
+        Some((namespace, path)) => (namespace, path),
+        None => ("minecraft", text),
+    };
+    let valid_namespace = namespace
+        .chars()
+        .all(|c| matches!(c, '0'..='9' | 'a'..='z' | '_' | '.' | '-'));
+    let valid_path = path
+        .chars()
+        .all(|c| matches!(c, '0'..='9' | 'a'..='z' | '_' | '.' | '-' | '/'));
+    if !valid_namespace || !valid_path {
+        reader.set_cursor(start);
+        return Err(CommandError::id_invalid().at(reader));
+    }
+    Ok(format!("{namespace}:{path}"))
+}
+
+/// The player selectors [`ArgumentType::GameProfile`] parses (`EntitySelectorParser` without options).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SelectorKind {
+    /// `@a`: every player.
+    AllPlayers,
+    /// `@p`: the nearest player.
+    NearestPlayer,
+    /// `@r`: a random player.
+    RandomPlayer,
+}
+
+/// What a `game_profile` argument names (`GameProfileArgument.Result`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProfileTarget {
+    /// Everything up to the next space, looked up in the user cache when the command runs.
+    Name(String),
+    Selector(SelectorKind),
+}
+
+/// `GameProfileArgument.parse` with selectors allowed. `@e`, `@n` and `@s` include entities, so they
+/// end in `argument.player.entities` as in vanilla; a selector with options (`[`) needs the entity
+/// selector options, which come with entities: it is refused as `argument.entity.selector.not_allowed`.
+fn parse_game_profile(reader: &mut StringReader) -> Result<ProfileTarget, CommandError> {
+    if reader.can_read() && reader.peek() == '@' {
+        reader.skip();
+        if !reader.can_read() {
+            return Err(CommandError::selector_missing().at(reader));
+        }
+        let start = reader.cursor();
+        let kind = reader.read();
+        let kind = match kind {
+            'a' => Some(SelectorKind::AllPlayers),
+            'p' => Some(SelectorKind::NearestPlayer),
+            'r' => Some(SelectorKind::RandomPlayer),
+            'e' | 'n' | 's' => None,
+            other => {
+                reader.set_cursor(start);
+                return Err(CommandError::selector_unknown(&format!("@{other}")).at(reader));
+            }
+        };
+        if reader.can_read() && reader.peek() == '[' {
+            return Err(CommandError::selector_not_allowed().at(reader));
+        }
+        return match kind {
+            Some(kind) => Ok(ProfileTarget::Selector(kind)),
+            None => Err(CommandError::only_players_allowed().at(reader)),
+        };
+    }
+    let start = reader.cursor();
+    while reader.can_read() && reader.peek() != ' ' {
+        reader.skip();
+    }
+    Ok(ProfileTarget::Name(
+        reader.string()[start..reader.cursor()].to_owned(),
+    ))
 }
 
 const HEX_COLOR_EXAMPLES: &[&str] = &["F00", "FF0000"];
@@ -322,6 +426,7 @@ pub enum ArgumentValue {
     Uuid(Uuid),
     Operation(ScoreOperation),
     TeamColor(TeamColor),
+    GameProfile(ProfileTarget),
 }
 
 #[cfg(test)]

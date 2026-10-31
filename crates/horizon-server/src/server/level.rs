@@ -476,7 +476,7 @@ impl World {
 
     /// `MinecraftServer.findRespawnDimension`'s index: the level `paperSpawnDimension` names, else
     /// the overworld.
-    fn respawn_level(&self) -> usize {
+    pub fn respawn_level(&self) -> usize {
         self.level_index(&self.data.paper_spawn_dimension)
             .unwrap_or(0)
     }

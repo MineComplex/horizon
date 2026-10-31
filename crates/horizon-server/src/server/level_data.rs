@@ -634,6 +634,56 @@ impl LevelClocks {
             .collect()
     }
 
+    /// `ServerClockManager.modifyClock`: the change, then the clock is saved.
+    fn modify(&mut self, clock: &str, change: impl FnOnce(&mut ClockState)) {
+        if let Some((_, state)) = self.clocks.iter_mut().find(|(c, _)| c == clock) {
+            change(state);
+            self.dirty = true;
+        }
+    }
+
+    /// `setTotalTicks`.
+    pub fn set_total_ticks(&mut self, clock: &str, total_ticks: i64) {
+        self.modify(clock, |c| {
+            c.total_ticks = total_ticks;
+            c.partial_tick = 0.0;
+        });
+    }
+
+    /// `addTicks`: never below zero.
+    pub fn add_ticks(&mut self, clock: &str, ticks: i64) {
+        self.modify(clock, |c| {
+            c.total_ticks = c.total_ticks.wrapping_add(ticks).max(0)
+        });
+    }
+
+    pub fn set_paused(&mut self, clock: &str, paused: bool) {
+        self.modify(clock, |c| c.paused = paused);
+    }
+
+    pub fn set_rate(&mut self, clock: &str, rate: f32) {
+        self.modify(clock, |c| c.rate = rate);
+    }
+
+    /// `ServerClockInstance.packNetworkState` for one clock: the update `broadcastUpdates` sends.
+    pub fn network_state(&self, clock: &str, advance_time: bool) -> Option<ClockUpdate> {
+        let (id, (_, c)) = self
+            .clocks
+            .iter()
+            .enumerate()
+            .find(|(_, (n, _))| n == clock)?;
+        Some(ClockUpdate {
+            clock: id as i32,
+            total_ticks: c.total_ticks,
+            partial_tick: c.partial_tick,
+            rate: if c.paused || !advance_time {
+                0.0
+            } else {
+                c.rate
+            },
+        })
+    }
+
     pub fn take_dirty(&mut self) -> bool {
         std::mem::take(&mut self.dirty)
     }
