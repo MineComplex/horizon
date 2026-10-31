@@ -104,7 +104,9 @@ public final class LeafDecorationOracle {
         "RandomBooleanSelectorFeature", "WeightedRandomSelectorFeature", "SequenceFeature", "OverlayFeature",
         "SpringFeature", "BlockPileFeature", "VinesFeature", "UnderwaterMagmaFeature", "BambooFeature",
         "RandomNeighborSpreadFeature", "VegetationPatchFeature", "WaterloggedVegetationPatchFeature", "SnowAndFreezeFeature",
-        "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature");
+        "LakeFeature", "BlueIceFeature", "IcebergFeature", "BlockBlobFeature", "HugeBrownMushroomFeature", "HugeRedMushroomFeature",
+        "MultifaceGrowthFeature", "GeodeFeature", "MonsterRoomFeature", "LargeDripstoneFeature", "SpeleothemFeature",
+        "SpeleothemClusterFeature", "RootSystemFeature", "SculkPatchFeature", "SpikeFeature");
 
     static boolean unported(PlacedFeature placed) {
         return placed.getFeatures().anyMatch(LeafDecorationOracle::unported);
@@ -223,7 +225,7 @@ public final class LeafDecorationOracle {
                     case "registryAccess" -> {
                         return registries;
                     }
-                    case "scheduleTick" -> {
+                    case "scheduleTick", "playSound", "levelEvent", "gameEvent" -> {
                         return null;
                     }
                     case "getBlockEntity" -> {

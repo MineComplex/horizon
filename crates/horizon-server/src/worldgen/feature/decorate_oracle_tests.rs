@@ -226,6 +226,7 @@ fn decoration_matches_java() {
                         generator: level,
                         zoom: bc.zoom,
                         survival: rules,
+                        seed,
                     };
                     // Skipped on both sides: the types not ported, by the oracle's `PORTED`.
                     let skipped = super::decorate::unported_features(registry, &steps);

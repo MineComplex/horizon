@@ -88,6 +88,8 @@ pub struct RegionWorld<'a, 'r, S> {
     /// `BiomeManager`'s fuzzy zoom, which `Level.getBiome` reads through.
     pub zoom: BiomeZoom,
     pub survival: S,
+    /// `WorldGenLevel.getSeed()`.
+    pub seed: i64,
 }
 
 impl<S: SurvivalRules> PlacementWorld for RegionWorld<'_, '_, S> {

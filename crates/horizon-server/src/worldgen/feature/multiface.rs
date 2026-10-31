@@ -12,7 +12,7 @@ use crate::core::geometry::{Axis, Direction};
 use crate::core::position::BlockPos;
 use crate::util::random::RandomSource;
 use crate::worldgen::codec::{DecodeError, boolean, float, int_range, object, optional, required};
-use crate::worldgen::placement::PlacementWorld;
+use crate::worldgen::placement::{DecodeContext, PlacementWorld};
 use crate::worldgen::state_provider::{ProviderContext, ProviderError};
 use crate::worldgen::structure::BiomeSet;
 
@@ -30,13 +30,34 @@ pub struct MultifaceGrowth {
 
 /// `MultifaceSpreader.SpreadType`.
 #[derive(Clone, Copy)]
-enum Spread {
+pub(super) enum Spread {
     SamePosition,
     SamePlane,
     WrapAround,
 }
 
+/// `MultifaceSpreader.DEFAULT_SPREAD_ORDER`.
+pub(super) const DEFAULT_SPREAD_ORDER: [Spread; 3] =
+    [Spread::SamePosition, Spread::SamePlane, Spread::WrapAround];
+
 impl MultifaceGrowth {
+    /// The sculk vein's spreader, which the sculk patch drives.
+    pub(super) fn sculk_vein(names: &DecodeContext<'_>) -> Result<Self, DecodeError> {
+        let blocks = names.blocks;
+        let id = blocks
+            .block_by_name("minecraft:sculk_vein")
+            .ok_or(DecodeError::Field("sculk vein"))?;
+        Ok(Self {
+            block: blocks.default_state(id),
+            sculk: true,
+            search_range: 10,
+            directions: Vec::new(),
+            chance_of_spreading: 0.5,
+            can_be_placed_on: BiomeSet::new(Vec::new()),
+            fire: names.block_tag("minecraft:fire")?,
+        })
+    }
+
     pub fn decode(raw: &RawValue, ctx: &ProviderContext<'_>) -> Result<Self, DecodeError> {
         let fields = object(raw)?;
         let names = ctx.names;
@@ -155,7 +176,7 @@ impl MultifaceGrowth {
     }
 
     /// `MultifaceBlock.isValidStateForPlacement`.
-    fn valid_for_placement(
+    pub(super) fn valid_for_placement(
         &self,
         world: &impl PlacementWorld,
         old: BlockState,
@@ -171,7 +192,7 @@ impl MultifaceGrowth {
     }
 
     /// `MultifaceBlock.getStateForPlacement(old, level, pos, direction)`.
-    fn state_for_placement(
+    pub(super) fn state_for_placement(
         &self,
         world: &impl PlacementWorld,
         old: BlockState,
@@ -214,11 +235,54 @@ impl MultifaceGrowth {
         let mut all = Direction::ALL;
         shuffle(&mut all, random)?;
         for direction in all {
-            if self.spread_toward(world, state, pos, face, direction)? {
+            if self.spread_toward(world, state, pos, face, direction, &DEFAULT_SPREAD_ORDER)? {
                 break;
             }
         }
         Ok(())
+    }
+
+    /// `MultifaceSpreader.spreadAll(state, level, pos, true)` with the given spread types: the
+    /// number of growths placed.
+    pub(super) fn spread_all<W: FeatureWorld>(
+        &self,
+        world: &mut W,
+        state: BlockState,
+        pos: BlockPos,
+        kinds: &[Spread],
+    ) -> Result<i64, ProviderError> {
+        let mut count = 0;
+        for face in Direction::ALL {
+            // `canSpreadFrom`.
+            let other_source = self.sculk && !self.is_this(world, state);
+            if !(other_source || self.has_face(world, state, face)) {
+                continue;
+            }
+            for direction in Direction::ALL {
+                if self.spread_toward(world, state, pos, face, direction, kinds)? {
+                    count += 1;
+                }
+            }
+        }
+        Ok(count)
+    }
+
+    /// The block's default state.
+    pub(super) fn block_state(&self) -> BlockState {
+        self.block
+    }
+
+    pub(super) fn has_face_of(
+        &self,
+        world: &impl PlacementWorld,
+        state: BlockState,
+        face: Direction,
+    ) -> bool {
+        self.has_face(world, state, face)
+    }
+
+    pub(super) fn is_vein_block(&self, world: &impl PlacementWorld, state: BlockState) -> bool {
+        self.is_this(world, state)
     }
 
     /// `spreadFromFaceTowardDirection`: whether a growth was placed.
@@ -229,6 +293,7 @@ impl MultifaceGrowth {
         pos: BlockPos,
         from_face: Direction,
         direction: Direction,
+        kinds: &[Spread],
     ) -> Result<bool, ProviderError> {
         if axis(direction) == axis(from_face) {
             return Ok(false);
@@ -240,7 +305,7 @@ impl MultifaceGrowth {
         if !allowed {
             return Ok(false);
         }
-        for kind in [Spread::SamePosition, Spread::SamePlane, Spread::WrapAround] {
+        for &kind in kinds {
             let (target, face) = match kind {
                 Spread::SamePosition => (pos, direction),
                 Spread::SamePlane => (relative(pos, direction), from_face),
@@ -283,13 +348,16 @@ impl MultifaceGrowth {
             if manhattan(source, target) == 2 {
                 let neighbour = relative(source, face.opposite());
                 let state = world.block_state(neighbour)?;
-                if world.state_data().is_face_sturdy(state, face, SupportType::Full) {
+                if world
+                    .state_data()
+                    .is_face_sturdy(state, face, SupportType::Full)
+                {
                     return Ok(false);
                 }
             }
             let fluid = world.state_data().fluid(existing);
-            let fluid_ok = fluid.fluid == 0
-                || world.state_data().fluid_name(fluid.fluid) == "minecraft:water";
+            let fluid_ok =
+                fluid.fluid == 0 || world.state_data().fluid_name(fluid.fluid) == "minecraft:water";
             fluid_ok
                 && !self.fire.contains(world.blocks().block(existing).0)
                 && (world.state_data().has(existing, FLAG_REPLACEABLE)

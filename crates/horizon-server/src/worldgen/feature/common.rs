@@ -1,7 +1,7 @@
 //! Small helpers the cave, nether and end features share.
 
 use crate::block::BlockState;
-use crate::block::flags::{FLAG_AIR, FLAG_LIQUID};
+use crate::block::flags::FLAG_AIR;
 use crate::core::geometry::Direction;
 use crate::core::position::BlockPos;
 use crate::util::random::{InvalidBound, RandomSource};
@@ -57,10 +57,6 @@ pub(super) fn is_air(world: &impl PlacementWorld, pos: BlockPos) -> Result<bool,
     Ok(world.state_data().has(state, FLAG_AIR))
 }
 
-pub(super) fn is_liquid(world: &impl PlacementWorld, state: BlockState) -> bool {
-    world.state_data().has(state, FLAG_LIQUID)
-}
-
 /// Whether the state's block is the named one.
 pub(super) fn is_block(world: &impl PlacementWorld, state: BlockState, name: &str) -> bool {
     let blocks = world.blocks();
@@ -80,15 +76,55 @@ pub(super) fn default_state(
         .ok_or(crate::worldgen::codec::DecodeError::Field("block"))
 }
 
-/// A state's property set to `value`.
-pub(super) fn with(
-    world: &impl PlacementWorld,
-    state: BlockState,
-    property: &str,
-    value: &str,
-) -> Result<BlockState, ProviderError> {
-    world
-        .blocks()
-        .with_property(state, property, value)
-        .ok_or(ProviderError::Invalid("a block without the property"))
+/// `Column`: the floor and ceiling a `Column.scan` found.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Column {
+    pub floor: Option<i32>,
+    pub ceiling: Option<i32>,
+}
+
+impl Column {
+    /// `getHeight`: only a range with both edges has one.
+    pub fn height(&self) -> Option<i32> {
+        match (self.floor, self.ceiling) {
+            (Some(floor), Some(ceiling)) => Some(ceiling - floor - 1),
+            _ => None,
+        }
+    }
+}
+
+/// `Column.scan(level, pos, searchRange, insideColumn, validEdge)`.
+pub(super) fn scan_column<W: PlacementWorld>(
+    world: &W,
+    pos: BlockPos,
+    range: i32,
+    inside: impl Fn(&W, BlockState) -> bool,
+    edge: impl Fn(&W, BlockState) -> bool,
+) -> Result<Option<Column>, ProviderError> {
+    if !inside(world, world.block_state(pos)?) {
+        return Ok(None);
+    }
+    let scan = |step: i32| -> Result<Option<i32>, ProviderError> {
+        let mut p = pos;
+        let mut i = 1;
+        while i < range && inside(world, world.block_state(p)?) {
+            p = p.offset(0, step, 0);
+            i += 1;
+        }
+        Ok(edge(world, world.block_state(p)?).then_some(p.y))
+    };
+    let ceiling = scan(1)?;
+    let floor = scan(-1)?;
+    Ok(Some(Column { floor, ceiling }))
+}
+
+/// `state.isAir() || state.is(Blocks.WATER)`.
+pub(super) fn empty_or_water(world: &impl PlacementWorld, state: BlockState) -> bool {
+    world.state_data().has(state, FLAG_AIR) || is_block(world, state, "minecraft:water")
+}
+
+/// `Mth.floor(double)`.
+pub(super) fn floor(value: f64) -> i32 {
+    let i = value as i32;
+    if value < f64::from(i) { i - 1 } else { i }
 }

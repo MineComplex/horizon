@@ -40,7 +40,7 @@ impl PlacedRefs {
         &self.ids
     }
     /// A holder is one placed feature.
-    fn single(&self) -> Result<PlacedFeatureId, ProviderError> {
+    pub(super) fn single(&self) -> Result<PlacedFeatureId, ProviderError> {
         match self.ids.as_slice() {
             [id] => Ok(*id),
             _ => Err(ProviderError::Invalid(

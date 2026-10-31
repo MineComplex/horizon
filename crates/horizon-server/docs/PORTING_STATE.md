@@ -133,9 +133,23 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   `decoration_matches_java` is now 48 chunks, 0 failures (no `KNOWN` list). `LeafFeatureOracle`: 47,135 rows; 6,983 ground
   `feature2` rows equal (64 per new type), 1,401 skipped for unported types. 26.3 has no `lake_water` feature: the lake's
   water/ice branch is ported from the source, not exercised. `updateShape` of other blocks (leaves, fences, walls...) is WP6.
-  Still not ported: multiface_growth, geode, monster_room, fossil, huge_fungus, netherrack_replace_blobs, delta_feature,
-  speleothem(_cluster), large_dripstone, root_system, stepped_column_cluster, sculk_patch, chorus_plant, end_*, spike,
-  single_block_pillar, projected_random_patchy_square, coral_tree/claw, no_op, bonus_chest, mossy-carpet simple_block.
+  Still not ported: mossy-carpet simple_block (it draws from the level's own random, `WorldGenRegion.getRandom`).
+- Worldgen WP4 remaining types (`src/worldgen/feature/{cave,multiface,geode,monster_room,dripstone,root_system,sculk,fossil,nether,end,common}.rs`):
+  every `worldgen/feature` type 26.3's data uses is now decoded: `multiface_growth` (glow lichen, sculk vein; the
+  `MultifaceSpreader`'s spread types), `geode` (noise seeded by `FeatureWorld::world_seed`, `RegionWorld::seed`),
+  `monster_room` and `bonus_chest` (the chest's `LootTableSeed` draw and the spawner's mob draw are made; the block entity
+  data is WP6), `speleothem`, `speleothem_cluster`, `large_dripstone` (`Column.scan`, `SpeleothemUtils`, the wind offsetter),
+  `root_system` (its tree is a placed feature, resolved like a selector's), `sculk_patch` (the world generation
+  `SculkSpreader`, driving the vein's spreader of `multiface.rs`), `fossil` (copies the templates and processor lists it
+  names in `FeatureRegistry::attach_templates`, called by `WorldgenData::set_templates`; without them the decoration
+  skips it, `Cave::ready`), `huge_fungus`, `netherrack_replace_blobs` (`ReplaceBlobsFeature`), `delta_feature` (Leaf's
+  outward `withinClippedManhattan` order), `chorus_plant`, `end_spike` (the crystal is `FeatureWorld::add_end_crystal`:
+  it draws the yaw, entities are WP6), `end_island`, `end_platform`, `void_start_platform`, `end_gateway`, `end_podium`,
+  `spike` (the ice spike). 26.3 has no data for `coral_tree`, `coral_claw`, `projected_random_patchy_square`,
+  `single_block_pillar`, `stepped_column_cluster` or `no_op`, so they are not decoded. `Feature::set_block` is
+  `setBlockAndUpdate` (flags 3), `safeSetBlock` and the speleothems flags 2. `LeafFeatureOracle`'s ground rows gained
+  underground (5 cave, 6 solid with sparse tunnels, 7 cave with a pool), Nether (8), End (9) and snow (10) worlds for the
+  types that need them, and `LeafDecorationOracle` runs the overworld types (`PORTED`).
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
