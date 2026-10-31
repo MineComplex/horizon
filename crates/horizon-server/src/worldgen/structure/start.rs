@@ -3,10 +3,12 @@
 //! (`packStructureData`, `unpackStructureStart`, `unpackStructureReferences`) and the
 //! STRUCTURE_REFERENCES step (`ChunkGenerator.createReferences`).
 //!
-//! Pieces stay as their saved NBT until the piece types are ported; a start's bounding box is
-//! computed from the pieces' `BB` boxes, which is all references need. A child without a valid
-//! `BB` is dropped, as `PiecesContainer.load` drops a piece that fails to load (pieces of an
-//! unknown type will be dropped the same way once the types exist).
+//! Jigsaw pieces (`minecraft:jigsaw`, `PoolElementStructurePiece`) are [`JigsawPiece`]s, saved and
+//! loaded as vanilla does (a loaded piece's box is its element's, as vanilla recomputes it). Pieces of
+//! the other types stay as their saved NBT until those types are ported; a start's bounding box is
+//! computed from their `BB` boxes, which is all references need. A child without a valid `BB` (or a
+//! jigsaw piece whose element is not in the pools) is dropped, as `PiecesContainer.load` drops a
+//! piece that fails to load.
 //!
 //! Leaf (`0211-optimize-structure-map`) keeps a chunk's starts and references in insertion-ordered
 //! array maps, and a generated chunk's references for one structure in a `LongArraySet` (insertion
@@ -15,7 +17,12 @@
 //! come from a `HashMap` keyed by identity hashes in Leaf (no fixed order); here they keep the
 //! order of their ids.
 
+use super::jigsaw::{JigsawPiece, Junction};
+use super::place::LiquidSettings;
+use super::pool::{Projection, liquid_name};
 use super::{StructureId, StructureRegistry};
+use crate::block::transform::Rotation;
+use crate::core::position::BlockPos;
 use crate::core::position::ChunkPos;
 use crate::nbt::{Compound, JavaString, Tag};
 use crate::registry::parse_identifier;
@@ -34,13 +41,164 @@ pub struct StructureStart {
     pub chunk: ChunkPos,
     /// How often a locating search has taken this start (`addReference`).
     pub references: i32,
-    /// The pieces' tags (`StructurePiece.createTag`).
-    pub children: Vec<Compound>,
+    /// The pieces, in order (the first is the centre piece `placeInChunk` takes its reference from).
+    pub children: Vec<StructurePiece>,
     /// `StructureStart.getBoundingBox`: the pieces' box, inflated by 12 for a terrain-adapting
     /// structure; `None` without pieces.
     pub bounding_box: Option<StructureBounds>,
     /// CraftBukkit's `StructureBukkitValues`, written back as read.
     pub bukkit_values: Option<Compound>,
+}
+
+/// A structure piece.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StructurePiece {
+    /// `PoolElementStructurePiece` (`minecraft:jigsaw`).
+    Jigsaw(JigsawPiece),
+    /// A piece of a type not ported yet, as saved (`StructurePiece.createTag`).
+    Saved(Compound),
+}
+
+impl StructurePiece {
+    /// `getBoundingBox`.
+    pub fn bounding_box(&self) -> Option<StructureBounds> {
+        match self {
+            Self::Jigsaw(piece) => Some(piece.bounding_box),
+            Self::Saved(tag) => piece_box(tag),
+        }
+    }
+
+    /// `StructurePiece.createTag`.
+    pub fn create_tag(&self, registry: &StructureRegistry) -> Compound {
+        match self {
+            Self::Saved(tag) => tag.clone(),
+            Self::Jigsaw(piece) => jigsaw_tag(registry, piece),
+        }
+    }
+}
+
+/// `Rotation.LEGACY_CODEC`: the enum constant's name.
+fn rotation_name(rotation: Rotation) -> &'static str {
+    [
+        "NONE",
+        "CLOCKWISE_90",
+        "CLOCKWISE_180",
+        "COUNTERCLOCKWISE_90",
+    ][rotation as usize]
+}
+
+fn box_tag(b: StructureBounds) -> Tag {
+    let ([x0, y0, z0], [x1, y1, z1]) = (b.minimum(), b.maximum());
+    Tag::IntArray(vec![x0, y0, z0, x1, y1, z1])
+}
+
+/// `PoolElementStructurePiece.addAdditionalSaveData` after `StructurePiece.createTag`'s own fields
+/// (no orientation: `O` is -1; generation depth 0).
+fn jigsaw_tag(registry: &StructureRegistry, piece: &JigsawPiece) -> Compound {
+    let junctions = (piece.junctions.iter())
+        .map(|j| {
+            Tag::compound([
+                ("source_x", Tag::Int(j.source_x)),
+                ("source_ground_y", Tag::Int(j.source_ground_y)),
+                ("source_z", Tag::Int(j.source_z)),
+                ("delta_y", Tag::Int(j.delta_y)),
+                ("dest_proj", Tag::String(j.dest_projection.name().into())),
+            ])
+        })
+        .collect();
+    let element = registry.pools.element_tag(piece.element);
+    let mut tag = Compound::from([
+        ("id".into(), Tag::String("minecraft:jigsaw".into())),
+        ("BB".into(), box_tag(piece.bounding_box)),
+        ("O".into(), Tag::Int(-1)),
+        ("GD".into(), Tag::Int(0)),
+        ("PosX".into(), Tag::Int(piece.position.x)),
+        ("PosY".into(), Tag::Int(piece.position.y)),
+        ("PosZ".into(), Tag::Int(piece.position.z)),
+        (
+            "ground_level_delta".into(),
+            Tag::Int(piece.ground_level_delta),
+        ),
+        ("pool_element".into(), Tag::Compound(element)),
+        (
+            "rotation".into(),
+            Tag::String(rotation_name(piece.rotation).into()),
+        ),
+        ("junctions".into(), Tag::List(junctions)),
+    ]);
+    if piece.liquid != LiquidSettings::ApplyWaterlogging {
+        tag.insert(
+            "liquid_settings".into(),
+            Tag::String(liquid_name(piece.liquid).into()),
+        );
+    }
+    tag
+}
+
+/// `new PoolElementStructurePiece(context, tag)`: `None` (logged) when the element is unknown.
+fn load_jigsaw(registry: &StructureRegistry, tag: &Compound) -> Option<JigsawPiece> {
+    let get = |key: &str| tag.get(&JavaString::from(key));
+    let int = |key: &str| get(key).and_then(Tag::int_value).unwrap_or(0);
+    let text = |tag: Option<&Tag>| match tag {
+        Some(Tag::String(s)) => s.to_string_lossy(),
+        _ => String::new(),
+    };
+    let failed = |why: &str| {
+        tracing::error!("Exception loading structure piece with id minecraft:jigsaw: {why}");
+    };
+    let Some(element) = (match get("pool_element") {
+        Some(Tag::Compound(element)) => registry.pools.find_element(element),
+        _ => None,
+    }) else {
+        failed("Invalid pool element found");
+        return None;
+    };
+    let rotation = match text(get("rotation")).as_str() {
+        "NONE" => Rotation::None,
+        "CLOCKWISE_90" => Rotation::Clockwise90,
+        "CLOCKWISE_180" => Rotation::Clockwise180,
+        "COUNTERCLOCKWISE_90" => Rotation::Counterclockwise90,
+        _ => {
+            failed("No rotation");
+            return None;
+        }
+    };
+    let position = BlockPos::new(int("PosX"), int("PosY"), int("PosZ"));
+    let junctions = match get("junctions") {
+        Some(Tag::List(list)) => list
+            .iter()
+            .map(|j| {
+                let field = |key: &str| j.get(key).and_then(Tag::int_value).unwrap_or(0);
+                Junction {
+                    source_x: field("source_x"),
+                    source_ground_y: field("source_ground_y"),
+                    source_z: field("source_z"),
+                    delta_y: field("delta_y"),
+                    dest_projection: Projection::by_name(&text(j.get("dest_proj")))
+                        .unwrap_or(Projection::TerrainMatching),
+                }
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    let liquid = match text(get("liquid_settings")).as_str() {
+        "ignore_waterlogging" => LiquidSettings::IgnoreWaterlogging,
+        _ => LiquidSettings::ApplyWaterlogging,
+    };
+    Some(JigsawPiece {
+        element,
+        position,
+        ground_level_delta: int("ground_level_delta"),
+        rotation,
+        bounding_box: (registry.pools).bounding_box(
+            &registry.templates,
+            element,
+            position,
+            rotation,
+        ),
+        junctions,
+        liquid,
+    })
 }
 
 /// A piece tag's `BB` (`BoundingBox.CODEC`: six ints).
@@ -75,9 +233,9 @@ impl StructureStart {
         structure: StructureId,
         chunk: ChunkPos,
         references: i32,
-        children: Vec<Compound>,
+        children: Vec<StructurePiece>,
     ) -> Self {
-        let boxes = children.iter().filter_map(piece_box);
+        let boxes = children.iter().filter_map(StructurePiece::bounding_box);
         let bounding_box =
             boxes.reduce(StructureBounds::encapsulating).map(|bounds| {
                 match registry.structure(structure).terrain_adaptation {
@@ -118,7 +276,9 @@ impl StructureStart {
                 tag.insert("ChunkX".into(), Tag::Int(chunk.x));
                 tag.insert("ChunkZ".into(), Tag::Int(chunk.z));
                 tag.insert("references".into(), Tag::Int(self.references));
-                let children = self.children.iter().cloned().map(Tag::Compound).collect();
+                let children = (self.children.iter())
+                    .map(|piece| Tag::Compound(piece.create_tag(registry)))
+                    .collect();
                 tag.insert("Children".into(), Tag::List(children));
             }
             None => {
@@ -154,6 +314,21 @@ impl StructureStart {
                         Tag::Compound(piece) => piece,
                         _ => &Compound::new(),
                     };
+                    // `PiecesContainer.load`: the id lower-cased, then its `RENAMES`.
+                    let kind = match piece.get(&JavaString::from("id")) {
+                        Some(Tag::String(id)) => id.to_string_lossy().to_lowercase(),
+                        _ => String::new(),
+                    };
+                    if matches!(
+                        parse_identifier(&kind).unwrap_or_default().as_str(),
+                        "minecraft:jigsaw"
+                            | "minecraft:nvi"
+                            | "minecraft:pcp"
+                            | "minecraft:bastionremnant"
+                            | "minecraft:runtime"
+                    ) {
+                        return load_jigsaw(registry, piece).map(StructurePiece::Jigsaw);
+                    }
                     let Some(bounds) = piece_box(piece) else {
                         tracing::error!(
                             "Exception loading structure piece of {id}: no bounding box"
@@ -165,7 +340,7 @@ impl StructureStart {
                     let [x1, y1, z1] = bounds.maximum();
                     let mut piece = piece.clone();
                     piece.insert("BB".into(), Tag::IntArray(vec![x0, y0, z0, x1, y1, z1]));
-                    Some(piece)
+                    Some(StructurePiece::Saved(piece))
                 })
                 .collect(),
             _ => Vec::new(),

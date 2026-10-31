@@ -19,8 +19,12 @@ use super::density::{
     DensityCompiler, DensityGraph, DensityProgram, FunctionId, NodeId, ProgramError,
 };
 use super::feature::FeatureRegistry;
+use super::placement::DecodeContext;
 use super::settings::{AquiferField, NoiseGeneratorSettings, RouterField};
+use super::structure::jigsaw::JigsawStructure;
+use super::structure::pool::{PoolContext, TemplatePools};
 use super::structure::processor::ProcessorLists;
+use super::structure::template::StructureTemplates;
 use super::structure::{
     BiomeLookup, InlineElements, StructureId, StructureRegistry, decode_structure,
     decode_structure_set,
@@ -185,6 +189,7 @@ impl WorldgenData {
                     | "minecraft:worldgen/placed_feature"
                     | "minecraft:worldgen/carver"
                     | "minecraft:worldgen/processor_list"
+                    | "minecraft:worldgen/template_pool"
             ) {
                 continue;
             }
@@ -195,14 +200,18 @@ impl WorldgenData {
             })?;
             raw.push(RawRegistry { name, elements });
         }
+        let processor_lists = ProcessorLists::load(packs, blocks)?;
+        let features = FeatureRegistry::load(packs, blocks)?;
+        let mut structures = structures;
+        load_pools(packs, blocks, &processor_lists, &features, &mut structures)?;
         Ok(Self {
             graph,
             noise_settings,
             surface,
             climates: BiomeClimates::new(biome_climates),
             structures,
-            processor_lists: ProcessorLists::load(packs, blocks)?,
-            features: FeatureRegistry::load(packs, blocks)?,
+            processor_lists,
+            features,
             carvers: CarverRegistry::load(packs, blocks)?,
             raw,
         })
@@ -222,11 +231,20 @@ impl WorldgenData {
         &self.graph
     }
 
-    /// `worldgen/structure`, `worldgen/structure_set` and their tags.
+    /// `worldgen/processor_list`.
     pub fn processor_lists(&self) -> &ProcessorLists {
         &self.processor_lists
     }
 
+    /// Gives the structures their templates (`StructureTemplateManager`, loaded from the jar and the
+    /// world's `generated` folder) and fills the pools' `getMaxSize` from them.
+    pub fn set_templates(&mut self, templates: StructureTemplates) {
+        self.structures.templates = templates;
+        let structures = &mut self.structures;
+        structures.pools.compute_max_sizes(&structures.templates);
+    }
+
+    /// `worldgen/structure`, `worldgen/structure_set`, their tags, the template pools and templates.
     pub fn structures(&self) -> &StructureRegistry {
         &self.structures
     }
@@ -423,4 +441,64 @@ fn load_structures(
         })
         .collect();
     Ok(registry)
+}
+
+/// `worldgen/template_pool` (all pools first: fallbacks name any of them), then each jigsaw
+/// structure's own fields, which name pools.
+fn load_pools(
+    packs: &[DataPack],
+    blocks: &BlockStates,
+    processors: &ProcessorLists,
+    features: &FeatureRegistry,
+    structures: &mut StructureRegistry,
+) -> Result<(), WorldgenError> {
+    let block_tags = load_tags(packs, &registry_dir("minecraft:block"), |id| {
+        blocks.block_by_name(id).map(|b| b.0 as i32)
+    });
+    let names = DecodeContext {
+        blocks,
+        block_tags: &block_tags,
+        biomes: &[],
+        biome_tags: &[],
+        fluid_tags: &[],
+    };
+    let cx = PoolContext {
+        names: &names,
+        processors,
+        features,
+    };
+    let mut elements = Vec::new();
+    let mut files = Vec::new();
+    for_each_element(packs, "minecraft:worldgen/template_pool", |file| {
+        let raw =
+            serde_json::from_slice::<Box<RawValue>>(file.bytes).map_err(|e| WorldgenError {
+                file: file.file.to_owned(),
+                pack: file.pack.id.clone(),
+                source: e.into(),
+            })?;
+        elements.push((file.id.to_owned(), raw));
+        files.push((file.file.to_owned(), file.pack.id.clone()));
+        Ok::<_, WorldgenError>(())
+    })?;
+    let mut pools = TemplatePools::decode(&elements, &cx).map_err(|(i, source)| {
+        let (file, pack) = files[i].clone();
+        WorldgenError { file, pack, source }
+    })?;
+    for structure in &mut structures.structures {
+        if structure.kind != "minecraft:jigsaw" {
+            continue;
+        }
+        let error = |source| WorldgenError {
+            file: structure.id.clone(),
+            pack: "<structure>".into(),
+            source,
+        };
+        let fields = super::codec::object(&structure.json).map_err(error)?;
+        let jigsaw =
+            JigsawStructure::decode(&fields, structure.terrain_adaptation, &mut pools, &cx)
+                .map_err(error)?;
+        structure.jigsaw = Some(jigsaw);
+    }
+    structures.pools = pools;
+    Ok(())
 }

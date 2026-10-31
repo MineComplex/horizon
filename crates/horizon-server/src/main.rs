@@ -163,7 +163,15 @@ fn main() -> std::process::ExitCode {
     };
     // The worldgen registries of the same packs, and the multi-noise presets from the prepare
     // step's reports (what `RegistryDataLoader` and `MultiNoiseBiomeSourceParameterLists` give).
-    let worldgen = match load_worldgen(&mut config.vanilla_jar, &config.blocks, &registries) {
+    // `StructureTemplateManager` reads the world's `generated` folder before the jar.
+    let generated =
+        std::path::Path::new(&config.properties.properties().level_name).join("generated");
+    let worldgen = match load_worldgen(
+        &mut config.vanilla_jar,
+        (&config.blocks, &config.block_data),
+        &registries,
+        &generated,
+    ) {
         Ok(worldgen) => worldgen,
         Err(e) => {
             tracing::error!("Failed to load datapacks, can't proceed with server load: {e}");
@@ -223,8 +231,12 @@ fn main() -> std::process::ExitCode {
 /// The worldgen registries and the multi-noise presets (see `main`).
 fn load_worldgen(
     jar: &mut horizon_server::server::vanilla_jar::VanillaJar,
-    blocks: &horizon_server::block::BlockStates,
+    (blocks, block_data): (
+        &horizon_server::block::BlockStates,
+        &horizon_server::block::BlockStateData,
+    ),
     registries: &Registries,
+    generated: &std::path::Path,
 ) -> Result<WorldgenTables, String> {
     use horizon_server::worldgen::biome::codec::{BiomeIds, BiomePresets};
     use horizon_server::worldgen::data::WorldgenData;
@@ -232,7 +244,15 @@ fn load_worldgen(
         DataPack::vanilla(jar).map_err(|e| e.to_string())?,
         DataPack::paper(),
     ];
-    let data = WorldgenData::load(&packs, blocks).map_err(|e| e.to_string())?;
+    let mut data = WorldgenData::load(&packs, blocks).map_err(|e| e.to_string())?;
+    let templates = horizon_server::worldgen::structure::template::StructureTemplates::load(
+        jar,
+        Some(generated),
+        blocks,
+        block_data,
+    )
+    .map_err(|e| e.to_string())?;
+    data.set_templates(templates);
     let biomes = registries
         .synced("minecraft:worldgen/biome")
         .ok_or("no minecraft:worldgen/biome registry")?;

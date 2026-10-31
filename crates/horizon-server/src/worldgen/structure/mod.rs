@@ -14,12 +14,17 @@
 //! Ported from Horizon's generator (`horizon-world::worldgen::structure::start`), without its
 //! modpack placements and keys (`horizon:*`).
 
+pub mod jigsaw;
+pub mod piece_place;
 pub mod place;
 pub mod placement;
+pub mod pool;
 pub mod processor;
 pub mod start;
 pub mod template;
 
+#[cfg(test)]
+mod jigsaw_oracle_tests;
 #[cfg(test)]
 mod oracle_tests;
 #[cfg(test)]
@@ -165,6 +170,8 @@ pub struct Structure {
     pub spawn_overrides: Box<RawValue>,
     /// The whole element, for the type's own fields.
     pub json: Box<RawValue>,
+    /// A `minecraft:jigsaw` structure's fields (decoded with the template pools).
+    pub jigsaw: Option<jigsaw::JigsawStructure>,
 }
 
 /// `AbstractSpreadingStructurePlacement.FrequencyReductionMethod`.
@@ -270,6 +277,11 @@ pub struct StructureRegistry {
     pub sets: Vec<StructureSet>,
     /// `tags/worldgen/structure`, structures in tag order.
     pub tags: Vec<(String, Vec<StructureId>)>,
+    /// `worldgen/template_pool`.
+    pub pools: pool::TemplatePools,
+    /// The structure templates (`StructureTemplateManager`), given once loaded
+    /// ([`crate::worldgen::data::WorldgenData::set_templates`]).
+    pub templates: template::StructureTemplates,
 }
 
 impl StructureRegistry {
@@ -328,6 +340,7 @@ pub(crate) fn decode_structure(
         terrain_adaptation,
         spawn_overrides: spawn_overrides.to_owned(),
         json: raw,
+        jigsaw: None,
     })
 }
 
