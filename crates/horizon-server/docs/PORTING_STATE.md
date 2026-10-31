@@ -38,6 +38,13 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
   `LeafStructurePlacementOracle`: 97,412 answers, all equal. Matches Leaf (user, 2026-10-31): a malformed
   inner start id fails the chunk load, inline structures/sets decode, dotted `spigot.yml` world names nest.
+- Worldgen WP4a first part (`src/worldgen/{feature,placement}`): `worldgen/feature` (type + raw JSON) and
+  `placed_feature` registries, tags, each biome's features per step, the feature sorter, placement
+  modifiers (all 18), block predicates, int/height providers, `FeaturePlacer` over a narrow `PlacementWorld`
+  (`RegionWorld` adapts `GenerationRegion`). `LeafPlacementOracle`: 9,100 rows (8,010 chains over a synthetic
+  world, 273 vanilla placed features), all equal. `would_survive` is the block-behaviour boundary
+  (`SurvivalRules`; the oracle replaces it by `true`). Feature implementations, state providers, rule tests,
+  block survival rules and the decoration driver are still WP4.
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
@@ -53,11 +60,10 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 ## Reusable Rust pieces (use these, don't add parallel ones)
 `src/util/{random,jmath,number_text}`, `src/core/{position,geometry}`, `src/nbt.rs`, `src/azalea/{buf,chat,
 crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storage,chunk_io}`,
-`src/worldgen/{noise,density,data,codec,proto_chunk}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
+`src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates, Purpur end void rings; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
-placement, trees); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
+WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 rest (feature implementations, trees, state providers, block survival rules, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
 Small cleanups: `obfuscate_seed` (server/runtime.rs) → `worldgen/biome/zoom.rs`; `find_biome_horizontal`
 (structure/placement.rs) → `worldgen/biome`; `world/chunk/serial.rs` private int reader → `Tag::int_value`.
 Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops), block/fluid ticks,

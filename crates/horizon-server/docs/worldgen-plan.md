@@ -347,6 +347,17 @@ WP1's trait stubs); WP6 integrates.
 
 ### WP4 — Features, placement, trees (FEATURES decoration, minus structures) (~17k lines; split 4a/4b if two agents)
 
+**Done (4a, first part, `S/worldgen/{feature,placement}`, ~1.9k lines rustfmt'd)**: `worldgen/feature` and `placed_feature`
+decoded at load (26.3 has no `configured_feature` registry: a `worldgen/feature` element is `{"type", ...fields}`, kept as raw
+JSON for 4b), `tags/worldgen/placed_feature`, per-biome features per step, `FeatureSorter` (`features_per_step`), all 18
+placement modifiers, block predicates, `IntProvider`/`HeightProvider`, `FeaturePlacer` (Leaf's explicit-stack loop), the
+`PlacementWorld` trait and `RegionWorld` over `GenerationRegion` (biomes through the BiomeManager zoom). Oracle:
+`LeafPlacementOracle` (`tools/leaf_server/README.md`). Not copied yet: `feature.rs`/`feature_catalog.rs`/`feature_graph.rs`/
+`decoration.rs` (4b and the driver), `fluid_predicate.rs` (a fluid test is a bitmask over the fixed fluid registry),
+`rule_test.rs`, `state_provider*`, `block_feature.rs`, `block_survival.rs`/`block_placement.rs` (`would_survive` goes through
+`SurvivalRules`, unimplemented), `FloatProvider` (carvers). Leaf's optional `FastRNG` for worldgen (`Biome.BIOME_INFO_NOISE`) is
+not ported (off by default).
+
 - **Copy (4a, infra + block facts)**: `W/{feature.rs, feature_catalog.rs, feature_graph.rs, feature_sort.rs,
   decoration.rs, placement.rs + placement/*, block_predicate.rs, fluid_predicate.rs, rule_test.rs (without
   `horizon:matter_phase`), state_provider.rs + state_provider/*, block_feature.rs}` (≈5.1k) and the block-fact layer

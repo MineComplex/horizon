@@ -21,8 +21,13 @@ use crate::block::{BlockStates, BlockStatesBuilder};
 use crate::registry::DataPack;
 use crate::server::vanilla_jar::VanillaJar;
 
-/// The blocks the noise settings name (their states do not matter to densities).
+/// The blocks the noise settings name (their states do not matter to densities); the real block
+/// table when `HORIZON_SERVER_BLOCKS_JSON` names `blocks.json`, which the feature registry needs
+/// (its block predicates and tags name any block).
 pub(crate) fn settings_blocks() -> BlockStates {
+    if let Some(path) = std::env::var_os("HORIZON_SERVER_BLOCKS_JSON") {
+        return BlockStates::load(path.as_ref()).expect("blocks.json");
+    }
     let mut builder = BlockStatesBuilder::new();
     for name in [
         "air",

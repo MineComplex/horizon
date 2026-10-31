@@ -19,6 +19,7 @@ use super::codec::{DecodeError, DensityLoader, decode_noise, object, optional, s
 use super::density::{
     DensityCompiler, DensityGraph, DensityProgram, FunctionId, NodeId, ProgramError,
 };
+use super::feature::FeatureRegistry;
 use super::settings::{AquiferField, NoiseGeneratorSettings, RouterField};
 use super::structure::{
     BiomeLookup, InlineElements, StructureId, StructureRegistry, decode_structure,
@@ -55,6 +56,7 @@ pub struct WorldgenData {
     /// the whole registry).
     flat_bedrock: Vec<(String, OptionallyFlatBedrock)>,
     structures: StructureRegistry,
+    features: FeatureRegistry,
     raw: Vec<RawRegistry>,
 }
 
@@ -139,6 +141,8 @@ impl WorldgenData {
                     | "minecraft:worldgen/noise_settings"
                     | "minecraft:worldgen/structure"
                     | "minecraft:worldgen/structure_set"
+                    | "minecraft:worldgen/feature"
+                    | "minecraft:worldgen/placed_feature"
             ) {
                 continue;
             }
@@ -154,8 +158,14 @@ impl WorldgenData {
             noise_settings,
             flat_bedrock,
             structures,
+            features: FeatureRegistry::load(packs, blocks)?,
             raw,
         })
+    }
+
+    /// The configured and placed features, and each biome's features per step.
+    pub fn features(&self) -> &FeatureRegistry {
+        &self.features
     }
 
     pub fn graph(&self) -> &DensityGraph {

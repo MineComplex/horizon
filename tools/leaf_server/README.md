@@ -24,16 +24,17 @@ cargo test -p horizon-server --release -- --ignored                   # oracle c
 
 It writes, under the scratch dir: the prepare step's `serverdir/cache/vanilla-26.3/{reports/,block_states.bin}`
 (`tools/leaf_server_reports.py`: vanilla's data generator + `LeafBlockStatesExporter.java`), the oracles'
-outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `tickets.txt`, `user_lists.jsonl`), a flat world made by the real 26.3 server (the fixture that
+outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `placement.txt`, `tickets.txt`, `user_lists.jsonl`), a flat world made by the real 26.3 server (the fixture that
 `world/storage_tests.rs` describes), and `realdata.env` with the variables below.
 
 | Variable | Used by |
 |---|---|
-| `HORIZON_VANILLA_JAR` | worldgen oracle tests, `real_registries_match_java` |
+| `HORIZON_VANILLA_JAR` | worldgen oracle tests (which also need `HORIZON_SERVER_BLOCKS_JSON`: the feature registry resolves every block it names), `real_registries_match_java` |
 | `HORIZON_SERVER_JAR`, `HORIZON_SERVER_BLOCKS_JSON`, `HORIZON_SERVER_BLOCK_STATES`, `HORIZON_SERVER_VANILLA_WORLD` | `world/storage_tests.rs` (`reads_a_world_made_by_vanilla`), `world/chunk/section_tests.rs` |
 | `HORIZON_REGISTRIES_JSON`, `HORIZON_ORACLE_TSV` | `network/configuration/tests.rs` (`LeafConfigurationOracle.java`) |
 | `HORIZON_BIOME_ORACLE`, `HORIZON_BIOME_REPORTS` | `worldgen/biome/oracle_tests.rs` (`LeafBiomeOracle.java`) |
 | `HORIZON_STRUCTURE_ORACLE` | `worldgen/structure/oracle_tests.rs` (`LeafStructurePlacementOracle.java`) |
+| `HORIZON_PLACEMENT_ORACLE` | `worldgen/placement/oracle_tests.rs` (`LeafPlacementOracle.java`; also needs `HORIZON_SERVER_BLOCKS_JSON` and `HORIZON_SERVER_BLOCK_STATES`) |
 | `HORIZON_TICKETS_ORACLE` | `server/chunk_system/oracle_tests.rs` (`LeafChunkTicketsOracle.java`) |
 | `HORIZON_USER_LISTS_ORACLE` | `server/user_lists/oracle_tests.rs` (`LeafUserListsOracle.java`: whitelist/ops files, `ConcurrentHashMap` order, UUIDs) |
 | `HORIZON_DENSITY_ORACLE` | `worldgen/oracle_tests.rs` (`LeafDensityOracle.java`); `density_program_speed` is a benchmark |

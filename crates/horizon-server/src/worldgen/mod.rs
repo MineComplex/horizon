@@ -16,6 +16,10 @@
 //!   `LevelChunk`.
 //! - [`structure`]: the structure registries, where structures start (with Paper's
 //!   `spigot.yml` salts), structure starts and references in chunk NBT.
+//! - [`feature`]: the configured and placed feature registries, each biome's features per
+//!   step, and the feature sorter.
+//! - [`placement`]: placement modifiers, block predicates, int and height providers, and the
+//!   `FeaturePlacer` that runs a placed feature's chain over a world view.
 //!
 //! Ported from Horizon's generator (`horizon-world::worldgen`, `horizon-core::{noise,density}`),
 //! which is checked against the 26.3 jar; this crate copies it, as it depends on no other Horizon
@@ -28,7 +32,9 @@ pub mod climate;
 pub mod codec;
 pub mod data;
 pub mod density;
+pub mod feature;
 pub mod noise;
+pub mod placement;
 pub mod proto_chunk;
 pub mod settings;
 pub mod structure;
