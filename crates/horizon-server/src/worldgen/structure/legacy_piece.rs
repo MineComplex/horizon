@@ -10,6 +10,7 @@
 //! yet, so a placement collects them in [`PieceOutput`], as template placement does
 //! ([`super::place::PlacedTemplate`]).
 
+use super::fortress::FortressPiece;
 use super::mineshaft::MineshaftPiece;
 use super::scattered::{BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece};
 use super::start::StructurePiece;
@@ -917,6 +918,7 @@ pub enum LegacyPiece {
     SwampHut(SwampHutPiece),
     BuriedTreasure(BuriedTreasurePiece),
     Mineshaft(MineshaftPiece),
+    Fortress(FortressPiece),
 }
 
 impl LegacyPiece {
@@ -928,6 +930,7 @@ impl LegacyPiece {
             Self::SwampHut(p) => p.base.base.bounding_box,
             Self::BuriedTreasure(p) => p.bounding_box(),
             Self::Mineshaft(p) => p.bounding_box(),
+            Self::Fortress(p) => p.bounding_box(),
         }
     }
 
@@ -939,6 +942,7 @@ impl LegacyPiece {
             Self::SwampHut(p) => p.create_tag(),
             Self::BuriedTreasure(p) => p.create_tag(),
             Self::Mineshaft(p) => p.create_tag(),
+            Self::Fortress(p) => p.create_tag(),
         }
     }
 
@@ -954,23 +958,25 @@ impl LegacyPiece {
             | "minecraft:mscrossing"
             | "minecraft:msroom"
             | "minecraft:msstairs" => Self::Mineshaft(MineshaftPiece::load(id, tag)?),
+            _ if FortressPiece::handles(id) => Self::Fortress(FortressPiece::load(id, tag)?),
             _ => return None,
         })
     }
 
     /// Whether `id` is a piece id of this module (loaded here, or dropped when it fails).
     pub fn handles(id: &str) -> bool {
-        matches!(
-            id,
-            "minecraft:tedp"
-                | "minecraft:tejp"
-                | "minecraft:tesh"
-                | "minecraft:btp"
-                | "minecraft:mscorridor"
-                | "minecraft:mscrossing"
-                | "minecraft:msroom"
-                | "minecraft:msstairs"
-        )
+        FortressPiece::handles(id)
+            || matches!(
+                id,
+                "minecraft:tedp"
+                    | "minecraft:tejp"
+                    | "minecraft:tesh"
+                    | "minecraft:btp"
+                    | "minecraft:mscorridor"
+                    | "minecraft:mscrossing"
+                    | "minecraft:msroom"
+                    | "minecraft:msstairs"
+            )
     }
 
     /// `postProcess`.
@@ -981,6 +987,7 @@ impl LegacyPiece {
             Self::SwampHut(p) => p.post_process(c),
             Self::BuriedTreasure(p) => p.post_process(c),
             Self::Mineshaft(p) => p.post_process(c),
+            Self::Fortress(p) => p.post_process(c),
         }
     }
 }
@@ -1036,4 +1043,32 @@ pub fn place_pieces<W: FeatureWorld, R: RandomSource>(
         }
     }
     Ok(())
+}
+
+/// `StructurePiece`'s box for a piece placed at `foot` facing `direction` (`BoundingBox.orientBox`):
+/// `offset` is relative to the foot, `size` is width, height, depth.
+pub fn orient_box(
+    [x, y, z]: [i32; 3],
+    [ox, oy, oz]: [i32; 3],
+    [w, h, d]: [i32; 3],
+    direction: Direction,
+) -> BoundingBox {
+    match direction {
+        Direction::North => BoundingBox::new(
+            [x + ox, y + oy, z - d + 1 + oz],
+            [x + w - 1 + ox, y + h - 1 + oy, z + oz],
+        ),
+        Direction::West => BoundingBox::new(
+            [x - d + 1 + oz, y + oy, z + ox],
+            [x + oz, y + h - 1 + oy, z + w - 1 + ox],
+        ),
+        Direction::East => BoundingBox::new(
+            [x + oz, y + oy, z + ox],
+            [x + d - 1 + oz, y + h - 1 + oy, z + w - 1 + ox],
+        ),
+        _ => BoundingBox::new(
+            [x + ox, y + oy, z + oz],
+            [x + w - 1 + ox, y + h - 1 + oy, z + d - 1 + oz],
+        ),
+    }
 }

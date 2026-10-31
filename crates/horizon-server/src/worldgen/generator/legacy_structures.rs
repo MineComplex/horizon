@@ -10,11 +10,11 @@ use crate::util::random::{LegacyRandom, WorldgenRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::structure::StructureId;
 use crate::worldgen::structure::legacy_piece::LegacyPiece;
-use crate::worldgen::structure::mineshaft;
 use crate::worldgen::structure::scattered::{
     BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece,
 };
 use crate::worldgen::structure::start::StructurePiece;
+use crate::worldgen::structure::{fortress, mineshaft};
 
 /// `Structure.GenerationContext` for the code-placed structures.
 struct Context<'a, 'b, 'g> {
@@ -144,6 +144,20 @@ pub fn generate(
                 }
                 _ => LegacyPiece::JungleTemple(JungleTemplePiece::new(&mut random, min_x, min_z)),
             }
+        }
+        // `NetherFortressStructure`: the pieces first, then the biome check at the stub (x, 64, z).
+        "minecraft:fortress" => {
+            let pieces = fortress::generate(&mut random, [chunk.x, chunk.z]);
+            let stub = BlockPos::new(min_x, 64, min_z);
+            if !cx.valid_biome(stub) {
+                return None;
+            }
+            return Some(
+                pieces
+                    .into_iter()
+                    .map(|p| StructurePiece::Legacy(LegacyPiece::Fortress(p)))
+                    .collect(),
+            );
         }
         "minecraft:mineshaft" => {
             let mesa = mesa_type(generator.data().structures().structure(structure));

@@ -14,6 +14,7 @@
 //! Ported from Horizon's generator (`horizon-world::worldgen::structure::start`), without its
 //! modpack placements and keys (`horizon:*`).
 
+pub mod fortress;
 pub mod jigsaw;
 pub mod legacy_piece;
 pub mod mineshaft;
