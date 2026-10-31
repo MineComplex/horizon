@@ -943,7 +943,11 @@ fn real_binary_session() {
     }
     eprintln!("spawned at {x} {y} {z} (teleport {teleport}), {chunks} chunks so far");
     let mut forgotten = 0;
+    // Block changes the fluid ticks make near the player (`block_update`, `section_blocks_update`).
+    let is_change = |p: &Vec<u8>| p[0] == 8 || p[0] == 82;
+    let mut changes = 0;
     for step in 1..=12 {
+        changes += seen.iter().filter(|p| is_change(p)).count();
         seen.clear();
         client.move_to(x + 16.0 * f64::from(step), y, z);
         client.until_play(play_cb::SET_CHUNK_CACHE_CENTER, &mut seen);
@@ -956,6 +960,7 @@ fn real_binary_session() {
             .filter(|p| p[0] == play_cb::LEVEL_CHUNK_WITH_LIGHT)
             .count();
     }
+    changes += seen.iter().filter(|p| is_change(p)).count();
     // Some time in the new place, answering keep-alives, before leaving.
     let deadline = Instant::now() + Duration::from_secs(3);
     while Instant::now() < deadline {
@@ -963,8 +968,11 @@ fn real_binary_session() {
         if packet[0] == play_cb::KEEP_ALIVE {
             client.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
         }
+        changes += usize::from(is_change(&packet));
     }
-    eprintln!("walked 12 chunks east: {chunks} chunks received, {forgotten} forgotten");
+    eprintln!(
+        "walked 12 chunks east: {chunks} chunks received, {forgotten} forgotten, {changes} block change packets"
+    );
     assert!(forgotten > 0, "chunks behind the player are forgotten");
 }
 

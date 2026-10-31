@@ -198,7 +198,12 @@ fn main() -> std::process::ExitCode {
         },
     };
     let _ = language::install(config.language);
-    let open_world = || World::open(std::path::Path::new("."), &settings, &tables);
+    let max_chained = properties.max_chained_neighbor_updates;
+    let open_world = || {
+        let mut world = World::open(std::path::Path::new("."), &settings, &tables)?;
+        world.set_max_chained_neighbor_updates(max_chained);
+        Ok(world)
+    };
     let server = match Server::start(runtime_config, registries, open_world) {
         Ok(server) => server,
         // Paper: "Failed to bind to port" propagates out of `initServer`.

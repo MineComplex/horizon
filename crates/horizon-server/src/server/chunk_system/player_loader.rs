@@ -226,6 +226,11 @@ impl PlayerChunkLoader {
         self.sent.len()
     }
 
+    /// The chunk was sent to the player (it is in `playersSentChunkTo`).
+    pub fn has_sent(&self, pos: ChunkPos) -> bool {
+        self.sent.contains(&pos)
+    }
+
     fn flush<S: ChunkStorage>(&mut self, chunks: &mut ChunkHolderManager<S>) {
         for op in self.delayed.drain(..) {
             match op {

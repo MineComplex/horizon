@@ -203,6 +203,39 @@ pub fn forget_level_chunk(pos: crate::core::position::ChunkPos) -> Vec<u8> {
     out
 }
 
+/// `ClientboundBlockUpdatePacket`: the position's packed long, the state's id.
+pub fn block_update(pos: BlockPos, state: u32) -> Vec<u8> {
+    let mut out = start(cb::BLOCK_UPDATE);
+    out.put_i64(pos.pack());
+    put_var_int(&mut out, state as i32);
+    out
+}
+
+/// `ClientboundSectionBlocksUpdatePacket`: the section's packed long, then per change
+/// `(state id << 12) | section-relative position` as a VarLong.
+pub fn section_blocks_update(
+    section: crate::core::position::SectionPos,
+    changes: &[(u16, u32)],
+) -> Vec<u8> {
+    let mut out = start(cb::SECTION_BLOCKS_UPDATE);
+    out.put_i64(section.pack());
+    put_var_int(&mut out, changes.len() as i32);
+    for &(pos, state) in changes {
+        put_var_long(&mut out, i64::from(state) << 12 | i64::from(pos));
+    }
+    out
+}
+
+/// `ClientboundLevelEventPacket`: event type, position, data, global.
+pub fn level_event(event: i32, pos: BlockPos, data: i32, global: bool) -> Vec<u8> {
+    let mut out = start(cb::LEVEL_EVENT);
+    out.put_i32(event);
+    out.put_i64(pos.pack());
+    out.put_i32(data);
+    out.put_u8(u8::from(global));
+    out
+}
+
 /// `ClientboundCommandsPacket`.
 pub fn commands(packet: &crate::command::network::CommandsPacket) -> Vec<u8> {
     use crate::azalea::buf::AzBuf;

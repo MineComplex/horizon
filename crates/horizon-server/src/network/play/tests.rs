@@ -717,3 +717,29 @@ fn dimension_change_order() {
     assert_eq!(&respawn[1..respawn.len() - 1], spawn);
     assert_eq!(*respawn.last().unwrap(), 3);
 }
+
+/// The block change packets, by their 26.3 codecs: `BlockPos.asLong`, `SectionPos.asLong`, the
+/// state id as a VarInt (`idMapper`) or in `(id << 12) | position` VarLongs; the level event's ints.
+#[test]
+fn block_change_packets() {
+    use crate::core::position::SectionPos;
+    let pos = BlockPos::new(-1, 64, 3);
+    let mut want = vec![8];
+    want.extend(pos.pack().to_be_bytes());
+    want.extend([0xb4, 0x02]);
+    assert_eq!(cb::block_update(pos, 308), want);
+    let section = SectionPos::new(-1, 4, 0);
+    let mut want = vec![82];
+    want.extend(section.pack().to_be_bytes());
+    want.push(2);
+    // (1 << 12) | 0x0f3 and 9 << 12 as VarLongs.
+    want.extend([0xf3, 0x21, 0x80, 0xa0, 0x02]);
+    assert_eq!(
+        cb::section_blocks_update(section, &[(0x0f3, 1), (0, 9)]),
+        want
+    );
+    let mut want = vec![43, 0, 0, 0x05, 0xdd];
+    want.extend(pos.pack().to_be_bytes());
+    want.extend([0, 0, 0, 0, 1]);
+    assert_eq!(cb::level_event(1501, pos, 0, true), want);
+}

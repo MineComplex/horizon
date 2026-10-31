@@ -627,12 +627,17 @@ impl<T: Copy + Eq + Hash> LevelTicks<T> {
 
     /// One step of `runCollectedTicks`: the next collected tick, as it is run.
     pub fn pop_due(&mut self) -> Option<(BlockPos, T)> {
+        self.pop_due_tick().map(|t| (t.pos, t.ty))
+    }
+
+    /// [`Self::pop_due`] with the whole tick (to put it back unchanged).
+    pub fn pop_due_tick(&mut self) -> Option<ScheduledTick<T>> {
         let tick = self.to_run_this_tick.pop_front()?;
         if !self.to_run_this_tick_set.is_empty() {
             self.to_run_this_tick_set.remove(&(tick.ty, tick.pos));
         }
         self.already_run_this_tick.push(tick);
-        Some((tick.pos, tick.ty))
+        Some(tick)
     }
 
     /// `cleanupAfterTick`.

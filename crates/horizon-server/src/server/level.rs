@@ -20,6 +20,12 @@
 //! debug generators are not ported: there such a chunk never finishes (logged once per level)
 //! and is never sent.
 //!
+//! **Blocks.** A [`Level`] is the `world::block_update::BlockLevel` the block-change path and the
+//! fluids run on: `setBlock` writes its loaded chunks (heightmaps, unsaved), its neighbour updater
+//! chains the updates (`max-chained-neighbor-updates`), its changed blocks are broadcast by
+//! [`Level::broadcast_changes`] and its level events taken by [`Level::take_level_events`];
+//! [`Level::tick_scheduled_ticks`] runs the due fluid ticks (block ticks wait: see there).
+//!
 //! **A new world.** Without `level.dat`, the world is created as `MinecraftServer.loadLevel` does
 //! from `server.properties` (`level-seed`, `level-type`'s world preset, `generate-structures`):
 //! `level.dat` and the overworld's `world_gen_settings` are written at once, and each level that
@@ -34,8 +40,8 @@ use std::sync::mpsc::Receiver;
 use tracing::{error, info, warn};
 
 use super::chunk_system::{
-    ChunkHolderManager, ChunkStorage, GenerationJob, GenerationPool, GenerationResult, LoadedChunk,
-    TicketType,
+    ChunkHolderManager, ChunkStorage, FullChunkStatus, GenerationJob, GenerationPool,
+    GenerationResult, LoadedChunk, TicketType,
 };
 use super::config::{self, ConfigError, PaperWorldSettings, SpigotConfig};
 use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, Respawn, WorldBorder};
@@ -43,14 +49,19 @@ use super::player_data::PlayerDataStorage;
 use crate::block::flags::BlockStateData;
 use crate::block::{BlockId, BlockState, BlockStates};
 use crate::core::geometry::{Direction, ShapeOp, VoxelShape};
-use crate::core::position::{BlockPos, ChunkPos};
+use crate::core::position::{BlockPos, ChunkPos, SectionPos};
 use crate::nbt::{Compound, Tag};
 use crate::network::play::chunk::{LightSection, level_chunk_with_light};
 use crate::registry::Registries;
+use crate::util::random::LegacyRandom;
+use crate::world::block_changes::BlockChanges;
+use crate::world::block_rules::BlockRules;
+use crate::world::block_update::{BlockLevel, MAX_CHAINED_NEIGHBOR_UPDATES, NeighborUpdater};
 use crate::world::chunk::serial::Heightmap;
 use crate::world::chunk::{BiomeIds, ChunkData, ContainerFactory};
 use crate::world::chunk::{ChunkStatus, SectionFlags, StateFlags};
 use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
+use crate::world::fluid::{self, FluidSettings};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
 use crate::world::level_storage::WorldGenSettings;
 use crate::world::level_storage::{
@@ -58,6 +69,7 @@ use crate::world::level_storage::{
     RespawnData, WeatherData,
 };
 use crate::world::storage::compression::Compression;
+use crate::world::ticks::TickPriority;
 use crate::worldgen::biome::codec::{BiomePresets, decode_noise_generator_nbt};
 use crate::worldgen::data::WorldgenData;
 use crate::worldgen::generator::convert::{
@@ -319,6 +331,50 @@ pub struct WorldTables {
     pub worldgen: Option<WorldgenTables>,
 }
 
+/// Tag names with the ids of their entries.
+type TagIds = Vec<(String, Vec<i32>)>;
+
+impl WorldTables {
+    /// The block and fluid tags of the data packs, as ids of the state table's blocks and of
+    /// `block_states.bin`'s fluids (`BlockSurvival::new`'s and `BlockRules::new`'s form).
+    fn tags(&self) -> (TagIds, TagIds) {
+        let tags = |registry: &str, id: &dyn Fn(&str) -> Option<i32>| -> TagIds {
+            let Some(registry) = self.registries.builtin(registry) else {
+                return Vec::new();
+            };
+            (registry.tags.0.iter())
+                .map(|(tag, ids)| {
+                    let ids = (ids.iter())
+                        .filter_map(|&i| registry.entries.get(i as usize))
+                        .filter_map(|name| id(name))
+                        .collect();
+                    (tag.clone(), ids)
+                })
+                .collect()
+        };
+        let block_tags = tags("minecraft:block", &|name| {
+            self.blocks.block_by_name(name).map(|b| b.0 as i32)
+        });
+        let fluid_tags = tags("minecraft:fluid", &|name| {
+            (crate::worldgen::placement::FLUIDS.iter())
+                .position(|f| *f == name)
+                .map(|i| i as i32)
+        });
+        (block_tags, fluid_tags)
+    }
+
+    /// The block rules of the block-change path and the fluids (`world::block_rules`).
+    pub fn block_rules(&self) -> BlockRules {
+        let (block_tags, fluid_tags) = self.tags();
+        BlockRules::new(
+            self.blocks.clone(),
+            self.block_data.clone(),
+            &block_tags,
+            &fluid_tags,
+        )
+    }
+}
+
 /// How the world is opened (`server.properties`).
 pub struct WorldSettings<'a> {
     pub level_name: &'a str,
@@ -422,6 +478,7 @@ impl World {
             .and_then(|d| d.world_gen.as_ref())
             .is_none_or(|w| w.generate_structures);
         let players = PlayerDataStorage::new(storage.dir())?;
+        let rules = Arc::new(tables.block_rules());
         let mut levels = Vec::with_capacity(stems.len());
         for stem in &stems {
             if !settings.enabled(&stem.key) {
@@ -450,7 +507,7 @@ impl World {
                 LevelStart::new(saved, &data),
                 &region,
                 (settings, &paper),
-                tables,
+                (tables, &rules),
             )?);
         }
         let mut world = Self {
@@ -498,6 +555,13 @@ impl World {
     /// `updateEffectiveRespawnData`'s write-back: `level.dat` holds the respawn level's spawn.
     pub fn update_effective_respawn(&mut self) {
         self.data.spawn = self.effective_respawn();
+    }
+
+    /// `max-chained-neighbor-updates` (`server.properties`) for every level's neighbour updater.
+    pub fn set_max_chained_neighbor_updates(&mut self, max: i32) {
+        for level in &mut self.levels {
+            level.updater.set_max_chained(max);
+        }
     }
 
     /// `ServerLevel.tick`'s time part for one level while the game runs normally; the
@@ -700,6 +764,40 @@ pub struct Level {
     block_data: Arc<BlockStateData>,
     /// Whether the dimension type has a ceiling (`hasCeiling`: the spawn finder's height).
     has_ceiling: bool,
+    rules: Arc<BlockRules>,
+    /// `Level.neighborUpdater`.
+    updater: NeighborUpdater,
+    /// `Level.random` (Moonrise's `ThreadUnsafeRandom`: the legacy LCG, seeded uniquely).
+    random: LegacyRandom,
+    pub fluid_settings: FluidSettings,
+    /// The changed blocks the chunk holders send each tick (`ChunkHolder.blockChanged`).
+    changes: BlockChanges,
+    /// `levelEvent`s for the players near them, sent after the scheduled ticks.
+    events: Vec<LevelEvent>,
+}
+
+/// A `ClientboundLevelEventPacket` to the players of the level within 64 blocks of `pos`
+/// (`PlayerList.broadcast`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LevelEvent {
+    pub event: i32,
+    pub pos: BlockPos,
+    pub data: i32,
+}
+
+/// `RandomSupport.generateUniqueSeed`: the nano time mixed with a per-process counter.
+fn unique_seed() -> i64 {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    static SEED: AtomicI64 = AtomicI64::new(8_682_522_807_148_012);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as i64);
+    // `seedUniquifier *= 1181783497276652981` (a racy update only changes which seed is unique).
+    let next = SEED
+        .load(Ordering::Relaxed)
+        .wrapping_mul(1_181_783_497_276_652_981);
+    SEED.store(next, Ordering::Relaxed);
+    next ^ nanos
 }
 
 /// What a level starts with from its saved data (`ServerLevel`'s constructor and `loadWorldData`).
@@ -754,28 +852,7 @@ fn block_tag(tables: &WorldTables, tag: &str) -> HashSet<crate::block::BlockId> 
 fn block_survival(
     tables: &WorldTables,
 ) -> Result<crate::block::survival::BlockSurvival, crate::block::survival::SurvivalDataError> {
-    let tags = |registry: &str, id: &dyn Fn(&str) -> Option<i32>| -> Vec<(String, Vec<i32>)> {
-        let Some(registry) = tables.registries.builtin(registry) else {
-            return Vec::new();
-        };
-        (registry.tags.0.iter())
-            .map(|(tag, ids)| {
-                let ids = (ids.iter())
-                    .filter_map(|&i| registry.entries.get(i as usize))
-                    .filter_map(|name| id(name))
-                    .collect();
-                (tag.clone(), ids)
-            })
-            .collect()
-    };
-    let block_tags = tags("minecraft:block", &|name| {
-        tables.blocks.block_by_name(name).map(|b| b.0 as i32)
-    });
-    let fluid_tags = tags("minecraft:fluid", &|name| {
-        (crate::worldgen::placement::FLUIDS.iter())
-            .position(|f| *f == name)
-            .map(|i| i as i32)
-    });
+    let (block_tags, fluid_tags) = tables.tags();
     crate::block::survival::BlockSurvival::new(
         &tables.blocks,
         &tables.block_data,
@@ -792,7 +869,7 @@ impl Level {
         start: LevelStart,
         region: &Path,
         (settings, paper): (&WorldSettings<'_>, &PaperWorldSettings),
-        tables: &WorldTables,
+        (tables, rules): (&WorldTables, &Arc<BlockRules>),
     ) -> Result<Self, WorldError> {
         let types = tables
             .registries
@@ -827,6 +904,13 @@ impl Level {
         let has_ceiling = entry
             .json
             .get("has_ceiling")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        // The dimension's `gameplay/fast_lava` attribute (the nether's).
+        let fast_lava = entry
+            .json
+            .get("attributes")
+            .and_then(|a| a.get("minecraft:gameplay/fast_lava"))
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let clock_ids: Vec<String> = tables
@@ -933,6 +1017,12 @@ impl Level {
             heightmaps,
             block_data: tables.block_data.clone(),
             has_ceiling,
+            rules: rules.clone(),
+            updater: NeighborUpdater::new(MAX_CHAINED_NEIGHBOR_UPDATES),
+            random: LegacyRandom::new(unique_seed()),
+            fluid_settings: FluidSettings::new(fast_lava),
+            changes: BlockChanges::default(),
+            events: Vec::new(),
         })
     }
 
@@ -1101,25 +1191,81 @@ impl Level {
     }
 
     /// `ServerLevel.tick`'s scheduled ticks, while the game runs normally and the level is not a
-    /// debug world: first the due block ticks (`Paper's environment.max-block-ticks`), each run
-    /// through `block`, then the fluid ticks through `fluid`. A closure gets the level back to
-    /// schedule more ticks (`level.chunks.ticks`); those wait for the next tick.
-    pub fn tick_scheduled_ticks(
-        &mut self,
-        mut block: impl FnMut(&mut Self, BlockPos, BlockId),
-        mut fluid: impl FnMut(&mut Self, BlockPos, u8),
-    ) {
+    /// debug world: first the due block ticks (Paper's `environment.max-block-ticks`), then the
+    /// due fluid ticks (`max-fluid-ticks`), each run as `tickBlock` / `tickFluid` do; what they
+    /// schedule waits for the next tick.
+    ///
+    /// Stand-in for the block ticks: no block's `tick` is ported yet, so a due block tick is not
+    /// run but put back into its chunk's container unchanged (same trigger time, priority and
+    /// sub-tick order) once the block ticks are done. It is collected again every tick (counting
+    /// against the limit), is saved with the chunk as vanilla saves a due tick (a negative delay,
+    /// due again as the chunk loads) and is dropped only where vanilla drops it (a tick of the
+    /// same block at the same position scheduled meanwhile replaces it, the chunk's container
+    /// removed at unload after the save).
+    pub fn tick_scheduled_ticks(&mut self) {
         let time = self.overrides.game_time;
         self.chunks.collect_block_ticks(time, MAX_BLOCK_TICKS);
-        while let Some((pos, id)) = self.chunks.ticks.block.pop_due() {
-            block(self, pos, id);
+        let mut deferred = Vec::new();
+        while let Some(tick) = self.chunks.ticks.block.pop_due_tick() {
+            if !self.tick_block(tick.pos, tick.ty) {
+                deferred.push(tick);
+            }
         }
         self.chunks.ticks.block.cleanup_after_tick();
+        for tick in deferred {
+            self.chunks.ticks.block.schedule(tick);
+        }
         self.chunks.collect_fluid_ticks(time, MAX_FLUID_TICKS);
         while let Some((pos, id)) = self.chunks.ticks.fluid.pop_due() {
-            fluid(self, pos, id);
+            fluid::tick_fluid(self, pos, id);
         }
         self.chunks.ticks.fluid.cleanup_after_tick();
+    }
+
+    /// `ServerLevel.tickBlock`: false when the block's `tick` is not ported (every block's yet).
+    fn tick_block(&mut self, _pos: BlockPos, _block: BlockId) -> bool {
+        false
+    }
+
+    /// The level events since the last call, for the players near them.
+    pub fn take_level_events(&mut self) -> Vec<LevelEvent> {
+        std::mem::take(&mut self.events)
+    }
+
+    /// `ServerChunkCache.broadcastChangedChunks`: for each chunk holder with changed blocks whose
+    /// chunk can be sent (`getChunkToSend`), its `block_update` / `section_blocks_update` packets
+    /// (`ChunkHolder.broadcastChanges`), for the players the chunk was sent to. Block entities
+    /// and light are not ported (no packets for them).
+    pub fn broadcast_changes(&mut self) -> Vec<(ChunkPos, Vec<Vec<u8>>)> {
+        let chunks = &self.chunks;
+        self.changes.retain(|pos| chunks.chunk(pos).is_some());
+        let mut out = Vec::new();
+        for pos in self.changes.take_queued() {
+            let Some(chunk) = self.chunks.chunk_to_send(pos) else {
+                continue;
+            };
+            let Some(sections) = self.changes.take(pos) else {
+                continue;
+            };
+            let min_section = chunk.min_section_y();
+            let packets = sections
+                .into_iter()
+                .map(|(index, changed)| {
+                    let section = SectionPos::new(pos.x, min_section + index as i32, pos.z);
+                    let state = |rel: u16| chunk.block_state(section.relative_to_block(rel)).0;
+                    if let [only] = changed[..] {
+                        let at = section.relative_to_block(only);
+                        crate::network::play::clientbound::block_update(at, state(only))
+                    } else {
+                        let changes: Vec<(u16, u32)> =
+                            changed.iter().map(|&rel| (rel, state(rel))).collect();
+                        crate::network::play::clientbound::section_blocks_update(section, &changes)
+                    }
+                })
+                .collect();
+            out.push((pos, packets));
+        }
+        out
     }
 
     /// `ChunkMap.tick`: unloads, then autosave.
@@ -1337,6 +1483,70 @@ impl Level {
             }
         }
         None
+    }
+}
+
+impl BlockLevel for Level {
+    fn rules(&self) -> &BlockRules {
+        &self.rules
+    }
+    fn min_y(&self) -> i32 {
+        self.min_section_y << 4
+    }
+    fn height(&self) -> i32 {
+        self.section_count as i32 * 16
+    }
+    fn loaded_state(&self, pos: BlockPos) -> Option<BlockState> {
+        Some(self.chunks.chunk(pos.chunk())?.block_state(pos))
+    }
+    fn write_state(&mut self, pos: BlockPos, state: BlockState) -> Option<BlockState> {
+        // Only a real change touches the chunk (and drops its proto view).
+        if self.chunks.chunk(pos.chunk())?.block_state(pos) == state {
+            return None;
+        }
+        let chunk = self.chunks.chunk_mut(pos.chunk())?;
+        chunk.set_block_state(pos, state, &*self.block_data, &*self.heightmaps)
+    }
+    fn sends_updates(&self, pos: BlockPos) -> bool {
+        self.chunks.full_status(pos.chunk()) >= FullChunkStatus::Full
+    }
+    fn block_changed(&mut self, pos: BlockPos) {
+        // `ChunkHolder.blockChanged`: only while the chunk can be sent; each player the chunk
+        // was sent to gets the change (none: nobody gets it, as Paper skips it then).
+        let chunk = pos.chunk();
+        if self.chunks.chunk_to_send(chunk).is_none() {
+            return;
+        }
+        let index = (pos.y >> 4) - self.min_section_y;
+        if let Ok(index) = usize::try_from(index)
+            && index < self.section_count
+        {
+            self.changes.changed(chunk, index, pos.section_relative());
+        }
+    }
+    fn level_event(&mut self, event: i32, pos: BlockPos, data: i32) {
+        self.events.push(LevelEvent { event, pos, data });
+    }
+    fn schedule_block_tick(&mut self, pos: BlockPos, block: BlockId, delay: i32) {
+        let time = self.overrides.game_time;
+        let ticks = &mut self.chunks.ticks;
+        let tick = ticks.create_block_tick(time, pos, block, delay, TickPriority::Normal);
+        ticks.block.schedule(tick);
+    }
+    fn schedule_fluid_tick(&mut self, pos: BlockPos, fluid: u8, delay: i32) {
+        let time = self.overrides.game_time;
+        let ticks = &mut self.chunks.ticks;
+        let tick = ticks.create_fluid_tick(time, pos, fluid, delay, TickPriority::Normal);
+        ticks.fluid.schedule(tick);
+    }
+    fn random(&mut self) -> &mut LegacyRandom {
+        &mut self.random
+    }
+    fn updater(&mut self) -> &mut NeighborUpdater {
+        &mut self.updater
+    }
+    fn fluid_settings(&self) -> FluidSettings {
+        self.fluid_settings
     }
 }
 

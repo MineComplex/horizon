@@ -1434,6 +1434,19 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         }
     }
 
+    /// `ChunkHolder.getChunkToSend`: the full chunk, when it and the 8 chunks around it are at
+    /// least `FULL` (`isRadiusLoaded(1)`).
+    pub fn chunk_to_send(&self, pos: ChunkPos) -> Option<&LevelChunk> {
+        let ready = |p: ChunkPos| {
+            self.holders
+                .get(&p)
+                .is_some_and(|h| h.current >= FullChunkStatus::Full)
+        };
+        let around =
+            (-1..=1).all(|dz| (-1..=1).all(|dx| ready(ChunkPos::new(pos.x + dx, pos.z + dz))));
+        if around { self.chunk(pos) } else { None }
+    }
+
     /// `getFullChunkIfLoaded`: the chunk when its holder is at least `FULL`.
     pub fn full_chunk(&self, pos: ChunkPos) -> Option<&LevelChunk> {
         let h = self.holders.get(&pos)?;
