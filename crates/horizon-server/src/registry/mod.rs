@@ -224,7 +224,7 @@ pub fn parse_identifier(text: &str) -> Result<String, String> {
 }
 
 /// `Registries.elementsDirPath`: the registry's path, prefixed by its namespace unless `minecraft`.
-fn registry_dir(name: &str) -> String {
+pub(crate) fn registry_dir(name: &str) -> String {
     match name.split_once(':') {
         Some(("minecraft", path)) => path.to_owned(),
         Some((ns, path)) => format!("{ns}/{path}"),
@@ -478,7 +478,7 @@ impl Registries {
 }
 
 /// `TagLoader.load` + `build` for one registry directory.
-fn load_tags(
+pub(crate) fn load_tags(
     packs: &[DataPack],
     dir: &str,
     element: impl Fn(&str) -> Option<i32>,

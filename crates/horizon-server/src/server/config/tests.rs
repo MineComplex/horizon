@@ -10,12 +10,10 @@ fn missing_files_are_written_with_defaults() {
     let d = dir.path();
 
     let spigot = load_spigot(&d.join("spigot.yml")).unwrap();
+    assert_eq!((spigot.tab_complete, spigot.send_namespaced), (0, false));
     assert_eq!(
-        spigot,
-        SpigotConfig {
-            tab_complete: 0,
-            send_namespaced: false
-        }
+        spigot.world_seeds("minecraft:overworld").unwrap(),
+        SpigotWorldSeeds::default()
     );
     let text = read(&d.join("spigot.yml"));
     assert!(
@@ -23,7 +21,8 @@ fn missing_files_are_written_with_defaults() {
         "{text}"
     );
     assert!(text.contains("\n# with caution, and make sure you know what each option does before configuring.\n#\n# If you need help"));
-    assert!(text.ends_with("# Website: https://papermc.io/\n\nconfig-version: 13\ncommands:\n  tab-complete: 0\n  send-namespaced: false\n"), "{text}");
+    assert!(text.contains("# Website: https://papermc.io/\n\nconfig-version: 13\ncommands:\n  tab-complete: 0\n  send-namespaced: false\nworld-settings:\n  default:\n    seed-village: 10387312\n"), "{text}");
+    assert!(text.ends_with("    seed-abandonedcamp: 91231127\n    seed-buriedtreasure: 10387320\n    seed-mineshaft: default\n    seed-stronghold: default\n"), "{text}");
 
     let purpur = load_purpur(&d.join("purpur.yml")).unwrap();
     assert_eq!(
@@ -87,16 +86,13 @@ fn bukkit_files_keep_what_they_do_not_read() {
     // An old file: `tab-complete` was a boolean before version 6. Wrong types read as defaults.
     std::fs::write(&path, "# mine\nconfig-version: 5\nsettings:\n  bungeecord: yes\ncommands:\n  tab-complete: off\n  send-namespaced: 'true'\n").unwrap();
     let spigot = load_spigot(&path).unwrap();
-    assert_eq!(
-        spigot,
-        SpigotConfig {
-            tab_complete: -1,
-            send_namespaced: false
-        }
-    );
-    assert_eq!(
-        read(&path).split_once("\n\n").unwrap().1,
-        "config-version: 13\nsettings:\n  bungeecord: true\ncommands:\n  tab-complete: -1\n  send-namespaced: 'true'\n"
+    assert_eq!((spigot.tab_complete, spigot.send_namespaced), (-1, false));
+    let text = read(&path);
+    assert!(
+        text.split_once("\n\n").unwrap().1.starts_with(
+            "config-version: 13\nsettings:\n  bungeecord: true\ncommands:\n  tab-complete: -1\n  send-namespaced: 'true'\nworld-settings:\n"
+        ),
+        "{text}"
     );
 
     let path = dir.path().join("purpur.yml");
@@ -209,4 +205,44 @@ fn leaf_reads_any_case_and_survives_a_broken_file() {
     std::fs::write(&path, "misc: [\n").unwrap();
     assert!(load_leaf_global(&path).including_5s_in_get_tps);
     assert_eq!(read(&path), "misc: [\n");
+}
+
+/// `SpigotWorldConfig.initWorldGenSeeds` (derived from Spigot's/Paper's sources, Bukkit's
+/// `MemorySection.getInt`/`getString` and Commons Lang's `isParsable`): a world's own number wins,
+/// a non-number falls back to `world-settings.default`, then to the built-in default; the
+/// mineshaft and stronghold seeds are numbers only when parsable.
+#[test]
+fn world_seeds_resolve_like_spigot() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("spigot.yml");
+    std::fs::write(
+        &path,
+        "world-settings:\n  default:\n    seed-village: 7\n    seed-desert: oops\n    seed-mineshaft: '42'\n  minecraft:the_nether:\n    seed-village: 4294967297\n    seed-igloo: 2.9\n    seed-desert: 5\n    seed-mineshaft: default\n    seed-stronghold: -9000000000\n    seed-buriedtreasure: x\n  minecraft:the_end:\n    seed-stronghold: 1.5\n",
+    )
+    .unwrap();
+    let spigot = load_spigot(&path).unwrap();
+    let overworld = spigot.world_seeds("minecraft:overworld").unwrap();
+    assert_eq!(overworld.salt("villages"), Some(7));
+    assert_eq!(overworld.salt("desert_pyramids"), Some(14357617));
+    assert_eq!(overworld.salt("mineshafts"), None);
+    assert_eq!(overworld.mineshaft, Some(42));
+    assert_eq!(overworld.stronghold, None);
+    let nether = spigot.world_seeds("minecraft:the_nether").unwrap();
+    assert_eq!(nether.salt("villages"), Some(1)); // intValue of a long
+    assert_eq!(nether.salt("igloos"), Some(2));
+    assert_eq!(nether.salt("desert_pyramids"), Some(5));
+    assert_eq!(nether.mineshaft, None);
+    assert_eq!(nether.stronghold, Some(-9_000_000_000));
+    assert_eq!(nether.buried_treasure, 10387320);
+    let end = spigot.world_seeds("minecraft:the_end").unwrap_err();
+    assert!(
+        end.to_string().contains("For input string: \"1.5\""),
+        "{end}"
+    );
+    // The defaults Spigot adds are written; values already there stay.
+    let text = read(&path);
+    assert!(
+        text.contains("    seed-village: 7\n    seed-desert: oops\n    seed-mineshaft: '42'\n    seed-igloo: 14357618\n"),
+        "{text}"
+    );
 }

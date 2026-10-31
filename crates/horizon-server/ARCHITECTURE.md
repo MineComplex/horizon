@@ -115,6 +115,16 @@ noise spawn finder). Checked against the 26.3 classes (`LeafBiomeOracle.java`): 
 entries, 23,980 climate targets, 23,980 quart biomes, 880 chunk sections (biomes and container
 bytes), 6 spawn positions and 52,096 zoomed quarts, all equal, over two seeds and five stems.
 
+Structures, first slice (WP5, 2026-10-31, `worldgen/structure/`): the `worldgen/structure` and
+`worldgen/structure_set` registries with their tags, decoded eagerly; where structures start
+(random spread, the frequency reducers, exclusion zones, dimension origin, concentric rings as one
+per-level computation whose biome searches the caller runs) with Paper's `spigot.yml` structure
+seeds (`world-settings.*.seed-*`, the mineshaft/buried treasure salt overrides, `seed-stronghold`);
+`createStructures`' choice of structures (piece generation is a callback); structure starts and
+references in chunk NBT with Leaf's insertion-ordered maps and the hash order of loaded references;
+`createReferences`. Checked against the 26.3 classes on 97,412 answers (`LeafStructurePlacementOracle.java`);
+Paper's seeds are checked against the patched sources' arithmetic (Paper's code isn't in the vanilla jar).
+
 **A client gets into the world (2026-10-30).** Startup loads the registries (one `Arc`), opens
 `level-name` with its `session.lock` and `level.dat` (a missing world is not created: generation is
 not ported, said in the log) and the overworld's region I/O workers with `region-file-compression`

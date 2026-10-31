@@ -109,6 +109,17 @@ pub fn acos(x: f64) -> f64 {
     libm::acos(x)
 }
 
+/// `Math.round(double)`: the nearest `long`, ties toward positive infinity, NaN as 0, saturating
+/// at `long`'s range (`floor(x + 0.5)` taken exactly).
+pub fn round(x: f64) -> i64 {
+    if x.is_nan() {
+        return 0;
+    }
+    let floor = x.floor();
+    // `x - floor` is exact wherever it can be near 0.5, so the tie test is exact too.
+    (if x - floor >= 0.5 { floor + 1.0 } else { floor }) as i64
+}
+
 /// `Math.hypot`.
 pub fn hypot(x: f64, y: f64) -> f64 {
     fdlibm::hypot(x, y)

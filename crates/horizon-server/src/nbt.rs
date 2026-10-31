@@ -74,6 +74,19 @@ impl Tag {
     pub fn compound(entries: impl IntoIterator<Item = (impl Into<JavaString>, Tag)>) -> Self {
         Self::Compound(entries.into_iter().map(|(k, v)| (k.into(), v)).collect())
     }
+    /// `NumericTag.intValue` (what `CompoundTag.getIntOr` reads): a long keeps its low 32 bits, a
+    /// float or double is floored (`Mth.floor`, saturating); `None` for a non-numeric tag.
+    pub fn int_value(&self) -> Option<i32> {
+        Some(match *self {
+            Self::Byte(v) => v.into(),
+            Self::Short(v) => v.into(),
+            Self::Int(v) => v,
+            Self::Long(v) => v as i32,
+            Self::Float(v) => f64::from(f32::from_bits(v)).floor() as i32,
+            Self::Double(v) => f64::from_bits(v).floor() as i32,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

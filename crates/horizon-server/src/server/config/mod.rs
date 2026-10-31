@@ -6,6 +6,7 @@
 //! | Velocity forwarding | `config/paper-global.yml` | `proxies.velocity.{enabled, online-mode, secret}` | `false`, `true`, `''` |
 //! | Late ticks run back to back | `config/paper-global.yml` | `misc.catch-up-ticks` | `default` (5) |
 //! | Commands sent to clients | `spigot.yml` | `commands.tab-complete`, `commands.send-namespaced` | `0`, `false` (Leaf; Spigot `true`) |
+//! | Structure salts | `spigot.yml` | `world-settings.<world or default>.seed-*` ([`STRUCTURE_SALTS`], `seed-buriedtreasure`, `seed-mineshaft`, `seed-stronghold`) | the 26.3 jar's salts, `10387320`, `default`, `default` |
 //! | Lagging flag | `purpur.yml` | `settings.lagging-threshold` | `19.0` |
 //! | 5 s TPS in `getTPS()` | `config/leaf-global.yml` | `misc.including-5s-in-get-tps` | `true` |
 //!
@@ -123,6 +124,163 @@ pub struct SpigotConfig {
     /// completion starts at that many characters.
     pub tab_complete: i32,
     pub send_namespaced: bool,
+    /// `world-settings`' structure seeds, resolved per level by [`SpigotConfig::world_seeds`].
+    pub seed_sections: SeedSections,
+}
+
+/// `SpigotWorldConfig.initWorldGenSeeds`' integer keys that replace a `minecraft:` random-spread
+/// structure set's salt (Paper's `ChunkGeneratorStructureState.injectSpigot`): key, the set's path,
+/// default (each the 26.3 jar's salt).
+pub const STRUCTURE_SALTS: [(&str, &str, i32); 18] = [
+    ("seed-village", "villages", 10387312),
+    ("seed-desert", "desert_pyramids", 14357617),
+    ("seed-igloo", "igloos", 14357618),
+    ("seed-jungle", "jungle_temples", 14357619),
+    ("seed-swamp", "swamp_huts", 14357620),
+    ("seed-monument", "ocean_monuments", 10387313),
+    ("seed-shipwreck", "shipwrecks", 165745295),
+    ("seed-ocean", "ocean_ruins", 14357621),
+    ("seed-outpost", "pillager_outposts", 165745296),
+    ("seed-endcity", "end_cities", 10387313),
+    ("seed-nether", "nether_complexes", 30084232),
+    ("seed-mansion", "woodland_mansions", 10387319),
+    ("seed-fossil", "nether_fossils", 14357921),
+    ("seed-portal", "ruined_portals", 34222645),
+    ("seed-ancientcity", "ancient_cities", 20083232),
+    ("seed-trailruins", "trail_ruins", 83469867),
+    ("seed-trialchambers", "trial_chambers", 94251327),
+    ("seed-abandonedcamp", "abandoned_camp", 91231127),
+];
+const BURIED_TREASURE_SEED: (&str, i32) = ("seed-buriedtreasure", 10387320);
+/// Read with `getString(path, "default")`, a number only when `NumberUtils.isParsable`.
+const MINESHAFT_SEED: &str = "seed-mineshaft";
+const STRONGHOLD_SEED: &str = "seed-stronghold";
+
+/// One `world-settings` section's seed values as Bukkit reads them: an integer key's value when it
+/// is a `Number` (`intValue`), a string key's value as `toString` when present.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SeedSection {
+    salts: [Option<i32>; 18],
+    buried_treasure: Option<i32>,
+    mineshaft: Option<String>,
+    stronghold: Option<String>,
+}
+
+impl SeedSection {
+    fn read(doc: &YamlDocument, section: &str) -> Self {
+        let int = |key: &str| match doc.get(&format!("{section}.{key}")) {
+            Value::Int(i) => Some(i as i32), // Number.intValue: the low 32 bits
+            Value::Float(f) => Some(f as i32),
+            _ => None,
+        };
+        let text = |key: &str| match doc.get(&format!("{section}.{key}")) {
+            Value::Null => None,
+            // A section's `toString` is never a number.
+            Value::Collection => Some(String::new()),
+            value => value.java_string(),
+        };
+        Self {
+            salts: STRUCTURE_SALTS.map(|(key, ..)| int(key)),
+            buried_treasure: int(BURIED_TREASURE_SEED.0),
+            mineshaft: text(MINESHAFT_SEED),
+            stronghold: text(STRONGHOLD_SEED),
+        }
+    }
+}
+
+/// `world-settings.default` and each world's own section.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SeedSections {
+    default: SeedSection,
+    worlds: Vec<(String, SeedSection)>,
+}
+
+/// A level's structure seeds (`SpigotWorldConfig`'s seed fields).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SpigotWorldSeeds {
+    /// By [`STRUCTURE_SALTS`].
+    pub salts: [i32; 18],
+    pub buried_treasure: i32,
+    /// `None` is `default`: no override.
+    pub mineshaft: Option<i32>,
+    pub stronghold: Option<i64>,
+}
+
+impl Default for SpigotWorldSeeds {
+    fn default() -> Self {
+        Self {
+            salts: STRUCTURE_SALTS.map(|(.., salt)| salt),
+            buried_treasure: BURIED_TREASURE_SEED.1,
+            mineshaft: None,
+            stronghold: None,
+        }
+    }
+}
+
+impl SpigotWorldSeeds {
+    /// The salt Paper gives a `minecraft:` random-spread set (`injectSpigot`); `None` for a set
+    /// without a key, which keeps its own.
+    pub fn salt(&self, set_path: &str) -> Option<i32> {
+        STRUCTURE_SALTS
+            .iter()
+            .position(|(_, set, _)| *set == set_path)
+            .map(|i| self.salts[i])
+    }
+}
+
+impl SpigotConfig {
+    /// `SpigotWorldConfig.initWorldGenSeeds` for the level `world` (its dimension key, e.g.
+    /// `minecraft:overworld`): the world's section, else `world-settings.default`, else the default.
+    /// A parsable but non-integer `seed-mineshaft`/`seed-stronghold` (`1.5`, or out of range) fails
+    /// as `Integer.parseInt`/`Long.parseLong` does, which stops the level's creation in Leaf.
+    pub fn world_seeds(&self, world: &str) -> Result<SpigotWorldSeeds, ConfigError> {
+        let sections = &self.seed_sections;
+        let own = sections
+            .worlds
+            .iter()
+            .rev() // SnakeYAML keeps a duplicate key's last value
+            .find(|(name, _)| name == world)
+            .map(|(_, section)| section);
+        let default = &sections.default;
+        let mut seeds = SpigotWorldSeeds::default();
+        for (i, salt) in seeds.salts.iter_mut().enumerate() {
+            *salt = own
+                .and_then(|s| s.salts[i])
+                .or(default.salts[i])
+                .unwrap_or(*salt);
+        }
+        seeds.buried_treasure = own
+            .and_then(|s| s.buried_treasure)
+            .or(default.buried_treasure)
+            .unwrap_or(seeds.buried_treasure);
+        let text = |pick: fn(&SeedSection) -> &Option<String>| {
+            own.and_then(|s| pick(s).clone())
+                .or_else(|| pick(default).clone())
+                .unwrap_or_else(|| "default".into())
+        };
+        let invalid = |key: &'static str, text: &str| ConfigError::Invalid {
+            file: "spigot.yml".into(),
+            path: key,
+            message: format!("For input string: \"{text}\""),
+        };
+        let mineshaft = text(|s| &s.mineshaft);
+        if is_parsable(&mineshaft) {
+            seeds.mineshaft = Some(
+                mineshaft
+                    .parse()
+                    .map_err(|_| invalid(MINESHAFT_SEED, &mineshaft))?,
+            );
+        }
+        let stronghold = text(|s| &s.stronghold);
+        if is_parsable(&stronghold) {
+            seeds.stronghold = Some(
+                stronghold
+                    .parse()
+                    .map_err(|_| invalid(STRONGHOLD_SEED, &stronghold))?,
+            );
+        }
+        Ok(seeds)
+    }
 }
 
 /// The `purpur.yml` settings read so far.
@@ -255,9 +413,40 @@ pub fn load_spigot(path: &Path) -> Result<SpigotConfig, ConfigError> {
             Value::Int(if old { 0 } else { -1 }),
         );
     }
+    let tab_complete = file.int("commands.tab-complete", 0);
+    let send_namespaced = file.bool("commands.send-namespaced", false);
+    // Each level's `SpigotWorldConfig` adds these defaults (written with the file); read once here.
+    for (key, _, salt) in STRUCTURE_SALTS {
+        file.get(
+            &format!("world-settings.default.{key}"),
+            Value::Int(salt.into()),
+        );
+    }
+    let (key, salt) = BURIED_TREASURE_SEED;
+    file.get(
+        &format!("world-settings.default.{key}"),
+        Value::Int(salt.into()),
+    );
+    for key in [MINESHAFT_SEED, STRONGHOLD_SEED] {
+        file.get(
+            &format!("world-settings.default.{key}"),
+            Value::Str("default".into()),
+        );
+    }
+    let seed_sections = SeedSections {
+        default: SeedSection::read(&file.doc, "world-settings.default"),
+        worlds: (file.doc.keys("world-settings").into_iter())
+            .filter(|world| world != "default")
+            .map(|world| {
+                let section = SeedSection::read(&file.doc, &format!("world-settings.{world}"));
+                (world, section)
+            })
+            .collect(),
+    };
     let config = SpigotConfig {
-        tab_complete: file.int("commands.tab-complete", 0),
-        send_namespaced: file.bool("commands.send-namespaced", false),
+        tab_complete,
+        send_namespaced,
+        seed_sections,
     };
     file.save(SPIGOT_HEADER);
     Ok(config)

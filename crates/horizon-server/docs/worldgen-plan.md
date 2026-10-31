@@ -77,7 +77,7 @@ helpers). Grouped by subsystem (line counts include unit tests):
 
 | File in `.local/horizon-client/26.3/worldgen/` | Format / origin | horizon-server source |
 |---|---|---|
-| `noises.json`, `densities.json`, `rules.json`, `conditions.json`, `settings.json`, `carvers.json`, `biomes.json`, `world_presets.json`, `features.json`, `placed_features.json`, `state_providers.json`, `processor_lists.json`, `template_pools.json`, `structures.json`, `structure_sets.json` | `{id: "<json text>"}` bundles of the vanilla datapack dirs `data/minecraft/worldgen/{noise, density_function, material_rule, material_condition, noise_settings, carver, biome, world_preset, feature, placed_feature, block_state_provider, processor_list, template_pool, structure, structure_set}` (`WORLDGEN_BUNDLES`, lib.rs:1055); prepare also checks client and server jars agree | **Jar, directly.** `S/registry/mod.rs` `DataPack::vanilla` (line 168) today keeps only `SYNCHRONIZED` dirs + `tags/`; extend it to RegistryDataLoader's worldgen registries (66 noise, 63 density_function, 8 noise_settings, 68 biome, 242 feature, 274 placed_feature, 5 carver, 53 structure, 22 structure_set, 306 template_pool, 41 processor_list, 8 world_preset, 46 material_rule, 9 material_condition, 9 block_state_provider, 10 flat_level_generator_preset, 3 multi_noise_biome_source_parameter_list in the 26.3 jar). Biome and block_state_provider are already synced entries (`Entry.json`). |
+| `noises.json`, `densities.json`, `rules.json`, `conditions.json`, `settings.json`, `carvers.json`, `biomes.json`, `world_presets.json`, `features.json`, `placed_features.json`, `state_providers.json`, `processor_lists.json`, `template_pools.json`, `structures.json`, `structure_sets.json` | `{id: "<json text>"}` bundles of the vanilla datapack dirs `data/minecraft/worldgen/{noise, density_function, material_rule, material_condition, noise_settings, carver, biome, world_preset, feature, placed_feature, block_state_provider, processor_list, template_pool, structure, structure_set}` (`WORLDGEN_BUNDLES`, lib.rs:1055); prepare also checks client and server jars agree | **Jar, directly.** `S/registry/mod.rs` `DataPack::vanilla` (line 168) today keeps only `SYNCHRONIZED` dirs + `tags/`; extend it to RegistryDataLoader's worldgen registries (66 noise, 63 density_function, 8 noise_settings, 68 biome, 242 feature, 274 placed_feature, 5 carver, 52 structure, 21 structure_set, 306 template_pool, 41 processor_list, 8 world_preset, 46 material_rule, 9 material_condition, 9 block_state_provider, 10 flat_level_generator_preset, 3 multi_noise_biome_source_parameter_list in the 26.3 jar). Biome and block_state_provider are already synced entries (`Entry.json`). |
 | Paper's data overrides | `PAPER/resources/data/minecraft/worldgen/material_rule/bedrock_{floor,roof}.json.patch` (full text in `/home/user/Leaf/leaf-server/src/minecraft/resources/data/minecraft/worldgen/material_rule/`) | **Must be applied by the server** (Leaf's jar differs from vanilla here): add them to the built-in `paper` pack like `PAPER_RAW_CHAT_TYPE` (`S/registry/mod.rs:73`), and decode the `paper:optionally_flat_bedrock_material_condition` type |
 | `block_tags.json`, `fluid_tags.json`, `biome_tags.json`, `feature_tags.json` | `tags/{block, fluid, worldgen/biome, worldgen/feature}` | **Jar**: `S/registry/tags.rs` already resolves tags for builtin registries (block, fluid) and synced ones (biome) — as protocol ids. Add tags for the non-synced worldgen registries (`tags/worldgen/{feature, structure, world_preset, flat_level_generator_preset}`) |
 | `structure/minecraft/**.nbt` | gzip NBT templates copied from the server jar (1,511 files, 4.2 MB compressed) | **Jar** via `S/server/vanilla_jar.rs` `VanillaJar::read`, plus the world's `generated/<ns>/structure/` dir first (StructureTemplateManager source order; Leaf's Cleanup only removes the gametest sources) |
@@ -378,6 +378,27 @@ WP1's trait stubs); WP6 integrates.
 - **Verify**: `test_structure_start_nbt_parity.py` (VanillaStructureStartOracle), `test_structure_density_parity.py`,
   `test_chunk_generation_parity.py --phase structures` (0 differences is the recorded baseline), a Leaf-side oracle
   for spigot salt overrides and (optional) MC-152094.
+- **Done (2026-10-31, first slice, `S/worldgen/structure/`)**: `mod.rs` — `worldgen/structure` (settings: biomes,
+  step, terrain adaptation; `spawn_overrides` and the type's own fields kept as JSON) and `worldgen/structure_set`
+  (all three placement types, codec ranges) with `tags/worldgen/structure`, decoded in `WorldgenData::load` (26.3:
+  52 structures, 21 sets — 20 random spread, 1 rings). `placement.rs` — random spread, the four frequency
+  reducers, exclusion zones, dimension origin, `LevelPlacements` (`ChunkGeneratorStructureState`: possible sets,
+  Paper's `spigot.yml` salts and `saltOverride`s, `seed-stronghold`), ring geometry + forked randoms
+  (`ring_searches`) with the default `findBiomeHorizontal` behind a biome lookup closure (the caller runs the
+  searches, in parallel if it likes; no `RingWork`/`StartCache`), `create_starts` (createStructures' set loop and
+  weighted choice; making a start is a callback). `start.rs` — `StructureStart` (`createTag`/`loadStaticStart`,
+  pieces as raw NBT, box from their `BB`s, CraftBukkit's `StructureBukkitValues` kept), the chunk's
+  `structures` tag with Leaf's `0211` insertion orders and fastutil's hash order for loaded references,
+  `createReferences`. Spigot seeds in `S/server/config` (`SpigotConfig::world_seeds`). Verified:
+  `LeafStructurePlacementOracle.java` on the 26.3 jar, 97,412 answers equal (92,160 random-spread potential
+  chunks + `isStructureChunk` over 3 seeds × 20 sets × 6 regions incl. negative/far/int-limit chunks, 4,800
+  reducer calls, 384 ring positions with a checkerboard biome source, 61 hash-set orders, 7 start tags);
+  Paper's seeds by unit tests derived from the patched sources.
+- **Left**: pieces (jigsaw, templates/processors, legacy pieces) and `Structure.generate` per type; ring searches
+  wired to the real biome source (WP2; `findBiomeHorizontal` then moves there); the `structures` tag wired into
+  `S/world/chunk/serial.rs` (still raw there) and the STRUCTURE_STARTS/REFERENCES steps into the scheduler (WP6);
+  `StructureCheck`, `/locate`, ocean monument piece regeneration after load; inline (non-reference) structures and
+  sets inside structure sets are rejected for now.
 
 ### WP6 — Generator driver, status pipeline, level integration (~6k lines + new scheduler code)
 

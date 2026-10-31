@@ -133,6 +133,19 @@ impl YamlDocument {
         Value::Null
     }
 
+    /// The keys of the mapping at a dotted path, in file order (`ConfigurationSection.getKeys(false)`);
+    /// empty when it is missing or not a mapping.
+    pub fn keys(&self, path: &str) -> Vec<String> {
+        let mut map = &self.root;
+        for part in path.split('.') {
+            match find(map, part) {
+                Some(YamlOwned::Mapping(m)) => map = m,
+                _ => return Vec::new(),
+            }
+        }
+        map.keys().filter_map(key_text).map(str::to_owned).collect()
+    }
+
     /// Sets the value at a dotted path, creating (or replacing non-mapping) parents, as
     /// `ConfigurationSection.set` does. An existing key keeps its place.
     pub fn set(&mut self, path: &str, value: Value<'_>) {

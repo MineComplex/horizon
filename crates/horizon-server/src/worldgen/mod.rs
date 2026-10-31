@@ -12,6 +12,8 @@
 //! - [`biome`]: biome sources, the BIOMES step, the biome zoom and the spawn finder.
 //! - [`proto_chunk`]: the chunk the generation steps write into before it becomes a
 //!   `LevelChunk`.
+//! - [`structure`]: the structure registries, where structures start (with Paper's
+//!   `spigot.yml` salts), structure starts and references in chunk NBT.
 //!
 //! Ported from Horizon's generator (`horizon-world::worldgen`, `horizon-core::{noise,density}`),
 //! which is checked against the 26.3 jar; this crate copies it, as it depends on no other Horizon
@@ -26,6 +28,7 @@ pub mod density;
 pub mod noise;
 pub mod proto_chunk;
 pub mod settings;
+pub mod structure;
 
 #[cfg(test)]
 mod oracle_tests;

@@ -4,9 +4,11 @@
 //! what it needs from it ([`WorldgenData::compile_level`]).
 //!
 //! Decoded so far: `worldgen/noise`, `worldgen/density_function` and `worldgen/noise_settings`
-//! (into one [`DensityGraph`]), and Paper's flat bedrock conditions of the bedrock rules. The
-//! other worldgen registries are kept as parsed JSON ([`RawRegistry`]) for the packages that
-//! decode them (surface rules, carvers, features, structures, presets).
+//! (into one [`DensityGraph`]), Paper's flat bedrock conditions of the bedrock rules, and
+//! `worldgen/structure` and `worldgen/structure_set` with `tags/worldgen/structure`
+//! ([`StructureRegistry`]). The other worldgen registries are kept as parsed JSON
+//! ([`RawRegistry`]) for the packages that decode them (surface rules, carvers, features,
+//! presets).
 
 use serde_json::value::RawValue;
 
@@ -17,8 +19,11 @@ use super::density::{
     DensityCompiler, DensityGraph, DensityProgram, FunctionId, NodeId, ProgramError,
 };
 use super::settings::{AquiferField, NoiseGeneratorSettings, RouterField};
+use super::structure::{
+    BiomeLookup, StructureId, StructureRegistry, decode_structure, decode_structure_set,
+};
 use crate::block::BlockStates;
-use crate::registry::{DataPack, WORLDGEN, for_each_element};
+use crate::registry::{DataPack, ElementFile, WORLDGEN, for_each_element, load_tags, registry_dir};
 
 /// An element that failed to decode: `RegistryDataLoader`'s message, which stops the server.
 #[derive(Debug, thiserror::Error)]
@@ -47,6 +52,7 @@ pub struct WorldgenData {
     /// Paper's conditions in `worldgen/material_rule`, by rule id (until surface rules decode
     /// the whole registry).
     flat_bedrock: Vec<(String, OptionallyFlatBedrock)>,
+    structures: StructureRegistry,
     raw: Vec<RawRegistry>,
 }
 
@@ -119,6 +125,7 @@ impl WorldgenData {
             }
             Ok(())
         })?;
+        let structures = load_structures(packs, &error, &parse)?;
         let mut raw = Vec::new();
         for name in WORLDGEN {
             if matches!(
@@ -126,6 +133,8 @@ impl WorldgenData {
                 "minecraft:worldgen/noise"
                     | "minecraft:worldgen/density_function"
                     | "minecraft:worldgen/noise_settings"
+                    | "minecraft:worldgen/structure"
+                    | "minecraft:worldgen/structure_set"
             ) {
                 continue;
             }
@@ -140,12 +149,18 @@ impl WorldgenData {
             graph,
             noise_settings,
             flat_bedrock,
+            structures,
             raw,
         })
     }
 
     pub fn graph(&self) -> &DensityGraph {
         &self.graph
+    }
+
+    /// `worldgen/structure`, `worldgen/structure_set` and their tags.
+    pub fn structures(&self) -> &StructureRegistry {
+        &self.structures
     }
 
     pub fn noise_settings(&self, id: &str) -> Option<&NoiseGeneratorSettings> {
@@ -246,6 +261,70 @@ impl WorldgenData {
         };
         Ok((density, extra))
     }
+}
+
+/// `worldgen/structure` (biomes resolved through `worldgen/biome` and its tags), then
+/// `worldgen/structure_set` (which may name sets registered after it), then the structure tags.
+fn load_structures(
+    packs: &[DataPack],
+    error: &impl Fn(&ElementFile<'_>, DecodeError) -> WorldgenError,
+    parse: &impl Fn(&ElementFile<'_>) -> Result<Box<RawValue>, WorldgenError>,
+) -> Result<StructureRegistry, WorldgenError> {
+    let mut biome_ids = Vec::new();
+    for_each_element(packs, "minecraft:worldgen/biome", |file| {
+        biome_ids.push(file.id.to_owned());
+        Ok::<_, WorldgenError>(())
+    })?;
+    let biome_tags = load_tags(packs, &registry_dir("minecraft:worldgen/biome"), |id| {
+        biome_ids.iter().position(|b| b == id).map(|i| i as i32)
+    });
+    let biomes = BiomeLookup {
+        ids: &biome_ids,
+        tags: &biome_tags,
+    };
+    let mut registry = StructureRegistry::default();
+    for_each_element(packs, "minecraft:worldgen/structure", |file| {
+        let structure = decode_structure(file.id, parse(&file)?, &biomes);
+        registry
+            .structures
+            .push(structure.map_err(|e| error(&file, e))?);
+        Ok(())
+    })?;
+    let mut sets = Vec::new();
+    for_each_element(packs, "minecraft:worldgen/structure_set", |file| {
+        sets.push((
+            file.id.to_owned(),
+            parse(&file)?,
+            file.file.to_owned(),
+            file.pack.id.clone(),
+        ));
+        Ok::<_, WorldgenError>(())
+    })?;
+    let set_ids: Vec<String> = sets.iter().map(|(id, ..)| id.clone()).collect();
+    for (id, raw, file, pack) in sets {
+        let set = decode_structure_set(&id, &raw, &registry.structures, &set_ids, &biomes)
+            .map_err(|source| WorldgenError { file, pack, source })?;
+        registry.sets.push(set);
+    }
+    let structure_ids = |id: &str| {
+        let index = registry.structures.iter().position(|s| s.id == id)?;
+        Some(index as i32)
+    };
+    let tags = load_tags(
+        packs,
+        &registry_dir("minecraft:worldgen/structure"),
+        structure_ids,
+    );
+    registry.tags = tags
+        .into_iter()
+        .map(|(tag, ids)| {
+            (
+                tag,
+                ids.into_iter().map(|i| StructureId(i as u32)).collect(),
+            )
+        })
+        .collect();
+    Ok(registry)
 }
 
 /// Paper's condition inside a bedrock rule: `condition` rules whose `if_true` is the condition,

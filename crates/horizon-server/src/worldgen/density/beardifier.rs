@@ -32,6 +32,34 @@ impl StructureBounds {
     fn intersects(self, minimum: [i32; 3], maximum: [i32; 3]) -> bool {
         (0..3).all(|i| self.maximum[i] >= minimum[i] && self.minimum[i] <= maximum[i])
     }
+    /// `new BoundingBox(...)` from any two corners: inverted bounds are swapped (vanilla logs them).
+    pub fn from_corners(a: [i32; 3], b: [i32; 3]) -> Self {
+        Self {
+            minimum: [0, 1, 2].map(|i| a[i].min(b[i])),
+            maximum: [0, 1, 2].map(|i| a[i].max(b[i])),
+        }
+    }
+    /// `BoundingBox.encapsulating`.
+    pub fn encapsulating(self, other: Self) -> Self {
+        Self::from_corners(
+            [0, 1, 2].map(|i| self.minimum[i].min(other.minimum[i])),
+            [0, 1, 2].map(|i| self.maximum[i].max(other.maximum[i])),
+        )
+    }
+    /// `BoundingBox.inflatedBy` (Java's wrapping `int` arithmetic).
+    pub fn inflated_by(self, amount: i32) -> Self {
+        Self::from_corners(
+            self.minimum.map(|v| v.wrapping_sub(amount)),
+            self.maximum.map(|v| v.wrapping_add(amount)),
+        )
+    }
+    /// `BoundingBox.intersects(minX, minZ, maxX, maxZ)`: the columns only.
+    pub fn intersects_columns(self, min_x: i32, min_z: i32, max_x: i32, max_z: i32) -> bool {
+        self.maximum[0] >= min_x
+            && self.minimum[0] <= max_x
+            && self.maximum[2] >= min_z
+            && self.minimum[2] <= max_z
+    }
 }
 
 /// `TerrainAdjustment`.
