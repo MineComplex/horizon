@@ -36,6 +36,13 @@ fn argument_text(value: &ArgumentValue) -> String {
         ArgumentValue::Float(v) => float_to_string(*v),
         ArgumentValue::String(v) => v.clone(),
         ArgumentValue::GameProfile(_) => "<profile>".to_owned(),
+        ArgumentValue::Resource { tag, id } => {
+            if *tag {
+                format!("#{id}")
+            } else {
+                id.clone()
+            }
+        }
         other => panic!("no text for {other:?}"),
     }
 }

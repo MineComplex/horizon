@@ -29,6 +29,7 @@
 
 mod admin;
 mod lists;
+pub mod locate;
 mod source;
 mod tick;
 mod tree;
@@ -335,6 +336,9 @@ impl<'p> Runner<'p, Key, CommandSource> for Host<'_> {
             Cmd::Stop => admin::stop(server, source),
             Cmd::List => admin::list(server, source, false),
             Cmd::ListUuids => admin::list(server, source, true),
+            Cmd::LocateStructure => locate::structure(server, source, context),
+            Cmd::LocateBiome => locate::biome(server, source, context),
+            Cmd::LocatePoi => locate::poi(server, source, context),
             Cmd::WhitelistOn => lists::whitelist_on(server, source),
             Cmd::WhitelistOff => lists::whitelist_off(server, source),
             Cmd::WhitelistList => lists::whitelist_list(server, source),

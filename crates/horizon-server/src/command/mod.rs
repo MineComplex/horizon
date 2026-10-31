@@ -34,7 +34,9 @@ mod suggestion;
 mod tree;
 mod values;
 
-pub use argument::{ArgumentType, ArgumentValue, ProfileTarget, SelectorKind, StringKind};
+pub use argument::{
+    ArgumentType, ArgumentValue, ProfileTarget, ResourceRegistry, SelectorKind, StringKind,
+};
 pub use coordinates::{CommandOrigin, Coordinates, WorldCoordinate, local_position};
 pub use error::CommandError;
 pub use reader::StringReader;

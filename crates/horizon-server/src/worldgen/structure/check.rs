@@ -36,6 +36,15 @@ pub trait ChunkScan {
     fn scan_chunk(&self, pos: ChunkPos) -> Result<Option<Compound>, String>;
 }
 
+/// What `checkStart` is asked: the chunk, the structure, and whether a start that a search already
+/// took (a reference) counts as absent (`requireUnreferenced`).
+#[derive(Clone, Copy, Debug)]
+pub struct StartQuery {
+    pub pos: ChunkPos,
+    pub structure: StructureId,
+    pub require_unreferenced: bool,
+}
+
 /// A level without saved chunks.
 pub struct NoSavedChunks;
 
@@ -76,13 +85,16 @@ impl StructureCheck {
     pub fn check_start(
         &mut self,
         registry: &StructureRegistry,
-        pos: ChunkPos,
-        structure: StructureId,
-        require_unreferenced: bool,
+        query: StartQuery,
         scan: &dyn ChunkScan,
         restrictions_allow: impl FnOnce() -> bool,
         can_create: impl FnOnce() -> bool,
     ) -> StructureCheckResult {
+        let StartQuery {
+            pos,
+            structure,
+            require_unreferenced,
+        } = query;
         let key = pos.pack();
         if let Some(cached) = self.loaded.get(&key) {
             return check_structure_info(cached, structure, require_unreferenced);
@@ -152,7 +164,11 @@ impl StructureCheck {
     }
 
     /// `onStructureLoad`: a loaded chunk's valid starts and their reference counts.
-    pub fn on_structure_load(&mut self, pos: ChunkPos, starts: impl IntoIterator<Item = (StructureId, i32)>) {
+    pub fn on_structure_load(
+        &mut self,
+        pos: ChunkPos,
+        starts: impl IntoIterator<Item = (StructureId, i32)>,
+    ) {
         self.store_full_results(pos.pack(), starts.into_iter().collect());
     }
 
@@ -258,9 +274,11 @@ mod tests {
         for _ in 0..3 {
             let result = check.check_start(
                 &registry,
-                pos,
-                structure,
-                false,
+                StartQuery {
+                    pos,
+                    structure,
+                    require_unreferenced: false,
+                },
                 &NoSavedChunks,
                 || true,
                 || {
@@ -274,9 +292,11 @@ mod tests {
         // Restrictions come first; a refusal asks nothing.
         let other = check.check_start(
             &registry,
-            ChunkPos::new(9, 9),
-            structure,
-            false,
+            StartQuery {
+                pos: ChunkPos::new(9, 9),
+                structure,
+                require_unreferenced: false,
+            },
             &NoSavedChunks,
             || false,
             || panic!("not asked"),
@@ -294,19 +314,30 @@ mod tests {
         let ask = |check: &mut StructureCheck, structure, unreferenced| {
             check.check_start(
                 &registry,
-                pos,
-                structure,
-                unreferenced,
+                StartQuery {
+                    pos,
+                    structure,
+                    require_unreferenced: unreferenced,
+                },
                 &NoSavedChunks,
                 || panic!("cached"),
                 || panic!("cached"),
             )
         };
         assert_eq!(ask(&mut check, a, true), StructureCheckResult::StartPresent);
-        assert_eq!(ask(&mut check, b, false), StructureCheckResult::StartNotPresent);
+        assert_eq!(
+            ask(&mut check, b, false),
+            StructureCheckResult::StartNotPresent
+        );
         check.increment_reference(pos, a);
-        assert_eq!(ask(&mut check, a, true), StructureCheckResult::StartNotPresent);
-        assert_eq!(ask(&mut check, a, false), StructureCheckResult::StartPresent);
+        assert_eq!(
+            ask(&mut check, a, true),
+            StructureCheckResult::StartNotPresent
+        );
+        assert_eq!(
+            ask(&mut check, a, false),
+            StructureCheckResult::StartPresent
+        );
     }
 
     #[test]
@@ -316,9 +347,11 @@ mod tests {
         let saved = Saved(Compound::new());
         let result = check.check_start(
             &registry,
-            ChunkPos::new(1, 1),
-            StructureId(0),
-            false,
+            StartQuery {
+                pos: ChunkPos::new(1, 1),
+                structure: StructureId(0),
+                require_unreferenced: false,
+            },
             &saved,
             || true,
             || false,
@@ -330,9 +363,11 @@ mod tests {
         )]));
         let result = check.check_start(
             &registry,
-            ChunkPos::new(2, 2),
-            StructureId(0),
-            false,
+            StartQuery {
+                pos: ChunkPos::new(2, 2),
+                structure: StructureId(0),
+                require_unreferenced: false,
+            },
             &legacy,
             || true,
             || false,

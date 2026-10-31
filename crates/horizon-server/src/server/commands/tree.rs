@@ -9,7 +9,9 @@
 //! Not in the tree yet (their commands are not ported): `/time of <clock>` and the timeline queries
 //! (they take registry arguments), everything that needs entities or blocks.
 
-use crate::command::{ArgumentType, CommandTree, NodeBuilder, NodeId, argument, literal};
+use crate::command::{
+    ArgumentType, CommandTree, NodeBuilder, NodeId, ResourceRegistry, argument, literal,
+};
 
 /// A key of the tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -29,6 +31,10 @@ pub enum Cmd {
     DifficultySet(u8),
     List,
     ListUuids,
+    /// `locate structure|biome|poi`.
+    LocateStructure,
+    LocateBiome,
+    LocatePoi,
     Seed,
     /// `tick query`, `rate`, `step`, `step <time>`, `step stop`, `sprint <time>`, `sprint stop`,
     /// `unfreeze`, `freeze`.
@@ -162,6 +168,38 @@ pub fn build_tree() -> CommandTree<Key> {
         literal("list")
             .executes(run(Cmd::List))
             .then(literal("uuids").executes(run(Cmd::ListUuids))),
+    );
+
+    tree.register(
+        literal("locate")
+            .requires(requires(LEVEL_GAMEMASTERS))
+            .then(
+                literal("structure").then(
+                    argument(
+                        "structure",
+                        ArgumentType::ResourceOrTagKey(ResourceRegistry::Structure),
+                    )
+                    .executes(run(Cmd::LocateStructure)),
+                ),
+            )
+            .then(
+                literal("biome").then(
+                    argument(
+                        "biome",
+                        ArgumentType::ResourceOrTag(ResourceRegistry::Biome),
+                    )
+                    .executes(run(Cmd::LocateBiome)),
+                ),
+            )
+            .then(
+                literal("poi").then(
+                    argument(
+                        "poi",
+                        ArgumentType::ResourceOrTag(ResourceRegistry::PoiType),
+                    )
+                    .executes(run(Cmd::LocatePoi)),
+                ),
+            ),
     );
 
     tree.register(

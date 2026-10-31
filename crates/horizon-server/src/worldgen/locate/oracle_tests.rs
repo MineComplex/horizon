@@ -44,8 +44,7 @@ impl RealWorld {
     pub(crate) fn load() -> Self {
         let real = load_real().expect("HORIZON_VANILLA_JAR and the block data");
         let reports = env_path("HORIZON_BIOME_REPORTS").expect("HORIZON_BIOME_REPORTS");
-        let mut jar =
-            VanillaJar::open(env_path("HORIZON_VANILLA_JAR").unwrap().as_ref()).unwrap();
+        let mut jar = VanillaJar::open(env_path("HORIZON_VANILLA_JAR").unwrap().as_ref()).unwrap();
         let vanilla = DataPack::vanilla(&mut jar).unwrap();
         let registries =
             Registries::build(Vec::new(), &[vanilla.clone(), DataPack::paper()]).unwrap();
@@ -53,10 +52,15 @@ impl RealWorld {
         let biomes = BiomeIds::new(biome_registry);
         let biome_count = biome_registry.entries.len() as u32;
         let presets = BiomePresets::load(reports.as_ref(), &real.data, &biomes).unwrap();
-        let normal = (real.data.raw("minecraft:worldgen/world_preset").unwrap().elements.iter())
-            .find(|(id, _)| id == "minecraft:normal")
-            .map(|(_, raw)| raw.to_owned())
-            .unwrap();
+        let normal = (real
+            .data
+            .raw("minecraft:worldgen/world_preset")
+            .unwrap()
+            .elements
+            .iter())
+        .find(|(id, _)| id == "minecraft:normal")
+        .map(|(_, raw)| raw.to_owned())
+        .unwrap();
         let crate::worldgen::terrain::oracle_tests::Real {
             mut data,
             blocks,
@@ -70,7 +74,11 @@ impl RealWorld {
         let motion: HashSet<_> = block_tags
             .iter()
             .find(|(name, _)| name == "minecraft:blocks_motion_in_heightmap")
-            .map(|(_, ids)| ids.iter().map(|&i| crate::block::BlockId(i as u32)).collect())
+            .map(|(_, ids)| {
+                ids.iter()
+                    .map(|&i| crate::block::BlockId(i as u32))
+                    .collect()
+            })
             .unwrap_or_default();
         data.set_templates(StructureTemplates::load(&mut jar, None, &blocks, &state_data).unwrap());
         let state_count = blocks.state_count();
@@ -112,7 +120,8 @@ impl RealWorld {
             return made.clone();
         }
         let biomes = self.biome_ids();
-        let dimensions = object(required(&object(&self.normal).unwrap(), "dimensions").unwrap()).unwrap();
+        let dimensions =
+            object(required(&object(&self.normal).unwrap(), "dimensions").unwrap()).unwrap();
         let raw = required(&object(&dimensions[STEMS[stem]]).unwrap(), "generator")
             .unwrap()
             .to_owned();
@@ -160,7 +169,10 @@ fn real_rings_match_java() {
         let generator = world.generator(0, seed);
         let set = generator.data().structures().set_id(words[2]).unwrap();
         let [index, x, z]: [i32; 3] = [3, 4, 5].map(|i| words[i].parse().unwrap());
-        let positions = generator.placements().ring_positions(set).expect("ring positions");
+        let positions = generator
+            .placements()
+            .ring_positions(set)
+            .expect("ring positions");
         assert_eq!(positions[index as usize], ChunkPos::new(x, z), "{line}");
         rows += 1;
     }
@@ -175,10 +187,13 @@ fn locate_matches_java() {
         std::fs::read_to_string(env_path("HORIZON_LOCATE_ORACLE").expect("HORIZON_LOCATE_ORACLE"))
             .unwrap();
     let mut world = RealWorld::load();
+    let language = VanillaJar::open(env_path("HORIZON_VANILLA_JAR").unwrap().as_ref())
+        .unwrap()
+        .load_language();
     let mut failures: Vec<String> = Vec::new();
     let mut counts: BTreeMap<&str, [usize; 2]> = BTreeMap::new();
     let mut locators: HashMap<(usize, i64), Locator<'static>> = HashMap::new();
-    let mut leaked: HashMap<(usize, i64), &'static LevelGenerator> = HashMap::new();
+    let mut leaked: HashMap<(usize, i64), &'static Arc<LevelGenerator>> = HashMap::new();
     let started = std::time::Instant::now();
     for line in oracle.lines() {
         let f: Vec<&str> = line.split('\t').collect();
@@ -193,13 +208,9 @@ fn locate_matches_java() {
                 );
                 let query = f[6];
                 // The generators outlive the test; the locators borrow them.
-                let generator: &'static LevelGenerator = *leaked
+                let generator: &'static LevelGenerator = leaked
                     .entry((stem, seed))
-                    .or_insert_with(|| {
-                        let arc: &'static Arc<LevelGenerator> =
-                            Box::leak(Box::new(world.generator(stem, seed)));
-                        &**arc
-                    });
+                    .or_insert_with(|| Box::leak(Box::new(world.generator(stem, seed))));
                 let got = if f[0] == "structure" {
                     let registry = generator.data().structures();
                     let wanted: Vec<StructureId> = match query.strip_prefix('#') {
@@ -244,12 +255,57 @@ fn locate_matches_java() {
                         )
                     })
                 };
-                let entry = counts.entry(if f[0] == "structure" { "structure" } else { "biome" });
+                let entry = counts.entry(if f[0] == "structure" {
+                    "structure"
+                } else {
+                    "biome"
+                });
                 let entry = entry.or_default();
                 entry[usize::from(got == "none")] += 1;
                 if got != f[7] {
                     failures.push(format!("{line}\n    ours: {got}"));
                 }
+            }
+            // `LocateCommand.showLocateResult`'s message and result.
+            "feedback" => {
+                let point = |text: &str| {
+                    let v: Vec<i32> = text.split(' ').map(|n| n.parse().unwrap()).collect();
+                    BlockPos::new(v[0], v[1], v[2])
+                };
+                let name = if f[2].starts_with('#') {
+                    format!("{} ({})", f[2], f[5])
+                } else {
+                    f[2].to_owned()
+                };
+                let (message, distance) = crate::server::runtime::commands::locate::locate_message(
+                    &format!("commands.locate.{}.success", f[1]),
+                    &name,
+                    point(f[3]),
+                    point(f[4]),
+                    f[1] == "biome",
+                );
+                let text = message.to_string_in(&language);
+                if text != f[7] || distance.to_string() != f[6] {
+                    failures.push(format!("{line}\n    ours: {distance} {text}"));
+                }
+                counts.entry("feedback").or_default()[0] += 1;
+            }
+            // The not-found messages.
+            "error" => {
+                let key = match f[1] {
+                    "commands.locate.structure.not_found" => "commands.locate.structure.not_found",
+                    "commands.locate.structure.invalid" => "commands.locate.structure.invalid",
+                    "commands.locate.biome.not_found" => "commands.locate.biome.not_found",
+                    "commands.locate.poi.not_found" => "commands.locate.poi.not_found",
+                    other => panic!("{other}"),
+                };
+                let text = crate::command::CommandError::locate(key, f[2])
+                    .message()
+                    .to_string_in(&language);
+                if text != f[3] {
+                    failures.push(format!("{line}\n    ours: {text}"));
+                }
+                counts.entry("error").or_default()[0] += 1;
             }
             _ => {}
         }

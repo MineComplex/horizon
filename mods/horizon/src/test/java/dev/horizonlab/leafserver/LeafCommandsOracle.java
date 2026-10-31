@@ -65,7 +65,7 @@ public final class LeafCommandsOracle {
 
     /** The ported commands, in the order Commands registers them. */
     private static final List<String> PORTED = List.of(
-        "difficulty", "list", "seed", "tick", "time", "weather",
+        "difficulty", "list", "locate", "seed", "tick", "time", "weather",
         "deop", "op", "save-all", "save-off", "save-on", "stop", "whitelist");
 
     private static final String[] INPUTS = {
@@ -88,7 +88,12 @@ public final class LeafCommandsOracle {
         "whitelist add @a", "whitelist remove Steve", "whitelist remove", "whitelist reload",
         "whitelist list", "whitelist nonsense",
         "a very long unknown command line to cut", "whitelist add Steve extra words here that go on",
-        "tést üïö unknown line"
+        "tést üïö unknown line",
+        "locate", "locate structure", "locate structure minecraft:village_plains", "locate structure village_plains",
+        "locate structure #minecraft:village", "locate structure #", "locate structure Bad", "locate structure a:b:c",
+        "locate structure #minecraft:on_ocean_explorer_maps extra", "locate biome", "locate biome minecraft:plains",
+        "locate biome plains", "locate biome #minecraft:is_forest", "locate biome #", "locate poi",
+        "locate poi minecraft:farmer", "locate poi #minecraft:village", "locate nothing", "locate structure  x"
     };
 
     private static final Object[][] RENDERS = {
@@ -217,7 +222,10 @@ public final class LeafCommandsOracle {
                     CommandContextBuilder<CommandSourceStack> last = parse.getContext().getLastChild();
                     for (Map.Entry<String, ParsedArgument<CommandSourceStack, ?>> e : last.getArguments().entrySet()) {
                         Object value = e.getValue().getResult();
-                        arguments.addProperty(e.getKey(), value instanceof GameProfileArgument.Result ? "<profile>" : String.valueOf(value));
+                        arguments.addProperty(e.getKey(), value instanceof GameProfileArgument.Result ? "<profile>"
+                            : value instanceof net.minecraft.commands.arguments.ResourceOrTagKeyArgument.Result<?> key ? key.asPrintable()
+                            : value instanceof net.minecraft.commands.arguments.ResourceOrTagArgument.Result<?> tag ? tag.asPrintable()
+                            : String.valueOf(value));
                     }
                     o.add("ok", arguments);
                 }

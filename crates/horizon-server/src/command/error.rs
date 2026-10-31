@@ -246,6 +246,26 @@ impl CommandError {
     pub fn player_unknown() -> Self {
         Self::new("argument.player.unknown", Vec::new())
     }
+    /// `ResourceArgument.ERROR_UNKNOWN_RESOURCE`.
+    pub fn resource_not_found(id: &str, registry: &str) -> Self {
+        Self::new(
+            "argument.resource.not_found",
+            vec![id.into_arg(), registry.into_arg()],
+        )
+    }
+    /// `ResourceOrTagArgument.ERROR_UNKNOWN_TAG`.
+    pub fn resource_tag_not_found(id: &str, registry: &str) -> Self {
+        Self::new(
+            "argument.resource_tag.not_found",
+            vec![id.into_arg(), registry.into_arg()],
+        )
+    }
+    /// `LocateCommand`'s `ERROR_STRUCTURE_NOT_FOUND`, `ERROR_STRUCTURE_INVALID`,
+    /// `ERROR_BIOME_NOT_FOUND` and `ERROR_POI_NOT_FOUND` (`key` is the translation key; `value`
+    /// the argument as `asPrintable` writes it).
+    pub fn locate(key: &'static str, value: &str) -> Self {
+        Self::new(key, vec![value.into_arg()])
+    }
     /// `HexColorArgument.ERROR_INVALID_HEX`.
     pub fn hex_color_invalid(value: &str) -> Self {
         Self::new("argument.hexcolor.invalid", vec![value.into_arg()])

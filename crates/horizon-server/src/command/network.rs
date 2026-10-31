@@ -27,7 +27,7 @@ use std::collections::{HashMap, VecDeque, hash_map::Entry as MapEntry};
 use std::hash::Hash;
 use std::io::{self, Cursor, Write};
 
-use super::{ArgumentType, CommandTree, NodeId, NodeKind, StringKind};
+use super::{ArgumentType, CommandTree, NodeId, NodeKind, ResourceRegistry, StringKind};
 use crate::azalea::buf::{AzBuf, AzBufVar, BufReadError};
 
 const MASK_TYPE: u8 = 3;
@@ -86,6 +86,8 @@ pub mod parser_id {
     pub const INT_RANGE: i32 = 39;
     pub const FLOAT_RANGE: i32 = 40;
     pub const TIME: i32 = 43;
+    pub const RESOURCE_OR_TAG: i32 = 44;
+    pub const RESOURCE_OR_TAG_KEY: i32 = 45;
     pub const UUID: i32 = 61;
 }
 
@@ -160,6 +162,16 @@ fn write_argument_type(ty: &ArgumentType, buf: &mut impl Write) -> io::Result<()
         ArgumentType::HexColor => parser_id::HEX_COLOR.azalea_write_var(buf),
         ArgumentType::GameProfile => parser_id::GAME_PROFILE.azalea_write_var(buf),
         ArgumentType::Identifier => parser_id::RESOURCE_LOCATION.azalea_write_var(buf),
+        ArgumentType::ResourceOrTag(registry) | ArgumentType::ResourceOrTagKey(registry) => {
+            let id = if matches!(ty, ArgumentType::ResourceOrTag(_)) {
+                parser_id::RESOURCE_OR_TAG
+            } else {
+                parser_id::RESOURCE_OR_TAG_KEY
+            };
+            id.azalea_write_var(buf)?;
+            // `writeResourceKey`: the registry's identifier.
+            registry.identifier().to_owned().azalea_write(buf)
+        }
     }
 }
 
@@ -221,6 +233,17 @@ fn read_argument_type(buf: &mut Cursor<&[u8]>) -> Result<ArgumentType, BufReadEr
         parser_id::HEX_COLOR => ArgumentType::HexColor,
         parser_id::GAME_PROFILE => ArgumentType::GameProfile,
         parser_id::RESOURCE_LOCATION => ArgumentType::Identifier,
+        id @ (parser_id::RESOURCE_OR_TAG | parser_id::RESOURCE_OR_TAG_KEY) => {
+            let name = String::azalea_read(buf)?;
+            let registry = ResourceRegistry::by_identifier(&name).ok_or_else(|| {
+                BufReadError::Custom(format!("unsupported registry {name} for an argument"))
+            })?;
+            if id == parser_id::RESOURCE_OR_TAG {
+                ArgumentType::ResourceOrTag(registry)
+            } else {
+                ArgumentType::ResourceOrTagKey(registry)
+            }
+        }
         id => {
             let name = usize::try_from(id)
                 .ok()

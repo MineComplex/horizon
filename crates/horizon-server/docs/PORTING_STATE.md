@@ -218,9 +218,25 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   `Level::tick_scheduled_ticks` now running the due fluid ticks (block ticks still wait for block behaviour).
   `LeafFluidOracle`: 24 scenes, 2,898 game ticks, 4,520 block sets, 0 differ. Checked live: `real_binary_session` and
   `real_binary_dimension_change` on the release binary.
+- Worldgen locating (`src/worldgen/{locate.rs,biome/search.rs,structure/check.rs}`, `server/commands/locate.rs`): the strongholds' rings
+  are searched on the level's real biome source (`BiomeSource::find_biome_horizontal`, `FixedBiomeSource`'s override included;
+  `find_biome_horizontal` and `find_closest_biome_3d` live in `worldgen/biome/search.rs`); `StructureCheck` (`structure/check.rs`:
+  `checkStart` with its per-chunk caches, `onStructureLoad`, `incrementReference`, saved starts read through a `ChunkScan` trait
+  without loading the chunk); `Locator` (`ChunkGenerator.findNearestMapStructure`: placement scans, rings nearest first,
+  random-spread rings of sectors, `createReference`) and `find_closest_biome_3d` (`findClosestBiome3d`, `Mth.outFromOrigin`,
+  `BlockPos.spiralAround`); `/locate structure|biome|poi` with the `resource_or_tag` and `resource_or_tag_key` argument types
+  (parser ids 44/45, the registry key on the wire) and `LocateCommand`'s feedback and errors. `LeafStructurePlacementOracle`
+  `realring` rows (384, three seeds) equal; `LeafLocateOracle`: 1,530 structure, 378 biome rows, 8 feedback and 7 error rows equal over
+  three levels, two seeds, three origins; `LeafCommandsOracle` (now with `locate`: parse, usage, packet bytes) equal. Stand-ins:
+  the oracle jar is vanilla (no Paper), so Paper's seed overrides and world border check are not compared (Rust defaults equal
+  vanilla's); the arguments' names are looked up when the command runs, not while parsing (`argument.resource.not_found` loses its
+  position); every `/locate` makes a fresh `Locator` and generates the structure starts it needs (no chunk cache to read loaded
+  or saved chunks from: nothing implements `ChunkScan` over region files); `canCreateStructure` runs the whole structure
+  generation, which costs more than vanilla's generation point; `poi` finds nothing (no POI storage; it fails as vanilla does with
+  none around); a level without a generator (flat/debug) finds nothing; the `structures` tag reader already uses `Tag::int_value`.
 - Commands (`src/command/exec.rs`, `src/server/commands/`): vanilla's executor (frames, forks, limits at the 65,536 defaults
   until game rules exist, `ResultCallback` enum) over the tree's key and `&mut Server`; `CommandSource` as plain data (console:
-  `System chat:` feedback, ops broadcast). Ported: `difficulty`, `list`, `seed`, `tick`, `time`, `weather`, `op`, `deop`,
+  `System chat:` feedback, ops broadcast). Ported: `difficulty`, `list`, `locate`, `seed`, `tick`, `time`, `weather`, `op`, `deop`,
   `save-all`/`save-off`/`save-on`, `stop`, `whitelist`; commands packet per op level at join and on `/op`/`/deop`.
   `LeafCommandsOracle`: 583 rows equal (parse results/errors, usage, packet bytes levels 0-4, rendering); command bodies derived
   from sources. Stand-ins: bare `@a/@p/@r` only; no `usercache.json`; weather not ticked or saved; `save-off` only stops the
@@ -253,7 +269,7 @@ blocks, items, commands), Sonnet for routine porting against an oracle, Opus for
 
 | # | Stage | Contents | Java | Waves | Done when |
 |---|---|---|---|---|---|
-| 0 | Finish world generation | live structure generation, level random, flat/debug generators, ring search, structure check, `/locate` | ~10k | 1-2 | worlds generate as vanilla's, structures included |
+| 0 | Finish world generation | live structure generation, level random, flat/debug generators | ~10k | 1-2 | worlds generate as vanilla's, structures included |
 | 1 | Walk and build | play packets, movement checks, digging and placing, game modes, Starlight light, `updateShape` of every block | ~45k | 4-5 | walk, break and place blocks, correct light |
 | 2 | Block behaviour | block classes (~45k), redstone, block entities (chests, furnaces, hoppers, spawners), block ticks, game events | ~63k | 6-8 | redstone, machines and growth work |
 | 3 | Items and inventory | items, components, enchantments, crafting and furnaces, menus, loot tables, damage, effects, food | ~55k | 5-7 | survival: crafting, chests, loot, hunger, damage |
@@ -266,7 +282,7 @@ Order: 1 first; 2 and 3 can run in parallel; 4 before 5; 6 in pieces any time af
 the plugin API (no plugins for now), datagen-only code in `data/`.
 
 ## Next (stage 0 details)
-WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`; a loaded monument regenerates its rooms with the level seed); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (a loaded monument regenerates its rooms with the level seed; `/locate` over loaded and saved chunks: a `ChunkScan` over region files, and a cached `Locator` per level; the arguments' registry lookup while parsing); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

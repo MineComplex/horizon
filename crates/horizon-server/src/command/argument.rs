@@ -25,6 +25,31 @@ pub enum StringKind {
     GreedyPhrase,
 }
 
+/// The registries a resource argument names (`ResourceKey<? extends Registry<T>>`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ResourceRegistry {
+    Structure,
+    Biome,
+    PoiType,
+}
+
+impl ResourceRegistry {
+    /// The registry key's identifier, as the commands packet writes it.
+    pub const fn identifier(self) -> &'static str {
+        match self {
+            Self::Structure => "minecraft:worldgen/structure",
+            Self::Biome => "minecraft:worldgen/biome",
+            Self::PoiType => "minecraft:point_of_interest_type",
+        }
+    }
+
+    pub fn by_identifier(id: &str) -> Option<Self> {
+        [Self::Structure, Self::Biome, Self::PoiType]
+            .into_iter()
+            .find(|r| r.identifier() == id)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ArgumentType {
     Bool,
@@ -86,6 +111,14 @@ pub enum ArgumentType {
     /// `resource_location` (`IdentifierArgument.id()`): an identifier, `minecraft:` by default; the value
     /// is a [`ArgumentValue::String`] with the namespace written out.
     Identifier,
+    /// `resource_or_tag` (`ResourceOrTagArgument`): an element's identifier or `#tag`. The value
+    /// is a [`ArgumentValue::Resource`]; unlike vanilla, which looks the name up in the registry
+    /// while parsing (`argument.resource.not_found`, `argument.resource_tag.not_found` with the
+    /// position), the command checks it when it runs.
+    ResourceOrTag(ResourceRegistry),
+    /// `resource_or_tag_key` (`ResourceOrTagKeyArgument`): the same syntax, never looked up
+    /// while parsing.
+    ResourceOrTagKey(ResourceRegistry),
 }
 
 impl ArgumentType {
@@ -227,6 +260,10 @@ impl ArgumentType {
             Self::HexColor => ArgumentValue::Integer(parse_hex_color(reader)?),
             Self::GameProfile => ArgumentValue::GameProfile(parse_game_profile(reader)?),
             Self::Identifier => ArgumentValue::String(parse_identifier(reader)?),
+            Self::ResourceOrTag(_) | Self::ResourceOrTagKey(_) => {
+                let (tag, id) = parse_resource_or_tag(reader)?;
+                ArgumentValue::Resource { tag, id }
+            }
         })
     }
 
@@ -293,8 +330,33 @@ impl ArgumentType {
                 "@e",
             ],
             Self::Identifier => &["foo", "foo:bar", "012"],
+            Self::ResourceOrTag(_) | Self::ResourceOrTagKey(_) => &[
+                "foo",
+                "foo:bar",
+                "012",
+                "#skeletons",
+                "#minecraft:skeletons",
+            ],
         }
     }
+}
+
+/// `ResourceOrTag(Key)Argument.parse`: `#` and an identifier for a tag, else an identifier. Returns
+/// whether it is a tag and the identifier with its namespace written out. A failed tag resets the
+/// cursor to the `#`.
+fn parse_resource_or_tag(reader: &mut StringReader) -> Result<(bool, String), CommandError> {
+    if reader.can_read() && reader.peek() == '#' {
+        let cursor = reader.cursor();
+        reader.skip();
+        return match parse_identifier(reader) {
+            Ok(id) => Ok((true, id)),
+            Err(error) => {
+                reader.set_cursor(cursor);
+                Err(error)
+            }
+        };
+    }
+    Ok((false, parse_identifier(reader)?))
 }
 
 /// `Identifier.read`: the characters an identifier may hold, then `Identifier.tryParse` (one `:` at most,
@@ -427,6 +489,11 @@ pub enum ArgumentValue {
     Operation(ScoreOperation),
     TeamColor(TeamColor),
     GameProfile(ProfileTarget),
+    /// A `resource_or_tag` or `resource_or_tag_key`: `#` for a tag, the identifier with its namespace.
+    Resource {
+        tag: bool,
+        id: String,
+    },
 }
 
 #[cfg(test)]

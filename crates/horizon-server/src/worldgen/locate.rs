@@ -23,7 +23,7 @@ use crate::worldgen::generator::structures::generate_with_worker;
 use crate::worldgen::generator::{GenerationWorker, GeneratorError, LevelGenerator};
 use crate::worldgen::proto_chunk::{GenerationRegion, RegionChunk};
 use crate::worldgen::structure::check::{
-    ChunkScan, NoSavedChunks, StructureCheck, StructureCheckResult,
+    ChunkScan, NoSavedChunks, StartQuery, StructureCheck, StructureCheckResult,
 };
 use crate::worldgen::structure::placement::locate_pos;
 use crate::worldgen::structure::start::ChunkStructures;
@@ -180,12 +180,12 @@ impl<'g> Locator<'g> {
             }
             let structure_pos = BlockPos::new((chunk.x << 4) + 8, 32, (chunk.z << 4) + 8);
             let distance = dist_sqr(structure_pos, pos);
-            if closest_pos.is_none() || distance < closest {
-                if let Some(found) = self.structure_generating_at(structures, set, chunk, create_reference)
-                {
-                    closest_pos = Some(found);
-                    closest = distance;
-                }
+            if (closest_pos.is_none() || distance < closest)
+                && let Some(found) =
+                    self.structure_generating_at(structures, set, chunk, create_reference)
+            {
+                closest_pos = Some(found);
+                closest = distance;
             }
         }
         closest_pos
@@ -252,9 +252,11 @@ impl<'g> Locator<'g> {
             } = self;
             let fast = check.check_start(
                 registry,
-                target,
-                structure,
-                create_reference,
+                StartQuery {
+                    pos: target,
+                    structure,
+                    require_unreferenced: create_reference,
+                },
                 *scan,
                 || placements.additional_restrictions(registry, set, target.x, target.z),
                 || generate_with_worker(worker, structure, target, (min_y, height), 0).is_some(),

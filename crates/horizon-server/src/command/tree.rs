@@ -898,6 +898,14 @@ impl<'a, K: Copy> CommandContext<'a, K> {
         }
     }
 
+    /// A `resource_or_tag` or `resource_or_tag_key` argument: whether it is a tag and its identifier.
+    pub fn resource(&self, name: &str) -> Option<(bool, &str)> {
+        match self.argument(name)? {
+            ArgumentValue::Resource { tag, id } => Some((*tag, id)),
+            _ => None,
+        }
+    }
+
     /// `IdentifierArgument.getId`, written `namespace:path`.
     pub fn identifier(&self, name: &str) -> Option<&str> {
         self.string(name)
