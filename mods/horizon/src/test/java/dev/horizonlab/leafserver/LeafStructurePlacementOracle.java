@@ -14,6 +14,9 @@
 //       concentric-ring positions of a level whose biome source is a fixed checkerboard of
 //       minecraft:plains and minecraft:deep_ocean (CheckerBiomeSource; the Rust test mirrors it), so
 //       ring geometry, the forked search randoms and findBiomeHorizontal run as in vanilla
+//   realring <seed> <set> <index> <x> <z>
+//       the same on the normal world preset's overworld biome source (multi-noise), searched with the
+//       level's own random state
 //   hashset <keys...> | <order...>     fastutil LongOpenHashSet(long[]) iteration order
 //   start <input snbt> | <createTag snbt or null> | <bounding box or none>
 //       StructureStart.loadStaticStart then createTag in chunk (3, -7)
@@ -117,6 +120,12 @@ public final class LeafStructurePlacementOracle {
             biomes.getOrThrow(ResourceKey.create(Registries.BIOME, Identifier.parse("minecraft:deep_ocean"))));
         NoiseGeneratorSettings overworld = world.lookupOrThrow(Registries.NOISE_SETTINGS)
             .getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
+        var worldPresets = world.lookupOrThrow(Registries.WORLD_PRESET);
+        var normal = worldPresets.listElements().filter(h -> h.key().identifier().toString().equals("minecraft:normal"))
+            .findFirst().orElseThrow().value();
+        BiomeSource realSource = ((net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator) normal.createWorldDimensions()
+            .dimensions().entrySet().stream().filter(e -> e.getKey().identifier().toString().equals("minecraft:overworld"))
+            .findFirst().orElseThrow().getValue().generator()).getBiomeSource();
         StringBuilder out = new StringBuilder();
         for (long seed : SEEDS) {
             RandomState randomState = RandomState.create(world.lookupOrThrow(Registries.NOISE), seed, overworld);
@@ -139,6 +148,16 @@ public final class LeafStructurePlacementOracle {
                     List<ChunkPos> positions = state.getRingPositionsFor(rings);
                     for (int i = 0; positions != null && i < positions.size(); i++) {
                         out.append("ring ").append(seed).append(' ').append(id).append(' ').append(i)
+                            .append(' ').append(positions.get(i).x()).append(' ').append(positions.get(i).z()).append('\n');
+                    }
+                }
+            }
+            var realState = ChunkGeneratorStructureState.createForNormal(randomState, seed, new ChunkPos(0, 0), realSource, sets);
+            for (var holder : sets.listElements().toList()) {
+                if (holder.value().placement() instanceof ConcentricRingsStructurePlacement rings) {
+                    List<ChunkPos> positions = realState.getRingPositionsFor(rings);
+                    for (int i = 0; positions != null && i < positions.size(); i++) {
+                        out.append("realring ").append(seed).append(' ').append(holder.key().identifier()).append(' ').append(i)
                             .append(' ').append(positions.get(i).x()).append(' ').append(positions.get(i).z()).append('\n');
                     }
                 }

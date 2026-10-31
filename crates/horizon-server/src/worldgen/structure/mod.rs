@@ -14,6 +14,7 @@
 //! Ported from Horizon's generator (`horizon-world::worldgen::structure::start`), without its
 //! modpack placements and keys (`horizon:*`).
 
+pub mod check;
 pub mod end_city;
 pub mod fortress;
 pub mod igloo;

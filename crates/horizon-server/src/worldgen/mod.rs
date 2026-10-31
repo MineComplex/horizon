@@ -40,6 +40,7 @@ pub mod data;
 pub mod density;
 pub mod feature;
 pub mod generator;
+pub mod locate;
 pub mod noise;
 pub mod placement;
 pub mod proto_chunk;

@@ -34,7 +34,6 @@ use crate::block::flags::BlockStateData;
 use crate::block::{BlockState, BlockStates};
 use crate::core::position::{BlockPos, ChunkPos};
 use crate::server::config::SpigotWorldSeeds;
-use crate::util::random::RandomSource;
 use crate::world::chunk::serial::Heightmap;
 use crate::world::chunk::{ChunkStatus, ContainerFactory, PalettedContainer};
 use crate::world::level_chunk::HeightmapTable;
@@ -342,22 +341,16 @@ fn run_ring_searches(
             return search.chunk;
         };
         let preferred = &rings.preferred_biomes;
-        if let BiomeSource::Fixed(biome) = source {
-            // `FixedBiomeSource.findBiomeHorizontal`: a random block of the square.
-            if !preferred.contains(*biome) {
-                return search.result(None);
-            }
-            let mut random = search.random.clone();
-            let (x, z) = search.center();
-            let dx = random.next_int_bound(112 * 2 + 1).unwrap_or(0);
-            let dz = random.next_int_bound(112 * 2 + 1).unwrap_or(0);
-            return search.result(Some((x - 112 + dx, z - 112 + dz)));
-        }
-        let mut context = DensityContext::uncached();
-        let mut climate = ClimateSearch::default();
-        search.find(preferred, |x, y, z| {
-            source.noise_biome(density, &mut context, &mut climate, [x, y, z])
-        })
+        let (x, z) = search.center();
+        let mut random = search.random.clone();
+        let found = source.find_biome_horizontal(
+            density,
+            [x, 0, z],
+            112,
+            |biome| preferred.contains(biome),
+            &mut random,
+        );
+        search.result(found.map(|([x, _, z], _)| (x, z)))
     };
     let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
     let per = searches.len().div_ceil(threads);

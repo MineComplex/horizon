@@ -163,6 +163,8 @@ fn structure_placement_matches_java() {
                     }
                 }
             }
+            // The real overworld's rings: `worldgen::locate`'s `real_rings_match_java`.
+            "realring" => {}
             other => panic!("unknown row {other}"),
         }
     }

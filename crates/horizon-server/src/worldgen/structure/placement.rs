@@ -369,6 +369,52 @@ impl LevelPlacements {
         self.sets.iter().find(|level_set| level_set.id == set)
     }
 
+    /// `getPotentialStructureChunk` of a possible random-spread set's placement (Paper's salt);
+    /// `None` for any other placement or a set that is not possible.
+    pub fn potential_structure_chunk(
+        &self,
+        registry: &StructureRegistry,
+        set: StructureSetId,
+        x: i32,
+        z: i32,
+    ) -> Option<ChunkPos> {
+        let level_set = self.level_set(set)?;
+        let Placement::RandomSpread(spread) = &registry.set(set).placement else {
+            return None;
+        };
+        Some(spread.potential_chunk(self.seed, level_set.salt, x, z))
+    }
+
+    /// `applyAdditionalChunkRestrictions` of a possible set's placement (Paper's salt), as
+    /// `StructureCheck.checkStart` asks it. Vanilla passes the structure type's seed override
+    /// (mineshaft, buried treasure); the same two overrides are the keyed sets' here, which hold
+    /// those structures alone. `true` for a placement without a frequency (the dimension origin)
+    /// and for a set that is not possible.
+    pub fn additional_restrictions(
+        &self,
+        registry: &StructureRegistry,
+        set: StructureSetId,
+        x: i32,
+        z: i32,
+    ) -> bool {
+        let Some(level_set) = self.level_set(set) else {
+            return true;
+        };
+        registry
+            .set(set)
+            .placement
+            .spreading()
+            .is_none_or(|spreading| {
+                spreading.additional_restrictions(
+                    self.seed,
+                    level_set.salt,
+                    x,
+                    z,
+                    level_set.salt_override,
+                )
+            })
+    }
+
     /// `isStructureChunk` of a possible set as `createStructures` asks it: Paper's salt and
     /// key. `false` for a set that is not possible here.
     pub fn is_structure_chunk(
