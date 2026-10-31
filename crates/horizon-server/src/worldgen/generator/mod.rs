@@ -19,6 +19,7 @@
 
 pub mod convert;
 pub mod decorate;
+pub mod legacy_structures;
 pub mod pyramid;
 pub mod structures;
 

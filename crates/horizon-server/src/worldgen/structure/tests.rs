@@ -687,7 +687,7 @@ fn find_biome_horizontal_picks_like_vanilla() {
 
 fn piece(bb: [i32; 6]) -> super::start::StructurePiece {
     super::start::StructurePiece::Saved(Compound::from([
-        ("id".into(), Tag::String("minecraft:btp".into())),
+        ("id".into(), Tag::String("minecraft:test_piece".into())),
         ("BB".into(), Tag::IntArray(bb.to_vec())),
         ("O".into(), Tag::Int(-1)),
         ("GD".into(), Tag::Int(0)),

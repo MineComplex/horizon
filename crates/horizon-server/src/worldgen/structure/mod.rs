@@ -15,9 +15,13 @@
 //! modpack placements and keys (`horizon:*`).
 
 pub mod end_city;
+pub mod fortress;
 pub mod igloo;
 pub mod jigsaw;
+pub mod legacy_piece;
 pub mod mansion;
+pub mod mineshaft;
+pub mod monument;
 pub mod nether_fossil;
 pub mod ocean_ruin;
 pub mod piece_place;
@@ -26,14 +30,18 @@ pub mod placement;
 pub mod pool;
 pub mod processor;
 pub mod ruined_portal;
+pub mod scattered;
 pub mod shipwreck;
 pub mod start;
+pub mod stronghold;
 pub mod template;
 pub mod template_pieces;
 pub mod template_start;
 
 #[cfg(test)]
 mod jigsaw_oracle_tests;
+#[cfg(test)]
+mod legacy_oracle_tests;
 #[cfg(test)]
 mod oracle_tests;
 #[cfg(test)]
@@ -293,6 +301,10 @@ pub struct StructureRegistry {
     /// The structure templates (`StructureTemplateManager`), given once loaded
     /// ([`crate::worldgen::data::WorldgenData::set_templates`]).
     pub templates: template::StructureTemplates,
+    /// `BiomeTags.MINESHAFT_BLOCKING`, which mineshaft pieces read while they are placed.
+    pub mineshaft_blocking: BiomeSet,
+    /// `BiomeTags.REQUIRED_OCEAN_MONUMENT_SURROUNDING`.
+    pub monument_surrounding: BiomeSet,
 }
 
 impl StructureRegistry {

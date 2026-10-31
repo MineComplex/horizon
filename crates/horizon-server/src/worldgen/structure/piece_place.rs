@@ -10,6 +10,7 @@
 use std::borrow::Cow;
 
 use super::jigsaw::JigsawPiece;
+use super::legacy_piece::{PieceLevel, PieceOutput as LegacyOutput, place_pieces};
 use super::place::{PlaceContext, PlaceError, PlaceSettings, PlacedTemplate, place_in_world};
 use super::pool::{ElementKind, PoolElementId, Projection, template_of};
 use super::processor::{ProcessError, Processor, ProcessorLists};
@@ -80,6 +81,25 @@ impl PieceTables<'_> {
             return Ok(());
         };
         let mut placed = Vec::new();
+        // Code-placed pieces (`legacy_piece`) change as they are placed (their settled height,
+        // the chests put); what they leave for block entities and entities has nowhere to go yet.
+        let kind = start
+            .structure
+            .map_or("", |s| self.structures.structure(s).kind.as_str());
+        place_pieces(
+            &mut start.children,
+            kind,
+            world,
+            random,
+            *chunk_box,
+            reference,
+            PieceLevel {
+                seed: self.seed,
+                mineshaft_blocking: &self.structures.mineshaft_blocking,
+            },
+            &mut LegacyOutput::default(),
+        )
+        .map_err(ProviderError::World)?;
         // Paper picks the pieces meeting the box before any of them is placed (a piece's box and the
         // shared chunk box change while they are).
         let meeting: Vec<bool> = (start.children.iter())
@@ -114,7 +134,7 @@ impl PieceTables<'_> {
                     };
                     piece.post_process(&mut cx)?;
                 }
-                StructurePiece::Saved(_) => {}
+                StructurePiece::Legacy(_) | StructurePiece::Saved(_) => {}
             }
         }
         // What the jigsaw templates placed besides blocks has nowhere to go yet (module docs).
