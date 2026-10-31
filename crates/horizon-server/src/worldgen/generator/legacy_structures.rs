@@ -10,11 +10,13 @@ use crate::util::random::{LegacyRandom, WorldgenRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::structure::StructureId;
 use crate::worldgen::structure::legacy_piece::LegacyPiece;
+use crate::worldgen::structure::legacy_piece::random_horizontal;
+use crate::worldgen::structure::monument::MonumentBuilding;
 use crate::worldgen::structure::scattered::{
     BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece,
 };
 use crate::worldgen::structure::start::StructurePiece;
-use crate::worldgen::structure::{fortress, mineshaft};
+use crate::worldgen::structure::{fortress, mineshaft, stronghold};
 
 /// `Structure.GenerationContext` for the code-placed structures.
 struct Context<'a, 'b, 'g> {
@@ -158,6 +160,55 @@ pub fn generate(
                     .map(|p| StructurePiece::Legacy(LegacyPiece::Fortress(p)))
                     .collect(),
             );
+        }
+        // `StrongholdStructure`: the stub is the chunk's corner at y 0; the pieces are retried until
+        // one has a portal room.
+        "minecraft:stronghold" => {
+            if !cx.valid_biome(BlockPos::new(min_x, 0, min_z)) {
+                return None;
+            }
+            let pieces = stronghold::generate(
+                &mut random,
+                generator.seed,
+                [chunk.x, chunk.z],
+                cx.sea_level,
+                cx.columns.min_y,
+            );
+            return Some(
+                pieces
+                    .into_iter()
+                    .map(|p| StructurePiece::Legacy(LegacyPiece::Stronghold(p)))
+                    .collect(),
+            );
+        }
+        // `OceanMonumentStructure`: every biome within 29 blocks of the middle must be an ocean one.
+        "minecraft:ocean_monument" => {
+            let (x, z) = (min_x + 9, min_z + 9);
+            let (y, r) = (cx.sea_level, 29);
+            let surrounding = &generator.data().structures().monument_surrounding;
+            for qz in (z - r) >> 2..=(z + r) >> 2 {
+                for qx in (x - r) >> 2..=(x + r) >> 2 {
+                    for qy in (y - r) >> 2..=(y + r) >> 2 {
+                        let biome = cx
+                            .columns
+                            .biome_at(BlockPos::new(qx << 2, qy << 2, qz << 2));
+                        if !surrounding.contains(biome) {
+                            return None;
+                        }
+                    }
+                }
+            }
+            let stub = cx.on_top_of_chunk_center(Heightmap::OceanFloorWg);
+            if !cx.valid_biome(stub) {
+                return None;
+            }
+            let direction = random_horizontal(&mut random);
+            LegacyPiece::Monument(MonumentBuilding::new(
+                &mut random,
+                min_x - 29,
+                min_z - 29,
+                direction,
+            ))
         }
         "minecraft:mineshaft" => {
             let mesa = mesa_type(generator.data().structures().structure(structure));

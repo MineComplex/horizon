@@ -18,6 +18,7 @@ pub mod fortress;
 pub mod jigsaw;
 pub mod legacy_piece;
 pub mod mineshaft;
+pub mod monument;
 pub mod piece_place;
 pub mod place;
 pub mod placement;
@@ -25,6 +26,7 @@ pub mod pool;
 pub mod processor;
 pub mod scattered;
 pub mod start;
+pub mod stronghold;
 pub mod template;
 
 #[cfg(test)]
@@ -290,6 +292,8 @@ pub struct StructureRegistry {
     pub templates: template::StructureTemplates,
     /// `BiomeTags.MINESHAFT_BLOCKING`, which mineshaft pieces read while they are placed.
     pub mineshaft_blocking: BiomeSet,
+    /// `BiomeTags.REQUIRED_OCEAN_MONUMENT_SURROUNDING`.
+    pub monument_surrounding: BiomeSet,
 }
 
 impl StructureRegistry {

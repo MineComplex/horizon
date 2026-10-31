@@ -30,7 +30,7 @@ fn byte(value: bool) -> Tag {
 }
 
 /// An entity a piece spawns at the centre of a block (`snapTo(x + 0.5, y, z + 0.5, 0, 0)`).
-fn spawn_nbt(id: &str, pos: [i32; 3]) -> Compound {
+pub(super) fn spawn_nbt(id: &str, pos: [i32; 3]) -> Compound {
     let at = [
         f64::from(pos[0]) + 0.5,
         f64::from(pos[1]),

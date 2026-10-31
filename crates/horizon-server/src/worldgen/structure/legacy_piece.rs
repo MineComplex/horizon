@@ -12,8 +12,10 @@
 
 use super::fortress::FortressPiece;
 use super::mineshaft::MineshaftPiece;
+use super::monument::MonumentBuilding;
 use super::scattered::{BuriedTreasurePiece, DesertPyramidPiece, JungleTemplePiece, SwampHutPiece};
 use super::start::StructurePiece;
+use super::stronghold::StrongholdPiece;
 use crate::block::flags::SupportType;
 use crate::block::transform::{Mirror, Rotation};
 use crate::block::{BlockState, BlockStateData, BlockStates};
@@ -243,6 +245,8 @@ pub trait PieceWorld {
     fn min_y(&self) -> i32;
     /// `LevelHeightAccessor.getMaxY()`.
     fn max_y(&self) -> i32;
+    /// `WorldGenLevel.getSeaLevel()`.
+    fn sea_level(&self) -> i32;
     fn mark_postprocessing(&mut self, pos: [i32; 3]) -> Result<()>;
     fn fluid_tick(&mut self, pos: [i32; 3], fluid: u8, delay: i32) -> Result<()>;
     /// `WorldGenLevel.getRandom().nextBoolean()`.
@@ -271,6 +275,9 @@ impl<W: FeatureWorld> PieceWorld for W {
     }
     fn min_y(&self) -> i32 {
         PlacementWorld::min_y(self)
+    }
+    fn sea_level(&self) -> i32 {
+        self.generation().sea_level
     }
     fn max_y(&self) -> i32 {
         let level = self.level_generation();
@@ -919,6 +926,8 @@ pub enum LegacyPiece {
     BuriedTreasure(BuriedTreasurePiece),
     Mineshaft(MineshaftPiece),
     Fortress(FortressPiece),
+    Stronghold(StrongholdPiece),
+    Monument(MonumentBuilding),
 }
 
 impl LegacyPiece {
@@ -931,6 +940,8 @@ impl LegacyPiece {
             Self::BuriedTreasure(p) => p.bounding_box(),
             Self::Mineshaft(p) => p.bounding_box(),
             Self::Fortress(p) => p.bounding_box(),
+            Self::Stronghold(p) => p.bounding_box(),
+            Self::Monument(p) => p.bounding_box(),
         }
     }
 
@@ -943,6 +954,8 @@ impl LegacyPiece {
             Self::BuriedTreasure(p) => p.create_tag(),
             Self::Mineshaft(p) => p.create_tag(),
             Self::Fortress(p) => p.create_tag(),
+            Self::Stronghold(p) => p.create_tag(),
+            Self::Monument(p) => p.create_tag(),
         }
     }
 
@@ -959,13 +972,17 @@ impl LegacyPiece {
             | "minecraft:msroom"
             | "minecraft:msstairs" => Self::Mineshaft(MineshaftPiece::load(id, tag)?),
             _ if FortressPiece::handles(id) => Self::Fortress(FortressPiece::load(id, tag)?),
+            MonumentBuilding::TYPE_ID => Self::Monument(MonumentBuilding::load(tag)?),
+            _ if StrongholdPiece::handles(id) => Self::Stronghold(StrongholdPiece::load(id, tag)?),
             _ => return None,
         })
     }
 
     /// Whether `id` is a piece id of this module (loaded here, or dropped when it fails).
     pub fn handles(id: &str) -> bool {
-        FortressPiece::handles(id)
+        id == MonumentBuilding::TYPE_ID
+            || FortressPiece::handles(id)
+            || StrongholdPiece::handles(id)
             || matches!(
                 id,
                 "minecraft:tedp"
@@ -988,6 +1005,8 @@ impl LegacyPiece {
             Self::BuriedTreasure(p) => p.post_process(c),
             Self::Mineshaft(p) => p.post_process(c),
             Self::Fortress(p) => p.post_process(c),
+            Self::Stronghold(p) => p.post_process(c),
+            Self::Monument(p) => p.post_process(c),
         }
     }
 }

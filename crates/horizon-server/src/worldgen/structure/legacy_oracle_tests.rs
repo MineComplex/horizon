@@ -173,12 +173,15 @@ fn block_entities(output: &PieceOutput, world: &LegacyWorld<'_>) -> String {
     last.iter().map(|(p, v)| format!("{p},{v};")).collect()
 }
 
-/// The entities as the oracle prints them (it cannot make a witch or a cat without a server).
+/// The entities as the oracle prints them (it cannot make a witch, a cat or an elder guardian without a server).
 fn entities(output: &PieceOutput) -> String {
     let mut out = String::new();
     for nbt in &output.entities {
         let id = text(nbt, "id");
-        if matches!(id.as_str(), "minecraft:witch" | "minecraft:cat") {
+        if matches!(
+            id.as_str(),
+            "minecraft:witch" | "minecraft:cat" | "minecraft:elder_guardian"
+        ) {
             continue;
         }
         let Some(Tag::List(pos)) = nbt.get(&JavaString::from("Pos")) else {
