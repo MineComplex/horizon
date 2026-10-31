@@ -14,9 +14,10 @@ use super::place::{PlaceContext, PlaceError, PlaceSettings, PlacedTemplate, plac
 use super::pool::{ElementKind, PoolElementId, Projection, template_of};
 use super::processor::{ProcessError, Processor, ProcessorLists};
 use super::start::{StructurePiece, StructureStart};
+use super::template_pieces::{PieceCx, PieceOutput};
 use super::{Decoration, StructureId, StructureRegistry};
 use crate::core::position::{BlockPos, ChunkPos};
-use crate::util::random::{RandomSource, WorldgenRandom, XoroshiroRandom};
+use crate::util::random::{PositionalRandom, RandomSource, WorldgenRandom, XoroshiroRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::density::StructureBounds;
 use crate::worldgen::feature::FeatureRegistry;
@@ -35,9 +36,13 @@ pub struct PieceTables<'a> {
     pub features: &'a FeatureRegistry,
     /// The level seed (processors' `getLevel().getSeed()`).
     pub seed: i64,
+    /// `StructurePlaceSettings.setKnownShape(true)` for the template pieces, which vanilla's never
+    /// set: the block updates a placement would run (`updateShapeAtEdge`) are block behaviour, which
+    /// only the oracles' worlds can leave out. Always false in the game.
+    pub known_shape: bool,
 }
 
-fn provider_error(e: PlaceError) -> ProviderError {
+pub(super) fn provider_error(e: PlaceError) -> ProviderError {
     match e {
         PlaceError::Process(ProcessError::World(e)) => ProviderError::World(e),
         PlaceError::Process(ProcessError::Bound(e)) => ProviderError::Random(e),
@@ -59,35 +64,82 @@ pub fn writable_area(chunk: ChunkPos, min_y: i32, height: i32) -> StructureBound
 
 impl PieceTables<'_> {
     /// `StructureStart.placeInChunk(level, structureManager, generator, random, chunkBB, chunkPos)`.
+    /// Pieces mutate as vanilla's do (a shipwreck's height, an igloo's box) and `chunk_box` is the
+    /// pass's shared writable box, which a nether fossil and a ruined portal grow. What the pieces
+    /// leave for block entities and entities is returned in `out`.
     pub fn place_start<W: FeatureWorld, R: RandomSource>(
         &self,
-        start: &StructureStart,
+        start: &mut StructureStart,
         world: &mut W,
         random: &mut R,
-        chunk_box: StructureBounds,
+        chunk_box: &mut StructureBounds,
+        level_random: &mut XoroshiroRandom,
+        out: &mut PieceOutput,
     ) -> Result<(), ProviderError> {
         let Some(reference) = reference_of(start) else {
             return Ok(());
         };
-        let target = PieceTarget {
-            chunk_box,
-            reference,
-            keep_jigsaws: false,
-        };
         let mut placed = Vec::new();
-        for piece in &start.children {
-            if !piece
-                .bounding_box()
-                .is_some_and(|b| intersects(b, chunk_box))
-            {
+        // Paper picks the pieces meeting the box before any of them is placed (a piece's box and the
+        // shared chunk box change while they are).
+        let meeting: Vec<bool> = (start.children.iter())
+            .map(|piece| {
+                piece
+                    .bounding_box()
+                    .is_some_and(|b| intersects(b, *chunk_box))
+            })
+            .collect();
+        for (piece, meets) in start.children.iter_mut().zip(meeting) {
+            if !meets {
                 continue;
             }
-            if let StructurePiece::Jigsaw(piece) = piece {
-                self.place_piece(piece, world, random, target, &mut placed)?;
+            match piece {
+                StructurePiece::Jigsaw(piece) => {
+                    let target = PieceTarget {
+                        chunk_box: *chunk_box,
+                        reference,
+                        keep_jigsaws: false,
+                    };
+                    self.place_piece(piece, world, random, target, &mut placed)?;
+                }
+                StructurePiece::Template(piece) => {
+                    let mut cx = PieceCx {
+                        tables: *self,
+                        world: &mut *world,
+                        random: &mut *random,
+                        chunk_box: &mut *chunk_box,
+                        reference,
+                        level_random: &mut *level_random,
+                        out: &mut *out,
+                    };
+                    piece.post_process(&mut cx)?;
+                }
+                StructurePiece::Saved(_) => {}
             }
         }
-        // What the templates placed besides blocks has nowhere to go yet (module docs).
+        // What the jigsaw templates placed besides blocks has nowhere to go yet (module docs).
         drop(placed);
+        // `Structure.afterPlace`.
+        let kind = start
+            .structure
+            .map(|s| self.structures.structure(s).kind.as_str());
+        if kind == Some("minecraft:woodland_mansion") {
+            let boxes: Vec<StructureBounds> = start
+                .children
+                .iter()
+                .filter_map(StructurePiece::bounding_box)
+                .collect();
+            let mut cx = PieceCx {
+                tables: *self,
+                world,
+                random,
+                chunk_box,
+                reference,
+                level_random,
+                out,
+            };
+            super::mansion::after_place(&boxes, &mut cx)?;
+        }
         Ok(())
     }
 
@@ -227,6 +279,10 @@ pub struct StartPlacer<'a> {
     by_step: Vec<Vec<StructureId>>,
     starts: Vec<(StructureId, Vec<StructureStart>)>,
     chunk_box: StructureBounds,
+    /// `WorldGenRegion.getRandom()`: `worldgen_region_random` at the centre chunk's corner.
+    level_random: XoroshiroRandom,
+    /// What the placed pieces left for block entities and entities (a stand-in until they exist).
+    pub output: PieceOutput,
 }
 
 impl<'a> StartPlacer<'a> {
@@ -258,11 +314,19 @@ impl<'a> StartPlacer<'a> {
                 (structure, starts)
             })
             .collect();
+        let corner = BlockPos::new(chunk_box.minimum()[0], 0, chunk_box.minimum()[2]);
+        let level_random = XoroshiroRandom::new(tables.seed)
+            .fork_positional()
+            .from_hash_of("minecraft:worldgen_region_random")
+            .fork_positional()
+            .at(corner);
         Self {
             tables,
             by_step,
             starts,
             chunk_box,
+            level_random,
+            output: PieceOutput::default(),
         }
     }
 }
@@ -280,12 +344,19 @@ impl<W: FeatureWorld> StructureDecorator<W> for StartPlacer<'_> {
         random: &mut WorldgenRandom<XoroshiroRandom>,
     ) -> Result<(), ProviderError> {
         let structure = self.by_step[step][index];
-        let Some((_, starts)) = self.starts.iter().find(|(s, _)| *s == structure) else {
+        let Self {
+            tables,
+            starts,
+            chunk_box,
+            level_random,
+            output,
+            ..
+        } = self;
+        let Some((_, starts)) = starts.iter_mut().find(|(s, _)| *s == structure) else {
             return Ok(());
         };
         for start in starts {
-            self.tables
-                .place_start(start, world, random, self.chunk_box)?;
+            tables.place_start(start, world, random, chunk_box, level_random, output)?;
         }
         Ok(())
     }

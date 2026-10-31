@@ -100,7 +100,7 @@ fn canonical(tag: &Tag, out: &mut String) {
     }
 }
 
-fn canonical_string(tag: &Tag) -> String {
+pub(super) fn canonical_string(tag: &Tag) -> String {
     let mut out = String::new();
     canonical(tag, &mut out);
     out
@@ -402,6 +402,7 @@ fn jigsaw_matches_java() {
                     processors: data.processor_lists(),
                     features: data.features(),
                     seed,
+                    known_shape: false,
                 };
                 let mut world = World {
                     f: &fixture,
@@ -528,7 +529,7 @@ fn strip_inline_processors(text: &str) -> String {
     out
 }
 
-fn first_difference(java: &str, rust: &str) -> String {
+pub(super) fn first_difference(java: &str, rust: &str) -> String {
     let at = java
         .bytes()
         .zip(rust.bytes())

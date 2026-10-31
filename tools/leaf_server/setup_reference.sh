@@ -44,6 +44,7 @@ mkdir -p "$out/oracle-run"
     "$java" -cp "$cp" "$oracles/LeafPosSetOracle.java" "$out/pos_set.txt" &&
     "$java" -cp "$cp" "$oracles/LeafTemplateOracle.java" "$out/template.txt" &&
     "$java" -cp "$cp" "$oracles/LeafJigsawOracle.java" "$out/jigsaw.txt" &&
+    "$java" -cp "$cp" "$oracles/LeafTemplateStructuresOracle.java" "$out/template_structures.txt" &&
     "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt" &&
     "$java" -cp "$cp" "$oracles/LeafTicksOracle.java" "$out/ticks.txt" &&
     "$java" -cp "$cp" "$oracles/LeafFluidOracle.java" "$out/fluid.txt" &&
@@ -100,6 +101,7 @@ export HORIZON_DECORATION_ORACLE=$out/decoration.txt
 export HORIZON_POS_SET_ORACLE=$out/pos_set.txt
 export HORIZON_TEMPLATE_ORACLE=$out/template.txt
 export HORIZON_JIGSAW_ORACLE=$out/jigsaw.txt
+export HORIZON_TEMPLATE_STRUCTURES_ORACLE=$out/template_structures.txt
 export HORIZON_TICKETS_ORACLE=$out/tickets.txt
 export HORIZON_TICKS_ORACLE=$out/ticks.txt
 export HORIZON_FLUID_ORACLE=$out/fluid.txt

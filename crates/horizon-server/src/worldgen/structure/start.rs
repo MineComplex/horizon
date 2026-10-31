@@ -20,6 +20,7 @@
 use super::jigsaw::{JigsawPiece, Junction};
 use super::place::LiquidSettings;
 use super::pool::{Projection, liquid_name};
+use super::template_pieces::{TemplatePiece, is_template_piece};
 use super::{StructureId, StructureRegistry};
 use crate::block::transform::Rotation;
 use crate::core::position::BlockPos;
@@ -55,6 +56,9 @@ pub struct StructureStart {
 pub enum StructurePiece {
     /// `PoolElementStructurePiece` (`minecraft:jigsaw`).
     Jigsaw(JigsawPiece),
+    /// A `TemplateStructurePiece` (shipwreck, ocean ruin, igloo, ruined portal, nether fossil, end
+    /// city, woodland mansion).
+    Template(TemplatePiece),
     /// A piece of a type not ported yet, as saved (`StructurePiece.createTag`).
     Saved(Compound),
 }
@@ -64,6 +68,7 @@ impl StructurePiece {
     pub fn bounding_box(&self) -> Option<StructureBounds> {
         match self {
             Self::Jigsaw(piece) => Some(piece.bounding_box),
+            Self::Template(piece) => Some(piece.bounding_box),
             Self::Saved(tag) => piece_box(tag),
         }
     }
@@ -73,6 +78,7 @@ impl StructurePiece {
         match self {
             Self::Saved(tag) => tag.clone(),
             Self::Jigsaw(piece) => jigsaw_tag(registry, piece),
+            Self::Template(piece) => piece.create_tag(),
         }
     }
 }
@@ -328,6 +334,18 @@ impl StructureStart {
                             | "minecraft:runtime"
                     ) {
                         return load_jigsaw(registry, piece).map(StructurePiece::Jigsaw);
+                    }
+                    let kind_id = parse_identifier(&kind).unwrap_or_default();
+                    if is_template_piece(&kind_id) {
+                        return match TemplatePiece::load(registry, &kind_id, piece) {
+                            Ok(piece) => Some(StructurePiece::Template(piece)),
+                            Err(why) => {
+                                tracing::error!(
+                                    "Exception loading structure piece with id {kind_id}: {why}"
+                                );
+                                None
+                            }
+                        };
                     }
                     let Some(bounds) = piece_box(piece) else {
                         tracing::error!(

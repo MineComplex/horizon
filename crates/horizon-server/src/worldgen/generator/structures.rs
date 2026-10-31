@@ -2,10 +2,11 @@
 //! `createReferences`) over `worldgen::structure`'s placements and start/reference storage.
 //!
 //! Making a start (`Structure.generate`: the generation point, the biome check at it, the pieces)
-//! is [`generate_start`]. Jigsaw structures are ported (`worldgen::structure::jigsaw`); the other
-//! types make no start yet.
+//! is [`generate_start`]. Jigsaw structures (`worldgen::structure::jigsaw`) and the structures built
+//! from templates (`worldgen::structure::template_start`) are ported; the other types make no start yet.
 
 use super::{GenerationWorker, LevelGenerator};
+use crate::block::BlockState;
 use crate::core::position::{BlockPos, ChunkPos};
 use crate::util::random::{LegacyRandom, WorldgenRandom};
 use crate::world::chunk::serial::Heightmap;
@@ -18,6 +19,9 @@ use crate::worldgen::density::DensityContext;
 use crate::worldgen::proto_chunk::{GenerationRegion, OutsideRegion, ProtoChunk};
 use crate::worldgen::structure::jigsaw::{GenerationContext, JigsawTables, JigsawWorld, generate};
 use crate::worldgen::structure::start::{StructurePiece, StructureStart, create_references};
+use crate::worldgen::structure::template_start::{
+    TemplateGen, TemplateGenWorld, generate as template_generate, is_template_structure,
+};
 use crate::worldgen::structure::{BiomeSet, StructureId};
 use crate::worldgen::terrain::NoiseTerrain;
 
@@ -84,6 +88,77 @@ impl JigsawWorld for LevelColumns<'_, '_> {
     }
 }
 
+impl TemplateGenWorld for LevelColumns<'_, '_> {
+    fn base_column(&mut self, x: i32, z: i32) -> Option<(i32, Vec<BlockState>)> {
+        let world = (self.min_y, self.height);
+        self.terrain
+            .base_column(x, z, world, self.context)
+            .ok()
+            .flatten()
+    }
+
+    fn biome_at(&mut self, pos: BlockPos) -> u32 {
+        LevelColumns::biome_at(self, pos)
+    }
+
+    fn is_opaque(&self, state: BlockState, heightmap: Heightmap) -> bool {
+        self.heightmaps.heightmap_mask(state) >> heightmap as u8 & 1 != 0
+    }
+}
+
+/// `Structure.generate` for the structures built from templates: the generation point, the biome
+/// check at it and the pieces.
+fn generate_template_start(
+    generator: &LevelGenerator,
+    columns: &mut LevelColumns<'_, '_>,
+    structure: StructureId,
+    chunk: ChunkPos,
+    references: i32,
+) -> Option<StructureStart> {
+    let registry = generator.data().structures();
+    let settings = generator.settings();
+    let generation = WorldGenerationContext::new(
+        columns.min_y.max(settings.noise.min_y),
+        columns.height.min(settings.noise.height),
+        settings.sea_level,
+    );
+    let mut random = WorldgenRandom::new(LegacyRandom::new(0));
+    random.set_large_feature_seed(generator.seed, chunk.x, chunk.z);
+    let (min_y, height) = (columns.min_y, columns.height);
+    let mut cx = TemplateGen {
+        registry,
+        blocks: generator.blocks(),
+        data: generator.flags(),
+        climates: generator.data().climates(),
+        world: &mut *columns,
+        generation,
+        min_y,
+        height,
+        chunk,
+    };
+    let stub = match template_generate(registry.structure(structure), &mut cx, &mut random) {
+        Ok(stub) => stub?,
+        Err(e) => {
+            tracing::warn!(
+                "Structure {} in chunk {chunk:?}: {e}",
+                registry.structure(structure).id
+            );
+            return None;
+        }
+    };
+    // `isValidBiome`.
+    let biome = columns.biome_at(stub.position);
+    if !columns.biomes.contains(biome) {
+        return None;
+    }
+    let pieces = (stub.pieces.into_iter())
+        .map(StructurePiece::Template)
+        .collect();
+    Some(StructureStart::new(
+        registry, structure, chunk, references, pieces,
+    ))
+}
+
 /// `tryGenerateStructure`'s `structure.generate(...)` for `structure` starting in `chunk`, with
 /// the references a previous start of it in the chunk had (`fetchReferences`). `None` is an
 /// invalid start (no generation point, a biome the structure does not allow, or no pieces).
@@ -95,6 +170,9 @@ pub fn generate_start(
     references: i32,
 ) -> Option<StructureStart> {
     let registry = generator.data().structures();
+    if is_template_structure(&registry.structure(structure).kind) {
+        return generate_template_start(generator, columns, structure, chunk, references);
+    }
     let config = registry.structure(structure).jigsaw.as_ref()?;
     let settings = generator.settings();
     let generation = WorldGenerationContext::new(

@@ -50,6 +50,7 @@ pub fn decorate(
         processors: data.processor_lists(),
         features: data.features(),
         seed: generator.seed,
+        known_shape: false,
     };
     let center_chunk = region.chunk(center).ok_or(DecorateError(format!(
         "the centre chunk {center:?} is outside its region"

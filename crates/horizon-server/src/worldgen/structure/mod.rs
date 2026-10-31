@@ -14,14 +14,23 @@
 //! Ported from Horizon's generator (`horizon-world::worldgen::structure::start`), without its
 //! modpack placements and keys (`horizon:*`).
 
+pub mod end_city;
+pub mod igloo;
 pub mod jigsaw;
+pub mod mansion;
+pub mod nether_fossil;
+pub mod ocean_ruin;
 pub mod piece_place;
 pub mod place;
 pub mod placement;
 pub mod pool;
 pub mod processor;
+pub mod ruined_portal;
+pub mod shipwreck;
 pub mod start;
 pub mod template;
+pub mod template_pieces;
+pub mod template_start;
 
 #[cfg(test)]
 mod jigsaw_oracle_tests;
@@ -29,6 +38,8 @@ mod jigsaw_oracle_tests;
 mod oracle_tests;
 #[cfg(test)]
 mod template_oracle_tests;
+#[cfg(test)]
+mod template_structures_oracle_tests;
 #[cfg(test)]
 mod template_tests;
 #[cfg(test)]

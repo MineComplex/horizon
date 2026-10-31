@@ -599,6 +599,8 @@ pub struct ProcessorLists {
     lists: Vec<(String, ProcessorList)>,
     ids: HashMap<String, ProcessorListId>,
     known: KnownBlocks,
+    /// What the template pieces build their place settings from.
+    pieces: super::template_pieces::PieceBuiltins,
 }
 
 impl ProcessorLists {
@@ -632,11 +634,15 @@ impl ProcessorLists {
             lists,
             ids,
             known: KnownBlocks::new(&names),
+            pieces: super::template_pieces::PieceBuiltins::new(&names),
         })
     }
 
     pub fn known(&self) -> &KnownBlocks {
         &self.known
+    }
+    pub fn pieces(&self) -> &super::template_pieces::PieceBuiltins {
+        &self.pieces
     }
     pub fn id(&self, name: &str) -> Option<ProcessorListId> {
         self.ids.get(name).copied()
