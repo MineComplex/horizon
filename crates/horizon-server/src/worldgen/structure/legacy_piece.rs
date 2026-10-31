@@ -1039,10 +1039,10 @@ pub fn place_pieces<W: FeatureWorld, R: RandomSource>(
         mineshaft_blocking: level.mineshaft_blocking,
     };
     for piece in pieces.iter_mut() {
-        if let StructurePiece::Legacy(piece) = piece {
-            if piece.bounding_box().intersects(&chunk_box) {
-                piece.post_process(&mut c)?;
-            }
+        if let StructurePiece::Legacy(piece) = piece
+            && piece.bounding_box().intersects(&chunk_box)
+        {
+            piece.post_process(&mut c)?;
         }
     }
     if structure_kind == "minecraft:desert_pyramid" {
