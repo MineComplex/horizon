@@ -39,7 +39,9 @@ pub struct FeatureCycle {
 }
 
 impl FeatureCycle {
-    /// The `IllegalStateException` message, the sources listed as `List.toString` does.
+    /// The `IllegalStateException` message, the sources listed as `List.toString` does. Java prints
+    /// each biome as `Reference{ResourceKey[...]=...Biome@<identity hash>}`; the hash differs per run,
+    /// so callers pass the biome id (`minecraft:plains`) instead (the user's decision, 2026-10-31).
     pub fn message(&self, describe: impl Fn(usize) -> String) -> String {
         let list: Vec<String> = self.involved.iter().map(|&i| describe(i)).collect();
         format!(

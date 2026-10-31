@@ -65,7 +65,7 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   feature rows over 50 vanilla features, 4 feature-order cycle messages, all equal; `placement_matches_java` now runs
   the real survival rules (8,010 rows). 26.3's block state JSON is `{"id","properties"}`, not `Name`/`Properties`
   (fixed in `DecodeContext::block_state` and `settings.rs`). Feature-order cycles name their involved sources as
-  `FeatureSorter.tryReducingError` does (`FeatureCycle::message`; Java prints a `Biome@<identity hash>`, unportable).
+  `FeatureSorter.tryReducingError` does (`FeatureCycle::message`; Java prints a `Biome@<identity hash>`; we print the plain biome id, the user's decision).
   Not yet: `ore` (needs `BulkSectionAccess` over proto-chunk sections; `OreFeature` writes sections directly),
   `random_patch`/`flower`/`no_bonemeal_flower`, mossy-carpet `simple_block` (level random), `schedule_tick` on a
   region (the proto chunk keeps no ticks), block entities / POI / `getPostProcessPos` on `setBlock` (WP6).
