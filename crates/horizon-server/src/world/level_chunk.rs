@@ -105,6 +105,8 @@ pub struct LevelChunk {
     pub last_update: i64,
     pub inhabited_time: i64,
     pub raw: RawChunkParts,
+    /// `ChunkAccess.unsaved`: a chunk read from disk starts saved; changes mark it.
+    unsaved: bool,
 }
 
 fn index(x: i32, z: i32) -> usize {
@@ -132,7 +134,22 @@ impl LevelChunk {
             last_update: 0,
             inhabited_time: 0,
             raw: RawChunkParts::default(),
+            unsaved: false,
         }
+    }
+
+    /// `markUnsaved`.
+    pub fn mark_unsaved(&mut self) {
+        self.unsaved = true;
+    }
+
+    pub fn is_unsaved(&self) -> bool {
+        self.unsaved
+    }
+
+    /// `tryMarkSaved`: true when it was unsaved.
+    pub fn try_mark_saved(&mut self) -> bool {
+        std::mem::replace(&mut self.unsaved, false)
     }
 
     /// `SerializableChunkData.read` then `new LevelChunk(level, protoChunk)`: sections by `Y`
@@ -274,7 +291,8 @@ impl LevelChunk {
         block_at(&self.sections, self.min_section_y, pos.x, pos.y, pos.z)
     }
 
-    /// `setBlockState` without block updates: the section's counts and the four live heightmaps.
+    /// `setBlockState` without block updates: the section's counts, the four live heightmaps, and
+    /// the chunk marked unsaved.
     /// `None` when nothing changed (air into an empty section, or the same state), as vanilla.
     pub fn set_block_state(
         &mut self,
@@ -293,6 +311,7 @@ impl LevelChunk {
         if old == state {
             return None;
         }
+        self.unsaved = true;
         let mask = heightmap_flags.heightmap_mask(state);
         let min_y = self.min_y();
         for kind in [

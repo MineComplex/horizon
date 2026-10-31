@@ -3,21 +3,21 @@
 //! end come with dimension switching: each would be one more [`Level`] with its own [`ChunkIo`]
 //! over `dimensions/minecraft/<name>/region`).
 //!
-//! **Chunks.** A [`Level`] keeps its loaded chunks in a map owned by the tick thread; the region I/O
-//! workers read them and hand them back as [`ChunkIoEvent`]s, which [`Level::tick_io`] drains at the
-//! start of each tick. Moonrise's ticket levels and chunk holders are not ported: each chunk counts
-//! who holds it (players' chunk loaders, joins preparing a spawn) and is dropped when nobody does,
-//! a stand-in for the player and spawn tickets. Nothing changes chunks yet, so an unloaded chunk has
-//! nothing to save. World generation is not ported either: a chunk the region files do not have
-//! stays missing and is never sent (logged once per level).
+//! **Chunks.** A [`Level`] holds its chunks in Moonrise's chunk holders (`server::chunk_system`),
+//! owned by the tick thread; the region I/O workers read and write them and hand the answers back
+//! as [`ChunkIoEvent`]s, which [`Level::tick_io`] drains at the start of each tick. Chunks are saved
+//! when unloaded and by autosave when changed, and all of them on stop. World generation is not
+//! ported: a chunk the region files do not have stays missing and is never sent (logged once per
+//! level); the holders keep it as waiting for the generator.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
 use tracing::{debug, error, info, warn};
 
+use super::chunk_system::{ChunkHolderManager, ChunkSettings, ChunkStorage};
 use super::player_data::PlayerDataStorage;
 use crate::block::BlockStates;
 use crate::block::flags::BlockStateData;
@@ -25,7 +25,7 @@ use crate::core::position::ChunkPos;
 use crate::network::play::chunk::{LightSection, level_chunk_with_light};
 use crate::registry::Registries;
 use crate::world::chunk::serial::Heightmap;
-use crate::world::chunk::{BiomeIds, ChunkStatus, ContainerFactory};
+use crate::world::chunk::{BiomeIds, ChunkData, ContainerFactory};
 use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
 use crate::world::level_storage::{
@@ -60,11 +60,17 @@ pub struct WorldSettings<'a> {
     pub sync_chunk_writes: bool,
     /// For a world without `level.dat`: `gamemode`, `difficulty`, `hardcore`.
     pub new_world: (GameType, Difficulty, bool),
+    /// Paper's `chunks` world settings.
+    pub chunks: ChunkSettings,
 }
 
 pub struct World {
     pub storage: LevelStorageAccess,
+    /// `level-name` (Bukkit's world name in the chunk system's logs).
+    pub name: String,
     pub data: LevelData,
+    /// Whether `level.dat` was there: a new world is not written (generation is not ported).
+    pub has_level_data: bool,
     /// `world_gen_settings`: the seed, and whether the overworld is flat.
     pub seed: i64,
     pub flat: bool,
@@ -82,7 +88,8 @@ impl World {
     ) -> Result<Self, WorldError> {
         let storage = LevelStorageAccess::open(base_dir, settings.level_name)?;
         info!("Preparing level \"{}\"", settings.level_name);
-        let data = if storage.has_world_data() {
+        let has_level_data = storage.has_world_data();
+        let data = if has_level_data {
             let data = storage.read_level_data()?;
             data.check_compatible()?;
             data
@@ -118,7 +125,9 @@ impl World {
         let overworld = Level::open(OVERWORLD, &region, settings, tables)?;
         Ok(Self {
             storage,
+            name: settings.level_name.to_owned(),
             data,
+            has_level_data,
             seed,
             flat,
             weather: dimension.weather.unwrap_or(WeatherData {
@@ -133,22 +142,56 @@ impl World {
         })
     }
 
-    /// Stops the I/O workers once their queued requests ran (`ChunkMap.close`).
+    /// `saveGlobalData`: `level.dat` (not for a world this server did not find one in).
+    pub fn save_level_data(&self) {
+        if self.has_level_data
+            && let Err(e) = self.storage.save_level_data(&self.data)
+        {
+            error!("Failed to save level {}: {e}", self.storage.dir().display());
+        }
+    }
+
+    /// `saveAllChunks(silent, flush, force)` without closing: `level.dat`, then every level's
+    /// unsaved chunks (`ChunkMap.saveAllChunks`).
+    pub fn save_all_chunks(&mut self, silent: bool, flush: bool) {
+        self.save_level_data();
+        if !silent {
+            info!(
+                "Saving chunks for level 'ServerLevel[{}]'/{}",
+                self.name, self.overworld.dimension
+            );
+        }
+        let time = self.data.game_time;
+        self.overworld.chunks.save_all(flush, false, None, time);
+    }
+
+    /// The end of `stopServer`: `saveAllChunks(false, true, false, true)` (`level.dat`, then each
+    /// level's `ChunkHolderManager.close`: every chunk saved, the regions flushed, the I/O workers
+    /// stopped once their queued requests ran), then the wait for the region I/O.
     pub fn close(self) {
-        self.overworld.io.shutdown();
+        self.save_level_data();
+        info!(
+            "Saving chunks for level 'ServerLevel[{}]'/{}",
+            self.name, self.overworld.dimension
+        );
+        self.overworld.close(&self.name, self.data.game_time);
+        info!("Waiting for all RegionFile I/O tasks to complete...");
+        info!("All RegionFile I/O tasks to complete");
     }
 }
 
-enum Slot {
-    Loading,
-    Loaded(Box<LevelChunk>),
-    /// Not on disk (or unreadable): never sent.
-    Missing,
-}
-
-struct Holder {
-    holders: u32,
-    slot: Slot,
+/// The region workers are the chunk holders' storage: requests are messages, answers come back
+/// through [`Level::tick_io`].
+impl ChunkStorage for ChunkIo {
+    fn load(&mut self, pos: ChunkPos) {
+        ChunkIo::load(self, pos);
+    }
+    fn save(&mut self, pos: ChunkPos, chunk: Box<ChunkData>) {
+        ChunkIo::save(self, pos, Some(chunk));
+    }
+    fn flush(&mut self) {
+        ChunkIo::flush(self);
+    }
 }
 
 /// One dimension's chunks (see the module docs).
@@ -158,9 +201,9 @@ pub struct Level {
     pub dimension_type: i32,
     pub min_section_y: i32,
     pub section_count: usize,
-    io: ChunkIo,
+    /// The chunk holders, over the region I/O workers.
+    pub chunks: ChunkHolderManager<ChunkIo>,
     io_events: Receiver<ChunkIoEvent>,
-    chunks: HashMap<ChunkPos, Holder>,
     tables: Arc<CodecTables<BlockStateData>>,
     heightmaps: HeightmapTable,
     missing_logged: bool,
@@ -241,53 +284,42 @@ impl Level {
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
-            io,
+            chunks: ChunkHolderManager::new(io, settings.chunks),
             io_events,
-            chunks: HashMap::new(),
             tables: codec,
             heightmaps,
             missing_logged: false,
         })
     }
 
-    /// Takes a hold on the chunk, loading it when it is new.
-    pub fn hold(&mut self, pos: ChunkPos) {
-        let holder = self.chunks.entry(pos).or_insert_with(|| {
-            self.io.load(pos);
-            Holder {
-                holders: 0,
-                slot: Slot::Loading,
-            }
-        });
-        holder.holders += 1;
-    }
-
-    /// Gives a hold back; the chunk is dropped when it was the last (nothing to save yet).
-    pub fn release(&mut self, pos: ChunkPos) {
-        if let Some(holder) = self.chunks.get_mut(&pos) {
-            holder.holders -= 1;
-            if holder.holders == 0 {
-                self.chunks.remove(&pos);
-            }
-        }
-    }
-
-    /// The I/O workers' answers: loaded chunks join the map (if still held).
+    /// The I/O workers' answers: loaded chunks go to their holders; failed writes are logged.
     pub fn tick_io(&mut self) {
         while let Ok(event) = self.io_events.try_recv() {
-            let ChunkIoEvent::Loaded { pos, result } = event else {
-                continue;
+            let (pos, result) = match event {
+                ChunkIoEvent::Loaded { pos, result } => (pos, result),
+                ChunkIoEvent::Saved { pos, result } => {
+                    if let Err(e) = result {
+                        error!(
+                            "Failed to save chunk data ({},{}) in {}: {e}",
+                            pos.x, pos.z, self.dimension
+                        );
+                    }
+                    continue;
+                }
+                ChunkIoEvent::Flushed { result, .. } => {
+                    if let Err(e) = result {
+                        error!("Exception when flushing regions in {}: {e}", self.dimension);
+                    }
+                    continue;
+                }
             };
-            let Some(holder) = self.chunks.get_mut(&pos) else {
-                continue; // released while loading
-            };
-            holder.slot = match result {
-                Ok(Some(data)) => Slot::Loaded(Box::new(LevelChunk::from_data(
+            let chunk = match result {
+                Ok(Some(data)) => Some(LevelChunk::from_data(
                     *data,
                     self.section_count,
                     &self.tables.factory,
                     &self.heightmaps,
-                ))),
+                )),
                 Ok(None) => {
                     if !std::mem::replace(&mut self.missing_logged, true) {
                         warn!(
@@ -301,42 +333,59 @@ impl Level {
                             pos.x, pos.z, self.dimension
                         );
                     }
-                    Slot::Missing
+                    None
                 }
                 Err(e) => {
                     error!("Couldn't load chunk [{}, {}]: {e}", pos.x, pos.z);
-                    Slot::Missing
+                    None
                 }
             };
+            self.chunks.chunk_loaded(pos, chunk);
+        }
+    }
+
+    /// `ServerChunkCache.tick`'s chunk part before the players' loaders: expired tickets
+    /// (`purgeStaleTickets`, which processes the level updates), then `runDistanceManagerUpdates`.
+    pub fn tick_tickets(&mut self) {
+        self.chunks.tick();
+        self.chunks.process_ticket_updates();
+    }
+
+    /// `ChunkMap.tick`: unloads, then autosave.
+    pub fn tick_unloads(&mut self, game_time: i64) {
+        self.chunks.process_unloads(game_time);
+        self.chunks.auto_save(game_time);
+    }
+
+    /// `ChunkHolderManager.close(save, halt)` (see [`World::close`]).
+    fn close(mut self, world: &str, game_time: i64) {
+        info!("Waiting 60s for chunk system to halt for world '{world}'");
+        info!("Halted chunk system for world '{world}'");
+        self.chunks.save_all(true, true, Some(world), game_time);
+        info!("Waiting 60s for chunk I/O to halt for world '{world}'");
+        self.chunks.into_storage().shutdown();
+        info!("Halted I/O scheduler for world '{world}'");
+        // The answers to the last writes: their failures are logged.
+        while let Ok(event) = self.io_events.try_recv() {
+            if let ChunkIoEvent::Saved {
+                pos,
+                result: Err(e),
+            } = event
+            {
+                error!(
+                    "Failed to save chunk data ({},{}) in world '{world}': {e}",
+                    pos.x, pos.z
+                );
+            }
         }
     }
 
     pub fn is_loading(&self, pos: ChunkPos) -> bool {
-        matches!(
-            self.chunks.get(&pos),
-            Some(Holder {
-                slot: Slot::Loading,
-                ..
-            })
-        )
+        self.chunks.is_loading(pos)
     }
 
     pub fn chunk(&self, pos: ChunkPos) -> Option<&LevelChunk> {
-        match &self.chunks.get(&pos)?.slot {
-            Slot::Loaded(chunk) => Some(chunk),
-            _ => None,
-        }
-    }
-
-    /// Whether the chunk may be sent: a full chunk with its 8 neighbours loaded (Moonrise sends
-    /// a chunk once it is FULL, which needs its neighbours generated; without generation, a
-    /// neighbour must be on disk).
-    pub fn ready_to_send(&self, pos: ChunkPos) -> bool {
-        self.chunk(pos)
-            .is_some_and(|c| c.status == ChunkStatus::Full)
-            && (-1..=1).all(|dx| {
-                (-1..=1).all(|dz| self.chunk(ChunkPos::new(pos.x + dx, pos.z + dz)).is_some())
-            })
+        self.chunks.chunk(pos)
     }
 
     /// `ClientboundLevelChunkWithLightPacket` for a loaded chunk, the light from the saved
@@ -375,8 +424,8 @@ impl Level {
         (top >= chunk.min_y()).then_some(top + 1)
     }
 
-    /// How many chunks are held (for tests and logs).
+    /// How many chunk holders there are (for tests and logs).
     pub fn held_count(&self) -> usize {
-        self.chunks.len()
+        self.chunks.holder_count()
     }
 }

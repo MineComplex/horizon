@@ -136,10 +136,23 @@ markers of unported systems skipped at debug level) and switches the connection 
 information, player loaded and Paper's keep-alive (shared with configuration), and sends chunks by
 Moonrise's distances, nearest first under its rate limiter, with the saved Starlight light. Player
 files are saved on leaving and on stop (typed fields over the file's tag). Stand-ins, each written
-where it is: chunks held by a per-level count of holders instead of Moonrise's tickets; a player holds
-the square of its load distance; a chunk is sent once it is FULL with its 8 neighbours on disk;
-`PlayerSpawnFinder` reduced to the respawn column's `MOTION_BLOCKING` top; no movement checks;
+where it is: `PlayerSpawnFinder` reduced to the respawn column's `MOTION_BLOCKING` top; no movement checks;
 game rules, world border, clocks, join message, ops and `force-gamemode` at their defaults.
+
+**Chunk holding (2026-10-31, `server/chunk_system/`).** Moonrise's tickets, levels and chunk holders
+as plain data on the tick thread (one `ChunkHolderManager` per level; the region workers only do I/O,
+by message, behind the `ChunkStorage` trait): ticket types with their timeouts (vanilla's checked on
+the 26.3 jar by `LeafChunkTicketsOracle.java`, 110 rows; Paper's and Moonrise's derived from their
+sources), the `UNKNOWN` ticket that keeps a removed level one tick, level propagation (the result
+of Moonrise's propagator, checked against `source + Chebyshev distance` on 253,920 random cases),
+full status transitions from levels and full neighbours, the unload queue with Paper's minimum
+count/fraction, saving on unload and autosave (only unsaved chunks; `chunks.*` of
+`paper-world-defaults.yml`), `level.dat` every `autosavePeriod` ticks and on the empty pause, every
+chunk saved on stop with Moonrise's log lines. Players hold their chunks through Moonrise's
+`PlayerChunkLoaderData` (load, generate, tick and send stages and queues, delayed tickets on leaving
+an area for `delay-chunk-unloads-by`), joins through `CHUNK_LOAD`, `PLAYER_SPAWN` and `PLAYER_JOIN`
+tickets. Without a generator, a chunk not on disk stays missing (`awaiting_generation` is WP6's
+hook) and the send queue waits on its neighbours, as Moonrise's does when a player can't generate.
 
 Next, in order:
 1. Play state, continued: player info removal and the leave message, the unported join steps
@@ -147,8 +160,9 @@ Next, in order:
    packets, the world border/clocks/game rules from the saved data, `ops.json` and permissions.
 2. The nether and the end: one more `Level` each (its own `ChunkIo` over
    `dimensions/minecraft/<name>/region`), dimension switching, `paperSpawnDimension`.
-3. Moonrise's chunk system: tickets and holders, chunk saving on unload and autosave, then light
-   and generation.
+3. Moonrise's chunk system, continued: the nether and the end as more `Level`s, `/save-all` (with
+   the command executor), entity and POI chunks, `FORCED`/`PORTAL`/`POST_TELEPORT` tickets with
+   their systems, then light and generation (the holders' `awaiting_generation` hook).
 4. Commands: Minecraft's argument types as `ArgumentType` variants (and parser ids in
    `command/network.rs`), the vanilla tree from `Commands`, the executor over `ContextChain`.
 5. The entity arena and movement physics, following "Data" below.

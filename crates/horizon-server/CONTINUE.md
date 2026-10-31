@@ -57,10 +57,14 @@ patches):
 | Chunks: paletted containers (Moonrise save form), sections, 26.3 chunk NBT, `LevelChunk` + heightmaps | `src/world/chunk/`, `src/world/level_chunk.rs` |
 | World storage: `session.lock`, `level.dat`, region I/O workers (LZ4 default) | `src/world/{level_storage,chunk_io}.rs` |
 | Join path: levels, players, player files (`players/data/<uuid>.dat`) | `src/server/{level,player,player_data}.rs` |
+| Chunk holding: Moonrise's tickets, levels, holders, player chunk loaders, unloading with saving, autosave, `paper-world-defaults.yml` `chunks.*` (vanilla ticket constants on the jar: `LeafChunkTicketsOracle`; Moonrise derived from its sources) | `src/server/chunk_system/` |
 | World generator WP1 (`70afcbbe8`): noise, density program, worldgen data, proto-chunk. `LeafDensityOracle` on the real 26.3 jar (sha256 `a362163e…8ae6`), all 7 noise settings x 2 seeds, every router/aquifer root and every noise: 52,520 values, 2,502 cached values, 719,140 volume values, all bit-equal | `src/worldgen/` |
 
-Known stand-ins (documented in the code): chunks held by a per-player refcount instead of Moonrise
-tickets; no movement checks; default game rules/world border/clocks; only the overworld; no block
+Known stand-ins (documented in the code): no world generation, so a chunk not on disk stays missing
+(the chunk holders keep it in `awaiting_generation`) and the send queue waits on its neighbours;
+pending block/fluid ticks don't make chunks unsaved (raw NBT); no entity/POI chunks; Paper's player
+autosave (`player-auto-save`) and `paper-world.yml` per-world overrides not read; Paper's
+`chunk-loading-basic/advanced` rates at their defaults; no movement checks; default game rules/world border/clocks; only the overworld; no block
 entities in chunk packets; whitelist/ops/bans files not ported; `bukkit.yml` not read (its shutdown
 message default is hard-coded); comments admins add to YAML files are dropped on save.
 
@@ -127,9 +131,9 @@ message default is hard-coded); comments admins add to YAML files are dropped on
    `docs/world-generation.md`.
 
 ### B. Gameplay core (can run in parallel with A, on other files)
-1. **Chunk holding**: Moonrise's tickets and holders, unloading with saving, autosave
-   (`next_autosave_interval` exists), `/save-all`; then the Nether and the End as more `Level`s, and
-   dimension switching.
+1. ~~**Chunk holding**: Moonrise's tickets and holders, unloading with saving, autosave~~ — done
+   2026-10-31 (`src/server/chunk_system/`). Next: `/save-all` (needs the executor), the Nether and
+   the End as more `Level`s, and dimension switching.
 2. **Commands**: argument types that need registries/world (entity selectors `@a`/`@e`/…, block states,
    items, resources, NBT paths, components, `message`), the vanilla command tree from `Commands`, and
    vanilla's executor (`net.minecraft.commands.execution`) over `ContextChain`; console commands;

@@ -165,6 +165,7 @@ fn main() -> std::process::ExitCode {
             Difficulty::by_name(properties.difficulty.name()).unwrap_or(Difficulty::Normal),
             properties.hardcore,
         ),
+        chunks: config.yaml.paper_world_chunks,
     };
     let _ = language::install(config.language);
     let open_world = || World::open(std::path::Path::new("."), &settings, &tables);

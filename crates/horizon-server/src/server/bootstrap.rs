@@ -134,6 +134,8 @@ pub fn bootstrap(
         options.velocity_secret_env.as_deref(),
     )?;
     let purpur = config::load_purpur(&path(&paths.purpur_settings))?;
+    let paper_world_chunks =
+        config::load_paper_world_defaults(&path(&paths.paper_settings_directory))?;
     tracing::info!(
         "Default game type: {}",
         properties
@@ -150,6 +152,7 @@ pub fn bootstrap(
             spigot,
             paper,
             purpur,
+            paper_world_chunks,
         },
         language,
         vanilla_jar,

@@ -20,6 +20,7 @@ use crate::network::login::{self, PROTOCOL_VERSION};
 use crate::network::play::ids::{cb as play_cb, sb as play_sb};
 use crate::registry::tests::pack;
 use crate::registry::{DataPack, KnownPack, parse_builtin};
+use crate::server::chunk_system::ChunkSettings;
 use crate::server::level::{WorldSettings, WorldTables};
 use crate::server::player_data::PlayerDataStorage;
 use crate::world::chunk::{BiomeIds, ChunkStatus, ContainerFactory, SectionFlags, StateFlags};
@@ -45,6 +46,7 @@ fn config(max_players: i32) -> RuntimeConfig {
         view_distance: 2,
         simulation_distance: 2,
         enforces_secure_chat: false,
+        autosave_period: 6000,
         shutdown_message: Reason::Literal("Сервер перезапускается".into()),
         boot: Instant::now(),
     }
@@ -146,7 +148,8 @@ struct Running {
     dir: tempfile::TempDir,
 }
 
-fn run(config: RuntimeConfig) -> Running {
+/// The server over the synthetic world, not running yet.
+fn start(config: RuntimeConfig, chunks: ChunkSettings) -> (Server, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let tables = tables();
     make_world(dir.path(), &tables);
@@ -159,11 +162,17 @@ fn run(config: RuntimeConfig) -> Running {
             storage::Difficulty::Normal,
             false,
         ),
+        chunks,
     };
     let server = Server::start(config, tables.registries.clone(), || {
         World::open(dir.path(), &settings, &tables)
     })
     .unwrap();
+    (server, dir)
+}
+
+fn run(config: RuntimeConfig) -> Running {
+    let (server, dir) = start(config, ChunkSettings::default());
     Running {
         addr: server.local_addr(),
         control: server.control(),
@@ -487,4 +496,152 @@ fn a_taken_port_fails_to_start() {
         || unreachable!("the world opens after the port is bound"),
     );
     assert!(matches!(started, Err(StartError::Bind(_))));
+}
+
+/// Ticks the server (sleeping between ticks, the client being on another thread) until `done`.
+fn tick_until(server: &mut Server, what: &str, mut done: impl FnMut(&mut Server) -> bool) {
+    for _ in 0..5000 {
+        server.tick();
+        if done(server) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    panic!("never: {what}");
+}
+
+/// A block of the chunk at `pos` as the region file has it.
+fn saved_block(dir: &Path, pos: BlockPos) -> BlockState {
+    let tables = tables();
+    let codec = CodecTables {
+        factory: ContainerFactory::new(4, 1, 0),
+        blocks: tables.blocks.clone(),
+        flags: Arc::new(Flags),
+        biomes: Arc::new(BiomeIds::new(["minecraft:plains"])),
+        min_section_y: 0,
+        max_section_y: 1,
+    };
+    let chunk_pos = ChunkPos::new(pos.x >> 4, pos.z >> 4);
+    let folder = LevelStorageAccess::open(dir, "world")
+        .unwrap()
+        .region_path("minecraft:overworld", "region");
+    let mut regions = crate::world::chunk_io::RegionStorage::new(folder, Compression::Lz4, false);
+    let tag = regions.read(chunk_pos).unwrap().expect("the chunk on disk");
+    let data = codec.codec().read(&tag).unwrap().expect("a chunk");
+    let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
+    LevelChunk::from_data(data, 2, &codec.factory, &heightmaps).block_state(pos)
+}
+
+/// Moonrise's chunk holding end to end: a changed chunk is saved by autosave while loaded, the
+/// player walks away, the chunks it left are unloaded after the delay and the changed ones saved,
+/// `level.dat` is saved every `autosavePeriod` ticks, and everything else on stop.
+#[test]
+fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
+    let mut config = config(20);
+    config.autosave_period = 50;
+    let settings = ChunkSettings {
+        auto_save_interval: 20,
+        delay_chunk_unloads_by: 20,
+        ..ChunkSettings::default()
+    };
+    let (mut server, dir) = start(config, settings);
+    let addr = server.local_addr();
+    let (go, wait) = std_mpsc::channel::<()>();
+    let client = std::thread::spawn(move || {
+        let mut client = Client::play(addr);
+        let mut seen = Vec::new();
+        client.until_play(play_cb::PLAYER_POSITION, &mut seen);
+        let mut accept = vec![1];
+        for v in [8.5f64, 4.0, 8.5] {
+            accept.extend(v.to_be_bytes());
+        }
+        accept.extend([0; 8]);
+        client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+        for _ in 0..9 {
+            client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+        }
+        wait.recv().unwrap();
+        // Eight chunks east: every chunk on disk is out of the load area.
+        client.move_to(136.5, 4.0, 8.5);
+        seen.clear();
+        // Until the server stops: keep-alives answered, packets counted.
+        while let Some(packet) = client.recv() {
+            if packet[0] == play_cb::KEEP_ALIVE {
+                client.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
+            }
+            seen.push(packet);
+        }
+        seen.iter()
+            .filter(|p| p[0] == play_cb::FORGET_LEVEL_CHUNK)
+            .count()
+    });
+
+    tick_until(&mut server, "nine chunks sent", |s| {
+        s.players
+            .first()
+            .is_some_and(|j| j.player.sent_chunks() == 9)
+    });
+    let heightmaps = HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f });
+    let change = |s: &mut Server, pos: BlockPos| {
+        let chunk = s
+            .world
+            .overworld
+            .chunks
+            .chunk_mut(ChunkPos::new(pos.x >> 4, pos.z >> 4))
+            .unwrap();
+        assert!(
+            chunk
+                .set_block_state(pos, STONE, &Flags, &heightmaps)
+                .is_some()
+        );
+        assert!(chunk.is_unsaved());
+    };
+    // Autosave: a changed chunk is saved within `auto-save-interval` ticks, staying loaded.
+    let center = BlockPos::new(5, 10, 5);
+    change(&mut server, center);
+    let mut ticks = 0;
+    tick_until(&mut server, "the autosave", |s| {
+        ticks += 1;
+        !s.world
+            .overworld
+            .chunk(ChunkPos::new(0, 0))
+            .unwrap()
+            .is_unsaved()
+    });
+    assert!(ticks <= 21, "{ticks} ticks");
+    // Two more changes, then the player leaves them behind.
+    let corners = [BlockPos::new(-27, 10, -27), BlockPos::new(37, 11, 37)];
+    for pos in corners {
+        change(&mut server, pos);
+    }
+    go.send(()).unwrap();
+    tick_until(&mut server, "the player moved", |s| {
+        s.players[0].player.position[0] == 136.5
+    });
+    let held = |s: &Server| {
+        (-2..=2)
+            .flat_map(|x| (-2..=2).map(move |z| ChunkPos::new(x, z)))
+            .filter(|&p| s.world.overworld.chunk(p).is_some())
+            .count()
+    };
+    assert_eq!(held(&server), 25);
+    // The delayed player tickets (20 ticks), `PLAYER_JOIN` (100 ticks from the join), then the
+    // unloads: every chunk on disk goes.
+    tick_until(&mut server, "the chunks unloaded", |s| held(s) == 0);
+    tick_until(&mut server, "a level.dat autosave", |s| {
+        s.tick_count % 50 == 1
+    });
+    assert!(dir.path().join("world/level.dat_old").exists());
+    // The saves were sent to the region workers; they are on disk once the server stopped.
+    assert_eq!(server.stop(), 0);
+    for pos in corners {
+        assert_eq!(saved_block(dir.path(), pos), STONE, "{pos:?}");
+    }
+    assert_eq!(saved_block(dir.path(), center), STONE);
+    assert_eq!(
+        saved_block(dir.path(), BlockPos::new(-20, 10, 20)),
+        BlockState(0)
+    );
+    // The 9 chunks sent were forgotten when the player moved.
+    assert_eq!(client.join().unwrap(), 9);
 }

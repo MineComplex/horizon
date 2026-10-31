@@ -14,9 +14,15 @@
 //! - **Signals** (Ctrl-C, SIGTERM) are a task on the runtime that posts to the same control queue,
 //!   in place of Paper's `ServerShutdownThread` (which halts the loop and lets it stop the server).
 //!
-//! Each tick follows `tickServer`: the empty-server pause, the tick rate, the levels (nothing ticks in them yet),
-//! then `tickConnection`: new connections and logins (`addPendingConnections`), each connection's
-//! tick (login verification, packets, keep-alive, disconnections), then the console's lines.
+//! Each tick follows `tickServer`: the empty-server pause, the tick rate, the levels (only their
+//! chunk holding so far: `ServerChunkCache.tick`'s expired tickets, level updates, the players'
+//! chunk loaders, unloads and chunk autosave), then `tickConnection`: new connections and logins
+//! (`addPendingConnections`), each connection's tick (login verification, packets, keep-alive,
+//! disconnections), then the console's lines; then Paper's incremental save (`level.dat` every
+//! `autosavePeriod` ticks). While paused, the levels only unload and autosave chunks; the pause
+//! starts with a full save (`autoSave`). The vanilla `ticksUntilAutosave` countdown
+//! (`tick_loop::next_autosave_interval`) is never read after Paper's incremental saving, so it is
+//! not kept.
 //!
 //! Logins (`PlayerList.canPlayerLogin` as Leaf left it, and the duplicate check): MineComplex's
 //! cleanup removed the ban lists; the whitelist (`whitelist.json`) and the operators' player-limit
@@ -27,15 +33,17 @@
 //!
 //! Joining (`network::configuration` drives each connection's configuration state, `Server`
 //! carries out its actions): [`Server::start_configuration`] receives each connection that finished
-//! logging in; on `PrepareSpawn` the player's file is read and the chunks around its spawn are held
-//! (`PrepareSpawnTask`, radius 3) until loaded; on `Play`, [`Server::place_new_player`] checks for a
+//! logging in; on `PrepareSpawn` the player's file is read and the chunks around its spawn are
+//! loaded with `CHUNK_LOAD` tickets (`PrepareSpawnTask`, radius 3), then kept by a `PLAYER_SPAWN`
+//! ticket; on `Play`, [`Server::place_new_player`] checks for a
 //! duplicate and a full server, places the player (`PlayerList.placeNewPlayer`: the join packets of
 //! `network::play::join`) and switches the connection to the play state, where `server::player`
 //! handles its packets and sends its chunks each tick. Players are saved when they leave and on stop.
 //! Keep-alives are Paper's in both states (`configuration::KeepAlive`, carried into play).
 //!
-//! The overworld's chunk I/O answers are drained at the start of each `tickConnection`, also while
-//! the server is paused, as Moonrise completes chunk loads on its own executor.
+//! The overworld's chunk I/O answers are drained at the start of each tick (Paper's
+//! `runAllTasksAtTickStart`), also while the server is paused, as Moonrise completes chunk loads on
+//! its own executor.
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::mpsc as std_mpsc;
@@ -47,6 +55,8 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use super::bootstrap::ServerConfig;
+use super::chunk_system::TicketType;
+use super::chunk_system::ticket::{ENTITY_TICKING_LEVEL, FULL_LEVEL};
 use super::level::{World, WorldError};
 use super::player::{NewPlayer, Player, Spawn, chunk_of};
 use super::player_data::SavedPlayer;
@@ -69,6 +79,7 @@ use crate::registry::Registries;
 const BRAND: &str = "Leaf";
 /// `PrepareSpawnTask.PREPARE_CHUNK_RADIUS`.
 const PREPARE_CHUNK_RADIUS: i32 = 3;
+const PREPARE_TICKET_RADIUS: u8 = 3;
 /// Paper's `handleAllDisconnections`: how long stopping waits for the connections to close.
 const CLOSE_WAIT: Duration = Duration::from_secs(30);
 
@@ -91,6 +102,8 @@ pub struct RuntimeConfig {
     pub simulation_distance: i32,
     /// `enforceSecureProfile()`: the property, in online mode.
     pub enforces_secure_chat: bool,
+    /// `autosavePeriod` (bukkit.yml's `ticks-per.autosave`, not read yet: 6000).
+    pub autosave_period: i32,
     /// `settings.shutdown-message` of `bukkit.yml` (Leaf's default), sent to players on stop.
     /// `bukkit.yml` is not read yet.
     pub shutdown_message: Reason,
@@ -122,6 +135,7 @@ impl RuntimeConfig {
             view_distance: properties.view_distance,
             simulation_distance: properties.simulation_distance,
             enforces_secure_chat: properties.enforce_secure_profile && properties.online_mode,
+            autosave_period: super::config::AUTOSAVE_PERIOD,
             shutdown_message: Reason::Literal("Сервер перезапускается".into()),
             boot,
         }
@@ -234,6 +248,9 @@ struct PendingLogin {
 struct PreparingSpawn {
     saved: Option<SavedPlayer>,
     center: ChunkPos,
+    /// The `CHUNK_LOAD` tickets' identifier, and the chunks still loading.
+    load_id: u64,
+    loading: Vec<ChunkPos>,
     /// The saved position, else the respawn position (its height found once loaded).
     position: Option<[f64; 3]>,
     respawn: (i32, i32, i32),
@@ -443,20 +460,33 @@ impl Server {
     pub fn tick(&mut self) -> bool {
         let start = Instant::now();
         let sprinting = self.clock.start_tick(start, &mut self.rate, false);
+        self.world.overworld.tick_io();
         match self
             .empty_pause
             .update(self.players.len(), self.rate.is_sprinting(), false)
         {
             EmptyTick::StartPause { seconds } => {
                 tracing::info!("Server empty for {seconds} seconds, pausing");
+                self.auto_save();
+                self.tick_paused_levels();
                 self.tick_connection();
             }
-            EmptyTick::Paused => self.tick_connection(),
+            EmptyTick::Paused => {
+                self.tick_paused_levels();
+                self.tick_connection();
+            }
             EmptyTick::Run => {
                 self.tick_count = self.tick_count.wrapping_add(1);
                 self.rate.tick();
-                // tickChildren: nothing ticks in the levels yet (their chunk I/O is drained in tickConnection); then the connections.
+                // tickChildren: the levels, then the connections.
+                self.tick_levels();
                 self.tick_connection();
+                // Paper's incremental saving: player saves are not ported; `level.dat` on a
+                // full save (the chunks autosave in the level tick).
+                let period = self.config.autosave_period;
+                if period > 0 && self.tick_count % period == 0 {
+                    self.world.save_level_data();
+                }
                 let spent = i64::try_from(start.elapsed().as_nanos()).unwrap_or(i64::MAX);
                 self.tick_times.record(self.tick_count, spent);
             }
@@ -480,9 +510,40 @@ impl Server {
         }
     }
 
-    /// `DedicatedServer.tickConnection`: the chunk I/O answers, the connections, then the console.
+    /// The overworld's `ServerChunkCache.tick` (the only part of `ServerLevel.tick` ported):
+    /// expired tickets, level updates, each player's chunk loader, then unloads and autosave.
+    fn tick_levels(&mut self) {
+        let now = self.now_ns();
+        let level = &mut self.world.overworld;
+        level.tick_tickets();
+        for j in &mut self.players {
+            if j.peer.closing.is_none() {
+                j.player.tick_chunks(level, &j.peer.conn, now);
+            }
+        }
+        level.tick_unloads(self.world.data.game_time);
+    }
+
+    /// While paused: `getChunkSource().tick(() -> true, false)`, which only processes tickets,
+    /// unloads and autosave.
+    fn tick_paused_levels(&mut self) {
+        let level = &mut self.world.overworld;
+        level.tick_tickets();
+        level.tick_unloads(self.world.data.game_time);
+    }
+
+    /// `MinecraftServer.autoSave`: `saveEverything(true, false, false)`.
+    fn auto_save(&mut self) {
+        tracing::debug!("Autosave started");
+        for joined in &self.players {
+            self.save_player(&joined.player);
+        }
+        self.world.save_all_chunks(true, false);
+        tracing::debug!("Autosave finished");
+    }
+
+    /// `DedicatedServer.tickConnection`: the connections, then the console.
     fn tick_connection(&mut self) {
-        self.world.overworld.tick_io();
         while let Ok(event) = self.events.try_recv() {
             match event {
                 NetEvent::Login(request) => self.logins.push(PendingLogin {
@@ -577,17 +638,23 @@ impl Server {
             Some(position) => chunk_of(position),
             None => ChunkPos::new(p.x >> 4, p.z >> 4),
         };
+        // `trackLoadWithRadius`: Moonrise's `loadChunksAsync` holds each chunk with a
+        // `CHUNK_LOAD` ticket at FULL until it is loaded.
+        let chunks = &mut self.world.overworld.chunks;
+        let load_id = chunks.next_ticket_id();
         let r = PREPARE_CHUNK_RADIUS;
-        for x in -r..=r {
-            for z in -r..=r {
-                self.world
-                    .overworld
-                    .hold(ChunkPos::new(center.x + x, center.z + z));
-            }
+        let loading: Vec<ChunkPos> = (-r..=r)
+            .flat_map(|x| (-r..=r).map(move |z| ChunkPos::new(center.x + x, center.z + z)))
+            .collect();
+        for &pos in &loading {
+            chunks.add_ticket(TicketType::ChunkLoad, pos, FULL_LEVEL, load_id);
         }
+        chunks.process_ticket_updates();
         PreparingSpawn {
             saved,
             center,
+            load_id,
+            loading,
             position,
             respawn: (p.x, p.y, p.z),
             rotation,
@@ -595,17 +662,31 @@ impl Server {
         }
     }
 
-    /// `Preparing.tick`: ready once every spawn chunk is loaded (or known missing). A new player
+    /// `Preparing.tick`: ready once every spawn chunk is loaded (or known missing): each chunk's
+    /// `CHUNK_LOAD` ticket goes as it loads, then `PLAYER_SPAWN` keeps the area. A new player
     /// stands on the top of the respawn column (`PlayerSpawnFinder` reduced to the heightmap at
     /// the respawn position, see `Level::spawn_height`; its search over the respawn radius and
     /// its collision checks need the physics), or at the respawn position when that chunk is missing.
-    fn prepare_spawn_tick(&self, spawn: &mut PreparingSpawn) -> bool {
-        let level = &self.world.overworld;
-        let r = PREPARE_CHUNK_RADIUS;
-        let c = spawn.center;
-        if (-r..=r).any(|x| (-r..=r).any(|z| level.is_loading(ChunkPos::new(c.x + x, c.z + z)))) {
+    fn prepare_spawn_tick(&mut self, spawn: &mut PreparingSpawn) -> bool {
+        let level = &mut self.world.overworld;
+        let id = spawn.load_id;
+        spawn.loading.retain(|&pos| {
+            let loading = level.is_loading(pos);
+            if !loading {
+                level
+                    .chunks
+                    .remove_ticket(TicketType::ChunkLoad, pos, FULL_LEVEL, id);
+            }
+            loading
+        });
+        if !spawn.loading.is_empty() {
             return false;
         }
+        level.chunks.add_ticket_with_radius(
+            TicketType::PlayerSpawn,
+            spawn.center,
+            PREPARE_TICKET_RADIUS,
+        );
         let (x, y, z) = spawn.respawn;
         let position = spawn.position.unwrap_or_else(|| {
             let y = level.spawn_height(x, z).unwrap_or(y);
@@ -619,14 +700,13 @@ impl Server {
         true
     }
 
+    /// A preparation that ends: the `CHUNK_LOAD` tickets of chunks still loading go (Moonrise
+    /// removes each when its load completes; the load still completes here).
     fn release_spawn(&mut self, c: &mut Configuring) {
         if let Some(spawn) = c.spawn.take() {
-            let r = PREPARE_CHUNK_RADIUS;
-            for x in -r..=r {
-                for z in -r..=r {
-                    let pos = ChunkPos::new(spawn.center.x + x, spawn.center.z + z);
-                    self.world.overworld.release(pos);
-                }
+            let chunks = &mut self.world.overworld.chunks;
+            for pos in spawn.loading {
+                chunks.remove_ticket(TicketType::ChunkLoad, pos, FULL_LEVEL, spawn.load_id);
             }
         }
     }
@@ -646,7 +726,7 @@ impl Server {
             }
         }
         if j.peer.closing.is_none()
-            && let Err(reason) = j.player.tick(level, &j.peer.conn, now_ns)
+            && let Err(reason) = j.player.tick(&j.peer.conn, now_ns)
         {
             j.peer.disconnect(reason);
         }
@@ -775,6 +855,13 @@ impl Server {
         // `calculateGameModeForNewPlayer`: the saved mode, else the world's (`force-gamemode` is
         // not read yet).
         let world_mode = game_type_by_id(self.world.data.game_type as u8);
+        // Paper's `PLAYER_JOIN` ticket, before the level info.
+        self.world.overworld.chunks.add_ticket(
+            TicketType::PlayerJoin,
+            chunk_of(spawn.position),
+            ENTITY_TICKING_LEVEL,
+            0,
+        );
         self.last_entity_id += 1;
         let player = Player::new(
             NewPlayer {
@@ -790,9 +877,10 @@ impl Server {
                 level_distances: self.level_distances,
             },
             &mut self.world.overworld,
+            &c.peer.conn,
             now_ns,
         );
-        // The player's chunk loader holds its chunks now; the spawn ticket can go.
+        // The player's chunk loader holds its chunks now.
         self.release_spawn(&mut c);
         c.peer.conn.state = ConnectionState::Play;
         let [x, y, z] = player

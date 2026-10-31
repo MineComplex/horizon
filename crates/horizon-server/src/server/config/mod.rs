@@ -9,6 +9,9 @@
 //! | Structure salts | `spigot.yml` | `world-settings.<world or default>.seed-*` ([`STRUCTURE_SALTS`], `seed-buriedtreasure`, `seed-mineshaft`, `seed-stronghold`) | the 26.3 jar's salts, `10387320`, `default`, `default` |
 //! | Lagging flag | `purpur.yml` | `settings.lagging-threshold` | `19.0` |
 //! | 5 s TPS in `getTPS()` | `config/leaf-global.yml` | `misc.including-5s-in-get-tps` | `true` |
+//! | Chunk autosave, unloads | `config/paper-world-defaults.yml` | `chunks.{auto-save-interval, max-auto-save-chunks-per-tick, min-chunk-unload-count, min-chunk-unload-fraction, delay-chunk-unloads-by}` | `default` (6000), `24`, `50`, `0.05`, `10s` |
+//!
+//! The per-world `paper-world.yml` overrides are not read yet (one world, the defaults apply).
 //!
 //! Not here: `proxies.proxy-protocol` and BungeeCord (removed by MineComplex's cleanup patches);
 //! `gale-global.yml` (its `misc.last-tick-time-in-tps-command` no longer reaches `/tps` after
@@ -26,6 +29,7 @@ use std::path::{Path, PathBuf};
 
 use yaml::{KeyOrder, Value, YamlDocument, YamlError};
 
+use super::chunk_system::ChunkSettings;
 use super::tick_loop::TickLoopConfig;
 
 /// `GlobalConfiguration.CURRENT_VERSION`.
@@ -44,6 +48,25 @@ File Reference: https://docs.papermc.io/paper/reference/global-configuration/
 Docs: https://docs.papermc.io/
 Discord: https://discord.gg/papermc
 Website: https://papermc.io/";
+/// `PaperConfigurations.WORLD_DEFAULTS_HEADER`.
+const PAPER_WORLD_DEFAULTS_HEADER: &str = "This is the world defaults configuration file for Paper.
+As you can see, there's a lot to configure. Some options may impact gameplay, so use
+with caution, and make sure you know what each option does before configuring.
+
+If you need help with the configuration or have any questions related to Paper,
+join us in our Discord or check the docs page.
+
+Configuration options here apply to all worlds, unless you specify overrides inside
+the world-specific config file inside each world folder.
+
+File Reference: https://docs.papermc.io/paper/reference/world-configuration/
+Docs: https://docs.papermc.io/
+Discord: https://discord.gg/papermc
+Website: https://papermc.io/";
+/// `WorldConfiguration.CURRENT_VERSION`.
+pub const PAPER_WORLD_VERSION: i32 = 31;
+/// bukkit.yml's `ticks-per.autosave` default (`autosavePeriod`; bukkit.yml is not read yet).
+pub const AUTOSAVE_PERIOD: i32 = 6000;
 const SPIGOT_HEADER: &str = "This is the Spigot configuration file for Paper.
 As you can see, there's tons to configure. Some options may impact gameplay, so use
 with caution, and make sure you know what each option does before configuring.
@@ -310,6 +333,8 @@ pub struct YamlConfigs {
     pub leaf: LeafGlobalConfig,
     pub spigot: SpigotConfig,
     pub paper: PaperGlobalConfig,
+    /// `paper-world-defaults.yml`'s `chunks`.
+    pub paper_world_chunks: ChunkSettings,
     pub purpur: PurpurConfig,
 }
 
@@ -557,6 +582,162 @@ pub fn load_paper_global(
         velocity,
         catchup_ticks,
     })
+}
+
+/// `Configurations.initializeWorldDefaultsConfiguration` for `paper-world-defaults.yml` in `dir`,
+/// the `chunks` settings above only: read with Configurate's coercions, then written back (sorted,
+/// with `_version`). A value that can't be read stops the start, as Paper's loader does.
+pub fn load_paper_world_defaults(dir: &Path) -> Result<ChunkSettings, ConfigError> {
+    let path = dir.join("paper-world-defaults.yml");
+    let file = file_name(&path);
+    let mut doc = match YamlDocument::read(&path) {
+        Ok(None) => YamlDocument::default(),
+        Ok(Some(text)) => YamlDocument::parse(&text).map_err(|source| ConfigError::Syntax {
+            file: file.clone(),
+            source,
+        })?,
+        Err(source) => return Err(ConfigError::Io { file, source }),
+    };
+    if doc.get("_version") == Value::Null {
+        doc.set("_version", Value::Int(PAPER_WORLD_VERSION.into()));
+    }
+    let invalid = |path, message| ConfigError::Invalid {
+        file: file.clone(),
+        path,
+        message,
+    };
+    let defaults = ChunkSettings::default();
+    // `AutosavePeriod` (`FallbackValue.Int`): `default`, an int, or a parsable string; a negative
+    // value is the default too (`negToDef`).
+    let auto_save = match doc.get("chunks.auto-save-interval") {
+        Value::Null => None,
+        Value::Str(s) if s.eq_ignore_ascii_case("default") => None,
+        Value::Str(s) if is_parsable(&s) => Some(s.parse::<i32>().map_err(|_| {
+            invalid(
+                "chunks, auto-save-interval",
+                format!("For input string: \"{s}\""),
+            )
+        })?),
+        Value::Int(i) if i32::try_from(i).is_ok() => Some(i as i32),
+        other => {
+            return Err(invalid(
+                "chunks, auto-save-interval",
+                format!(
+                    "{} is not a integer or 'default'",
+                    other.java_string().unwrap_or_default()
+                ),
+            ));
+        }
+    }
+    .filter(|&v| v >= 0);
+    let int = |key: &'static str, default: usize| -> Result<usize, ConfigError> {
+        configurate_int(&doc, &format!("chunks.{key}"))
+            .map(|v| v.map_or(default, |v| v.max(0) as usize))
+            .map_err(|m| invalid(key, m))
+    };
+    let max_per_tick = int(
+        "max-auto-save-chunks-per-tick",
+        defaults.max_auto_save_chunks_per_tick,
+    )?;
+    let min_count = int("min-chunk-unload-count", defaults.min_chunk_unload_count)?;
+    let fraction = match doc.get("chunks.min-chunk-unload-fraction") {
+        Value::Null => defaults.min_chunk_unload_fraction,
+        Value::Int(i) => i as f64,
+        Value::Float(f) => f,
+        Value::Str(s) => s.trim().parse().map_err(|_| {
+            invalid(
+                "chunks, min-chunk-unload-fraction",
+                format!(
+                    "Failed to coerce input value of type class java.lang.String to double: {s}"
+                ),
+            )
+        })?,
+        _ => {
+            return Err(invalid(
+                "chunks, min-chunk-unload-fraction",
+                "Failed to coerce input value of a collection to double".into(),
+            ));
+        }
+    };
+    // Paper's `Duration`: any scalar's text.
+    let delay = match doc.get("chunks.delay-chunk-unloads-by") {
+        Value::Null => "10s".to_owned(),
+        Value::Collection => {
+            return Err(invalid(
+                "chunks, delay-chunk-unloads-by",
+                "Expected a scalar, got a collection".into(),
+            ));
+        }
+        value => value.java_string().unwrap_or_default(),
+    };
+    let settings = ChunkSettings {
+        auto_save_interval: i64::from(auto_save.unwrap_or(AUTOSAVE_PERIOD)),
+        max_auto_save_chunks_per_tick: max_per_tick,
+        min_chunk_unload_count: min_count,
+        min_chunk_unload_fraction: fraction,
+        delay_chunk_unloads_by: duration_seconds(&delay) * 20,
+    };
+    doc.set(
+        "chunks.auto-save-interval",
+        auto_save.map_or(Value::Str("default".into()), |v| Value::Int(v.into())),
+    );
+    doc.set(
+        "chunks.max-auto-save-chunks-per-tick",
+        Value::Int(max_per_tick as i128),
+    );
+    doc.set(
+        "chunks.min-chunk-unload-count",
+        Value::Int(min_count as i128),
+    );
+    doc.set("chunks.min-chunk-unload-fraction", Value::Float(fraction));
+    doc.set(
+        "chunks.delay-chunk-unloads-by",
+        Value::Str(delay.as_str().into()),
+    );
+    if let Err(e) = write(
+        &path,
+        &doc.to_text(PAPER_WORLD_DEFAULTS_HEADER, "# ", KeyOrder::Sorted),
+    ) {
+        tracing::error!("Could not save {}: {e}", path.display());
+    }
+    Ok(settings)
+}
+
+/// Configurate's int scalar: an int (its low 32 bits), an integral float, or a number's text.
+fn configurate_int(doc: &YamlDocument, path: &str) -> Result<Option<i32>, String> {
+    match doc.get(path) {
+        Value::Null => Ok(None),
+        Value::Int(i) => Ok(Some(i as i32)),
+        Value::Float(f) if f.fract() == 0.0 => Ok(Some(f as i32)),
+        Value::Str(s) => s.trim().parse().map(Some).map_err(|_| {
+            format!("Failed to coerce input value of type class java.lang.String to int: {s}")
+        }),
+        other => Err(format!(
+            "Failed to coerce input value {} to int",
+            other.java_string().unwrap_or_default()
+        )),
+    }
+}
+
+/// Paper's `Duration.getSeconds`: spaces dropped, the last character the unit (`d`, `h`, `m`,
+/// else seconds), the other non-numeric characters dropped, the rest a double (0 if not one).
+fn duration_seconds(text: &str) -> i64 {
+    let text: String = text.chars().filter(|&c| c != ' ').collect();
+    let Some(unit) = text.chars().last() else {
+        return 0; // Java's charAt(-1) throws; an empty value is not a valid setting
+    };
+    let number: String = text
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == '-' || *c == '.')
+        .collect();
+    let mut seconds: f64 = number.parse().unwrap_or(0.0);
+    seconds *= match unit {
+        'd' => 86_400.0,
+        'h' => 3_600.0,
+        'm' => 60.0,
+        _ => 1.0,
+    };
+    i64::from(seconds as i32)
 }
 
 /// `verifyGlobalConfigVersion`.

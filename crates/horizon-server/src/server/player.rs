@@ -5,14 +5,10 @@
 //! Movement is taken as the client sends it (finite values, clamped to the world's limits as
 //! vanilla does): the movement checks (speed, collisions, flying) come with entity physics.
 //!
-//! The chunk loader keeps Moonrise's distances, its "unload, then radius/simulation, then center"
-//! update order, its nearest-first sending and its rate limiter (Paper's default 75 chunks per
-//! second). Stand-ins: the chunks it holds are the square of the load distance around the player
-//! (Moonrise walks its load, generate, tick and send queues by ticket stage), and the queue is
-//! rebuilt from that square each tick instead of being kept incrementally.
+//! The chunk loader is Moonrise's (`server::chunk_system::player_loader`): its tickets hold the
+//! player's chunks in the level's chunk holders, and it sends them from the level's tick.
 
-use std::collections::HashSet;
-
+use super::chunk_system::{ChunkSink, PlayerChunkLoader};
 use super::level::Level;
 use super::player_data::SavedPlayer;
 use crate::core::position::ChunkPos;
@@ -20,15 +16,9 @@ use crate::network::Reason;
 use crate::network::configuration::{ClientInformation, KeepAlive, KeepAliveTick};
 use crate::network::listener::Connection;
 use crate::network::login::GameProfile;
-use crate::network::play::chunk_sending::{
-    ChunkRateLimiter, PlayerDistances, ViewDistances, effective_rate, player_distances,
-    want_chunk_sent,
-};
+use crate::network::play::chunk_sending::{PlayerDistances, ViewDistances, player_distances};
 use crate::network::play::clientbound::{self as cb, GameType, PositionMoveRotation};
 use crate::network::play::serverbound::{self as sb, Serverbound};
-
-/// Paper's `chunk-loading-basic.player-max-chunk-send-rate` default.
-const CHUNK_SEND_RATE: f64 = 75.0;
 
 /// Where a joining player is placed (`PrepareSpawnTask`'s result).
 #[derive(Clone, Debug, PartialEq)]
@@ -45,112 +35,45 @@ pub fn chunk_of(position: [f64; 3]) -> ChunkPos {
     )
 }
 
-/// Moonrise's `PlayerChunkLoaderData` (see the module docs).
-#[derive(Debug)]
-struct ChunkLoader {
-    center: ChunkPos,
-    distances: PlayerDistances,
-    held: HashSet<ChunkPos>,
-    sent: HashSet<ChunkPos>,
-    limiter: ChunkRateLimiter,
+/// The loader's packets on the player's connection; chunks are queued and their packets built
+/// once the loader is done with the level's holders.
+struct Packets<'a> {
+    conn: &'a Connection,
+    chunks: Vec<ChunkPos>,
 }
 
-fn square(center: ChunkPos, radius: i32) -> impl Iterator<Item = ChunkPos> {
-    (-radius..=radius).flat_map(move |dx| {
-        (-radius..=radius).map(move |dz| ChunkPos::new(center.x + dx, center.z + dz))
-    })
-}
-
-impl ChunkLoader {
-    /// `add`: the radius, simulation and center packets are part of the join.
-    fn new(center: ChunkPos, distances: PlayerDistances, level: &mut Level, now_ns: i64) -> Self {
-        let held: HashSet<ChunkPos> = square(center, distances.load).collect();
-        for &pos in &held {
-            level.hold(pos);
-        }
+impl<'a> Packets<'a> {
+    fn new(conn: &'a Connection) -> Self {
         Self {
-            center,
-            distances,
-            held,
-            sent: HashSet::new(),
-            limiter: ChunkRateLimiter::new(now_ns),
+            conn,
+            chunks: Vec::new(),
         }
     }
 
-    /// `update`: forget what is no longer wanted, resend changed distances, hold the new square,
-    /// then the new center last.
-    fn update(
-        &mut self,
-        center: ChunkPos,
-        distances: PlayerDistances,
-        level: &mut Level,
-        conn: &Connection,
-    ) {
-        if center == self.center && distances == self.distances {
-            return;
-        }
-        let c = (center.x, center.z);
-        self.sent.retain(|&p| {
-            let keep = want_chunk_sent(c, distances.send, (p.x, p.z));
-            if !keep {
-                conn.send(cb::forget_level_chunk(p));
-            }
-            keep
-        });
-        if distances.send != self.distances.send {
-            conn.send(cb::set_chunk_cache_radius(distances.send));
-        }
-        if distances.tick != self.distances.tick {
-            conn.send(cb::set_simulation_distance(distances.tick));
-        }
-        let held: HashSet<ChunkPos> = square(center, distances.load).collect();
-        for &pos in held.difference(&self.held) {
-            level.hold(pos);
-        }
-        for &pos in self.held.difference(&held) {
-            level.release(pos);
-        }
-        self.held = held;
-        if center != self.center {
-            conn.send(cb::set_chunk_cache_center(center.x, center.z));
-        }
-        self.center = center;
-        self.distances = distances;
-    }
-
-    /// The send queue: wanted, ready chunks nearest first, as many as the limiter allows.
-    fn send_chunks(&mut self, level: &Level, conn: &Connection, now_ns: i64) {
-        self.limiter.tick(now_ns, effective_rate(CHUNK_SEND_RATE));
-        let c = (self.center.x, self.center.z);
-        let mut queue: Vec<(i64, i32, i32)> = self
-            .held
-            .iter()
-            .filter(|p| !self.sent.contains(p))
-            .filter(|p| want_chunk_sent(c, self.distances.send, (p.x, p.z)))
-            .filter(|&&p| level.ready_to_send(p))
-            .map(|p| {
-                let (dx, dz) = (i64::from(p.x - c.0), i64::from(p.z - c.1));
-                (dx * dx + dz * dz, p.x, p.z)
-            })
-            .collect();
-        if queue.is_empty() {
-            return;
-        }
-        queue.sort_unstable();
-        let take = self.limiter.take(queue.len() as i64) as usize;
-        for &(_, x, z) in &queue[..take] {
-            let pos = ChunkPos::new(x, z);
+    fn send_chunks(self, level: &Level) {
+        for pos in self.chunks {
             if let Some(packet) = level.chunk_packet(pos) {
-                conn.send(packet);
-                self.sent.insert(pos);
+                self.conn.send(packet);
             }
         }
     }
+}
 
-    fn release(&mut self, level: &mut Level) {
-        for pos in self.held.drain() {
-            level.release(pos);
-        }
+impl ChunkSink for Packets<'_> {
+    fn forget(&mut self, pos: ChunkPos) {
+        self.conn.send(cb::forget_level_chunk(pos));
+    }
+    fn radius(&mut self, distance: i32) {
+        self.conn.send(cb::set_chunk_cache_radius(distance));
+    }
+    fn simulation_distance(&mut self, distance: i32) {
+        self.conn.send(cb::set_simulation_distance(distance));
+    }
+    fn center(&mut self, pos: ChunkPos) {
+        self.conn.send(cb::set_chunk_cache_center(pos.x, pos.z));
+    }
+    fn send_chunk(&mut self, pos: ChunkPos) {
+        self.chunks.push(pos);
     }
 }
 
@@ -175,7 +98,7 @@ pub struct Player {
     awaiting_position: Option<[f64; 3]>,
     awaiting_teleport_time: i32,
     level_distances: ViewDistances,
-    loader: ChunkLoader,
+    loader: PlayerChunkLoader,
 }
 
 /// What a join brings to [`Player::new`].
@@ -193,10 +116,19 @@ pub struct NewPlayer {
 }
 
 impl Player {
-    /// The new player, its chunk loader holding its chunks; the join teleport is id 1.
-    pub fn new(p: NewPlayer, level: &mut Level, now_ns: i64) -> Self {
+    /// The new player, its chunk loader holding its chunks (`RegionizedPlayerChunkLoader.addPlayer`:
+    /// the distance and center packets are in the join); the join teleport is id 1.
+    pub fn new(p: NewPlayer, level: &mut Level, conn: &Connection, now_ns: i64) -> Self {
         let distances = Self::distances_for(p.level_distances, &p.client_information);
-        let loader = ChunkLoader::new(chunk_of(p.spawn.position), distances, level, now_ns);
+        let id = level.chunks.next_ticket_id();
+        let loader = PlayerChunkLoader::new(
+            id,
+            chunk_of(p.spawn.position),
+            distances,
+            &mut level.chunks,
+            &mut Packets::new(conn),
+            now_ns,
+        );
         Self {
             profile: p.profile,
             entity_id: p.entity_id,
@@ -225,11 +157,11 @@ impl Player {
     }
 
     pub fn distances(&self) -> PlayerDistances {
-        self.loader.distances
+        self.loader.distances()
     }
 
     pub fn sent_chunks(&self) -> usize {
-        self.loader.sent.len()
+        self.loader.sent_count()
     }
 
     /// `teleport`: a new id, the position awaited until the client accepts it.
@@ -325,8 +257,13 @@ impl Player {
                     particle_status,
                 };
                 let distances = Self::distances_for(self.level_distances, &self.client_information);
-                self.loader
-                    .update(self.loader.center, distances, level, conn);
+                let center = self.loader.center();
+                self.loader.update(
+                    center,
+                    distances,
+                    &mut level.chunks,
+                    &mut Packets::new(conn),
+                );
             }
             Serverbound::PlayerLoaded => self.client_loaded = true,
             // Moonrise reads the desired rate and uses nothing of it.
@@ -344,19 +281,24 @@ impl Player {
     fn move_to(&mut self, position: [f64; 3], level: &mut Level, conn: &Connection) {
         self.position = position;
         let chunk = chunk_of(position);
-        if chunk != self.loader.center {
-            let distances = self.loader.distances;
-            self.loader.update(chunk, distances, level, conn);
+        if chunk != self.loader.center() {
+            let distances = self.loader.distances();
+            self.loader
+                .update(chunk, distances, &mut level.chunks, &mut Packets::new(conn));
         }
     }
 
-    /// The player's part of the tick: keep-alive, then the chunks to send.
-    pub fn tick(
-        &mut self,
-        level: &mut Level,
-        conn: &Connection,
-        now_ns: i64,
-    ) -> Result<(), Reason> {
+    /// The player's chunk loader in the level's tick (`RegionizedPlayerChunkLoader.tick`):
+    /// loads, generation, ticking and sends.
+    pub fn tick_chunks(&mut self, level: &mut Level, conn: &Connection, now_ns: i64) {
+        let mut packets = Packets::new(conn);
+        self.loader
+            .update_queues(&mut level.chunks, &mut packets, now_ns);
+        packets.send_chunks(level);
+    }
+
+    /// The player's part of the connection tick: keep-alive.
+    pub fn tick(&mut self, conn: &Connection, now_ns: i64) -> Result<(), Reason> {
         self.tick_count = self.tick_count.wrapping_add(1);
         match self.keep_alive.tick(now_ns) {
             KeepAliveTick::Send(challenge) => conn.send(cb::keep_alive(challenge)),
@@ -366,7 +308,6 @@ impl Player {
                 return Err(Reason::translatable("disconnect.timeout"));
             }
         }
-        self.loader.send_chunks(level, conn, now_ns);
         Ok(())
     }
 
@@ -382,9 +323,9 @@ impl Player {
         }
     }
 
-    /// Leaving: the chunk loader's holds are given back (`PlayerChunkLoaderData.remove`).
+    /// Leaving: the chunk loader's tickets become delayed ones (`PlayerChunkLoaderData.remove`).
     pub fn remove(&mut self, level: &mut Level) {
-        self.loader.release(level);
+        self.loader.remove(&mut level.chunks);
     }
 }
 

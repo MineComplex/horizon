@@ -246,3 +246,54 @@ fn world_seeds_resolve_like_spigot() {
         "{text}"
     );
 }
+
+#[test]
+fn paper_world_defaults_chunk_settings() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path();
+    assert_eq!(
+        load_paper_world_defaults(d).unwrap(),
+        ChunkSettings::default()
+    );
+    let text = read(&d.join("paper-world-defaults.yml"));
+    assert!(
+        text.starts_with("# This is the world defaults configuration file for Paper.\n"),
+        "{text}"
+    );
+    assert!(text.ends_with("_version: 31\nchunks:\n  auto-save-interval: default\n  delay-chunk-unloads-by: 10s\n  max-auto-save-chunks-per-tick: 24\n  min-chunk-unload-count: 50\n  min-chunk-unload-fraction: 0.05\n"), "{text}");
+
+    // Numbers as text, a negative interval (the default), Paper's duration units; other keys kept.
+    std::fs::write(
+        d.join("paper-world-defaults.yml"),
+        "chunks:\n  auto-save-interval: '-5'\n  max-auto-save-chunks-per-tick: '8'\n  \
+         min-chunk-unload-fraction: 1\n  delay-chunk-unloads-by: 2 m\nspawn:\n  keep: 1\n",
+    )
+    .unwrap();
+    let settings = load_paper_world_defaults(d).unwrap();
+    assert_eq!(
+        settings,
+        ChunkSettings {
+            auto_save_interval: 6000,
+            max_auto_save_chunks_per_tick: 8,
+            min_chunk_unload_fraction: 1.0,
+            delay_chunk_unloads_by: 2 * 60 * 20,
+            ..ChunkSettings::default()
+        }
+    );
+    std::fs::write(
+        d.join("paper-world-defaults.yml"),
+        "chunks:\n  auto-save-interval: 300\n  delay-chunk-unloads-by: 0s\n",
+    )
+    .unwrap();
+    let settings = load_paper_world_defaults(d).unwrap();
+    assert_eq!(
+        (settings.auto_save_interval, settings.delay_chunk_unloads_by),
+        (300, 0)
+    );
+    std::fs::write(
+        d.join("paper-world-defaults.yml"),
+        "chunks:\n  auto-save-interval: often\n",
+    )
+    .unwrap();
+    assert!(load_paper_world_defaults(d).is_err());
+}
