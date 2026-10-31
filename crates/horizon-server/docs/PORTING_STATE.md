@@ -244,7 +244,28 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storage,chunk_io}`,
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`, `src/worldgen/structure/{template,place,processor}`, `src/block/transform.rs`, `src/world/ticks.rs`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
-## Next
+## Roadmap (2026-10-31)
+
+Stages in order; each ends with a live check (a real client joins and does what the stage promises). A wave is
+3 agents, ~1.3-1.5M tokens. Java sizes are Leaf's sources. Models: Haiku for uniform code (packet codecs, simple
+blocks, items, commands), Sonnet for routine porting against an oracle, Opus for ownership design and hard logic
+(entity storage and tracking, AI, light, redstone, `ServerPlayer`).
+
+| # | Stage | Contents | Java | Waves | Done when |
+|---|---|---|---|---|---|
+| 0 | Finish world generation | live structure generation, level random, flat/debug generators, ring search, structure check, `/locate` | ~10k | 1-2 | worlds generate as vanilla's, structures included |
+| 1 | Walk and build | play packets, movement checks, digging and placing, game modes, Starlight light, `updateShape` of every block | ~45k | 4-5 | walk, break and place blocks, correct light |
+| 2 | Block behaviour | block classes (~45k), redstone, block entities (chests, furnaces, hoppers, spawners), block ticks, game events | ~63k | 6-8 | redstone, machines and growth work |
+| 3 | Items and inventory | items, components, enchantments, crafting and furnaces, menus, loot tables, damage, effects, food | ~55k | 5-7 | survival: crafting, chests, loot, hunger, damage |
+| 4 | Entities: base | `Entity`, physics, tracking, AI goals and brains, pathfinding, projectiles, vehicles, item entities, decorations | ~65k | 7-9 | boats, minecarts, arrows, dropped items |
+| 5 | Mobs | monsters, animals, villagers and trading, bosses, raids, natural spawning | ~58k | 6-8 | full survival with mobs |
+| 6 | Rest of vanilla | remaining commands, advancements, scores, stats, portals and level changes | ~25k | 3 | matches a vanilla server |
+| 7 | Leaf and Paper on top (optional) | Leaf's optimizations, remaining Paper config | ~25-40k | 3-5 | Leaf's speed and settings |
+
+Order: 1 first; 2 and 3 can run in parallel; 4 before 5; 6 in pieces any time after 3. Not ported: CraftBukkit and
+the plugin API (no plugins for now), datagen-only code in `data/`.
+
+## Next (stage 0 details)
 WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`; a loaded monument regenerates its rooms with the level seed); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
