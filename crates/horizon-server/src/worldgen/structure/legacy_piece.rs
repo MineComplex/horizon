@@ -106,9 +106,11 @@ impl BoundingBox {
     }
     pub fn read(tag: Option<&Tag>) -> Option<Self> {
         match tag? {
-            Tag::IntArray(v) if v.len() == 6 => {
-                Some(Self::new([v[0], v[1], v[2]], [v[3], v[4], v[5]]))
-            }
+            // `new BoundingBox(...)` fixes inverted bounds axis by axis.
+            Tag::IntArray(v) if v.len() == 6 => Some(Self::new(
+                [v[0].min(v[3]), v[1].min(v[4]), v[2].min(v[5])],
+                [v[0].max(v[3]), v[1].max(v[4]), v[2].max(v[5])],
+            )),
             _ => None,
         }
     }

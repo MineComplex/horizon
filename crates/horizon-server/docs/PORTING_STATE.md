@@ -73,6 +73,15 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   loaded back (an element is found by its saved form: an element listed by several pools has one copy per pool), and
   `Structure.generate` for the jigsaw structures. `LeafJigsawOracle`: 132 starts and 6,445 pieces over two seeds, all start
   tags equal, 94 placements (73,415 `setBlock` calls), 0 failures. Open: the other structure types (shipwreck, ocean ruins, igloo, ruined portal, nether fossil, end city, mansion).
+- Worldgen WP5 template structures (`src/worldgen/structure/{template_pieces,template_start,shipwreck,ocean_ruin,igloo,ruined_portal,nether_fossil,end_city,mansion}.rs`):
+  `Structure.generate`, saved pieces (`StructurePiece::Template`, ids orp, iglu, rupo, ecp, wmp, shipwreck, nefos) and
+  `postProcess`. `place_start` takes the start and the pass's chunk box mutably (Paper's `placeInChunk`: pieces meeting
+  the box are chosen first; nether fossils and ruined portals grow the box), then runs the code-placed pieces through
+  `legacy_piece::place_pieces` on the start itself, and the mansion's `afterPlace`. Vanilla's argument order bug in the
+  shipwreck's `getLowestY` is kept; Leaf's `fixes.mc-152094` (off by default) is not ported. Mobs and item frames are
+  returned as `PieceEvent::Spawn`, not spawned. `PieceTables.known_shape` is true only in the oracles (block
+  `updateShape` is WP6). `LeafTemplateStructuresOracle`: 15 structures x 6 starts, 3,832 pieces, 61,647 `setBlock`
+  calls with loot seeds, randoms and piece tags after placement, 0 failures.
 - Worldgen WP5 legacy pieces (`src/worldgen/structure/{legacy_piece,scattered,mineshaft,fortress,stronghold,monument}.rs`,
   `generator/legacy_structures.rs`): `Structure.generate` and the code-placed pieces of the desert pyramid, jungle temple, swamp hut,
   buried treasure, both mineshafts, the stronghold, the nether fortress and the ocean monument. `legacy_piece` holds
@@ -236,7 +245,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`, `src/worldgen/structure/{template,place,processor}`, `src/block/transform.rs`, `src/world/ticks.rs`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates); WP4 rest (the feature types still listed as not ported under WP4 terrain features); WP5 rest (legacy pieces, `Structure.generate` per type; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `generate_start`, flat/debug generators, Starlight (carvers' light sources).
+WP2 rest (biome predicates); WP4 rest (mossy-carpet `simple_block`: needs the region's level random); WP5 rest (ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`; a loaded monument regenerates its rooms with the level seed); WP6 rest: wire `generate_start` and place starts in the chunks holding them with mutable access (piece mutations kept across chunks), the region's level random (`level_boolean`/`level_float`, desert pyramid), templates attached for fossils, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block ticks (block behaviour),
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
