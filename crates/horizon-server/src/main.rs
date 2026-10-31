@@ -79,6 +79,13 @@ struct Options {
     )]
     spigot_settings: PathBuf,
     #[arg(
+        short = 'b',
+        long = "bukkit-settings",
+        default_value = "bukkit.yml",
+        help = "File for bukkit settings"
+    )]
+    bukkit_settings: PathBuf,
+    #[arg(
         long = "paper-settings-directory",
         visible_alias = "paper-dir",
         default_value = "config",
@@ -113,6 +120,7 @@ fn main() -> std::process::ExitCode {
         paths: ServerPaths {
             properties: options.config,
             spigot_settings: options.spigot_settings,
+            bukkit_settings: options.bukkit_settings,
             paper_settings_directory: options.paper_settings_directory,
             purpur_settings: options.purpur_settings,
             vanilla_jar: options.vanilla_jar,
@@ -166,6 +174,8 @@ fn main() -> std::process::ExitCode {
             properties.hardcore,
         ),
         chunks: config.yaml.paper_world_chunks,
+        allow_nether: config.yaml.paper.enable_nether,
+        allow_end: config.yaml.bukkit.allow_end,
     };
     let _ = language::install(config.language);
     let open_world = || World::open(std::path::Path::new("."), &settings, &tables);

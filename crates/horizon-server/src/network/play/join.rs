@@ -79,12 +79,17 @@ pub enum JoinStep {
     TrackEntities,
     /// `sendActivePlayerEffects`, then `sendPostEffects`.
     Effects,
+    /// `ClientboundUpdateAttributesPacket` with all the syncable attributes (Paper's
+    /// `sendAllPlayerInfo`).
+    Attributes,
+    /// `refreshEntityData`: the player's full entity data (`ClientboundSetEntityDataPacket`).
+    EntityData,
 }
 
 /// `sendLevelInfo` with Paper's weather (CraftBukkit's `setPlayerWeather`/`updateWeather`, which
 /// sends `STOP_RAINING` when raining and `START_RAINING` otherwise, then the levels it changed) and
 /// without the distances Moonrise removed.
-fn level_info(l: &LevelInfo, out: &mut Vec<JoinStep>) {
+pub(super) fn level_info(l: &LevelInfo, out: &mut Vec<JoinStep>) {
     use cb::game_event::*;
     let mut p = |bytes| out.push(JoinStep::Packet(bytes));
     p(cb::initialize_border(&l.border));

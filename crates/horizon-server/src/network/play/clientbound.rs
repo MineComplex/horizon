@@ -99,6 +99,22 @@ pub fn login(p: &Login) -> Vec<u8> {
     out
 }
 
+/// `ClientboundRespawnPacket.dataToKeep`.
+pub mod keep {
+    pub const ATTRIBUTE_MODIFIERS: u8 = 1;
+    pub const ENTITY_DATA: u8 = 2;
+    pub const ALL_DATA: u8 = 3;
+}
+
+/// `ClientboundRespawnPacket`: the new level's `CommonPlayerSpawnInfo` (as in the login packet),
+/// then `dataToKeep` (a [`keep`] mask).
+pub fn respawn(spawn: &SpawnInfo, data_to_keep: u8) -> Vec<u8> {
+    let mut out = start(cb::RESPAWN);
+    spawn.write(&mut out);
+    out.put_u8(data_to_keep);
+    out
+}
+
 /// `PositionMoveRotation`.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PositionMoveRotation {

@@ -140,6 +140,24 @@ pub struct PaperGlobalConfig {
     pub velocity: VelocityConfig,
     /// `misc.catch-up-ticks`: `None` is `default`, which the tick loop reads as 5.
     pub catchup_ticks: Option<i32>,
+    /// `misc.enable-nether` (default true; `CraftServer.getAllowNether`): false stops the nether
+    /// from being loaded as a level. Paper moved it here from `server.properties`' `allow-nether`
+    /// (`V31_AllowNetherPropertiesToConfig`, a config upgrade from before version 31, not ported).
+    pub enable_nether: bool,
+}
+
+/// The `bukkit.yml` settings read so far.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BukkitConfig {
+    /// `settings.allow-end` (default true; `CraftServer.getAllowEnd`): false stops the end from
+    /// being loaded as a level.
+    pub allow_end: bool,
+}
+
+impl Default for BukkitConfig {
+    fn default() -> Self {
+        Self { allow_end: true }
+    }
 }
 
 /// The `spigot.yml` settings read so far.
@@ -338,6 +356,7 @@ pub struct YamlConfigs {
     pub leaf: LeafGlobalConfig,
     pub spigot: SpigotConfig,
     pub paper: PaperGlobalConfig,
+    pub bukkit: BukkitConfig,
     /// `paper-world-defaults.yml`'s `chunks`.
     pub paper_world_chunks: ChunkSettings,
     pub purpur: PurpurConfig,
@@ -503,6 +522,17 @@ pub fn load_spigot(path: &Path) -> Result<SpigotConfig, ConfigError> {
     Ok(config)
 }
 
+/// `bukkit.yml` (`--bukkit-settings`) as `CraftServer` reads it: `settings.allow-end` through
+/// `getBoolean` with the bundled default (true), so a missing key, a null, or a value that is not
+/// a boolean reads true. The file is not written: Bukkit's full default file (every key of the
+/// bundled `bukkit.yml`) is not ported.
+pub fn load_bukkit(path: &Path) -> Result<BukkitConfig, ConfigError> {
+    let mut file = BukkitFile::load(path)?;
+    Ok(BukkitConfig {
+        allow_end: file.bool("settings.allow-end", true),
+    })
+}
+
 /// `PurpurConfig.init` (the settings above only).
 pub fn load_purpur(path: &Path) -> Result<PurpurConfig, ConfigError> {
     let mut file = BukkitFile::load(path)?;
@@ -566,6 +596,9 @@ pub fn load_paper_global(
     };
     let catchup_ticks = int_or_default(&doc, "misc.catch-up-ticks")
         .map_err(|m| invalid("misc, catch-up-ticks", m))?;
+    let enable_nether = configurate_bool(&doc, "misc.enable-nether")
+        .map_err(|m| invalid("misc, enable-nether", m))?
+        .unwrap_or(true);
 
     // Velocity's @PostProcess, before the values are written back (so both changes reach the file).
     if velocity.enabled {
@@ -593,6 +626,7 @@ pub fn load_paper_global(
         "misc.catch-up-ticks",
         catchup_ticks.map_or(Value::Str("default".into()), |t| Value::Int(t.into())),
     );
+    doc.set("misc.enable-nether", Value::Bool(enable_nether));
 
     match write(
         &path,
@@ -608,6 +642,7 @@ pub fn load_paper_global(
     Ok(PaperGlobalConfig {
         velocity,
         catchup_ticks,
+        enable_nether,
     })
 }
 

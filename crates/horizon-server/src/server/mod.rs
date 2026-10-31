@@ -4,6 +4,7 @@ pub mod chunk_system;
 pub mod config;
 pub mod legacy_text;
 pub mod level;
+pub mod level_data;
 pub mod player;
 pub mod player_data;
 pub mod properties_file;

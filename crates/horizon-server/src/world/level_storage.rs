@@ -283,6 +283,8 @@ impl LevelStorageAccess {
             .read_saved_data(dimension, "world_gen_settings")?
             .map(|t| WorldGenSettings::parse(&t));
         Ok(DimensionData {
+            world_border: self.read_saved_data(dimension, "world_border")?,
+            level_overrides: self.read_saved_data(dimension, "paper:level_overrides")?,
             world_gen,
             game_rules: self.read_saved_data(dimension, "game_rules")?,
             weather: self
@@ -471,13 +473,13 @@ pub struct LevelData {
     pub bukkit_version: String,
 }
 
-fn get<'a>(map: &'a Compound, key: &str) -> Option<&'a Tag> {
+pub(crate) fn get<'a>(map: &'a Compound, key: &str) -> Option<&'a Tag> {
     map.get(&JavaString::from(key))
 }
-fn put(map: &mut Compound, key: &str, value: Tag) {
+pub(crate) fn put(map: &mut Compound, key: &str, value: Tag) {
     map.insert(key.into(), value);
 }
-fn number(tag: Option<&Tag>) -> Option<i64> {
+pub(crate) fn number(tag: Option<&Tag>) -> Option<i64> {
     Some(match *tag? {
         Tag::Byte(v) => v.into(),
         Tag::Short(v) => v.into(),
@@ -488,13 +490,13 @@ fn number(tag: Option<&Tag>) -> Option<i64> {
         _ => return None,
     })
 }
-fn int(map: &Compound, key: &str, default: i32) -> i32 {
+pub(crate) fn int(map: &Compound, key: &str, default: i32) -> i32 {
     number(get(map, key)).map_or(default, |v| v as i32)
 }
-fn boolean(map: &Compound, key: &str, default: bool) -> bool {
+pub(crate) fn boolean(map: &Compound, key: &str, default: bool) -> bool {
     number(get(map, key)).map_or(default, |v| v as i32 != 0)
 }
-fn string(map: &Compound, key: &str) -> Option<String> {
+pub(crate) fn string(map: &Compound, key: &str) -> Option<String> {
     match get(map, key) {
         Some(Tag::String(s)) => Some(s.to_string_lossy()),
         _ => None,
@@ -520,7 +522,7 @@ fn string_list(values: &[String]) -> Tag {
             .collect(),
     )
 }
-fn float(tag: Option<&Tag>) -> Option<f32> {
+pub(crate) fn float(tag: Option<&Tag>) -> Option<f32> {
     match *tag? {
         Tag::Float(v) => Some(f32::from_bits(v)),
         Tag::Double(v) => Some(f64::from_bits(v) as f32),
@@ -810,6 +812,10 @@ impl WorldGenSettings {
 /// A level's saved data read at load (`None`: no file, the caller's defaults apply).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DimensionData {
+    /// `minecraft:world_border` (`WorldBorder.Settings`), raw: `server::level_data` decodes it.
+    pub world_border: Option<Compound>,
+    /// Paper's `paper:level_overrides` (`PaperLevelOverrides`), raw likewise.
+    pub level_overrides: Option<Compound>,
     pub world_gen: Option<WorldGenSettings>,
     /// `GameRuleMap`: rule id -> value, raw until game rules are ported.
     pub game_rules: Option<Compound>,

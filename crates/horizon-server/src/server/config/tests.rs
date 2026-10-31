@@ -57,7 +57,8 @@ fn missing_files_are_written_with_defaults() {
                 online_mode: true,
                 secret: String::new()
             },
-            catchup_ticks: None
+            catchup_ticks: None,
+            enable_nether: true
         }
     );
     let text = read(&d.join("config/paper-global.yml"));
@@ -66,7 +67,7 @@ fn missing_files_are_written_with_defaults() {
         "{text}"
     );
     assert!(text.contains("before configuring.\n# \n# If you need help"));
-    assert!(text.ends_with("# Website: https://papermc.io/\n\n_version: 31\nmisc:\n  catch-up-ticks: default\nproxies:\n  velocity:\n    enabled: false\n    online-mode: true\n    secret: ''\n"), "{text}");
+    assert!(text.ends_with("# Website: https://papermc.io/\n\n_version: 31\nmisc:\n  catch-up-ticks: default\n  enable-nether: true\nproxies:\n  velocity:\n    enabled: false\n    online-mode: true\n    secret: ''\n"), "{text}");
 
     assert!(load_leaf_global(&d.join("config/leaf-global.yml")).including_5s_in_get_tps);
     let text = read(&d.join("config/leaf-global.yml"));
@@ -151,7 +152,7 @@ fn paper_values_are_coerced_and_written_back() {
     assert_eq!(paper.catchup_ticks, Some(3));
     let text = read(&path);
     // No `_version`: assumed the latest, and added.
-    assert!(text.ends_with("\n\n_version: 31\nmisc:\n  catch-up-ticks: 3\nproxies:\n  proxy-protocol: true\n  velocity:\n    enabled: true\n    online-mode: false\n    secret: '12345'\n"), "{text}");
+    assert!(text.ends_with("\n\n_version: 31\nmisc:\n  catch-up-ticks: 3\n  enable-nether: true\nproxies:\n  proxy-protocol: true\n  velocity:\n    enabled: true\n    online-mode: false\n    secret: '12345'\n"), "{text}");
 
     // Enabled without a secret: disabled, and written back disabled.
     std::fs::write(&path, "proxies:\n  velocity:\n    enabled: true\n").unwrap();
@@ -346,4 +347,44 @@ fn dotted_world_names_nest_like_bukkit_paths() {
     assert_eq!(nested.salt("desert_pyramids"), Some(8));
     let literal = spigot.world_seeds("other.world").unwrap();
     assert_eq!(literal.salt("villages"), Some(7));
+}
+
+#[test]
+fn the_nether_and_the_end_can_be_disabled() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("paper-global.yml");
+    for (text, expected) in [
+        ("misc:\n  enable-nether: false\n", false),
+        ("misc:\n  enable-nether: 'no'\n", false),
+        ("misc:\n  enable-nether: true\n", true),
+        ("misc:\n  catch-up-ticks: 2\n", true),
+    ] {
+        std::fs::write(&path, text).unwrap();
+        let paper = load_paper_global(dir.path(), None).unwrap();
+        assert_eq!(paper.enable_nether, expected, "{text}");
+        assert!(read(&path).contains(&format!("  enable-nether: {expected}\n")));
+    }
+    std::fs::write(&path, "misc:\n  enable-nether: perhaps\n").unwrap();
+    assert!(matches!(
+        load_paper_global(dir.path(), None),
+        Err(ConfigError::Invalid { .. })
+    ));
+
+    let bukkit = dir.path().join("bukkit.yml");
+    assert_eq!(
+        load_bukkit(&bukkit).unwrap(),
+        BukkitConfig { allow_end: true }
+    );
+    assert!(!bukkit.exists(), "not written");
+    for (text, expected) in [
+        ("settings:\n  allow-end: false\n", false),
+        ("settings:\n  allow-end: true\n", true),
+        // Not a boolean, or null: `getBoolean` gives the default.
+        ("settings:\n  allow-end: 'nope'\n", true),
+        ("settings:\n  allow-end:\n", true),
+        ("settings:\n  warn-on-overload: false\n", true),
+    ] {
+        std::fs::write(&bukkit, text).unwrap();
+        assert_eq!(load_bukkit(&bukkit).unwrap().allow_end, expected, "{text}");
+    }
 }

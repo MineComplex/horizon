@@ -12,6 +12,7 @@ use crate::azalea::chat::{FormattedText, read_component};
 use crate::block::flags::BlockStateData;
 use crate::block::{BlockState, BlockStatesBuilder};
 use crate::core::position::BlockPos;
+use crate::nbt::Compound;
 use crate::nbt::Tag;
 use crate::network::codec::{Inbound, Outbound, put_var_int};
 use crate::network::configuration::select_known_packs_packet;
@@ -21,7 +22,8 @@ use crate::network::play::ids::{cb as play_cb, sb as play_sb};
 use crate::registry::tests::pack;
 use crate::registry::{DataPack, KnownPack, parse_builtin};
 use crate::server::chunk_system::ChunkSettings;
-use crate::server::level::{NETHER, OVERWORLD, WorldSettings, WorldTables};
+use crate::server::level::{END, NETHER, OVERWORLD, WorldSettings, WorldTables};
+use crate::server::level_data::{BorderSettings, LevelOverrides};
 use crate::server::player_data::PlayerDataStorage;
 use crate::server::player_data::SavedPlayer;
 use crate::world::chunk::{BiomeIds, ChunkStatus, ContainerFactory, SectionFlags, StateFlags};
@@ -73,16 +75,18 @@ fn tables() -> WorldTables {
         &[
             (
                 "minecraft/dimension_type/overworld.json",
-                r#"{"min_y": 0, "height": 32}"#,
+                r#"{"min_y": 0, "height": 32, "default_clock": "minecraft:overworld"}"#,
             ),
             (
                 "minecraft/dimension_type/the_nether.json",
-                r#"{"min_y": 0, "height": 32}"#,
+                r#"{"min_y": 0, "height": 32, "coordinate_scale": 8.0}"#,
             ),
             (
                 "minecraft/dimension_type/the_end.json",
-                r#"{"min_y": 0, "height": 64}"#,
+                r#"{"min_y": 0, "height": 64, "default_clock": "minecraft:the_end"}"#,
             ),
+            ("minecraft/world_clock/overworld.json", "{}"),
+            ("minecraft/world_clock/the_end.json", "{}"),
             ("minecraft/worldgen/biome/plains.json", "{}"),
         ],
     );
@@ -194,6 +198,8 @@ fn start_with(
             false,
         ),
         chunks,
+        allow_nether: true,
+        allow_end: true,
     };
     let server = Server::start(config, tables.registries.clone(), || {
         World::open(dir.path(), &settings, &tables)
@@ -953,4 +959,352 @@ fn real_binary_session() {
     }
     eprintln!("walked 12 chunks east: {chunks} chunks received, {forgotten} forgotten");
     assert!(forgotten > 0, "chunks behind the player are forgotten");
+}
+
+/// A level's own saved data, written before the server starts.
+fn write_level_data(dir: &Path, dimension: &str, id: &str, tag: Compound) {
+    let access = LevelStorageAccess::open(dir, "world").unwrap();
+    access.write_saved_data(dimension, id, tag).unwrap();
+}
+
+/// Each level keeps its own game time (`paper:level_overrides`): the nether starts where its file
+/// says, the others from `level.dat`; the clocks and border are per level; the overworld's time is
+/// also the root's; a stop writes what changed (and the borders, which applying their settings
+/// dirtied).
+#[test]
+fn levels_keep_their_own_game_time_clocks_and_border_and_save_them() {
+    let mut nether = LevelOverrides::from_root(&LevelData::parse(&Default::default()));
+    nether.game_time = 1000;
+    nether.difficulty = storage::Difficulty::Hard;
+    nether.respawn.pos = BlockPos::new(1, 2, 3);
+    let clocks = Tag::compound([(
+        "minecraft:the_end",
+        Tag::compound([("total_ticks", Tag::Long(500))]),
+    )]);
+    let (mut server, dir) = start_with(config(20), ChunkSettings::default(), |dir| {
+        write_level_data(dir, NETHER, "paper:level_overrides", nether.to_tag());
+        let Tag::Compound(clocks) = clocks else {
+            panic!()
+        };
+        write_level_data(dir, END, "world_clocks", clocks);
+    });
+    let times = |s: &Server| -> Vec<i64> {
+        s.world
+            .levels
+            .iter()
+            .map(|l| l.overrides.game_time)
+            .collect()
+    };
+    assert_eq!(times(&server), [0, 1000, 0]);
+    for _ in 0..3 {
+        server.tick();
+    }
+    assert_eq!(times(&server), [3, 1003, 3]);
+    assert_eq!(
+        server.world.data.game_time, 3,
+        "the overworld's time is the root's"
+    );
+    assert_eq!(
+        server.world.levels[1].overrides.difficulty,
+        storage::Difficulty::Hard
+    );
+    assert_eq!(
+        server.world.levels[0].overrides.difficulty,
+        storage::Difficulty::Normal
+    );
+    // The day time is per level too.
+    let end = |s: &Server, i: usize| s.world.levels[i].clocks.state("minecraft:the_end").unwrap();
+    assert_eq!(end(&server, 2).total_ticks, 503);
+    assert_eq!(end(&server, 0).total_ticks, 3);
+    assert_eq!(server.world.levels[0].default_clock_time(), 3);
+    assert_eq!(server.world.levels[2].default_clock_time(), 503);
+    // The respawn level (the overworld by default, then the one `paperSpawnDimension` names) gives
+    // the server's spawn.
+    assert_eq!(server.world.effective_respawn().dimension, OVERWORLD);
+    server.world.data.paper_spawn_dimension = NETHER.into();
+    let respawn = server.world.effective_respawn();
+    assert_eq!(
+        (respawn.dimension.as_str(), respawn.pos),
+        (NETHER, BlockPos::new(1, 2, 3))
+    );
+    server.world.data.paper_spawn_dimension = OVERWORLD.into();
+    assert_eq!(server.stop(), 0);
+
+    let access = LevelStorageAccess::open(dir.path(), "world").unwrap();
+    assert_eq!(access.read_level_data().unwrap().game_time, 3);
+    let saved = |dimension: &str| {
+        let data = access.read_dimension_data(dimension).unwrap();
+        (
+            LevelOverrides::parse(&data.level_overrides.expect("level_overrides.dat")).unwrap(),
+            data.world_border.expect("world_border.dat"),
+            data.clocks.expect("world_clocks.dat"),
+        )
+    };
+    let (overworld, border, clocks) = saved(OVERWORLD);
+    assert_eq!(overworld.game_time, 3);
+    // `Settings(WorldBorder)`: a static border's lerp target is its size.
+    let default = BorderSettings {
+        lerp_target: BorderSettings::DEFAULT.size,
+        ..BorderSettings::DEFAULT
+    };
+    assert_eq!(BorderSettings::parse(&border), Some(default));
+    assert!(clocks.contains_key(&"minecraft:overworld".into()));
+    let (nether, _, _) = saved(NETHER);
+    assert_eq!(
+        (nether.game_time, nether.difficulty),
+        (1003, storage::Difficulty::Hard)
+    );
+    let (_, _, clocks) = saved(END);
+    let Some(Tag::Compound(end)) = clocks.get(&"minecraft:the_end".into()) else {
+        panic!("{clocks:?}")
+    };
+    assert_eq!(end.get(&"total_ticks".into()), Some(&Tag::Long(503)));
+}
+
+/// `allow-nether` / `allow-end` off: those stems are not levels, and the world still opens.
+#[test]
+fn a_disabled_nether_and_end_are_not_loaded() {
+    let dir = tempfile::tempdir().unwrap();
+    let tables = tables();
+    make_world(dir.path(), &tables);
+    let settings = |allow_nether, allow_end| WorldSettings {
+        level_name: "world",
+        compression: Compression::Lz4,
+        sync_chunk_writes: false,
+        new_world: (
+            storage::GameType::Survival,
+            storage::Difficulty::Normal,
+            false,
+        ),
+        chunks: ChunkSettings::default(),
+        allow_nether,
+        allow_end,
+    };
+    let dimensions = |world: &World| -> Vec<String> {
+        world.levels.iter().map(|l| l.dimension.clone()).collect()
+    };
+    let world = World::open(dir.path(), &settings(false, true), &tables).unwrap();
+    assert_eq!(dimensions(&world), [OVERWORLD, END]);
+    assert_eq!(world.level_index(NETHER), None);
+    world.close();
+    let world = World::open(dir.path(), &settings(false, false), &tables).unwrap();
+    assert_eq!(dimensions(&world), [OVERWORLD]);
+    world.close();
+    let world = World::open(dir.path(), &settings(true, false), &tables).unwrap();
+    assert_eq!(dimensions(&world), [OVERWORLD, NETHER]);
+    world.close();
+}
+
+/// A player moved to the nether (`ServerPlayer.teleport` across dimensions) gets Leaf's sequence:
+/// the respawn into the nether, its difficulty, the permission event, the position (a new teleport
+/// id), the new loader's distances and center, the abilities, the nether's level info (its border
+/// centre scaled by 8), the player info of `sendAllPlayerInfo`, then the nether's chunks; the
+/// overworld's chunk loader is released; the player's file names the nether when it leaves.
+#[test]
+fn a_player_moved_to_the_nether_gets_the_changing_sequence_and_is_saved_there() {
+    let mut border = BorderSettings::DEFAULT;
+    border.center_x = 100.0;
+    let (mut server, dir) = start_with(config(20), ChunkSettings::default(), |dir| {
+        write_level_data(dir, NETHER, "world_border", border.to_tag());
+    });
+    let addr = server.local_addr();
+    let client = std::thread::spawn(move || {
+        let mut client = Client::play(addr);
+        let mut seen = Vec::new();
+        client.until_play(play_cb::LOGIN, &mut seen);
+        let position = client.until_play(play_cb::PLAYER_POSITION, &mut seen);
+        let mut accept = vec![position[1]];
+        accept.extend_from_slice(&position[2..26]);
+        accept.extend([0; 8]);
+        client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+        let respawn = client.until_play(play_cb::RESPAWN, &mut seen);
+        // The sequence up to the last packet of `sendAllPlayerInfo`'s game event.
+        let mut sequence = Vec::new();
+        loop {
+            let packet = client.recv().expect("the sequence");
+            if packet[0] == play_cb::KEEP_ALIVE {
+                client.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
+                continue;
+            }
+            let done = packet[0] == play_cb::GAME_EVENT && packet[1] == 11;
+            sequence.push(packet);
+            if done {
+                break;
+            }
+        }
+        // Accept the new position, and receive the nether's chunks.
+        let teleport = sequence
+            .iter()
+            .find(|p| p[0] == play_cb::PLAYER_POSITION)
+            .unwrap();
+        let mut accept = vec![teleport[1]];
+        accept.extend_from_slice(&teleport[2..26]);
+        accept.extend([0; 8]);
+        client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+        let mut lights = Vec::new();
+        while lights.len() < 9 {
+            let packet = client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+            lights.push(packet.windows(2048).any(|w| w.iter().all(|&b| b == 0x77)));
+        }
+        while client.recv().is_some() {}
+        (respawn, sequence, lights)
+    });
+    tick_until(&mut server, "nine overworld chunks sent", |s| {
+        s.players
+            .first()
+            .is_some_and(|j| j.player.sent_chunks() == 9)
+    });
+    let old_loader_chunks = server.world.levels[0].held_count();
+    assert!(old_loader_chunks > 0);
+    assert_eq!(
+        server.move_player_to_level("nobody", NETHER, [0.0; 3], (0.0, 0.0)),
+        Err(MoveError::NoSuchPlayer("nobody".into()))
+    );
+    assert_eq!(
+        server.move_player_to_level("Notch", "minecraft:missing", [0.0; 3], (0.0, 0.0)),
+        Err(MoveError::NoSuchLevel("minecraft:missing".into()))
+    );
+    server
+        .move_player_to_level("Notch", NETHER, [8.5, 6.0, 8.5], (90.0, 10.0))
+        .unwrap();
+    assert_eq!(server.players[0].player.level, 1);
+    tick_until(&mut server, "nine nether chunks sent", |s| {
+        s.players[0].player.sent_chunks() == 9
+    });
+    assert_eq!(server.stop(), 0);
+    let (respawn, sequence, lights) = client.join().unwrap();
+
+    // The respawn packet: the nether's dimension type and name, keep all data.
+    assert_eq!(occurrences(&respawn, "minecraft:the_nether"), 1);
+    assert_eq!(*respawn.last().unwrap(), 3);
+    let names: Vec<String> = sequence
+        .iter()
+        .map(|p| {
+            let name = crate::network::play::ids::CLIENTBOUND[p[0] as usize];
+            match name {
+                "game_event" => format!("game_event/{}", p[1]),
+                name => name.to_owned(),
+            }
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "change_difficulty",
+            "entity_event",
+            "player_position",
+            "set_chunk_cache_radius",
+            "set_simulation_distance",
+            "set_chunk_cache_center",
+            "player_abilities",
+            "initialize_border",
+            "set_time",
+            "set_default_spawn_position",
+            "game_event/1",
+            "game_event/7",
+            "game_event/8",
+            "game_event/13",
+            "ticking_state",
+            "ticking_step",
+            "set_held_slot",
+            "entity_event",
+            "game_event/11",
+        ]
+    );
+    // A new teleport id (the join's was 1), the nether position, the new center, and the border's
+    // centre scaled by the nether's coordinate scale.
+    let position = &sequence[2];
+    assert_eq!(position[1], 2);
+    let at = |i: usize| f64::from_be_bytes(position[2 + 8 * i..10 + 8 * i].try_into().unwrap());
+    assert_eq!([at(0), at(1), at(2)], [8.5, 6.0, 8.5]);
+    assert_eq!(&sequence[5][1..], &[0, 0]);
+    let border = &sequence[7];
+    assert_eq!(f64::from_be_bytes(border[1..9].try_into().unwrap()), 800.0);
+    assert!(lights.iter().all(|&nether| nether), "the nether's chunks");
+
+    let players = PlayerDataStorage::new(&dir.path().join("world")).unwrap();
+    let saved = players.load(NOTCH, "Notch").unwrap();
+    assert_eq!(saved.dimension.as_deref(), Some(NETHER));
+    assert_eq!(saved.position, Some([8.5, 6.0, 8.5]));
+    assert_eq!(saved.rotation, Some((90.0, 10.0)));
+}
+
+/// The real binary, a player moved to the nether: run `horizon-server` as for `real_binary_session`
+/// with `HORIZON_TEST_HOOKS=1` and its console open, then
+/// `HORIZON_SERVER_ADDR=127.0.0.1:<port> cargo test -p horizon-server real_binary_dimension_change -- --ignored --nocapture`
+/// and, once the test says it waits, type
+/// `horizon-test-move Notch minecraft:the_nether 8.5 70 8.5` on the server's console. The test
+/// checks Leaf's sequence arrives, accepts the new teleport, leaves, and joins again: the login names
+/// the nether (the player file's `Dimension`).
+#[test]
+#[ignore = "needs a running horizon-server (HORIZON_SERVER_ADDR) with HORIZON_TEST_HOOKS=1"]
+fn real_binary_dimension_change() {
+    let addr: SocketAddr = std::env::var("HORIZON_SERVER_ADDR")
+        .expect("HORIZON_SERVER_ADDR")
+        .parse()
+        .unwrap();
+    let mut client = Client::play(addr);
+    let mut seen = Vec::new();
+    client.until_play(play_cb::LOGIN, &mut seen);
+    let position = client.until_play(play_cb::PLAYER_POSITION, &mut seen);
+    let mut accept = vec![position[1]];
+    accept.extend_from_slice(&position[2..26]);
+    accept.extend([0; 8]);
+    client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+    client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+    eprintln!("WAITING for the respawn (type the horizon-test-move line on the server's console)");
+    let respawn = client.until_play(play_cb::RESPAWN, &mut seen);
+    assert_eq!(occurrences(&respawn, "minecraft:the_nether"), 1);
+    let mut names = Vec::new();
+    let mut teleport = None;
+    loop {
+        let packet = client.recv().expect("the sequence");
+        if packet[0] == play_cb::KEEP_ALIVE {
+            client.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
+            continue;
+        }
+        let name = crate::network::play::ids::CLIENTBOUND[packet[0] as usize];
+        names.push(if name == "game_event" {
+            format!("game_event/{}", packet[1])
+        } else {
+            name.to_owned()
+        });
+        if packet[0] == play_cb::PLAYER_POSITION {
+            teleport = Some(packet.clone());
+        }
+        if packet[0] == play_cb::GAME_EVENT && packet[1] == 11 {
+            break;
+        }
+    }
+    eprintln!("sequence after the respawn: {names:?}");
+    assert_eq!(names[0], "change_difficulty");
+    assert_eq!(names[2], "player_position");
+    assert_eq!(names.last().map(String::as_str), Some("game_event/11"));
+    let teleport = teleport.unwrap();
+    assert_eq!(teleport[1], 2, "a new teleport id");
+    let mut accept = vec![teleport[1]];
+    accept.extend_from_slice(&teleport[2..26]);
+    accept.extend([0; 8]);
+    client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let mut chunks = 0;
+    while Instant::now() < deadline {
+        let packet = client.recv().expect("still connected");
+        match packet[0] {
+            play_cb::KEEP_ALIVE => client.send_play(play_sb::KEEP_ALIVE, &packet[1..]),
+            play_cb::LEVEL_CHUNK_WITH_LIGHT => chunks += 1,
+            _ => {}
+        }
+    }
+    eprintln!("{chunks} nether chunks received");
+    drop(client);
+    std::thread::sleep(Duration::from_secs(1));
+    let mut again = Client::play(addr);
+    let login = again.until_play(play_cb::LOGIN, &mut Vec::new());
+    assert_eq!(
+        occurrences(&login, "minecraft:the_nether"),
+        2,
+        "joins the nether again: the list, the spawn"
+    );
+    eprintln!("rejoined in the nether");
 }

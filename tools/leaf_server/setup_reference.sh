@@ -39,7 +39,8 @@ mkdir -p "$out/oracle-run"
     "$java" -cp "$cp" "$oracles/LeafPlacementOracle.java" "$out/placement.txt" &&
     "$java" -cp "$cp" "$oracles/LeafFeatureOracle.java" "$out/feature.txt" &&
     "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt" &&
-    "$java" -cp "$cp" "$oracles/LeafUserListsOracle.java" "$out/user_lists.jsonl") 2>&1 |
+    "$java" -cp "$cp" "$oracles/LeafUserListsOracle.java" "$out/user_lists.jsonl" &&
+    "$java" -cp "$cp" "$oracles/LeafLevelDataOracle.java" "$out/level_data.jsonl") 2>&1 |
     grep -v -i warning || true
 
 echo "== vanilla fixture world (crates/horizon-server/src/world/storage_tests.rs)"

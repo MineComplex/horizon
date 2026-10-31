@@ -75,6 +75,7 @@ pub mod cb {
     pub const PLAYER_ABILITIES: u8 = 65;
     pub const PLAYER_INFO_UPDATE: u8 = 71;
     pub const PLAYER_POSITION: u8 = 73;
+    pub const RESPAWN: u8 = 84;
     pub const SET_CHUNK_CACHE_CENTER: u8 = 96;
     pub const SET_CHUNK_CACHE_RADIUS: u8 = 97;
     pub const SET_DEFAULT_SPAWN_POSITION: u8 = 99;

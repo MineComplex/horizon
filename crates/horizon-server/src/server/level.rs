@@ -4,8 +4,12 @@
 //! `dimensions/<namespace>/<path>/region`, its own chunk holders and saved data), in
 //! `WorldDimensions.keysInOrder`'s order: the order the server ticks, saves and stops them in
 //! (`MinecraftServer.levels` is a linked map; Leaf's parallel world ticking is off by default and
-//! not ported, so the levels tick one after the other). Switching a player between levels
-//! (portals, `/execute in`) is not ported.
+//! not ported, so the levels tick one after the other). `allow-nether` (Paper's
+//! `misc.enable-nether`) and `allow-end` (`bukkit.yml`'s `settings.allow-end`) decide whether
+//! those two stems become levels at all (`PaperWorldLoader.getWorldInfoAndData`). What a level
+//! keeps for itself (game time, difficulty, spawn, border, clocks) is in `server::level_data`.
+//! A player changes level through `Player::change_level` (portals and `/execute in` are not
+//! ported).
 //!
 //! **Chunks.** A [`Level`] holds its chunks in Moonrise's chunk holders (`server::chunk_system`),
 //! owned by the tick thread; the region I/O workers read and write them and hand the answers back
@@ -22,6 +26,7 @@ use std::sync::mpsc::Receiver;
 use tracing::{debug, error, info, warn};
 
 use super::chunk_system::{ChunkHolderManager, ChunkSettings, ChunkStorage};
+use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, WorldBorder};
 use super::player_data::PlayerDataStorage;
 use crate::block::BlockStates;
 use crate::block::flags::BlockStateData;
@@ -34,7 +39,8 @@ use crate::world::chunk::{BiomeIds, ChunkData, ContainerFactory};
 use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
 use crate::world::level_storage::{
-    Difficulty, GameType, LevelData, LevelStorageAccess, LevelStorageError, WeatherData,
+    Difficulty, DimensionData, GameType, LevelData, LevelStorageAccess, LevelStorageError,
+    RespawnData, WeatherData,
 };
 use crate::world::storage::compression::Compression;
 
@@ -167,6 +173,21 @@ pub struct WorldSettings<'a> {
     pub new_world: (GameType, Difficulty, bool),
     /// Paper's `chunks` world settings.
     pub chunks: ChunkSettings,
+    /// `misc.enable-nether` of `paper-global.yml` (`CraftServer.getAllowNether`).
+    pub allow_nether: bool,
+    /// `settings.allow-end` of `bukkit.yml` (`CraftServer.getAllowEnd`).
+    pub allow_end: bool,
+}
+
+impl WorldSettings<'_> {
+    /// `PaperWorldLoader.getWorldInfo`: a disabled nether or end stem is not loaded.
+    fn enabled(&self, stem: &str) -> bool {
+        match stem {
+            NETHER => self.allow_nether,
+            END => self.allow_end,
+            _ => true,
+        }
+    }
 }
 
 pub struct World {
@@ -225,32 +246,73 @@ impl World {
         let players = PlayerDataStorage::new(storage.dir())?;
         let mut levels = Vec::with_capacity(stems.len());
         for stem in &stems {
+            if !settings.enabled(&stem.key) {
+                continue;
+            }
             // Each level reads its own dimension's saved data (`loadWorldGenSettings`,
             // weather...); one without a folder has the overworld's seed and a clear sky.
-            let data = match overworld_data.take_if(|_| stem.key == OVERWORLD) {
-                Some(data) => data,
+            let saved = match overworld_data.take_if(|_| stem.key == OVERWORLD) {
+                Some(saved) => saved,
                 None => storage.read_dimension_data(&stem.key)?,
             };
-            let seed = data.world_gen.as_ref().map_or(overworld_seed, |w| w.seed);
+            let seed = saved.world_gen.as_ref().map_or(overworld_seed, |w| w.seed);
             let region = storage.region_path(&stem.key, "region");
             levels.push(Level::open(
                 stem,
                 stem.world_name(settings.level_name),
                 seed,
-                data.weather.unwrap_or(CLEAR_WEATHER),
+                LevelStart::new(saved, &data),
                 &region,
                 settings,
                 tables,
             )?);
         }
-        Ok(Self {
+        let mut world = Self {
             storage,
             name: settings.level_name.to_owned(),
             data,
             has_level_data,
             players,
             levels,
-        })
+        };
+        world.update_effective_respawn();
+        Ok(world)
+    }
+
+    /// `MinecraftServer.findRespawnDimension`'s index: the level `paperSpawnDimension` names, else
+    /// the overworld.
+    fn respawn_level(&self) -> usize {
+        self.level_index(&self.data.paper_spawn_dimension)
+            .unwrap_or(0)
+    }
+
+    /// `MinecraftServer.getRespawnData` (`effectiveRespawnData`): the respawn level's own spawn,
+    /// as a position in that level. (`getWorldBorderAdjustedRespawnData` moves a spawn outside the
+    /// level's border to the border's centre column; that needs a chunk load and is not ported.)
+    pub fn effective_respawn(&self) -> RespawnData {
+        let level = &self.levels[self.respawn_level()];
+        let r = level.overrides.respawn;
+        RespawnData {
+            dimension: level.dimension.clone(),
+            pos: r.pos,
+            yaw: r.yaw,
+            pitch: r.pitch,
+        }
+    }
+
+    /// `updateEffectiveRespawnData`'s write-back: `level.dat` holds the respawn level's spawn.
+    pub fn update_effective_respawn(&mut self) {
+        self.data.spawn = self.effective_respawn();
+    }
+
+    /// `ServerLevel.tick`'s time part for one level while the game runs normally; the
+    /// overworld's game time is also the root's (`syncRootData`).
+    pub fn tick_level_time(&mut self, index: usize) {
+        let level = &mut self.levels[index];
+        level.tick_time();
+        if level.dimension == OVERWORLD {
+            self.data.game_time = level.overrides.game_time;
+        }
     }
 
     pub fn overworld(&self) -> &Level {
@@ -267,12 +329,16 @@ impl World {
         self.levels.iter_mut().for_each(Level::tick_io);
     }
 
-    /// `saveGlobalData`: `level.dat` (not for a world this server did not find one in).
-    pub fn save_level_data(&self) {
+    /// `saveGlobalData`: `level.dat` (not for a world this server did not find one in), and each
+    /// level's saved data that changed (`SavedDataStorage.scheduleSave`).
+    pub fn save_level_data(&mut self) {
         if self.has_level_data
             && let Err(e) = self.storage.save_level_data(&self.data)
         {
             error!("Failed to save level {}: {e}", self.storage.dir().display());
+        }
+        for level in &mut self.levels {
+            level.save_data(&self.storage);
         }
     }
 
@@ -280,7 +346,6 @@ impl World {
     /// unsaved chunks (`ChunkMap.saveAllChunks`).
     pub fn save_all_chunks(&mut self, silent: bool, flush: bool) {
         self.save_level_data();
-        let time = self.data.game_time;
         for level in &mut self.levels {
             if !silent {
                 info!(
@@ -288,6 +353,7 @@ impl World {
                     self.name, level.dimension
                 );
             }
+            let time = level.overrides.game_time;
             level.chunks.save_all(flush, false, None, time);
         }
     }
@@ -295,14 +361,14 @@ impl World {
     /// The end of `stopServer`: `saveAllChunks(false, true, false, true)` (`level.dat`, then each
     /// level's `ChunkHolderManager.close`: every chunk saved, the regions flushed, the I/O workers
     /// stopped once their queued requests ran), then the wait for the region I/O.
-    pub fn close(self) {
+    pub fn close(mut self) {
         self.save_level_data();
-        let time = self.data.game_time;
         for level in self.levels {
             info!(
                 "Saving chunks for level 'ServerLevel[{}]'/{}",
                 self.name, level.dimension
             );
+            let time = level.overrides.game_time;
             level.close(time);
         }
         info!("Waiting for all RegionFile I/O tasks to complete...");
@@ -337,6 +403,16 @@ pub struct Level {
     pub sea_level: i32,
     /// `weather.dat`: the level's own sky.
     pub weather: WeatherData,
+    /// `paper:level_overrides`: the level's game time, spawn, difficulty (`server::level_data`).
+    pub overrides: LevelOverrides,
+    /// The level's own border (`world_border.dat`).
+    pub border: WorldBorder,
+    /// The level's own clocks, its day time (`world_clocks.dat`).
+    pub clocks: LevelClocks,
+    /// The dimension type's `default_clock`.
+    pub default_clock: Option<String>,
+    /// The dimension type's `coordinate_scale`.
+    pub coordinate_scale: f64,
     /// Its id in `minecraft:dimension_type`.
     pub dimension_type: i32,
     pub min_section_y: i32,
@@ -347,6 +423,41 @@ pub struct Level {
     tables: Arc<CodecTables<BlockStateData>>,
     heightmaps: HeightmapTable,
     missing_logged: bool,
+}
+
+/// What a level starts with from its saved data (`ServerLevel`'s constructor and `loadWorldData`).
+struct LevelStart {
+    weather: WeatherData,
+    overrides: LevelOverrides,
+    border: BorderSettings,
+    clocks: Option<Compound>,
+}
+
+impl LevelStart {
+    /// A saved file that does not decode is logged and read as missing (`SavedDataStorage`):
+    /// the overrides then copy the root `level.dat`, the border is the default one.
+    fn new(saved: DimensionData, root: &LevelData) -> Self {
+        let overrides = match &saved.level_overrides {
+            Some(tag) => LevelOverrides::parse(tag).unwrap_or_else(|| {
+                error!("Failed to parse saved data for 'paper:level_overrides'");
+                LevelOverrides::from_root(root)
+            }),
+            None => LevelOverrides::from_root(root),
+        };
+        let border = match &saved.world_border {
+            Some(tag) => BorderSettings::parse(tag).unwrap_or_else(|| {
+                error!("Failed to parse saved data for 'minecraft:world_border'");
+                BorderSettings::DEFAULT
+            }),
+            None => BorderSettings::DEFAULT,
+        };
+        Self {
+            weather: saved.weather.unwrap_or(CLEAR_WEATHER),
+            overrides,
+            border,
+            clocks: saved.clocks,
+        }
+    }
 }
 
 /// A block tag of the built-in block registry, as block ids of the state table.
@@ -366,7 +477,7 @@ impl Level {
         stem: &Stem,
         world_name: String,
         seed: i64,
-        weather: WeatherData,
+        start: LevelStart,
         region: &Path,
         settings: &WorldSettings<'_>,
         tables: &WorldTables,
@@ -391,6 +502,23 @@ impl Level {
                 .unwrap_or(default)
         };
         let (min_y, height) = (int("min_y", -64) as i32, int("height", 384) as i32);
+        let coordinate_scale = entry
+            .json
+            .get("coordinate_scale")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1.0);
+        let default_clock = entry
+            .json
+            .get("default_clock")
+            .and_then(|v| v.as_str())
+            .map(str::to_owned);
+        let clock_ids: Vec<String> = tables
+            .registries
+            .synced("minecraft:world_clock")
+            .map(|r| r.entries.iter().map(|e| e.id.clone()).collect())
+            .unwrap_or_default();
+        let mut border = WorldBorder::new(start.border);
+        border.apply_initial_settings();
         let mut biomes: Vec<&str> = tables
             .registries
             .synced("minecraft:worldgen/biome")
@@ -430,7 +558,12 @@ impl Level {
             seed,
             flat: stem.flat,
             sea_level: stem.sea_level(),
-            weather,
+            weather: start.weather,
+            overrides: start.overrides,
+            border,
+            clocks: LevelClocks::load(&clock_ids, start.clocks.as_ref()),
+            default_clock,
+            coordinate_scale,
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
@@ -440,6 +573,24 @@ impl Level {
             heightmaps,
             missing_logged: false,
         })
+    }
+
+    /// `SavedDataStorage.saveAndJoin` for what changed: the overrides, the border and the clocks.
+    fn save_data(&mut self, storage: &LevelStorageAccess) {
+        let write = |id: &str, tag: Compound| {
+            if let Err(e) = storage.write_saved_data(&self.dimension, id, tag) {
+                error!("Could not save data to {id}.dat: {e}");
+            }
+        };
+        if self.overrides.take_dirty() {
+            write("paper:level_overrides", self.overrides.to_tag());
+        }
+        if self.border.take_dirty() {
+            write("world_border", self.border.to_settings().to_tag());
+        }
+        if self.clocks.take_dirty() {
+            write("world_clocks", self.clocks.to_tag());
+        }
     }
 
     /// The I/O workers' answers: loaded chunks go to their holders; failed writes are logged.
@@ -662,5 +813,25 @@ mod tests {
             level_stems(Some(&d)),
             Err(WorldError::NoOverworld)
         ));
+    }
+
+    fn settings(allow_nether: bool, allow_end: bool) -> WorldSettings<'static> {
+        WorldSettings {
+            level_name: "world",
+            compression: Compression::Gzip,
+            sync_chunk_writes: false,
+            new_world: (GameType::Survival, Difficulty::Normal, false),
+            chunks: ChunkSettings::default(),
+            allow_nether,
+            allow_end,
+        }
+    }
+
+    #[test]
+    fn a_disabled_nether_or_end_is_not_a_level() {
+        let s = settings(false, true);
+        assert!(s.enabled(OVERWORLD) && s.enabled(END) && !s.enabled(NETHER));
+        let s = settings(true, false);
+        assert!(s.enabled(NETHER) && !s.enabled(END) && s.enabled("mod:flat"));
     }
 }

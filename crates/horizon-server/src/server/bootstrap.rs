@@ -29,6 +29,8 @@ pub struct ServerPaths {
     pub properties: PathBuf,
     /// `-S`/`--spigot-settings`.
     pub spigot_settings: PathBuf,
+    /// `-b`/`--bukkit-settings`.
+    pub bukkit_settings: PathBuf,
     /// `--paper-dir`/`--paper-settings-directory`: where `paper-global.yml` is.
     pub paper_settings_directory: PathBuf,
     /// `--purpur`/`--purpur-settings`.
@@ -44,6 +46,7 @@ impl Default for ServerPaths {
         Self {
             properties: "server.properties".into(),
             spigot_settings: "spigot.yml".into(),
+            bukkit_settings: "bukkit.yml".into(),
             paper_settings_directory: "config".into(),
             purpur_settings: "purpur.yml".into(),
             leaf_global: Path::new("config").join("leaf-global.yml"),
@@ -133,6 +136,7 @@ pub fn bootstrap(
         &path(&paths.paper_settings_directory),
         options.velocity_secret_env.as_deref(),
     )?;
+    let bukkit = config::load_bukkit(&path(&paths.bukkit_settings))?;
     let purpur = config::load_purpur(&path(&paths.purpur_settings))?;
     let paper_world_chunks =
         config::load_paper_world_defaults(&path(&paths.paper_settings_directory))?;
@@ -151,6 +155,7 @@ pub fn bootstrap(
             leaf,
             spigot,
             paper,
+            bukkit,
             purpur,
             paper_world_chunks,
         },

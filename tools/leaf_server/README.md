@@ -24,7 +24,7 @@ cargo test -p horizon-server --release -- --ignored                   # oracle c
 
 It writes, under the scratch dir: the prepare step's `serverdir/cache/vanilla-26.3/{reports/,block_states.bin}`
 (`tools/leaf_server_reports.py`: vanilla's data generator + `LeafBlockStatesExporter.java`), the oracles'
-outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `placement.txt`, `feature.txt`, `tickets.txt`, `user_lists.jsonl`), a flat world made by the real 26.3 server (the fixture that
+outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `placement.txt`, `feature.txt`, `tickets.txt`, `user_lists.jsonl`, `level_data.jsonl`), a flat world made by the real 26.3 server (the fixture that
 `world/storage_tests.rs` describes), and `realdata.env` with the variables below.
 
 | Variable | Used by |
@@ -38,6 +38,7 @@ outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.t
 | `HORIZON_FEATURE_ORACLE` | `worldgen/feature/oracle_tests.rs` (`LeafFeatureOracle.java`: `canSurvive` of every block state, state providers, feature sorter cycles, simple features; also needs `HORIZON_VANILLA_JAR`, `HORIZON_SERVER_BLOCKS_JSON` and `HORIZON_SERVER_BLOCK_STATES`) |
 | `HORIZON_TICKETS_ORACLE` | `server/chunk_system/oracle_tests.rs` (`LeafChunkTicketsOracle.java`) |
 | `HORIZON_USER_LISTS_ORACLE` | `server/user_lists/oracle_tests.rs` (`LeafUserListsOracle.java`: whitelist/ops files, `ConcurrentHashMap` order, UUIDs) |
+| `HORIZON_LEVEL_DATA_ORACLE` | `server/level_data/oracle_tests.rs` (`LeafLevelDataOracle.java`: `WorldBorder` settings codec, applying them, ticking a moving border, the initialize-border packet; `ClockState` and `DifficultySettings` codecs; Paper's `PaperLevelOverrides` and per-world clocks are derived from sources) |
 | `HORIZON_DENSITY_ORACLE` | `worldgen/oracle_tests.rs` (`LeafDensityOracle.java`); `density_program_speed` is a benchmark |
 | `HORIZON_TERRAIN_ORACLE` | `worldgen/terrain/oracle_tests.rs` (`LeafTerrainOracle.java`: `doFill` blocks, WG heightmaps, fluid marks, base columns; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES`); `terrain_fill_speed` is a benchmark |
 | `HORIZON_SURFACE_ORACLE` | `worldgen/surface/oracle_tests.rs` (`LeafSurfaceOracle.java`: `doFill` then `buildSurface` blocks, WG heightmaps, fluid marks over the stems' real biomes; every biome's temperature; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES` and `HORIZON_BIOME_REPORTS`); `surface_build_speed` is a benchmark, `flat_bedrock_is_one_layer` checks Paper's flag (derived from its source, not an oracle) |

@@ -94,7 +94,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 
 ## Next
 WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`) → WP3 rest (carvers, `topMaterial` for them); WP4 rest (`ore`, patches, trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
-Core: dimension switching (portals, `/execute in`, `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
+Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
@@ -107,9 +107,20 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
 - Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
   weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
   off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets
-  the respawn data's level (Paper's warn). `allow-nether`/`allow-end` (`paper-global` `misc.enable-nether`,
-  `bukkit.yml`) not read: all stems load. Sea level is the stand-in 63/32/0/-63 (noise settings unread);
-  game time, difficulty, spawn and border are still the world's, not per level.
+  the respawn data's level (Paper's warn). Sea level is the stand-in 63/32/0/-63 (noise settings unread).
+  Per level, as Paper keeps it (`server/level_data.rs`, 26.3 sources): `paper:level_overrides` (game time,
+  spawn, `initialized`, game type, difficulty/hardcore/locked; overworld also synced to `level.dat`),
+  `world_border`, `world_clocks` (day time; per-world, `time.affects-all-worlds` true not ported),
+  `weather`, written only when dirty; ticked while the game runs normally (game time, clocks, moving
+  border), game time resent every 20 ticks. The server's spawn is the respawn level's (`paperSpawnDimension`).
+  `misc.enable-nether` (`paper-global.yml`) and `settings.allow-end` (`bukkit.yml`, read, not written) off:
+  that stem is not a level. Not ported: `setInitialSpawn` for `initialized: false` levels (needs worldgen),
+  the border-adjusted respawn of a spawn outside the border, Purpur's day/night length (rate 1 assumed),
+  game rules (`advance_time` on), vanilla-world root-file migration and the pre-31 `allow-nether` property move.
+  `Server::move_player_to_level` = `ServerPlayer.teleport(TeleportTransition)` (respawn, difficulty, op event,
+  position, loader distances, abilities, level info, `sendAllPlayerInfo`; markers for attributes, entity
+  data, inventory menu, effects until those exist); `HORIZON_TEST_HOOKS=1` adds console
+  `horizon-test-move <player> <dimension> <x> <y> <z>`. Portals and `/execute in` are not ported.
 - A `messages.whitelist` Adventure cannot deserialize (a `§#rrggbb` overlapping a later code: no input
   found that reaches it) fails `canPlayerLogin` for every login: warn "Failed to handle packet for", the
   login answered "Internal server error" (Java's `ServerConnectionListener.tick` catch).

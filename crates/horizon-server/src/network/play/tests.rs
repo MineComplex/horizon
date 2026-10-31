@@ -615,3 +615,105 @@ fn join_sequence_order() {
     // The permission level's event: OWNERS = 28.
     assert_eq!(steps[5], JoinStep::Packet(cb::entity_event(42, 28)));
 }
+
+#[test]
+fn dimension_change_order() {
+    use super::dimension::{ChangeInputs, dimension_change_sequence};
+    let level = join::LevelInfo {
+        border: cb::Border::default(),
+        game_time: 0,
+        clocks: &[],
+        spawn_dimension: "minecraft:overworld",
+        spawn_pos: BlockPos::new(0, 64, 0),
+        spawn_yaw: 0.0,
+        spawn_pitch: 0.0,
+        raining: false,
+        rain_level: 0.0,
+        thunder_level: 0.0,
+        tick_rate: 20.0,
+        frozen: false,
+        frozen_ticks_to_run: 0,
+    };
+    let steps = dimension_change_sequence(&ChangeInputs {
+        spawn: login().spawn,
+        difficulty: 2,
+        difficulty_locked: false,
+        entity_id: 7,
+        permission_level: 4,
+        teleport_id: 2,
+        position: [0.5, 64.0, 0.5],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        abilities: cb::Abilities {
+            invulnerable: false,
+            flying: false,
+            may_fly: false,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        },
+        level,
+        selected_slot: 0,
+        reduced_debug_info: false,
+        immediate_respawn: false,
+        distances: chunk_sending::player_distances(
+            ViewDistances::UNSET,
+            ViewDistances::for_level(10, 8),
+            -1,
+            true,
+        ),
+        chunk: ChunkPos::new(0, 0),
+    });
+    let names: Vec<String> = steps
+        .iter()
+        .map(|s| match s {
+            JoinStep::Packet(p) => {
+                let name = super::ids::CLIENTBOUND[p[0] as usize];
+                if name == "game_event" {
+                    format!("game_event/{}", p[1])
+                } else {
+                    name.to_string()
+                }
+            }
+            other => format!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "respawn",
+            "change_difficulty",
+            "entity_event",
+            "player_position",
+            "set_chunk_cache_radius",
+            "set_simulation_distance",
+            "set_chunk_cache_center",
+            "TrackEntities",
+            "player_abilities",
+            "initialize_border",
+            "set_time",
+            "set_default_spawn_position",
+            "game_event/1",
+            "game_event/7",
+            "game_event/8",
+            "game_event/13",
+            "ticking_state",
+            "ticking_step",
+            "InventoryMenu",
+            "Attributes",
+            "EntityData",
+            "set_held_slot",
+            "entity_event",
+            "game_event/11",
+            "Effects",
+        ]
+    );
+    // The respawn packet is the login's spawn info plus `dataToKeep` (keep all = 3).
+    let JoinStep::Packet(respawn) = &steps[0] else {
+        panic!()
+    };
+    let login_packet = cb::login(&login());
+    let spawn = &login_packet[login_packet.len() - (respawn.len() - 2) - 2..login_packet.len() - 2];
+    assert_eq!(&respawn[1..respawn.len() - 1], spawn);
+    assert_eq!(*respawn.last().unwrap(), 3);
+}

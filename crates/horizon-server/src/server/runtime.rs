@@ -58,7 +58,7 @@ use uuid::Uuid;
 use super::bootstrap::ServerConfig;
 use super::chunk_system::TicketType;
 use super::chunk_system::ticket::{ENTITY_TICKING_LEVEL, FULL_LEVEL};
-use super::level::{World, WorldError};
+use super::level::{Level, World, WorldError};
 use super::player::{NewPlayer, Player, Spawn, chunk_of};
 use super::player_data::SavedPlayer;
 use super::tick_loop::{
@@ -67,12 +67,14 @@ use super::tick_loop::{
 use super::tick_rate::TickRateManager;
 use super::user_lists::{LoginRules, UserLists};
 use crate::command::network::CommandsPacket;
+use crate::command::wrap_degrees;
 use crate::core::position::ChunkPos;
 use crate::network::configuration::{Action, Configuration, PlayHandoff, Settings};
 use crate::network::listener::{self, Connection, Incoming, LoginRequest, LoginVerdict, NetEvent};
 use crate::network::login::{GameProfile, LoginConfig};
 use crate::network::play::chunk_sending::{ViewDistances, api_distances};
 use crate::network::play::clientbound::{self as cb, GameType};
+use crate::network::play::dimension::{ChangeInputs, dimension_change_sequence};
 use crate::network::play::join::{self, JoinStep};
 use crate::network::{ConnectionState, Reason};
 use crate::registry::Registries;
@@ -83,6 +85,8 @@ const BRAND: &str = "Leaf";
 /// `PrepareSpawnTask.PREPARE_CHUNK_RADIUS`.
 const PREPARE_CHUNK_RADIUS: i32 = 3;
 const PREPARE_TICKET_RADIUS: u8 = 3;
+/// The `advance_time` game rule (game rules are not ported: the default).
+const ADVANCE_TIME: bool = true;
 /// Paper's `handleAllDisconnections`: how long stopping waits for the connections to close.
 const CLOSE_WAIT: Duration = Duration::from_secs(30);
 
@@ -284,6 +288,90 @@ struct Joined {
     player: Player,
 }
 
+/// Why a player could not be moved to a level.
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum MoveError {
+    #[error("no player named {0}")]
+    NoSuchPlayer(String),
+    #[error("no level {0}")]
+    NoSuchLevel(String),
+}
+
+/// Two different levels of the list, mutably.
+fn two_levels(levels: &mut [Level], a: usize, b: usize) -> (&mut Level, &mut Level) {
+    assert_ne!(a, b);
+    if a < b {
+        let (left, right) = levels.split_at_mut(b);
+        (&mut left[a], &mut right[0])
+    } else {
+        let (left, right) = levels.split_at_mut(a);
+        (&mut right[0], &mut left[b])
+    }
+}
+
+/// `createCommonSpawnInfo(level)` for a player.
+fn spawn_info<'a>(level: &'a Level, player: &Player) -> cb::SpawnInfo<'a> {
+    cb::SpawnInfo {
+        dimension_type: level.dimension_type,
+        dimension: &level.dimension,
+        seed: obfuscate_seed(level.seed),
+        game_type: player.game_type,
+        previous_game_type: player.previous_game_type,
+        is_debug: false,
+        is_flat: level.flat,
+        last_death_location: None,
+        portal_cooldown: 0,
+        sea_level: level.sea_level,
+    }
+}
+
+/// `Abilities` of a game mode (`GameType.updatePlayerAbilities`).
+fn abilities(mode: GameType) -> cb::Abilities {
+    let creative = mode == GameType::Creative;
+    let spectator = mode == GameType::Spectator;
+    cb::Abilities {
+        invulnerable: creative || spectator,
+        flying: spectator,
+        may_fly: creative || spectator,
+        instabuild: creative,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    }
+}
+
+/// What `PlayerList.sendLevelInfo` reads from a level, taken once: the level's border (its centre
+/// scaled by the dimension type), game time and clocks, the server's effective respawn and the
+/// sky.
+struct LevelSnapshot {
+    border: cb::Border,
+    game_time: i64,
+    clocks: Vec<cb::ClockUpdate>,
+    spawn: crate::world::level_storage::RespawnData,
+    raining: bool,
+    rain_level: f32,
+    thunder_level: f32,
+}
+
+impl LevelSnapshot {
+    fn info(&self, rate: &TickRateManager) -> join::LevelInfo<'_> {
+        join::LevelInfo {
+            border: self.border,
+            game_time: self.game_time,
+            clocks: &self.clocks,
+            spawn_dimension: &self.spawn.dimension,
+            spawn_pos: self.spawn.pos,
+            spawn_yaw: self.spawn.yaw,
+            spawn_pitch: self.spawn.pitch,
+            raining: self.raining,
+            rain_level: self.rain_level,
+            thunder_level: self.thunder_level,
+            tick_rate: rate.tick_rate(),
+            frozen: rate.is_frozen(),
+            frozen_ticks_to_run: rate.frozen_ticks_to_run(),
+        }
+    }
+}
+
 /// Why the server could not start.
 #[derive(Debug, thiserror::Error)]
 pub enum StartError {
@@ -323,6 +411,8 @@ pub struct Server {
     /// `ServerConnectionListener.getSessionId`: made on first use, forgotten when nobody is connected.
     session_id: Option<Uuid>,
     exit_code: Option<u8>,
+    /// `HORIZON_TEST_HOOKS=1`: the console accepts `horizon-test-move`.
+    test_hooks: bool,
 }
 
 impl Server {
@@ -409,6 +499,7 @@ impl Server {
             players: Vec::new(),
             session_id: None,
             exit_code: None,
+            test_hooks: std::env::var("HORIZON_TEST_HOOKS").is_ok_and(|v| v == "1"),
         })
     }
 
@@ -488,7 +579,8 @@ impl Server {
             EmptyTick::Run => {
                 self.tick_count = self.tick_count.wrapping_add(1);
                 self.rate.tick();
-                // tickChildren: the levels, then the connections.
+                // tickChildren: the clocks and the game time sync, the levels, then the connections.
+                self.tick_clocks();
                 self.tick_levels();
                 self.tick_connection();
                 // Paper's incremental saving: player saves are not ported; `level.dat` on a
@@ -526,25 +618,50 @@ impl Server {
     /// in that level, then unloads and autosave.
     fn tick_levels(&mut self) {
         let now = self.now_ns();
-        let time = self.world.data.game_time;
-        for (index, level) in self.world.levels.iter_mut().enumerate() {
+        let runs = self.rate.runs_normally();
+        for index in 0..self.world.levels.len() {
+            if runs {
+                // `ServerLevel.tick`: the border, then the game time.
+                self.world.tick_level_time(index);
+            }
+            let level = &mut self.world.levels[index];
             level.tick_tickets();
             for j in &mut self.players {
                 if j.player.level == index && j.peer.closing.is_none() {
                     j.player.tick_chunks(level, &j.peer.conn, now);
                 }
             }
-            level.tick_unloads(time);
+            level.tick_unloads(level.overrides.game_time);
         }
+    }
+
+    /// `tickChildren` before the levels: while the game runs normally each level's clocks advance
+    /// (Paper's per-world time; the `advance_time` game rule is not ported: on), every 20 ticks
+    /// each level's game time is sent to its players (`forceGameTimeSynchronization`), then
+    /// `updateEffectiveRespawnData`.
+    fn tick_clocks(&mut self) {
+        if self.rate.runs_normally() {
+            for level in &mut self.world.levels {
+                level.clocks.tick(ADVANCE_TIME);
+            }
+        }
+        if self.tick_count % 20 == 0 {
+            for (index, level) in self.world.levels.iter().enumerate() {
+                let packet = cb::set_time(level.overrides.game_time, &[]);
+                for j in self.players.iter().filter(|j| j.player.level == index) {
+                    j.peer.conn.send(packet.clone());
+                }
+            }
+        }
+        self.world.update_effective_respawn();
     }
 
     /// While paused: `getChunkSource().tick(() -> true, false)` of each level, which only
     /// processes tickets, unloads and autosave.
     fn tick_paused_levels(&mut self) {
-        let time = self.world.data.game_time;
         for level in &mut self.world.levels {
             level.tick_tickets();
-            level.tick_unloads(time);
+            level.tick_unloads(level.overrides.game_time);
         }
     }
 
@@ -637,7 +754,7 @@ impl Server {
     /// world's respawn position in that level), then the spawn chunks are held.
     fn prepare_spawn(&mut self, profile: &GameProfile) -> PreparingSpawn {
         let saved = self.world.players.load(profile.id, &profile.name);
-        let respawn = &self.world.data.spawn;
+        let respawn = self.world.effective_respawn();
         let spawn_data_level = self.world.level_index(&respawn.dimension).unwrap_or(0);
         let level = match saved.as_ref().and_then(|s| s.dimension.as_deref()) {
             None => spawn_data_level,
@@ -954,16 +1071,12 @@ impl Server {
         player: &Player,
         permission_level: u8,
     ) -> Result<Vec<JoinStep>, crate::nbt::Error> {
-        use crate::network::play::clientbound::{
-            Abilities, Border, Login, PlayerInfoEntry, SpawnInfo,
-        };
+        use crate::network::play::clientbound::{Login, PlayerInfoEntry};
         let world = &self.world;
         let level = &world.levels[player.level];
         let (view, simulation) = api_distances(self.level_distances);
         let levels: Vec<&str> = world.levels.iter().map(|l| l.dimension.as_str()).collect();
         let mode = player.game_type;
-        let creative = mode == GameType::Creative;
-        let spectator = mode == GameType::Spectator;
         /// `createPlayerInitializing`'s entry (display names, list order and chat sessions are
         /// not ported).
         fn entry(p: &Player) -> PlayerInfoEntry<'_> {
@@ -980,12 +1093,11 @@ impl Server {
         }
         let own = entry(player);
         let others: Vec<PlayerInfoEntry> = self.players.iter().map(|j| entry(&j.player)).collect();
-        let weather = &level.weather;
-        let spawn = &world.data.spawn;
+        let snapshot = self.level_snapshot(player.level);
         join::join_sequence(&join::JoinInputs {
             login: Login {
                 player_id: player.entity_id,
-                hardcore: world.data.hardcore,
+                hardcore: level.overrides.hardcore,
                 levels: &levels,
                 max_players: self.config.max_players,
                 chunk_radius: view,
@@ -994,62 +1106,128 @@ impl Server {
                 reduced_debug_info: false,
                 show_death_screen: true,
                 do_limited_crafting: false,
-                spawn: SpawnInfo {
-                    dimension_type: level.dimension_type,
-                    dimension: &level.dimension,
-                    seed: obfuscate_seed(level.seed),
-                    game_type: mode,
-                    previous_game_type: player.previous_game_type,
-                    is_debug: false,
-                    is_flat: level.flat,
-                    last_death_location: None,
-                    portal_cooldown: 0,
-                    sea_level: level.sea_level,
-                },
+                spawn: spawn_info(level, player),
                 online_mode: self.config.online_mode,
                 enforces_secure_chat: self.config.enforces_secure_chat,
             },
-            difficulty: world.data.difficulty as u8,
-            difficulty_locked: world.data.difficulty_locked,
-            abilities: Abilities {
-                invulnerable: creative || spectator,
-                flying: spectator,
-                may_fly: creative || spectator,
-                instabuild: creative,
-                flying_speed: 0.05,
-                walking_speed: 0.1,
-            },
+            difficulty: level.overrides.difficulty as u8,
+            difficulty_locked: level.overrides.difficulty_locked,
+            abilities: abilities(mode),
             selected_slot: 0,
             permission_level,
             teleport_id: 1,
             position: player.position,
             y_rot: player.y_rot,
             x_rot: player.x_rot,
-            level: join::LevelInfo {
-                // `world_border.dat` is not read yet: a new border.
-                border: Border::default(),
-                game_time: world.data.game_time,
-                // The world clocks are not ported.
-                clocks: &[],
-                spawn_dimension: &spawn.dimension,
-                spawn_pos: spawn.pos,
-                spawn_yaw: spawn.yaw,
-                spawn_pitch: spawn.pitch,
-                raining: weather.raining,
-                rain_level: if weather.raining { 1.0 } else { 0.0 },
-                thunder_level: if weather.raining && weather.thundering {
-                    1.0
-                } else {
-                    0.0
-                },
-                tick_rate: self.rate.tick_rate(),
-                frozen: self.rate.is_frozen(),
-                frozen_ticks_to_run: self.rate.frozen_ticks_to_run(),
-            },
+            level: snapshot.info(&self.rate),
             own_info: own,
             others: &others,
             // Leaf's join message settings are not read yet: no message.
             join_message: None,
+            distances: player.distances(),
+            chunk: chunk_of(player.position),
+        })
+    }
+
+    /// What `sendLevelInfo` reads from a level (see [`LevelSnapshot`]).
+    fn level_snapshot(&self, index: usize) -> LevelSnapshot {
+        let level = &self.world.levels[index];
+        let weather = &level.weather;
+        LevelSnapshot {
+            border: level.border.packet(level.coordinate_scale),
+            game_time: level.overrides.game_time,
+            clocks: level.clocks.network_states(ADVANCE_TIME),
+            spawn: self.world.effective_respawn(),
+            raining: weather.raining,
+            rain_level: if weather.raining { 1.0 } else { 0.0 },
+            thunder_level: if weather.raining && weather.thundering {
+                1.0
+            } else {
+                0.0
+            },
+        }
+    }
+
+    /// `ServerPlayer.teleport(TeleportTransition)` for a player (by name) and a level (by
+    /// dimension), as Leaf runs it, without the portal code around it: into another level, the
+    /// packets of [`dimension_change_sequence`], the old level's chunk loader released and a new
+    /// one holding the chunks around the position in the new level (the player file's
+    /// `Dimension` follows from the level); inside the level, the position packet alone
+    /// (`internalTeleport`). Absolute position, no motion, no relatives. The chunks of the
+    /// destination load as the player's loader asks for them, over the next ticks (portals and
+    /// `/execute in` find or force their chunks first: not ported).
+    pub fn move_player_to_level(
+        &mut self,
+        name: &str,
+        dimension: &str,
+        position: [f64; 3],
+        rotation: (f32, f32),
+    ) -> Result<(), MoveError> {
+        let new_index = self
+            .world
+            .level_index(dimension)
+            .ok_or_else(|| MoveError::NoSuchLevel(dimension.to_owned()))?;
+        let at = self
+            .players
+            .iter()
+            .position(|j| j.player.profile.name.eq_ignore_ascii_case(name))
+            .ok_or_else(|| MoveError::NoSuchPlayer(name.to_owned()))?;
+        let mut joined = self.players.remove(at);
+        let old_index = joined.player.level;
+        let rotation = (
+            wrap_degrees(rotation.0),
+            wrap_degrees(rotation.1).clamp(-90.0, 90.0),
+        );
+        if old_index == new_index {
+            joined
+                .player
+                .teleport_within_level(position, rotation, &joined.peer.conn);
+        } else {
+            let now = self.now_ns();
+            let (old, new) = two_levels(&mut self.world.levels, old_index, new_index);
+            let teleport_id = joined.player.change_level(
+                old,
+                new,
+                new_index,
+                position,
+                rotation,
+                &joined.peer.conn,
+                now,
+            );
+            let permission_level = self.permission_level(&joined.player.profile);
+            let steps = self.dimension_change_steps(&joined.player, permission_level, teleport_id);
+            self.send_join(&joined, steps);
+        }
+        self.players.insert(at, joined);
+        Ok(())
+    }
+
+    /// The packets of a level change (`network::play::dimension`) for the player now in its new
+    /// level.
+    fn dimension_change_steps(
+        &self,
+        player: &Player,
+        permission_level: u8,
+        teleport_id: i32,
+    ) -> Vec<JoinStep> {
+        let level = &self.world.levels[player.level];
+        let snapshot = self.level_snapshot(player.level);
+        dimension_change_sequence(&ChangeInputs {
+            spawn: spawn_info(level, player),
+            difficulty: level.overrides.difficulty as u8,
+            difficulty_locked: level.overrides.difficulty_locked,
+            entity_id: player.entity_id,
+            permission_level,
+            teleport_id,
+            position: player.position,
+            y_rot: player.y_rot,
+            x_rot: player.x_rot,
+            abilities: abilities(player.game_type),
+            level: snapshot.info(&self.rate),
+            selected_slot: 0,
+            // Game rules are not ported: their defaults.
+            reduced_debug_info: false,
+            immediate_respawn: false,
             distances: player.distances(),
             chunk: chunk_of(player.position),
         })
@@ -1083,6 +1261,12 @@ impl Server {
                 // `performPrefixedCommand`: one leading slash is dropped.
                 let command = line.trim();
                 let command = command.strip_prefix('/').unwrap_or(command);
+                if self.test_hooks
+                    && let Some(args) = command.strip_prefix("horizon-test-move ")
+                {
+                    self.test_move(args);
+                    return;
+                }
                 match command {
                     "" => {}
                     "stop" => {
@@ -1092,6 +1276,34 @@ impl Server {
                     _ => tracing::warn!("Unknown command (commands are not ported yet): {command}"),
                 }
             }
+        }
+    }
+
+    /// The test hook behind `HORIZON_TEST_HOOKS=1`: `horizon-test-move <player> <dimension> <x>
+    /// <y> <z>` moves a player to a level (`move_player_to_level`). No command of Leaf's does it
+    /// without portals; the command tree is empty here, so this is a console line of its own.
+    fn test_move(&mut self, args: &str) {
+        let parts: Vec<&str> = args.split_whitespace().collect();
+        let result = match parts.as_slice() {
+            [name, dimension, x, y, z] => {
+                match (x.parse::<f64>(), y.parse::<f64>(), z.parse::<f64>()) {
+                    (Ok(x), Ok(y), Ok(z)) => {
+                        self.move_player_to_level(name, dimension, [x, y, z], (0.0, 0.0))
+                    }
+                    _ => {
+                        tracing::warn!("horizon-test-move: bad coordinates");
+                        return;
+                    }
+                }
+            }
+            _ => {
+                tracing::warn!("usage: horizon-test-move <player> <dimension> <x> <y> <z>");
+                return;
+            }
+        };
+        match result {
+            Ok(()) => tracing::info!("horizon-test-move: moved {}", parts[0]),
+            Err(e) => tracing::warn!("horizon-test-move: {e}"),
         }
     }
 

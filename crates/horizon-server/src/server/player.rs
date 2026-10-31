@@ -11,6 +11,7 @@
 use super::chunk_system::{ChunkSink, PlayerChunkLoader};
 use super::level::Level;
 use super::player_data::SavedPlayer;
+use crate::command::wrap_degrees;
 use crate::core::position::ChunkPos;
 use crate::network::Reason;
 use crate::network::configuration::{ClientInformation, KeepAlive, KeepAliveTick};
@@ -171,19 +172,73 @@ impl Player {
 
     /// `teleport`: a new id, the position awaited until the client accepts it.
     fn teleport(&mut self, conn: &Connection, position: [f64; 3]) {
-        self.awaiting_teleport = self.awaiting_teleport.wrapping_add(1);
-        if self.awaiting_teleport == i32::MAX {
-            self.awaiting_teleport = 0;
-        }
-        self.awaiting_position = Some(position);
-        self.awaiting_teleport_time = self.tick_count;
+        let id = self.begin_teleport(position);
         let change = PositionMoveRotation {
             position,
             delta: [0.0; 3],
             y_rot: self.y_rot,
             x_rot: self.x_rot,
         };
-        conn.send(cb::player_position(self.awaiting_teleport, &change, 0));
+        conn.send(cb::player_position(id, &change, 0));
+    }
+
+    /// The state of `teleport` without the packet: the next id, which the client must accept.
+    fn begin_teleport(&mut self, position: [f64; 3]) -> i32 {
+        self.awaiting_teleport = self.awaiting_teleport.wrapping_add(1);
+        if self.awaiting_teleport == i32::MAX {
+            self.awaiting_teleport = 0;
+        }
+        self.awaiting_position = Some(position);
+        self.awaiting_teleport_time = self.tick_count;
+        self.awaiting_teleport
+    }
+
+    /// The player's side of `ServerPlayer.teleport` into another level (the new level's packets
+    /// are [`crate::network::play::dimension::dimension_change_sequence`], which the caller sends
+    /// with the id returned): the old level's chunk loader lets go
+    /// (`removePlayerImmediately`: its tickets become delayed ones, nothing is sent), the player
+    /// takes its place in the new level (`setServerLevel`, `internalTeleport`) and a new chunk
+    /// loader holds the chunks around it there (`addDuringTeleport`). The client reloads the world
+    /// (`restartClientLoadTimerAfterRespawn`), so `PlayerLoaded` is awaited again.
+    #[allow(clippy::too_many_arguments)]
+    pub fn change_level(
+        &mut self,
+        old: &mut Level,
+        new: &mut Level,
+        new_index: usize,
+        position: [f64; 3],
+        rotation: (f32, f32),
+        conn: &Connection,
+        now_ns: i64,
+    ) -> i32 {
+        self.loader.remove(&mut old.chunks);
+        self.client_loaded = false;
+        self.level = new_index;
+        (self.y_rot, self.x_rot) = rotation;
+        self.position = position;
+        let id = self.begin_teleport(position);
+        let distances = Self::distances_for(self.level_distances, &self.client_information);
+        let ticket = new.chunks.next_ticket_id();
+        self.loader = PlayerChunkLoader::new(
+            ticket,
+            chunk_of(position),
+            distances,
+            &mut new.chunks,
+            &mut Packets::new(conn),
+            now_ns,
+        );
+        id
+    }
+
+    /// `ServerPlayer.teleport` inside the level (`internalTeleport`): the position packet only.
+    pub fn teleport_within_level(
+        &mut self,
+        position: [f64; 3],
+        rotation: (f32, f32),
+        conn: &Connection,
+    ) {
+        (self.y_rot, self.x_rot) = rotation;
+        self.teleport(conn, position);
     }
 
     /// One play packet (keep-alives included). `Err` disconnects with the reason.
@@ -332,16 +387,4 @@ impl Player {
     pub fn remove(&mut self, level: &mut Level) {
         self.loader.remove(&mut level.chunks);
     }
-}
-
-/// `Mth.wrapDegrees(float)`.
-fn wrap_degrees(v: f32) -> f32 {
-    let mut w = v % 360.0;
-    if w >= 180.0 {
-        w -= 360.0;
-    }
-    if w < -180.0 {
-        w += 360.0;
-    }
-    w
 }

@@ -43,6 +43,17 @@
 //! 16. A dead player gets an empty chunk at its position (Paper), since Moonrise sends no chunks
 //!     to the dead.
 //!
+//! # Changing level (`ServerPlayer.teleport(TeleportTransition)` into another dimension)
+//!
+//! [`dimension::dimension_change_sequence`]: `respawn` (the new level's spawn info, keep all
+//! data), `change_difficulty` (the new level's), `entity_event` 24 + permission level; the server
+//! side leaves the old level (its chunk loader's tickets become delayed ones, no packet); then
+//! `player_position` (a new teleport id), the new loader's `set_chunk_cache_radius`,
+//! `set_simulation_distance`, `set_chunk_cache_center` and the entity tracker, `player_abilities`,
+//! `sendLevelInfo` (the same as the join's), `sendAllPlayerInfo` (the inventory menu, all
+//! attributes, entity data, `set_held_slot`, entity event 22/23 for reduced debug info,
+//! `IMMEDIATE_RESPAWN`), the active effects and post effects.
+//!
 //! # Chunk sending (Moonrise's `RegionizedPlayerChunkLoader`)
 //!
 //! Moonrise replaces vanilla's `ChunkMap` tracking views and `PlayerChunkSender` batching:
@@ -72,6 +83,7 @@
 pub mod chunk;
 pub mod chunk_sending;
 pub mod clientbound;
+pub mod dimension;
 pub mod ids;
 pub mod join;
 pub mod serverbound;
