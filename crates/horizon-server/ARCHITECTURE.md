@@ -81,6 +81,20 @@ Checked and kept: the `LazyLock` tables in `azalea/chat` (immutable constants), 
 `azalea/buf` (a codec impl, not storage), the temp-name counter in `world/storage/region.rs` (an atomic
 for unique file names). Unused crates after these changes (`compact_str`, `parking_lot`) were removed.
 
+### Re-audit (2026-10-31)
+
+The whole crate (215 files, ~77k lines) searched again for Java emulation: no `unsafe`, `UnsafeCell`,
+`Rc<RefCell>`, `TypeId`, `dyn Any`, downcasts or manual `Send`/`Sync`; no Java object model, monitors or
+reentrant locks. What remains, with its reason:
+
+| Path | What | Status |
+|---|---|---|
+| `Arc<T>` (~65 uses) | immutable tables built once (block states and their data, registries, worldgen data, codec tables, heightmap tables, a level's generator, voxel shape data) shared with the generation workers | kept: shared read-only data, no per-object `Arc` |
+| `world/level_storage.rs` `static LOCKED: Mutex<Vec<PathBuf>>` | `session.lock`'s second lock from the same process fails as the JVM's `OverlappingFileLockException` (POSIX locks belong to the process) | kept: Minecraft-visible, held only to check or record a path |
+| `server/chunk_system/generation.rs` `Mutex` + `Condvar` queue | several generation workers take from one job queue | kept: held only to push or pop |
+| `registry/nbt_json.rs` `java_hash_order`, `server/user_lists/map.rs` | the order Java's `HashMap`/`ConcurrentHashMap` give to registry entries, tags and saved user lists | kept: narrow order helpers, checked against the real classes |
+| `worldgen/feature/tree/hash_order.rs` → `pos_set.rs` | a generic copy of `java.util.HashMap` (key trait with Java's `hashCode`/`Comparable`/tie-break, values, removal by key, fail-fast iterator with `ConcurrentModification`/`WrongMap` errors and an `Arc<()>` map identity, `copied`, `clear`, `#![allow(dead_code)]`) behind tree features' `PosSet` | **replaced (2026-10-31):** `PosSet` itself, a set of positions with only what features use (insert, contains, iteration, pop first). The bucket, resize and tree-bin rules stay: positions along (1, 2, 1) share a bucket in every table up to 1024, so large trees can reach tree bins, whose shape decides the order. `LeafPosSetOracle` (the real `HashSet<BlockPos>` on the 26.3 jar): 43,476 rows in 14 cases equal, up to 5 tree bins at once |
+
 ### Done so far, and next steps
 
 Done (each checked against Java 25 running the real 26.3 classes, with Paper's/Leaf's changes applied

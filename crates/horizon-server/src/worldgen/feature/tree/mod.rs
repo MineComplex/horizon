@@ -1,7 +1,7 @@
 //! `minecraft:tree` and `minecraft:fallen_tree` (`TreeFeature`, `FallenTreeFeature`): trunk,
 //! foliage and root placers, decorators, minimum-size clipping and the leaf-distance pass.
 //! Copied from Horizon's tree port and rebuilt on the server's block tables; a `HashSet<BlockPos>`
-//! iterates in vanilla's order wherever that feeds random draws ([`blocks::PosSet`]).
+//! iterates in vanilla's order wherever that feeds random draws ([`PosSet`]).
 //! `StructureTemplate.updateShapeAtEdge` is walked face by face and handed to
 //! [`FeatureWorld::update_shape_at_face`]: what a block does on a neighbour's change is the block
 //! behaviour port's (WP6).
@@ -9,7 +9,7 @@ mod blocks;
 mod decorator;
 mod fallen;
 mod foliage;
-mod hash_order;
+mod pos_set;
 mod trunk;
 
 use std::collections::BTreeSet;
@@ -26,11 +26,11 @@ use crate::util::random::RandomSource;
 use crate::worldgen::codec::{DecodeError, Object, float, int_range, optional, required};
 use crate::worldgen::placement::provider::IntProvider;
 use crate::worldgen::state_provider::{BlockStateProvider, ProviderContext, ProviderError};
-pub(crate) use blocks::PosSet;
 use blocks::{self as tb, TreeBlocks};
 use decorator::TreeDecorator;
 pub use fallen::FallenTreeFeature;
 use foliage::{FoliageAttachment, FoliagePlacer};
+pub(crate) use pos_set::PosSet;
 use trunk::TrunkPlacer;
 
 pub(crate) type TreeResult<T> = Result<T, ProviderError>;

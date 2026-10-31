@@ -1,5 +1,6 @@
 //! `minecraft:fallen_tree`: a stump and an optional fallen log with decorators.
-use super::blocks::{self as tb, Axis, PosSet};
+use super::PosSet;
+use super::blocks::{self as tb, Axis};
 use super::{
     NestedPlacer, Run, Sets, TreeBlocksCell, TreeDecoder, TreeResult, decorator::Lists,
     decorator::TreeDecorator, kind, read, sample_state, write,

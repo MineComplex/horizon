@@ -91,8 +91,8 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   are JSON until `FeatureRegistry::load` resolves them), `spring_feature`, `block_pile`, `vines`, `underwater_magma`, `bamboo`,
   `random_neighbor_spread`, `vegetation_patch` and `waterlogged_vegetation_patch`; `FeatureRegistry::{place_configured,
   place_placed}` place nested features. The `HashSet<BlockPos>`s whose order feeds draws (trunks, leaves, a patch's ground) are
-  `tree::PosSet` over `tree/hash_order.rs` (HashMap buckets, resizes and tree bins; copied from Horizon, user decision pending:
-  rule 2 vs bit-equality). The proto chunk records scheduled ticks (`ProtoChunk::ticks`). `decorate.rs`:
+  `tree::PosSet` (`tree/pos_set.rs`: `HashSet<BlockPos>`'s buckets, resizes and tree bins, nothing else of the map;
+  `LeafPosSetOracle` equal, 2026-10-31). The proto chunk records scheduled ticks (`ProtoChunk::ticks`). `decorate.rs`:
   `apply_biome_decoration` = `ChunkGenerator.addVanillaDecorations` over a `RegionWorld` (3 x 3 chunks' biomes, the generator's
   `FeatureSorter` steps, `setDecorationSeed`/`setFeatureSeed`, `placeWithBiomeCheck`); structures are a `StructureDecorator`
   callback (`NoStructures` for none) and `skip` names placed features not to run. Paper's configurable feature seeds are not read.

@@ -1,7 +1,6 @@
 //! Block classifications and helpers shared by tree, fallen-tree and other vegetation features.
 //! Built once per registry from the block tags, names, properties and the state data.
 
-use super::hash_order::{JavaHashMap, JavaKey};
 use crate::block::flags::{
     FLAG_AIR, FLAG_LEGACY_SOLID, FLAG_LIQUID, FLAG_REPLACEABLE, FLAG_SOLID_RENDER,
 };
@@ -296,57 +295,6 @@ pub(crate) fn dist_manhattan(a: [i32; 3], b: [i32; 3]) -> i32 {
     (d(0) + d(1) + d(2)) as i32
 }
 
-/// A position as `java.util.HashSet<BlockPos>` hashes it (`Vec3i.hashCode`). Two positions with
-/// the same hash in a tree bin would be ordered by identity hash codes in vanilla, which cannot be
-/// reproduced: they are ordered by position instead.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct JavaPos([i32; 3]);
-
-impl JavaKey for JavaPos {
-    fn java_hash(&self) -> i32 {
-        let [x, y, z] = self.0;
-        y.wrapping_add(z.wrapping_mul(31))
-            .wrapping_mul(31)
-            .wrapping_add(x)
-    }
-    fn tie_break(&self, other: &Self) -> std::cmp::Ordering {
-        let key = |p: &Self| (p.0[1], p.0[2], p.0[0]);
-        match key(self).cmp(&key(other)) {
-            std::cmp::Ordering::Equal => std::cmp::Ordering::Less,
-            ordering => ordering,
-        }
-    }
-}
-
-/// A set of positions that iterates the way a `java.util.HashSet<BlockPos>` does, which decides
-/// the order of the random draws made over a tree's trunks and leaves ([`JavaHashMap`] models the
-/// buckets, resizes and tree bins).
-#[derive(Default)]
-pub(crate) struct PosSet(JavaHashMap<JavaPos, ()>);
-
-impl PosSet {
-    pub(crate) fn insert(&mut self, p: [i32; 3]) -> bool {
-        self.0.put(JavaPos(p), ()).is_none()
-    }
-    pub(crate) fn contains(&self, p: [i32; 3]) -> bool {
-        self.0.get(&JavaPos(p)).is_some()
-    }
-    pub(crate) fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-    /// Iteration order of the set.
-    pub(crate) fn to_vec(&self) -> Vec<[i32; 3]> {
-        self.0.entries().map(|(k, _)| k.0).collect()
-    }
-    /// `iterator().next()` followed by `iterator.remove()`.
-    pub(crate) fn pop_first(&mut self) -> Option<[i32; 3]> {
-        let mut cursor = self.0.cursor();
-        let first = self.0.next_entry(&mut cursor).ok().flatten()?.0.0;
-        self.0.remove_current(&mut cursor).ok()?;
-        Some(first)
-    }
-}
-
 /// Util.shuffle (Fisher-Yates from the end with nextInt(i)).
 pub(crate) fn shuffle<T>(
     values: &mut [T],
@@ -357,27 +305,4 @@ pub(crate) fn shuffle<T>(
         values.swap(i - 1, swap);
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn pos_set_iterates_in_hash_bucket_order() {
-        let mut set = PosSet::default();
-        let inserted = [[0, 64, 1], [1, 64, 0], [0, 65, 0], [0, 64, 0]];
-        for p in inserted {
-            set.insert(p);
-        }
-        // `BlockPos.hashCode` spread by `h ^ (h >>> 16)` into 16 buckets; ties keep insertion order.
-        let mut expected = inserted.to_vec();
-        expected.sort_by_key(|p| {
-            let h = (p[1] + p[2] * 31) * 31 + p[0];
-            (h as u32 ^ (h as u32 >> 16)) & 15
-        });
-        assert_eq!(set.to_vec(), expected);
-        assert_eq!(set.pop_first(), Some(expected[0]));
-        assert!(!set.contains(expected[0]));
-    }
 }
