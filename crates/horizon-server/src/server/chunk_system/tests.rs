@@ -5,11 +5,12 @@ use super::manager::{ChunkHolderManager, ChunkSettings, ChunkStorage, LoadedChun
 use super::player_loader::{ChunkSink, PlayerChunkLoader};
 use super::propagator::Propagator;
 use super::ticket::*;
-use crate::block::BlockState;
+use crate::block::{BlockId, BlockState};
 use crate::core::position::ChunkPos;
 use crate::network::play::chunk_sending::PlayerDistances;
 use crate::world::chunk::{ChunkData, ChunkStatus, ContainerFactory};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
+use crate::world::ticks::{SavedTick, TickPriority};
 use crate::worldgen::generator::convert::{
     ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
 };
@@ -22,6 +23,8 @@ use crate::worldgen::structure::StructureRegistry;
 struct Fake {
     loads: Vec<ChunkPos>,
     saves: Vec<(ChunkPos, i64)>,
+    /// The block ticks each save carried.
+    saved_block_ticks: Vec<(ChunkPos, Vec<SavedTick<BlockId>>)>,
     flushes: usize,
     jobs: Vec<GenerationJob>,
     /// The chunks the jobs handed out and not answered yet write.
@@ -55,6 +58,7 @@ impl ChunkStorage for Fake {
     fn save(&mut self, pos: ChunkPos, chunk: Box<ChunkData>) {
         assert_eq!(chunk.pos, pos);
         self.saves.push((pos, chunk.last_update));
+        self.saved_block_ticks.push((pos, chunk.raw.block_ticks));
     }
     fn flush(&mut self) {
         self.flushes += 1;
@@ -593,4 +597,114 @@ fn a_missing_chunk_is_generated_through_the_pyramid() {
     let saved = m.save_all(true, true, None, 9);
     assert_eq!(saved, squares(11));
     assert_eq!(m.storage_mut().saves.len(), squares(11));
+}
+
+/// Answers every pending load with a full chunk that has one saved block tick at (x * 16 + 1, 64,
+/// 1), `delay` ticks away.
+fn answer_with_tick(m: &mut ChunkHolderManager<Fake>, delay: i32) {
+    for pos in std::mem::take(&mut m.storage_mut().loads) {
+        let mut chunk = level_chunk(pos, ChunkStatus::Full);
+        chunk.raw.block_ticks.push(SavedTick {
+            ty: BlockId(1),
+            pos: crate::core::position::BlockPos::new(pos.x * 16 + 1, 64, pos.z * 16 + 1),
+            delay,
+            priority: TickPriority::High,
+        });
+        m.chunk_loaded(pos, Some(LoadedChunk::Level(Box::new(chunk))));
+    }
+}
+
+fn settle_with_ticks(m: &mut ChunkHolderManager<Fake>, delay: i32) {
+    m.process_ticket_updates();
+    while !m.storage_mut().loads.is_empty() {
+        answer_with_tick(m, delay);
+        m.process_ticket_updates();
+    }
+}
+
+#[test]
+fn a_full_chunks_ticks_join_the_level_and_run_only_where_it_ticks() {
+    let mut m = manager(ChunkSettings::default());
+    m.set_game_time(50);
+    m.add_ticket(TicketType::Player, p(0, 0), BLOCK_TICKING_LEVEL, 1);
+    settle_with_ticks(&mut m, 7);
+    let mut ticking = 0;
+    let mut full = 0;
+    for x in -3..=3 {
+        for z in -3..=3 {
+            let at = p(x, z);
+            match m.full_status(at) {
+                FullChunkStatus::Inaccessible => {
+                    assert!(m.ticks.block.container(at).is_none(), "{at:?}");
+                    continue;
+                }
+                FullChunkStatus::Full => full += 1,
+                _ => ticking += 1,
+            }
+            // Registered at FULL, taken out of the chunk, one tick each.
+            assert_eq!(m.ticks.block.container(at).unwrap().count(), 1, "{at:?}");
+            assert!(m.chunk(at).unwrap().raw.block_ticks.is_empty());
+        }
+    }
+    assert!(ticking > 0 && full > 0, "{ticking} ticking, {full} full");
+    assert_eq!(m.ticks.block.count(), ticking + full);
+    // Due at 57 in the chunks that tick (the others keep theirs).
+    m.collect_block_ticks(56, 100);
+    assert!(m.ticks.block.pop_due().is_none());
+    m.collect_block_ticks(57, 100);
+    let mut ran = 0;
+    while let Some((at, ty)) = m.ticks.block.pop_due() {
+        assert_eq!(ty, BlockId(1));
+        assert!(
+            m.full_status(at.chunk()) >= FullChunkStatus::BlockTicking,
+            "{at:?}"
+        );
+        ran += 1;
+    }
+    m.ticks.block.cleanup_after_tick();
+    assert_eq!(ran, ticking);
+    assert_eq!(m.ticks.block.count(), full);
+}
+
+#[test]
+fn registered_ticks_keep_a_chunk_saved_until_it_is_unloaded() {
+    let settings = ChunkSettings {
+        min_chunk_unload_count: 1000,
+        ..ChunkSettings::default()
+    };
+    let mut m = manager(settings);
+    m.set_game_time(50);
+    m.add_ticket(TicketType::Player, p(0, 0), BLOCK_TICKING_LEVEL, 1);
+    settle_with_ticks(&mut m, 7);
+    assert_eq!(m.full_status(p(0, 0)), FullChunkStatus::BlockTicking);
+    // Unpacked at 50: due at 57. The ticking chunks are unsaved once the time moves.
+    let queued =
+        |m: &ChunkHolderManager<Fake>| m.ticks.block.container(p(0, 0)).unwrap().peek().copied();
+    assert_eq!(queued(&m).unwrap().trigger_tick, 57);
+    assert_eq!(
+        m.save_all(false, false, None, 50),
+        0,
+        "unpacked at 50: not dirty at 50"
+    );
+    let saved = m.save_all(false, false, None, 60);
+    assert!(saved > 0);
+    let at_60 = m.storage_mut().saved_block_ticks.clone();
+    let (_, ticks) = at_60.iter().find(|(at, _)| *at == p(0, 0)).unwrap();
+    assert_eq!(ticks.len(), 1);
+    assert_eq!(ticks[0].delay, -3, "57 - 60");
+    assert_eq!(ticks[0].priority, TickPriority::High);
+    // Saved at 60: clean at 60, dirty again as the time moves on, and its delay moves with it.
+    assert_eq!(m.save_all(false, false, None, 60), 0);
+    assert!(m.save_all(false, false, None, 61) > 0);
+    let last = m.storage_mut().saved_block_ticks.last().unwrap().clone();
+    assert_eq!(last.1[0].delay, -4);
+    // Unloading saves it (dirty again at 70) and drops the containers.
+    let before = m.storage_mut().saves.len();
+    m.remove_ticket(TicketType::Player, p(0, 0), BLOCK_TICKING_LEVEL, 1);
+    m.tick();
+    m.process_unloads(70);
+    assert_eq!(m.holder_count(), 0);
+    assert!(m.storage_mut().saves.len() > before);
+    assert_eq!(m.ticks.block.count(), 0);
+    assert!(m.ticks.block.container(p(0, 0)).is_none());
 }

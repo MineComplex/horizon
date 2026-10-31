@@ -448,6 +448,15 @@ impl std::fmt::Debug for BlockStateData {
 /// What chunk sections count (`LevelChunkSection.recalcBlockCounts`, Moonrise's special-colliding
 /// count): air, random ticking, a fluid, a randomly ticking fluid (lava), special colliding.
 impl crate::world::chunk::SectionFlags for BlockStateData {
+    fn fluid_name(&self, fluid: u8) -> &str {
+        BlockStateData::fluid_name(self, fluid)
+    }
+    fn fluid_by_name(&self, name: &str) -> Option<u8> {
+        self.fluid_names
+            .iter()
+            .position(|n| &**n == name)
+            .map(|i| i as u8)
+    }
     #[inline]
     fn section_flags(&self, state: BlockState) -> crate::world::chunk::StateFlags {
         use crate::world::chunk::StateFlags;

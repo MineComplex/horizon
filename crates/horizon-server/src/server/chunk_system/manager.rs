@@ -35,9 +35,15 @@
 //!   is `chunks.auto-save-interval` ticks old, oldest first, at most
 //!   `chunks.max-auto-save-chunks-per-tick` (24) saved per tick.
 //!
+//! - scheduled block and fluid ticks (`world::ticks`): a chunk's `LevelChunkTicks` go into the
+//!   level's [`ScheduledTicks`] when its FULL step completes (`registerTickContainerInLevel`),
+//!   unpack when the holder reaches `BLOCK_TICKING` (`startTickingChunk`), and leave after the
+//!   unload's save (`ServerLevel.unload`); the ticks pending or queued in a registered chunk are
+//!   packed at each save, and make it unsaved while the game time moves (Moonrise's
+//!   `LevelChunk.isUnsaved`).
+//!
 //! Not ported: priorities (steps run in the order they become ready), entities and POI (their
-//! chunks are never saved, counted 0 in the log). Pending block and fluid ticks make a chunk
-//! unsaved in Moonrise while the game time moves; they are raw NBT here (saved as read).
+//! chunks are never saved, counted 0 in the log).
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
@@ -51,9 +57,11 @@ use super::ticket::{
     FULL_LEVEL, FullChunkStatus, MAX_LEVEL, NO_TIMEOUT, Ticket, TicketSet, TicketType,
     level_for_radius,
 };
+use crate::block::BlockId;
 use crate::core::position::ChunkPos;
 use crate::world::chunk::{ChunkData, ChunkStatus};
 use crate::world::level_chunk::LevelChunk;
+use crate::world::ticks::{LevelChunkTicks, ScheduledTicks};
 use crate::worldgen::generator::convert::ProtoExtras;
 use crate::worldgen::generator::pyramid::{Pyramids, next_status, status_facts};
 use crate::worldgen::proto_chunk::ProtoChunk;
@@ -190,6 +198,8 @@ struct Holder {
     last_auto_save: i64,
     in_autosave: bool,
     in_unload_queue: bool,
+    /// The chunk's tick containers are the level's (`registerTickContainerInLevel` ran).
+    ticks_registered: bool,
 }
 
 /// `getFullNeighbourIndex`.
@@ -230,6 +240,7 @@ impl Holder {
             last_auto_save: 0,
             in_autosave: false,
             in_unload_queue: false,
+            ticks_registered: false,
         }
     }
 
@@ -277,6 +288,23 @@ impl Holder {
     }
 }
 
+/// `registerTickContainerInLevel`: the full chunk's saved ticks become the level's containers,
+/// pending until the chunk starts ticking.
+fn register_ticks(h: &mut Holder, ticks: &mut LevelScheduledTicks, pos: ChunkPos) {
+    if h.ticks_registered {
+        return;
+    }
+    let Some(Held::Level { chunk, .. }) = &mut h.chunk else {
+        return;
+    };
+    h.ticks_registered = true;
+    let raw = &mut chunk.raw;
+    let block = LevelChunkTicks::from_pending(std::mem::take(&mut raw.block_ticks));
+    let fluid = LevelChunkTicks::from_pending(std::mem::take(&mut raw.fluid_ticks));
+    ticks.block.add_container(pos, block);
+    ticks.fluid.add_container(pos, fluid);
+}
+
 /// `ChunkPos.toLong`, the autosave queue's tie-break.
 fn key(pos: ChunkPos) -> i64 {
     pos.pack()
@@ -286,19 +314,46 @@ fn chebyshev(a: ChunkPos, b: ChunkPos) -> i32 {
     (a.x - b.x).abs().max((a.z - b.z).abs())
 }
 
+/// The block and fluid ticks of the level, with the block ids and fluid ids they are of.
+pub type LevelScheduledTicks = ScheduledTicks<BlockId, u8>;
+
 /// `SerializableChunkData.copyOf` (with the level's game time) and `tryMarkSaved`, when unsaved.
+/// A chunk whose tick containers are the level's (`registered`) is unsaved while they are dirty
+/// and saves their ticks (`LevelChunk.isUnsaved`, `getTicksForSerialization`).
 fn save_held<S: ChunkStorage>(
     storage: &mut S,
+    ticks: &mut LevelScheduledTicks,
+    registered: bool,
     pos: ChunkPos,
     held: &mut Held,
     game_time: i64,
 ) -> bool {
     match held {
         Held::Level { chunk, .. } => {
-            if !chunk.try_mark_saved() {
+            let dirty = registered
+                && (ticks
+                    .block
+                    .container(pos)
+                    .is_some_and(|c| c.is_dirty(game_time))
+                    || ticks
+                        .fluid
+                        .container(pos)
+                        .is_some_and(|c| c.is_dirty(game_time)));
+            if !chunk.is_unsaved() && !dirty {
                 return false;
             }
+            chunk.try_mark_saved();
             let mut data = chunk.to_data();
+            if registered {
+                if let Some(c) = ticks.block.container_mut(pos) {
+                    c.clear_dirty();
+                    data.raw.block_ticks = c.pack(game_time);
+                }
+                if let Some(c) = ticks.fluid.container_mut(pos) {
+                    c.clear_dirty();
+                    data.raw.fluid_ticks = c.pack(game_time);
+                }
+            }
             data.last_update = game_time;
             storage.save(pos, Box::new(data));
         }
@@ -334,6 +389,11 @@ pub struct ChunkHolderManager<S> {
     /// The chunks running steps write.
     writing: HashSet<ChunkPos>,
     current_tick: i64,
+    /// The level's game time, as the chunks it starts ticking unpack their ticks at
+    /// ([`Self::set_game_time`]).
+    game_time: i64,
+    /// The level's scheduled block and fluid ticks.
+    pub ticks: LevelScheduledTicks,
     next_id: u64,
     /// Generation steps that finished, and their time on the workers (for the logs).
     pub generated: GenerationStats,
@@ -364,9 +424,39 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             ready: VecDeque::new(),
             writing: HashSet::new(),
             current_tick: 0,
+            game_time: 0,
+            ticks: ScheduledTicks::default(),
             next_id: 1,
             generated: GenerationStats::default(),
         }
+    }
+
+    /// The level's game time (`Level.getGameTime`), which the chunks starting to tick unpack
+    /// their ticks at; the level sets it when the time advances.
+    pub fn set_game_time(&mut self, game_time: i64) {
+        self.game_time = game_time;
+    }
+
+    /// The collection of `ServerLevel.tick`'s `blockTicks.tick(..)`: what is due at `game_time`,
+    /// for [`LevelTicks::pop_due`](crate::world::ticks::LevelTicks::pop_due) to hand out.
+    pub fn collect_block_ticks(&mut self, game_time: i64, max_ticks: i32) {
+        // `ServerLevel.isPositionTickingWithEntitiesLoaded`: at least `BLOCK_TICKING`.
+        let holders = &self.holders;
+        self.ticks.block.collect_ticks(game_time, max_ticks, |key| {
+            holders
+                .get(&ChunkPos::unpack(key))
+                .is_some_and(|h| h.current >= FullChunkStatus::BlockTicking)
+        });
+    }
+
+    /// The collection of `fluidTicks.tick(..)`.
+    pub fn collect_fluid_ticks(&mut self, game_time: i64, max_ticks: i32) {
+        let holders = &self.holders;
+        self.ticks.fluid.collect_ticks(game_time, max_ticks, |key| {
+            holders
+                .get(&ChunkPos::unpack(key))
+                .is_some_and(|h| h.current >= FullChunkStatus::BlockTicking)
+        });
     }
 
     /// The storage back, once the holders are saved (`close`).
@@ -917,6 +1007,9 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
     fn on_gen_complete(&mut self, pos: ChunkPos, status: ChunkStatus) {
         let h = self.holders.get_mut(&pos).expect("completed holders exist");
         h.gen_status = Some(status);
+        if status == ChunkStatus::Full {
+            register_ticks(h, &mut self.ticks, pos);
+        }
         let requested = h.requested;
         let waiting: Vec<(ChunkPos, ChunkStatus)> = h.waiting.drain(..).collect();
         let mut keep = IndexMap::new();
@@ -1094,6 +1187,11 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
                 let h = self.holders.get_mut(&pos).expect("still there");
                 if current < BlockTicking && pending >= BlockTicking {
                     h.current = BlockTicking;
+                    if h.ticks_registered {
+                        // `startTickingChunk`.
+                        self.ticks.block.unpack_container(pos, self.game_time);
+                        self.ticks.fluid.unpack_container(pos, self.game_time);
+                    }
                 }
                 if current < EntityTicking && pending >= EntityTicking {
                     h.current = EntityTicking;
@@ -1207,7 +1305,18 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             self.autosave.remove(&(h.last_auto_save, key(pos)));
         }
         if let Some(mut held) = h.chunk {
-            save_held(&mut self.storage, pos, &mut held, game_time);
+            save_held(
+                &mut self.storage,
+                &mut self.ticks,
+                h.ticks_registered,
+                pos,
+                &mut held,
+                game_time,
+            );
+        }
+        if h.ticks_registered {
+            self.ticks.block.remove_container(pos);
+            self.ticks.fluid.remove_container(pos);
         }
     }
 
@@ -1231,7 +1340,14 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             let promoted = h.promoted();
             if let Some(held @ Held::Level { .. }) = &mut h.chunk
                 && promoted
-                && save_held(&mut self.storage, pos, held, game_time)
+                && save_held(
+                    &mut self.storage,
+                    &mut self.ticks,
+                    h.ticks_registered,
+                    pos,
+                    held,
+                    game_time,
+                )
             {
                 saved += 1;
             }
@@ -1266,7 +1382,14 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             let promoted = h.promoted();
             if let Some(held) = &mut h.chunk
                 && (shutdown || promoted)
-                && save_held(&mut self.storage, pos, held, game_time)
+                && save_held(
+                    &mut self.storage,
+                    &mut self.ticks,
+                    h.ticks_registered,
+                    pos,
+                    held,
+                    game_time,
+                )
             {
                 saved += 1;
             }

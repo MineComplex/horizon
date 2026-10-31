@@ -32,6 +32,17 @@ impl StateFlags {
 /// The block flag table, as far as sections need it.
 pub trait SectionFlags {
     fn section_flags(&self, state: BlockState) -> StateFlags;
+
+    /// The fluid registry's name of a fluid id (`fluid_ticks` save it). A table without fluids
+    /// (the tests') has only `minecraft:empty`.
+    fn fluid_name(&self, _fluid: u8) -> &str {
+        "minecraft:empty"
+    }
+
+    /// The fluid id of a registry name.
+    fn fluid_by_name(&self, _name: &str) -> Option<u8> {
+        None
+    }
 }
 
 /// `PalettedContainerFactory`: the two strategies and the values new sections start with

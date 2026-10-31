@@ -618,12 +618,11 @@ fn chunk_read_edges() {
         "No key palette in MapLike[{}]"
     );
     // Raw parts come back unchanged; an empty chunk gets vanilla's empty lists and structures.
-    let raw = "{Status:\"minecraft:spawn\",block_ticks:[{i:\"minecraft:stone\",t:3}],\
+    let raw = "{Status:\"minecraft:spawn\",\
                ChunkBukkitValues:{a:1},\"Paper.FailedSpawnAttempts\":{monster:4L},UpgradeData:{x:1}}";
     let chunk = c.read(&snbt(raw)).unwrap().unwrap();
     let written = c.write(&chunk);
     for k in [
-        "block_ticks",
         "ChunkBukkitValues",
         "Paper.FailedSpawnAttempts",
         "UpgradeData",
@@ -631,6 +630,20 @@ fn chunk_read_edges() {
         assert_eq!(written.get(&key(k)), snbt(raw).get(&key(k)), "{k}");
     }
     assert_eq!(written[&key("fluid_ticks")], Tag::List(vec![]));
+    assert_eq!(written[&key("block_ticks")], Tag::List(vec![]));
+    // Ticks: read as saved ticks, only the chunk's own, written back in the codec's form.
+    let ticks = "{Status:\"minecraft:spawn\",xPos:2,zPos:-1,block_ticks:[\
+                 {i:\"minecraft:stone\",x:33,y:5,z:-2,t:4,p:-1},\
+                 {i:\"minecraft:stone\",x:0,y:5,z:0,t:4,p:0}],\
+                 fluid_ticks:[{i:\"minecraft:empty\",x:33,y:5,z:-2,t:1,p:0}]}";
+    let chunk = c.read(&snbt(ticks)).unwrap().unwrap();
+    assert_eq!(chunk.raw.block_ticks.len(), 1);
+    assert_eq!(chunk.raw.block_ticks[0].delay, 4);
+    assert!(chunk.raw.fluid_ticks.is_empty(), "this table has no fluids");
+    assert_eq!(
+        c.write(&chunk)[&key("block_ticks")].to_string(),
+        "[{i:\"minecraft:stone\",p:-1,t:4,x:33,y:5,z:-2}]"
+    );
     assert_eq!(written[&key("entities")], Tag::List(vec![]));
     assert_eq!(
         written[&key("structures")].to_string(),

@@ -41,7 +41,7 @@ use super::config::{self, ConfigError, PaperWorldSettings, SpigotConfig};
 use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, Respawn, WorldBorder};
 use super::player_data::PlayerDataStorage;
 use crate::block::flags::BlockStateData;
-use crate::block::{BlockState, BlockStates};
+use crate::block::{BlockId, BlockState, BlockStates};
 use crate::core::geometry::{Direction, ShapeOp, VoxelShape};
 use crate::core::position::{BlockPos, ChunkPos};
 use crate::nbt::{Compound, Tag};
@@ -68,6 +68,11 @@ use crate::worldgen::generator::{
 };
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
+
+/// Paper's `environment.max-block-ticks` and `max-fluid-ticks` defaults (`paper-world-defaults.yml`;
+/// the per-world files are not read yet).
+const MAX_BLOCK_TICKS: i32 = 65536;
+const MAX_FLUID_TICKS: i32 = 65536;
 
 pub const OVERWORLD: &str = "minecraft:overworld";
 pub const NETHER: &str = "minecraft:the_nether";
@@ -900,6 +905,7 @@ impl Level {
             refusal_logged: false,
             dimension: stem.key.clone(),
         };
+        let game_time = start.overrides.game_time;
         Ok(Self {
             dimension: stem.key.clone(),
             world_name,
@@ -915,7 +921,11 @@ impl Level {
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
-            chunks: ChunkHolderManager::new(backend, paper.chunks),
+            chunks: {
+                let mut chunks = ChunkHolderManager::new(backend, paper.chunks);
+                chunks.set_game_time(game_time);
+                chunks
+            },
             generator,
             io_events,
             gen_events,
@@ -1088,6 +1098,28 @@ impl Level {
     pub fn tick_tickets(&mut self) {
         self.chunks.tick();
         self.chunks.process_ticket_updates();
+    }
+
+    /// `ServerLevel.tick`'s scheduled ticks, while the game runs normally and the level is not a
+    /// debug world: first the due block ticks (`Paper's environment.max-block-ticks`), each run
+    /// through `block`, then the fluid ticks through `fluid`. A closure gets the level back to
+    /// schedule more ticks (`level.chunks.ticks`); those wait for the next tick.
+    pub fn tick_scheduled_ticks(
+        &mut self,
+        mut block: impl FnMut(&mut Self, BlockPos, BlockId),
+        mut fluid: impl FnMut(&mut Self, BlockPos, u8),
+    ) {
+        let time = self.overrides.game_time;
+        self.chunks.collect_block_ticks(time, MAX_BLOCK_TICKS);
+        while let Some((pos, id)) = self.chunks.ticks.block.pop_due() {
+            block(self, pos, id);
+        }
+        self.chunks.ticks.block.cleanup_after_tick();
+        self.chunks.collect_fluid_ticks(time, MAX_FLUID_TICKS);
+        while let Some((pos, id)) = self.chunks.ticks.fluid.pop_due() {
+            fluid(self, pos, id);
+        }
+        self.chunks.ticks.fluid.cleanup_after_tick();
     }
 
     /// `ChunkMap.tick`: unloads, then autosave.

@@ -6,8 +6,7 @@
 //! Read and kept as data: coordinates, `Status`, times, sections (block states and biomes through
 //! the containers' codec, light arrays and states), heightmaps' raw longs and the light flag.
 //! Parts whose systems are not ported yet are kept as the NBT they were read as and written back
-//! unchanged ([`RawChunkParts`]); vanilla would re-encode them (filtering ticks outside the chunk,
-//! unknown structures and far references), which happens once those systems exist.
+//! unchanged ([`RawChunkParts`]); vanilla would re-encode them (unknown structures and far references), which happens once those systems exist.
 //! Unknown top-level keys are dropped, as vanilla drops them. Data fixing is not ported: older
 //! `DataVersion`s are read as they are (ARCHITECTURE.md, "Scope").
 
@@ -21,6 +20,7 @@ use super::section::{ContainerFactory, LevelChunkSection, SectionFlags};
 use crate::block::{BlockId, BlockState, BlockStates};
 use crate::core::position::ChunkPos;
 use crate::nbt::{Compound, JavaString, Tag};
+use crate::world::ticks::{SavedTick, filter_ticks_for_chunk, read_saved_ticks, write_saved_ticks};
 
 /// `SharedConstants.getCurrentVersion().dataVersion()` of 26.3.
 pub const DATA_VERSION: i32 = 5023;
@@ -164,9 +164,10 @@ pub struct RawChunkParts {
     pub upgrade_data: Option<Tag>,
     pub blending_data: Option<Tag>,
     pub below_zero_retrogen: Option<Tag>,
-    /// Written as an empty list when absent, as vanilla writes no ticks.
-    pub block_ticks: Option<Tag>,
-    pub fluid_ticks: Option<Tag>,
+    /// `block_ticks` and `fluid_ticks`, as `SavedTick`s (delays relative to the time they were
+    /// saved at), already filtered to the chunk.
+    pub block_ticks: Vec<SavedTick<BlockId>>,
+    pub fluid_ticks: Vec<SavedTick<u8>>,
     pub post_processing: Option<Tag>,
     /// Only proto-chunks keep entities in the chunk; full chunks' are in `entities/`.
     pub entities: Vec<Compound>,
@@ -263,8 +264,8 @@ impl<F: SectionFlags> ChunkCodec<'_, F> {
             upgrade_data: compound("UpgradeData").map(Tag::Compound),
             blending_data: get(tag, "blending_data").cloned(),
             below_zero_retrogen: get(tag, "below_zero_retrogen").cloned(),
-            block_ticks: get(tag, "block_ticks").cloned(),
-            fluid_ticks: get(tag, "fluid_ticks").cloned(),
+            block_ticks: chunk_ticks(get(tag, "block_ticks"), pos, |n| self.block(n)),
+            fluid_ticks: chunk_ticks(get(tag, "fluid_ticks"), pos, |n| self.fluid(n)),
             post_processing: get(tag, "PostProcessing").cloned(),
             entities: compounds("entities"),
             block_entities: compounds("block_entities"),
@@ -425,6 +426,14 @@ impl<F: SectionFlags> ChunkCodec<'_, F> {
         })
     }
 
+    /// `BuiltInRegistries.FLUID.byNameCodec()`.
+    fn fluid(&self, name: &str) -> Result<u8, String> {
+        let id = identifier(name)?;
+        self.flags.fluid_by_name(&id).ok_or_else(|| {
+            format!("Unknown registry key in ResourceKey[minecraft:root / minecraft:fluid]: {id}")
+        })
+    }
+
     /// `SerializableChunkData.write` with Paper's and Moonrise's additions.
     pub fn write(&self, chunk: &ChunkData) -> Compound {
         let mut tag = Compound::new();
@@ -458,8 +467,16 @@ impl<F: SectionFlags> ChunkCodec<'_, F> {
             put(&mut tag, "entities", list(&raw.entities));
         }
         let or_empty_list = |t: &Option<Tag>| t.clone().unwrap_or(Tag::List(Vec::new()));
-        put(&mut tag, "block_ticks", or_empty_list(&raw.block_ticks));
-        put(&mut tag, "fluid_ticks", or_empty_list(&raw.fluid_ticks));
+        put(
+            &mut tag,
+            "block_ticks",
+            write_saved_ticks(&raw.block_ticks, |b| self.blocks.block_name(b).to_owned()),
+        );
+        put(
+            &mut tag,
+            "fluid_ticks",
+            write_saved_ticks(&raw.fluid_ticks, |f| self.flags.fluid_name(f).to_owned()),
+        );
         put(
             &mut tag,
             "PostProcessing",
@@ -652,6 +669,17 @@ pub fn identifier(input: &str) -> Result<String, String> {
         ));
     }
     Ok(format!("{namespace}:{path}"))
+}
+
+/// A tick list as `SerializableChunkData.parse` reads it: decoded, then only the chunk's own.
+fn chunk_ticks<T>(
+    tag: Option<&Tag>,
+    chunk: ChunkPos,
+    ty: impl Fn(&str) -> Result<T, String>,
+) -> Vec<SavedTick<T>> {
+    let mut ticks = read_saved_ticks(tag, ty);
+    filter_ticks_for_chunk(&mut ticks, chunk);
+    ticks
 }
 
 fn get<'a>(map: &'a Compound, key: &str) -> Option<&'a Tag> {

@@ -645,6 +645,7 @@ impl Level {
     pub fn tick_time(&mut self) {
         self.border.tick();
         self.overrides.set_game_time(self.overrides.game_time + 1);
+        self.chunks.set_game_time(self.overrides.game_time);
     }
 
     /// `Level.getDefaultClockTime`: the total ticks of the dimension type's default clock.

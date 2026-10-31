@@ -623,6 +623,11 @@ impl Server {
             if runs {
                 // `ServerLevel.tick`: the border, then the game time.
                 self.world.tick_level_time(index);
+                // `ServerLevel.tick` runs the scheduled block and fluid ticks here, after the
+                // game time (`level.tick_scheduled_ticks(..)`). Not called yet: there is no
+                // block behaviour to run, and dropping the ticks a world has saved would lose
+                // them at the next save. The containers, their loading and their saving are
+                // live (`world::ticks`, `chunk_system::manager`).
             }
             let level = &mut self.world.levels[index];
             level.tick_tickets();

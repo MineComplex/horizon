@@ -1,7 +1,7 @@
 //! A proto chunk to and from its saved form (`SerializableChunkData.copyOf` / `read` for
 //! `PROTOCHUNK` statuses), and the FULL step's `new LevelChunk(level, protoChunk)`.
 //!
-//! What the proto chunk does not keep (light of a chunk saved by Starlight, ticks, upgrade data,
+//! What the proto chunk does not keep (light of a chunk saved by Starlight, upgrade data,
 //! CraftBukkit's values...) rides along in [`ProtoExtras`] and is written back as read.
 
 use crate::block::BlockState;
@@ -11,6 +11,7 @@ use crate::world::chunk::serial::Heightmap;
 use crate::world::chunk::serial::RawChunkParts;
 use crate::world::chunk::{ChunkData, ChunkStatus, ContainerFactory, SectionData};
 use crate::world::level_chunk::{HeightmapFlags, LevelChunk, heightmaps_after};
+use crate::world::ticks::ProtoChunkTicks;
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
 use crate::worldgen::structure::start::ChunkStructures;
@@ -119,6 +120,8 @@ pub fn proto_from_data(
         chunk.structures = ChunkStructures::load(structures, &tag, pos)?;
     }
     chunk.entities = std::mem::take(&mut raw.entities);
+    chunk.block_ticks = ProtoChunkTicks::load(std::mem::take(&mut raw.block_ticks));
+    chunk.fluid_ticks = ProtoChunkTicks::load(std::mem::take(&mut raw.fluid_ticks));
     Ok((
         chunk,
         ProtoExtras {
@@ -176,6 +179,8 @@ pub fn proto_to_data(
     ));
     raw.structures = Some(chunk.structures.save(structures, chunk.pos()));
     raw.entities = chunk.entities.clone();
+    raw.block_ticks = chunk.block_ticks.ticks().to_vec();
+    raw.fluid_ticks = chunk.fluid_ticks.ticks().to_vec();
     raw.block_entities.extend(
         chunk
             .block_entities

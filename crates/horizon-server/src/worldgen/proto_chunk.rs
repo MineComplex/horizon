@@ -4,9 +4,10 @@
 //! read-only (shared snapshots) outside, the shape of 26.3's `WorldGenRegion` without a level.
 //!
 //! Kept so far: blocks (with the generation heightmaps of the status), biomes, fluid
-//! post-processing marks, pending block entity and entity NBT, structure starts and references.
-//! The carving mask stays with the CARVERS step (26.3 does not save it); scheduled ticks and light
-//! come with their systems.
+//! post-processing marks, scheduled ticks, pending block entity and entity NBT, structure starts and
+//! references.
+//! The carving mask stays with the CARVERS step (26.3 does not save it); light comes with its
+//! system. Scheduled ticks are [`ProtoChunkTicks`].
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
@@ -19,6 +20,7 @@ use crate::world::chunk::{
     BitStorage, ChunkStatus, ContainerFactory, LevelChunkSection, SectionFlags, StateFlags,
 };
 use crate::world::level_chunk::{HeightmapFlags, heightmaps_after};
+use crate::world::ticks::{ProtoChunkTicks, TickPriority};
 use crate::worldgen::structure::start::ChunkStructures;
 
 /// What a scheduled tick will tick.
@@ -27,15 +29,6 @@ pub enum TickTarget {
     Block(BlockId),
     /// A fluid (`StateFluid::fluid`).
     Fluid(u8),
-}
-
-/// A tick scheduled while the chunk is generated (`ProtoChunkTicks`): the position, what ticks and
-/// the delay in ticks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ScheduledTick {
-    pub pos: BlockPos,
-    pub target: TickTarget,
-    pub delay: i32,
 }
 
 /// A chunk being generated (see the module docs).
@@ -58,9 +51,9 @@ pub struct ProtoChunk {
     pub entities: Vec<Compound>,
     /// `structureStarts` and `structureReferences`.
     pub structures: ChunkStructures,
-    /// The ticks scheduled so far, in order (`ProtoChunkTicks.schedule` drops a repeat of the
-    /// same target at the same position).
-    pub ticks: Vec<ScheduledTick>,
+    /// The block and fluid ticks scheduled so far, in order (`ProtoChunkTicks`).
+    pub block_ticks: ProtoChunkTicks<BlockId>,
+    pub fluid_ticks: ProtoChunkTicks<u8>,
 }
 
 fn column(x: i32, z: i32) -> usize {
@@ -90,18 +83,17 @@ impl ProtoChunk {
             block_entities: BTreeMap::new(),
             entities: Vec::new(),
             structures: ChunkStructures::default(),
-            ticks: Vec::new(),
+            block_ticks: ProtoChunkTicks::default(),
+            fluid_ticks: ProtoChunkTicks::default(),
         }
     }
 
-    /// `ProtoChunkTicks.schedule`.
-    pub fn schedule_tick(&mut self, pos: BlockPos, target: TickTarget, delay: i32) {
-        if !self
-            .ticks
-            .iter()
-            .any(|t| t.pos == pos && t.target == target)
-        {
-            self.ticks.push(ScheduledTick { pos, target, delay });
+    /// `ProtoChunkTicks.schedule` (normal priority): a repeat of the same target at the same
+    /// position is dropped, and so is the delay (the tick saves with `t: 0`).
+    pub fn schedule_tick(&mut self, pos: BlockPos, target: TickTarget, _delay: i32) {
+        match target {
+            TickTarget::Block(block) => self.block_ticks.schedule(pos, block, TickPriority::Normal),
+            TickTarget::Fluid(fluid) => self.fluid_ticks.schedule(pos, fluid, TickPriority::Normal),
         }
     }
 
