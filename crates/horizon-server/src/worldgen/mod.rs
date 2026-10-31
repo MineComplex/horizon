@@ -22,6 +22,7 @@
 //!   `spigot.yml` salts), structure starts and references in chunk NBT.
 //! - [`feature`]: the configured and placed feature registries, each biome's features per
 //!   step, and the feature sorter.
+//! - [`generator`]: a level's chunk generator and the status pipeline's generation steps.
 //! - [`placement`]: placement modifiers, block predicates, int and height providers, and the
 //!   `FeaturePlacer` that runs a placed feature's chain over a world view.
 //!
@@ -38,6 +39,7 @@ pub mod codec;
 pub mod data;
 pub mod density;
 pub mod feature;
+pub mod generator;
 pub mod noise;
 pub mod placement;
 pub mod proto_chunk;

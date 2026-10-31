@@ -1,20 +1,51 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::manager::{ChunkHolderManager, ChunkSettings, ChunkStorage};
+use super::generation::{GenerationJob, GenerationResult};
+use super::manager::{ChunkHolderManager, ChunkSettings, ChunkStorage, LoadedChunk};
 use super::player_loader::{ChunkSink, PlayerChunkLoader};
 use super::propagator::Propagator;
 use super::ticket::*;
+use crate::block::BlockState;
 use crate::core::position::ChunkPos;
 use crate::network::play::chunk_sending::PlayerDistances;
 use crate::world::chunk::{ChunkData, ChunkStatus, ContainerFactory};
-use crate::world::level_chunk::LevelChunk;
+use crate::world::level_chunk::{HeightmapTable, LevelChunk};
+use crate::worldgen::generator::convert::{
+    ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
+};
+use crate::worldgen::generator::pyramid::{Pyramids, status_facts};
+use crate::worldgen::proto_chunk::ProtoChunk;
+use crate::worldgen::structure::StructureRegistry;
 
-/// Records the requests; loads are answered by [`answer`].
+/// Records the requests; loads are answered by [`answer`], generation steps by [`generate`].
 #[derive(Default)]
 struct Fake {
     loads: Vec<ChunkPos>,
     saves: Vec<(ChunkPos, i64)>,
     flushes: usize,
+    jobs: Vec<GenerationJob>,
+    /// The chunks the jobs handed out and not answered yet write.
+    writing: HashSet<ChunkPos>,
+    structures: StructureRegistry,
+}
+
+thread_local! {
+    static FACTORY: ContainerFactory = ContainerFactory::new(4, 1, 0);
+}
+
+fn shape_with<T>(f: impl FnOnce(ChunkShape<'_>) -> T) -> T {
+    FACTORY.with(|factory| {
+        f(ChunkShape {
+            min_section_y: 0,
+            section_count: 1,
+            factory,
+            void_air: BlockState(3),
+        })
+    })
+}
+
+fn heightmaps() -> HeightmapTable {
+    HeightmapTable::new(4, |s| if s.0 == 0 { 0 } else { 0x3f })
 }
 
 impl ChunkStorage for Fake {
@@ -28,6 +59,80 @@ impl ChunkStorage for Fake {
     fn flush(&mut self) {
         self.flushes += 1;
     }
+    fn generate(&mut self, job: GenerationJob) {
+        // No two running steps write the same chunk.
+        let radius = status_facts(job.status).write_radius.min(1);
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
+                let at = ChunkPos::new(job.pos.x + dx, job.pos.z + dz);
+                assert!(self.writing.insert(at), "{at:?} written twice");
+            }
+        }
+        let side = (2 * job.radius + 1) as usize;
+        assert_eq!(job.chunks.len(), side * side);
+        self.jobs.push(job);
+    }
+    fn empty_chunk(&self, pos: ChunkPos) -> ProtoChunk {
+        shape_with(|shape| shape.empty(pos))
+    }
+    fn proto_data(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> ChunkData {
+        proto_to_data(chunk, extras, &self.structures)
+    }
+    fn level_chunk(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> LevelChunk {
+        shape_with(|shape| {
+            proto_into_level_chunk(chunk, extras, shape, &self.structures, &heightmaps())
+        })
+    }
+    fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk {
+        shape_with(|shape| proto_from_data(chunk.to_data(), shape, &self.structures))
+            .unwrap()
+            .0
+    }
+}
+
+/// Answers every pending generation step as a worker would (each chunk the step's region
+/// requires is at its required status), the centre advanced to the step's status. Returns how
+/// many steps ran.
+fn generate(m: &mut ChunkHolderManager<Fake>) -> usize {
+    let jobs = std::mem::take(&mut m.storage_mut().jobs);
+    let count = jobs.len();
+    for job in jobs {
+        let step = Pyramids::get().generation.step_to(job.status);
+        let side = 2 * job.radius + 1;
+        let mut written = Vec::new();
+        for (i, (chunk, writable)) in job.chunks.into_iter().enumerate() {
+            let (dx, dz) = (i as i32 % side - job.radius, i as i32 / side - job.radius);
+            let ring = dx.abs().max(dz.abs());
+            assert!(
+                chunk.status() >= step.required_status_at(ring),
+                "{:?} for {:?} at {dx} {dz}",
+                chunk.status(),
+                job.status
+            );
+            if writable {
+                let mut chunk = std::sync::Arc::unwrap_or_clone(chunk);
+                if (dx, dz) == (0, 0) {
+                    chunk.set_status(job.status);
+                }
+                written.push(chunk);
+            }
+        }
+        let radius = status_facts(job.status).write_radius.min(1);
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
+                m.storage_mut()
+                    .writing
+                    .remove(&ChunkPos::new(job.pos.x + dx, job.pos.z + dz));
+            }
+        }
+        m.generation_done(GenerationResult {
+            pos: job.pos,
+            status: job.status,
+            result: Ok(written),
+            nanos: 1,
+        });
+    }
+    count
 }
 
 fn manager(settings: ChunkSettings) -> ChunkHolderManager<Fake> {
@@ -43,7 +148,8 @@ fn level_chunk(pos: ChunkPos, status: ChunkStatus) -> LevelChunk {
 /// Answers every pending load: a full chunk, or `None` for the chunks in `missing`.
 fn answer(m: &mut ChunkHolderManager<Fake>, missing: &[ChunkPos]) {
     for pos in std::mem::take(&mut m.storage_mut().loads) {
-        let chunk = (!missing.contains(&pos)).then(|| level_chunk(pos, ChunkStatus::Full));
+        let chunk = (!missing.contains(&pos))
+            .then(|| LoadedChunk::Level(level_chunk(pos, ChunkStatus::Full)));
         m.chunk_loaded(pos, chunk);
     }
 }
@@ -210,7 +316,7 @@ fn full_statuses_follow_levels_and_full_neighbours() {
     assert!(m.full_chunk(p(2, 0)).is_some() && m.full_chunk(p(3, 0)).is_none());
 
     // A missing neighbour: the center can't be entity ticking, the chunks next to it can't
-    // be block ticking; the missing chunk waits for the generator.
+    // be block ticking; the missing chunk is being generated (its first step is out).
     let mut m = manager(ChunkSettings::default());
     m.add_ticket(TicketType::Player, p(0, 0), ENTITY_TICKING_LEVEL, 1);
     m.process_ticket_updates();
@@ -219,13 +325,24 @@ fn full_statuses_follow_levels_and_full_neighbours() {
     assert_eq!(m.full_status(p(0, 0)), FullChunkStatus::BlockTicking);
     assert_eq!(m.full_status(p(1, 1)), FullChunkStatus::Full);
     assert_eq!(m.full_status(p(1, 0)), FullChunkStatus::BlockTicking);
-    assert_eq!(m.awaiting_generation().collect::<Vec<_>>(), [p(2, 2)]);
+    let jobs: Vec<_> = m
+        .storage_mut()
+        .jobs
+        .iter()
+        .map(|j| (j.pos, j.status))
+        .collect();
+    assert_eq!(jobs, [(p(2, 2), ChunkStatus::StructureStarts)]);
+    assert!(m.is_loading(p(2, 2)));
 
     // Downgrades: the ticket goes, the UNKNOWN one after a tick, then everything is inaccessible.
+    // The running step finishes; the chunk is no longer asked for and can unload.
     m.remove_ticket(TicketType::Player, p(0, 0), ENTITY_TICKING_LEVEL, 1);
     m.tick();
     assert_eq!(m.full_status(p(0, 0)), FullChunkStatus::Inaccessible);
-    assert_eq!(m.awaiting_generation().count(), 0);
+    assert_eq!(m.unload_queue_len(), m.holder_count() - 1);
+    assert_eq!(generate(&mut m), 1);
+    assert_eq!(m.gen_status(p(2, 2)), Some(ChunkStatus::StructureStarts));
+    assert_eq!(m.storage_mut().jobs.len(), 0);
     assert_eq!(m.unload_queue_len(), m.holder_count());
 }
 
@@ -349,6 +466,16 @@ fn level_tick(
     missing: &[ChunkPos],
 ) {
     answer(m, missing);
+    // This level cannot generate (as a flat level): the missing chunk's step is refused.
+    for job in std::mem::take(&mut m.storage_mut().jobs) {
+        m.storage_mut().writing.remove(&job.pos);
+        m.generation_done(GenerationResult {
+            pos: job.pos,
+            status: job.status,
+            result: Err(None),
+            nanos: 0,
+        });
+    }
     m.tick();
     m.process_ticket_updates();
     loader.update_queues(m, sink, tick * 50_000_000);
@@ -423,4 +550,47 @@ fn a_player_loader_loads_sends_and_leaves_chunks_behind() {
         m.process_unloads(tick);
     }
     assert_eq!(m.holder_count(), 0);
+}
+
+/// Derived from Moonrise's sources: a chunk not on disk is generated one status at a time, each
+/// step after the chunks around it reach what the generation pyramid requires; the chunks around
+/// end at the statuses `generationStatus` gives their distance, and nothing past 11 chunks loads.
+#[test]
+fn a_missing_chunk_is_generated_through_the_pyramid() {
+    let mut m = manager(ChunkSettings::default());
+    m.add_ticket(TicketType::Player, p(0, 0), FULL_LEVEL, 1);
+    m.process_ticket_updates();
+    assert_eq!(m.storage_mut().loads, [p(0, 0)]);
+    let mut steps = 0;
+    loop {
+        let loads = m.storage_mut().loads.clone();
+        answer(&mut m, &loads);
+        let ran = generate(&mut m);
+        steps += ran;
+        if loads.is_empty() && ran == 0 {
+            break;
+        }
+    }
+    m.process_ticket_updates();
+    assert_eq!(m.gen_status(p(0, 0)), Some(ChunkStatus::Full));
+    assert!(m.full_chunk(p(0, 0)).is_some());
+    assert!(!m.is_loading(p(0, 0)));
+    let at = |x| m.gen_status(p(x, 0));
+    assert_eq!(at(1), Some(ChunkStatus::InitializeLight));
+    assert_eq!(at(2), Some(ChunkStatus::Terrain));
+    assert_eq!(at(3), Some(ChunkStatus::Biomes));
+    assert_eq!(at(10), Some(ChunkStatus::StructureStarts));
+    assert_eq!(at(11), Some(ChunkStatus::StructureStarts));
+    assert_eq!(at(12), None);
+    // Every worker step of the region ran once: STRUCTURE_STARTS out to 11 chunks, references and
+    // biomes to 3, terrain to 2, features to 1.
+    let squares = |r: usize| (2 * r + 1) * (2 * r + 1);
+    assert_eq!(
+        steps,
+        squares(11) + squares(3) + squares(3) + squares(2) + squares(1)
+    );
+    // Stopping saves every chunk, the proto chunks with their status.
+    let saved = m.save_all(true, true, None, 9);
+    assert_eq!(saved, squares(11));
+    assert_eq!(m.storage_mut().saves.len(), squares(11));
 }

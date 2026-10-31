@@ -4,8 +4,9 @@
 //! read-only (shared snapshots) outside, the shape of 26.3's `WorldGenRegion` without a level.
 //!
 //! Kept so far: blocks (with the generation heightmaps of the status), biomes, fluid
-//! post-processing marks, pending block entity and entity NBT. Structure starts and references,
-//! the carving mask, scheduled ticks and light come with the steps that write them.
+//! post-processing marks, pending block entity and entity NBT, structure starts and references.
+//! The carving mask stays with the CARVERS step (26.3 does not save it); scheduled ticks and light
+//! come with their systems.
 
 use std::collections::BTreeMap;
 
@@ -17,6 +18,7 @@ use crate::world::chunk::{
     BitStorage, ChunkStatus, ContainerFactory, LevelChunkSection, SectionFlags, StateFlags,
 };
 use crate::world::level_chunk::{HeightmapFlags, heightmaps_after};
+use crate::worldgen::structure::start::ChunkStructures;
 
 /// A chunk being generated (see the module docs).
 #[derive(Clone, Debug)]
@@ -33,6 +35,8 @@ pub struct ProtoChunk {
     void_air: BlockState,
     pub block_entities: BTreeMap<BlockPos, Compound>,
     pub entities: Vec<Compound>,
+    /// `structureStarts` and `structureReferences`.
+    pub structures: ChunkStructures,
 }
 
 fn column(x: i32, z: i32) -> usize {
@@ -60,6 +64,7 @@ impl ProtoChunk {
             void_air,
             block_entities: BTreeMap::new(),
             entities: Vec::new(),
+            structures: ChunkStructures::default(),
         }
     }
 
@@ -180,6 +185,18 @@ impl ProtoChunk {
         (self.height() as u32 + 1)
             .next_power_of_two()
             .trailing_zeros() as u8
+    }
+
+    /// `setHeightmap`: a heightmap read from a saved chunk; `false` (and nothing kept) when its
+    /// size is not this chunk's.
+    pub fn set_heightmap(&mut self, kind: Heightmap, words: Vec<u64>) -> bool {
+        match BitStorage::from_words(self.heightmap_bits(), 256, words) {
+            Ok(storage) => {
+                self.heightmaps[kind as usize] = Some(storage);
+                true
+            }
+            Err(_) => false,
+        }
     }
 
     /// Creates the heightmap (all at the bottom) if missing.

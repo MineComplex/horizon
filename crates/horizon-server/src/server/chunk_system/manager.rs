@@ -1,38 +1,51 @@
-//! Moonrise's `ChunkHolderManager` and `NewChunkHolder`, as plain data the tick thread owns: the
-//! tickets of each chunk, their levels ([`Propagator`]), a holder per chunk at or below
-//! [`MAX_LEVEL`], each holder's full status, the unload queue and the autosave queue. Chunk data
-//! goes to and comes from the region workers through a [`ChunkStorage`] (the I/O workers'
-//! requests are messages; their answers come back through [`ChunkHolderManager::chunk_loaded`]).
+//! Moonrise's `ChunkHolderManager`, `NewChunkHolder` and the scheduling half of
+//! `ChunkTaskScheduler`, as plain data the tick thread owns: the tickets of each chunk, their
+//! levels ([`Propagator`]), a holder per chunk at or below [`MAX_LEVEL`], each holder's chunk and
+//! generation state, its full status, the unload queue and the autosave queue. Chunk data goes to
+//! and comes from the region workers, and generation steps go to the level's generation workers,
+//! through a [`ChunkStorage`]; their answers come back through [`ChunkHolderManager::chunk_loaded`]
+//! and [`ChunkHolderManager::generation_done`].
 //!
 //! Derived from Moonrise's sources (Paper/Leaf 26.3; Moonrise is not in the vanilla jar, so it is
 //! not run here), keeping its rules:
 //! - a ticket's removal that lowers the chunk's level leaves an `UNKNOWN` ticket at that level for
 //!   one tick; tickets with a timeout count down in [`ChunkHolderManager::tick`];
-//! - a holder entering `FULL` (level 33 or less) asks for its chunk: loaded from disk, or (for a
-//!   chunk not on disk, or not finished) left to the generator — which is not ported: such a chunk
-//!   waits in [`ChunkHolderManager::awaiting_generation`] (WP6's hook). The `ChunkFullTask` that
-//!   turns a saved full chunk into the level's chunk runs at once here (Moonrise queues it on the
-//!   tick thread's executor);
+//! - generation (`ChunkTaskScheduler.schedule`, `NewChunkHolder.onChunkGenComplete`): a holder
+//!   asked for a status (`FULL` when its level reaches `FULL`, `EMPTY` for a player loader's load)
+//!   is brought there one status at a time; each step first needs the chunks around it at the
+//!   statuses its pyramid step requires (`byRadius`), which are scheduled in turn and wake it when
+//!   they get there. A chunk whose saved status is at or past the step goes through the loading
+//!   pyramid (no neighbours; the steps with nothing to do complete at once), others through the
+//!   generation pyramid. A ticket level that falls clamps the requested status (`generationStatus`
+//!   of the new level) or drops it; running steps finish (Moonrise cancels queued ones);
+//! - steps run where Moonrise runs them: the load on the region workers, STRUCTURE_STARTS to
+//!   FEATURES on the generation workers, the light steps, SPAWN and FULL on the tick thread
+//!   (the light steps only advance the status: Starlight is not ported). A step is handed out
+//!   only once no running step writes the chunks it writes (its write radius: FEATURES 1, the
+//!   others 0), Moonrise's area-dependent queue for every writer;
 //! - the full status rises to `FULL`, `BLOCK_TICKING`, `ENTITY_TICKING` as the level allows and as
 //!   the 1x1, 3x3, 5x5 chunks around are full; changes are applied on the tick thread in
 //!   `processTicketUpdates`, upgrades and downgrades in Moonrise's order;
-//! - a holder above `MAX_LEVEL`, inaccessible, not loading and not waiting for generation, goes to
-//!   the unload queue (by 64x64-chunk section, sections in creation order); each
-//!   `processUnloads` unloads at least `chunks.min-chunk-unload-count` (50) or
-//!   `chunks.min-chunk-unload-fraction` (5%) of it, saving each chunk that is unsaved;
+//! - a holder above `MAX_LEVEL`, inaccessible, not generating, not asked for a status and used by
+//!   no neighbour's step, goes to the unload queue (by 64x64-chunk section, sections in creation
+//!   order); each `processUnloads` unloads at least `chunks.min-chunk-unload-count` (50) or
+//!   `chunks.min-chunk-unload-fraction` (5%) of it, saving each chunk that is unsaved (proto
+//!   chunks included);
 //! - autosave (`autoSave`, in `ChunkMap.tick` after the unloads): the full chunks whose last save
 //!   is `chunks.auto-save-interval` ticks old, oldest first, at most
 //!   `chunks.max-auto-save-chunks-per-tick` (24) saved per tick.
 //!
-//! Entities and POI are not ported: their chunks are never saved (counted 0 in the log), and no
-//! neighbour holds a chunk for generation. Pending block and fluid ticks make a chunk unsaved in
-//! Moonrise while the game time moves; they are raw NBT here (saved as read) until ticks are ported.
+//! Not ported: priorities (steps run in the order they become ready), entities and POI (their
+//! chunks are never saved, counted 0 in the log). Pending block and fluid ticks make a chunk
+//! unsaved in Moonrise while the game time moves; they are raw NBT here (saved as read).
 
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 use std::time::Instant;
 
 use indexmap::{IndexMap, IndexSet};
 
+use super::generation::{GenerationJob, GenerationResult};
 use super::propagator::Propagator;
 use super::ticket::{
     FULL_LEVEL, FullChunkStatus, MAX_LEVEL, NO_TIMEOUT, Ticket, TicketSet, TicketType,
@@ -41,15 +54,36 @@ use super::ticket::{
 use crate::core::position::ChunkPos;
 use crate::world::chunk::{ChunkData, ChunkStatus};
 use crate::world::level_chunk::LevelChunk;
+use crate::worldgen::generator::convert::ProtoExtras;
+use crate::worldgen::generator::pyramid::{Pyramids, next_status, status_facts};
+use crate::worldgen::proto_chunk::ProtoChunk;
 
-/// Where chunks are read and written: the region workers ([`crate::world::chunk_io::ChunkIo`]),
-/// a recording fake in tests. Loads are answered later through
-/// [`ChunkHolderManager::chunk_loaded`].
+/// Where chunks are read, written and generated: the region workers and the level's generation
+/// workers (`server::level`), a recording fake in tests. Loads are answered later through
+/// [`ChunkHolderManager::chunk_loaded`], generation steps through
+/// [`ChunkHolderManager::generation_done`].
 pub trait ChunkStorage {
     fn load(&mut self, pos: ChunkPos);
     fn save(&mut self, pos: ChunkPos, chunk: Box<ChunkData>);
     /// Every write sent so far to the disk (`MoonriseRegionFileIO.flush`).
     fn flush(&mut self);
+    /// Runs a generation step on the workers.
+    fn generate(&mut self, job: GenerationJob);
+    /// An empty proto chunk (`ChunkLoadTask.getEmptyChunk`).
+    fn empty_chunk(&self, pos: ChunkPos) -> ProtoChunk;
+    /// A proto chunk's saved form.
+    fn proto_data(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> ChunkData;
+    /// The FULL step's level chunk.
+    fn level_chunk(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> LevelChunk;
+    /// A full chunk as a generation step's neighbour sees it (an `ImposterProtoChunk`).
+    fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk;
+}
+
+/// A chunk read from disk.
+#[derive(Debug)]
+pub enum LoadedChunk {
+    Level(LevelChunk),
+    Proto(ProtoChunk, ProtoExtras),
 }
 
 /// Paper's `chunks` world settings that the chunk system reads (`paper-world-defaults.yml`).
@@ -81,13 +115,51 @@ const UNLOAD_SECTION_SHIFT: i32 = 6;
 /// `NewChunkHolder.NEIGHBOUR_RADIUS`.
 const NEIGHBOUR_RADIUS: i32 = 2;
 
-enum Slot {
-    /// Nothing asked for it.
-    Unloaded,
+/// A holder's chunk (`currentChunk`).
+enum Held {
+    /// A chunk being generated (or saved before `full`): shared read-only with the steps that
+    /// read it, replaced by the copy a step wrote.
+    Proto {
+        chunk: Arc<ProtoChunk>,
+        extras: Box<ProtoExtras>,
+    },
+    /// A full chunk (read from disk, or after the FULL step); `view` is its proto chunk view for
+    /// neighbouring steps, made when first needed and dropped when the chunk changes.
+    Level {
+        chunk: Box<LevelChunk>,
+        view: Option<Arc<ProtoChunk>>,
+    },
+}
+
+impl Held {
+    /// `getPersistedStatus`.
+    fn status(&self) -> ChunkStatus {
+        match self {
+            Self::Proto { chunk, .. } => chunk.status(),
+            Self::Level { chunk, .. } => chunk.status,
+        }
+    }
+}
+
+/// Where a holder's step is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Phase {
+    /// Created; waiting to be handed out (for the chunks it writes to be free).
+    Ready,
+    /// The region workers are reading the chunk.
     Loading,
-    Loaded(Box<LevelChunk>),
-    /// Not on disk (or unreadable): where Moonrise would have an empty proto chunk to generate.
-    Missing,
+    /// On a generation worker.
+    Running,
+    /// Failed: the holder's generation stops here (Moonrise keeps the failed task).
+    Failed,
+}
+
+/// `generationTask` with `generationTaskStatus`.
+struct Task {
+    status: ChunkStatus,
+    phase: Phase,
+    /// The holders the step reads (they count it in `totalNeighboursUsingThisChunk`).
+    neighbours: Vec<ChunkPos>,
 }
 
 /// `NewChunkHolder`.
@@ -96,11 +168,21 @@ struct Holder {
     level: u8,
     /// `oldTicketLevel`: the level the holder's state follows.
     old_level: u8,
-    slot: Slot,
-    /// `currentGenStatus == FULL`: the chunk is the level's.
-    promoted: bool,
-    /// `requestedGenStatus == FULL`: waiting for the load, or for the generator.
-    full_requested: bool,
+    chunk: Option<Held>,
+    /// `currentGenStatus`.
+    gen_status: Option<ChunkStatus>,
+    /// `requestedGenStatus`.
+    requested: Option<ChunkStatus>,
+    task: Option<Task>,
+    /// `neighboursBlockingGenTask`.
+    blocking: IndexSet<ChunkPos>,
+    /// `neighboursWaitingForUs`: who waits, for which status.
+    waiting: IndexMap<ChunkPos, ChunkStatus>,
+    /// `totalNeighboursUsingThisChunk`.
+    using: u32,
+    /// The level cannot generate this chunk (no generator: flat and debug levels), or a chunk it
+    /// needs: it stays as it is, and is never asked for anything again.
+    cannot_generate: bool,
     /// `fullNeighbourChunksLoadedBitset` over the 5x5 around.
     neighbours_full: u32,
     pending: FullChunkStatus,
@@ -134,9 +216,14 @@ impl Holder {
         Self {
             level: MAX_LEVEL + 1,
             old_level: MAX_LEVEL + 1,
-            slot: Slot::Unloaded,
-            promoted: false,
-            full_requested: false,
+            chunk: None,
+            gen_status: None,
+            requested: None,
+            task: None,
+            blocking: IndexSet::new(),
+            waiting: IndexMap::new(),
+            using: 0,
+            cannot_generate: false,
             neighbours_full: 0,
             pending: FullChunkStatus::Inaccessible,
             current: FullChunkStatus::Inaccessible,
@@ -144,6 +231,15 @@ impl Holder {
             in_autosave: false,
             in_unload_queue: false,
         }
+    }
+
+    /// `currentGenStatus == FULL`: the chunk is the level's.
+    fn promoted(&self) -> bool {
+        self.gen_status == Some(ChunkStatus::Full)
+    }
+
+    fn failed(&self) -> bool {
+        self.task.as_ref().is_some_and(|t| t.phase == Phase::Failed)
     }
 
     /// `updatePendingStatus`: true when the pending status changed.
@@ -160,7 +256,7 @@ impl Holder {
         .map_or(FullChunkStatus::Inaccessible, |(_, status)| status);
         if pending == FullChunkStatus::Inaccessible
             && by_level >= FullChunkStatus::Full
-            && self.promoted
+            && self.promoted()
         {
             pending = FullChunkStatus::Full;
         }
@@ -170,12 +266,14 @@ impl Holder {
         changed
     }
 
-    /// `isSafeToUnload() == null` (no entities, POI or generation neighbours to wait for).
+    /// `isSafeToUnload() == null` (no entities or POI to wait for).
     fn is_safe_to_unload(&self) -> bool {
         self.old_level > MAX_LEVEL
+            && self.using == 0
+            && self.waiting.is_empty()
             && self.current == FullChunkStatus::Inaccessible
-            && !self.full_requested
-            && !matches!(self.slot, Slot::Loading)
+            && self.task.is_none()
+            && self.requested.is_none()
     }
 }
 
@@ -184,19 +282,35 @@ fn key(pos: ChunkPos) -> i64 {
     pos.pack()
 }
 
+fn chebyshev(a: ChunkPos, b: ChunkPos) -> i32 {
+    (a.x - b.x).abs().max((a.z - b.z).abs())
+}
+
 /// `SerializableChunkData.copyOf` (with the level's game time) and `tryMarkSaved`, when unsaved.
-fn save_chunk(
-    storage: &mut impl ChunkStorage,
+fn save_held<S: ChunkStorage>(
+    storage: &mut S,
     pos: ChunkPos,
-    chunk: &mut LevelChunk,
+    held: &mut Held,
     game_time: i64,
 ) -> bool {
-    if !chunk.try_mark_saved() {
-        return false;
+    match held {
+        Held::Level { chunk, .. } => {
+            if !chunk.try_mark_saved() {
+                return false;
+            }
+            let mut data = chunk.to_data();
+            data.last_update = game_time;
+            storage.save(pos, Box::new(data));
+        }
+        Held::Proto { chunk, extras } => {
+            if !std::mem::replace(&mut extras.unsaved, false) {
+                return false;
+            }
+            let mut data = storage.proto_data(chunk, extras);
+            data.last_update = game_time;
+            storage.save(pos, Box::new(data));
+        }
     }
-    let mut data = chunk.to_data();
-    data.last_update = game_time;
-    storage.save(pos, Box::new(data));
     true
 }
 
@@ -215,8 +329,24 @@ pub struct ChunkHolderManager<S> {
     unload_queue: IndexMap<ChunkPos, IndexSet<ChunkPos>>,
     /// `autoSaveQueue`: (last autosave tick, chunk key).
     autosave: BTreeSet<(i64, i64)>,
+    /// Steps created and not handed out yet, in order.
+    ready: VecDeque<ChunkPos>,
+    /// The chunks running steps write.
+    writing: HashSet<ChunkPos>,
     current_tick: i64,
     next_id: u64,
+    /// Generation steps that finished, and their time on the workers (for the logs).
+    pub generated: GenerationStats,
+}
+
+/// How much generation ran (for logs and measurements).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GenerationStats {
+    /// Chunks that reached `full` through generation.
+    pub chunks: u64,
+    /// Worker steps that finished, and their total time.
+    pub steps: u64,
+    pub nanos: u64,
 }
 
 impl<S: ChunkStorage> ChunkHolderManager<S> {
@@ -231,14 +361,25 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             pending_full: VecDeque::new(),
             unload_queue: IndexMap::new(),
             autosave: BTreeSet::new(),
+            ready: VecDeque::new(),
+            writing: HashSet::new(),
             current_tick: 0,
             next_id: 1,
+            generated: GenerationStats::default(),
         }
     }
 
     /// The storage back, once the holders are saved (`close`).
     pub fn into_storage(self) -> S {
         self.storage
+    }
+
+    pub fn storage(&self) -> &S {
+        &self.storage
+    }
+
+    pub fn storage_mut(&mut self) -> &mut S {
+        &mut self.storage
     }
 
     /// A fresh ticket identifier (Moonrise's id counters for player loaders and load requests).
@@ -370,8 +511,8 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         self.process_ticket_updates();
     }
 
-    /// `processTicketUpdates`: new levels to the holders (created as needed), their state, then
-    /// the pending full status changes.
+    /// `processTicketUpdates`: new levels to the holders (created as needed), their state, the
+    /// steps that became ready, then the pending full status changes.
     pub fn process_ticket_updates(&mut self) -> bool {
         let mut ret = false;
         if self.propagator.has_pending() {
@@ -387,6 +528,13 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             }
             ret = true;
         }
+        self.run_ready();
+        ret |= self.process_pending_full();
+        ret
+    }
+
+    fn process_pending_full(&mut self) -> bool {
+        let mut ret = false;
         while let Some(pos) = self.pending_full.pop_front() {
             ret |= self.handle_full_status_change(pos);
         }
@@ -395,6 +543,7 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
 
     /// `NewChunkHolder.processTicketLevelUpdate`.
     fn process_level_update(&mut self, pos: ChunkPos) {
+        let pyramids = Pyramids::get();
         let Some(h) = self.holders.get_mut(&pos) else {
             return;
         };
@@ -407,78 +556,516 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             FullChunkStatus::from_level(old),
             FullChunkStatus::from_level(new),
         );
-        if new_state < FullChunkStatus::Full && new > old {
-            h.full_requested = false; // the request is cancelled
+        // Cancellations from a falling level: the requested status is clamped or dropped.
+        if let Some(requested) = h.requested
+            && new_state < FullChunkStatus::Full
+            && new > old
+        {
+            match pyramids.generation_status(new) {
+                None => h.requested = None,
+                Some(max) => {
+                    if requested >= next_status(max) {
+                        if h.gen_status.is_some_and(|s| s >= max) {
+                            h.requested = None;
+                        } else {
+                            h.requested = Some(max);
+                        }
+                    }
+                }
+            }
         }
         if old_state != new_state {
             if old_state < FullChunkStatus::Full
                 && new_state >= FullChunkStatus::Full
-                && !h.promoted
+                && !h.promoted()
             {
-                self.schedule_full(pos);
+                if h.requested.is_some() {
+                    h.requested = Some(ChunkStatus::Full);
+                } else {
+                    self.schedule(pos, ChunkStatus::Full);
+                }
             }
             let h = self.holders.get_mut(&pos).expect("still there");
             if h.update_pending() {
                 self.pending_full.push_back(pos);
             }
         }
-        if (old > MAX_LEVEL) != (new > MAX_LEVEL) {
+        self.check_unload(pos);
+    }
+
+    /// `upgradeGenTarget`: true when the holder is generating or asked for something already
+    /// (further scheduling is its own).
+    fn upgrade_gen_target(h: &mut Holder, to: ChunkStatus) -> bool {
+        if h.requested.is_none() && h.task.is_none() {
+            return false;
+        }
+        if h.requested.is_none_or(|r| r < to) {
+            h.requested = Some(to);
+        }
+        true
+    }
+
+    /// `ChunkTaskScheduler.schedule`: the next step towards `target`, or the neighbours it waits
+    /// for (see the module docs). New steps go to the ready queue.
+    fn schedule(&mut self, pos: ChunkPos, target: ChunkStatus) {
+        let Some(h) = self.holders.get_mut(&pos) else {
+            tracing::error!("Missing chunkholder when required: [{}, {}]", pos.x, pos.z);
+            return;
+        };
+        if h.cannot_generate {
+            return;
+        }
+        if h.task.is_some() {
+            Self::upgrade_gen_target(h, target);
+            return;
+        }
+        let Some(current) = h.gen_status else {
+            // Not loaded yet: the load first.
+            h.requested = Some(target);
+            h.task = Some(Task {
+                status: ChunkStatus::Empty,
+                phase: Phase::Ready,
+                neighbours: vec![pos],
+            });
+            h.using += 1;
+            self.ready.push_back(pos);
+            return;
+        };
+        if current >= target {
+            return;
+        }
+        h.requested = Some(target);
+        let persisted = h.chunk.as_ref().map_or(ChunkStatus::Empty, Held::status);
+        let to = next_status(current);
+        let pyramids = Pyramids::get();
+        let pyramid = if persisted >= to {
+            &pyramids.loading
+        } else {
+            &pyramids.generation
+        };
+        let step = pyramid.step_to(to);
+        let radius = step.read_radius().max(0);
+        let mut blocked = false;
+        if radius > 0 {
+            for (dx, dz) in search_order(radius) {
+                let ring = dx.abs().max(dz.abs());
+                let required = step.required_status_at(ring);
+                let n = ChunkPos::new(pos.x + dx, pos.z + dz);
+                blocked |= self.check_neighbour(n, required, pos);
+            }
+        }
+        if blocked {
+            let dead_end = self.holders[&pos]
+                .blocking
+                .iter()
+                .any(|n| self.holders.get(n).is_some_and(|h| h.cannot_generate));
+            if dead_end {
+                self.refuse(pos);
+            }
+            return;
+        }
+        let mut neighbours = Vec::with_capacity(((2 * radius + 1) * (2 * radius + 1)) as usize);
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
+                let n = ChunkPos::new(pos.x + dx, pos.z + dz);
+                if let Some(nh) = self.holders.get_mut(&n) {
+                    nh.using += 1;
+                    neighbours.push(n);
+                }
+            }
+        }
+        let h = self.holders.get_mut(&pos).expect("scheduled holders exist");
+        h.task = Some(Task {
+            status: to,
+            phase: Phase::Ready,
+            neighbours,
+        });
+        self.ready.push_back(pos);
+    }
+
+    /// `checkNeighbour`: true when the neighbour is not at `required` yet (it is then scheduled,
+    /// and wakes `center` when it gets there).
+    fn check_neighbour(&mut self, pos: ChunkPos, required: ChunkStatus, center: ChunkPos) -> bool {
+        let Some(h) = self.holders.get_mut(&pos) else {
+            tracing::error!("Missing chunkholder when required: [{}, {}]", pos.x, pos.z);
+            return true;
+        };
+        if h.gen_status.is_some_and(|s| s >= required) {
+            return false;
+        }
+        if h.failed() {
+            return true;
+        }
+        if h.cannot_generate {
+            self.holders
+                .get_mut(&center)
+                .expect("the centre exists")
+                .blocking
+                .insert(pos);
+            return true;
+        }
+        h.waiting.insert(center, required);
+        let upgraded = Self::upgrade_gen_target(h, required);
+        self.holders
+            .get_mut(&center)
+            .expect("the centre exists")
+            .blocking
+            .insert(pos);
+        if !upgraded {
+            self.schedule(pos, required);
+        }
+        true
+    }
+
+    /// Hands out the ready steps whose written chunks are free (see the module docs); the steps
+    /// that complete at once may make more ready.
+    fn run_ready(&mut self) {
+        let mut deferred = VecDeque::new();
+        while let Some(pos) = self.ready.pop_front() {
+            if !self.start(pos) {
+                deferred.push_back(pos);
+            }
+        }
+        self.ready = deferred;
+    }
+
+    /// Starts a ready step: false when a chunk it writes is being written.
+    fn start(&mut self, pos: ChunkPos) -> bool {
+        let Some(h) = self.holders.get_mut(&pos) else {
+            return true;
+        };
+        let Some(task) = &h.task else {
+            return true;
+        };
+        if task.phase != Phase::Ready {
+            return true;
+        }
+        let to = task.status;
+        if to == ChunkStatus::Empty {
+            // `ChunkLoadTask`.
+            h.task.as_mut().expect("checked").phase = Phase::Loading;
+            self.storage.load(pos);
+            return true;
+        }
+        let persisted = h.chunk.as_ref().map_or(ChunkStatus::Empty, Held::status);
+        let generation = persisted < to;
+        let facts = status_facts(to);
+        if !generation && facts.empty_load {
+            self.complete(pos, to);
+            return true;
+        }
+        let write_radius = if generation {
+            facts.write_radius.min(1)
+        } else {
+            0
+        };
+        let writes: Vec<ChunkPos> = (-write_radius..=write_radius)
+            .flat_map(|dz| (-write_radius..=write_radius).map(move |dx| (dx, dz)))
+            .map(|(dx, dz)| ChunkPos::new(pos.x + dx, pos.z + dz))
+            .collect();
+        if writes.iter().any(|p| self.writing.contains(p)) {
+            return false;
+        }
+        let on_worker = generation
+            && matches!(
+                to,
+                ChunkStatus::StructureStarts
+                    | ChunkStatus::StructureReferences
+                    | ChunkStatus::Biomes
+                    | ChunkStatus::Terrain
+                    | ChunkStatus::Features
+            );
+        if !on_worker {
+            // The loading pyramid's steps and the tick thread's generation steps.
+            self.run_inline(pos, to, generation);
+            return true;
+        }
+        let radius = Pyramids::get().generation.step_to(to).read_radius();
+        let mut chunks = Vec::with_capacity(((2 * radius + 1) * (2 * radius + 1)) as usize);
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
+                let n = ChunkPos::new(pos.x + dx, pos.z + dz);
+                let writable = chebyshev(n, pos) <= write_radius;
+                let Some(view) = self.view(n) else {
+                    tracing::error!(
+                        "Chunk [{}, {}] has no chunk for the {} step of [{}, {}]",
+                        n.x,
+                        n.z,
+                        to.name(),
+                        pos.x,
+                        pos.z
+                    );
+                    self.fail(pos);
+                    return true;
+                };
+                let proto = matches!(
+                    self.holders.get(&n).and_then(|h| h.chunk.as_ref()),
+                    Some(Held::Proto { .. })
+                );
+                chunks.push((view, writable && proto));
+            }
+        }
+        for p in writes {
+            self.writing.insert(p);
+        }
+        let h = self.holders.get_mut(&pos).expect("still there");
+        h.task.as_mut().expect("checked").phase = Phase::Running;
+        self.storage.generate(GenerationJob {
+            pos,
+            status: to,
+            radius,
+            chunks,
+        });
+        true
+    }
+
+    /// A chunk as a step reads it: a proto chunk's shared snapshot, a full chunk's view.
+    fn view(&mut self, pos: ChunkPos) -> Option<Arc<ProtoChunk>> {
+        let h = self.holders.get_mut(&pos)?;
+        match h.chunk.as_mut()? {
+            Held::Proto { chunk, .. } => Some(chunk.clone()),
+            Held::Level { chunk, view } => {
+                if view.is_none() {
+                    *view = Some(Arc::new(self.storage.proto_view(chunk)));
+                }
+                view.clone()
+            }
+        }
+    }
+
+    /// Steps run on the tick thread: the loading pyramid's (`loadStructureStarts`, the light
+    /// steps: nothing to do), the light steps and SPAWN of generation (status only: Starlight
+    /// and entities are not ported), and FULL (`ChunkStatusTasks.full`: the level chunk).
+    fn run_inline(&mut self, pos: ChunkPos, to: ChunkStatus, generation: bool) {
+        let h = self.holders.get_mut(&pos).expect("started holders exist");
+        if to == ChunkStatus::Full {
+            if let Some(Held::Proto { chunk, extras }) = &h.chunk {
+                let level = self.storage.level_chunk(chunk, extras);
+                h.chunk = Some(Held::Level {
+                    chunk: Box::new(level),
+                    view: None,
+                });
+                self.generated.chunks += 1;
+            }
+        } else if generation
+            && let Some(Held::Proto { chunk, extras }) = &mut h.chunk
+            && chunk.status() < to
+        {
+            Arc::make_mut(chunk).set_status(to);
+            extras.unsaved = true;
+        }
+        self.complete(pos, to);
+    }
+
+    /// A step that failed: logged, the holder's generation stops (Moonrise's failed task).
+    fn fail(&mut self, pos: ChunkPos) {
+        if let Some(h) = self.holders.get_mut(&pos)
+            && let Some(task) = &mut h.task
+        {
+            task.phase = Phase::Failed;
+        }
+    }
+
+    /// A step the level cannot run (it has no generator): the chunk stays as it is, its step is
+    /// dropped, and so are the chunks waiting for it (they need it), which can then unload.
+    fn refuse(&mut self, pos: ChunkPos) {
+        let mut stack = vec![pos];
+        while let Some(at) = stack.pop() {
+            let Some(h) = self.holders.get_mut(&at) else {
+                continue;
+            };
+            h.cannot_generate = true;
+            h.requested = None;
+            let task = h.task.take();
+            let waiting: Vec<ChunkPos> = h.waiting.drain(..).map(|(n, _)| n).collect();
+            for n in task.map(|t| t.neighbours).unwrap_or_default() {
+                if let Some(nh) = self.holders.get_mut(&n) {
+                    nh.using -= 1;
+                    if nh.using == 0 {
+                        self.check_unload(n);
+                    }
+                }
+            }
+            for n in waiting {
+                if let Some(nh) = self.holders.get_mut(&n) {
+                    nh.blocking.shift_remove(&at);
+                    if !nh.cannot_generate {
+                        stack.push(n);
+                    }
+                }
+            }
+            self.check_unload(at);
+        }
+    }
+
+    /// The end of a step: the neighbours it used are released, then `onChunkGenComplete`.
+    fn complete(&mut self, pos: ChunkPos, status: ChunkStatus) {
+        let h = self.holders.get_mut(&pos).expect("completed holders exist");
+        let task = h.task.take().expect("a step was running");
+        for n in task.neighbours {
+            if let Some(nh) = self.holders.get_mut(&n) {
+                nh.using -= 1;
+                if nh.using == 0 {
+                    self.check_unload(n);
+                }
+            }
+        }
+        self.on_gen_complete(pos, status);
+    }
+
+    /// `onChunkGenComplete` for a step that produced its chunk.
+    fn on_gen_complete(&mut self, pos: ChunkPos, status: ChunkStatus) {
+        let h = self.holders.get_mut(&pos).expect("completed holders exist");
+        h.gen_status = Some(status);
+        let requested = h.requested;
+        let waiting: Vec<(ChunkPos, ChunkStatus)> = h.waiting.drain(..).collect();
+        let mut keep = IndexMap::new();
+        let mut needs_scheduling = Vec::new();
+        for (n, required) in waiting {
+            if status < required {
+                if requested.is_none_or(|r| r < required) {
+                    // Cancelled for this neighbour: it stops waiting.
+                    if let Some(nh) = self.holders.get_mut(&n) {
+                        nh.blocking.shift_remove(&pos);
+                        if nh.blocking.is_empty() {
+                            self.check_unload(n);
+                        }
+                    }
+                } else {
+                    keep.insert(n, required);
+                }
+                continue;
+            }
+            if let Some(nh) = self.holders.get_mut(&n) {
+                nh.blocking.shift_remove(&pos);
+                if nh.blocking.is_empty() {
+                    if nh.requested.is_some() {
+                        needs_scheduling.push(n);
+                    } else {
+                        self.check_unload(n);
+                    }
+                }
+            }
+        }
+        let h = self.holders.get_mut(&pos).expect("still there");
+        h.waiting = keep;
+        if status == ChunkStatus::Full && h.update_pending() {
+            self.pending_full.push_back(pos);
+        }
+        let more = requested.filter(|&r| status < r);
+        if more.is_none() {
+            h.requested = None;
             self.check_unload(pos);
         }
-    }
-
-    /// `ChunkTaskScheduler.schedule(..., FULL)` for a holder now at `FULL`.
-    fn schedule_full(&mut self, pos: ChunkPos) {
-        let h = self.holders.get_mut(&pos).expect("scheduled holders exist");
-        match &h.slot {
-            Slot::Unloaded => {
-                h.slot = Slot::Loading;
-                h.full_requested = true;
-                self.storage.load(pos);
+        for n in needs_scheduling {
+            if let Some(target) = self.holders.get(&n).and_then(|h| h.requested) {
+                self.schedule(n, target);
             }
-            Slot::Loaded(chunk) if chunk.status == ChunkStatus::Full => self.promote(pos),
-            // Loading, or waiting for the generator (a chunk not on disk, or not finished).
-            _ => h.full_requested = true,
         }
-    }
-
-    /// `ChunkFullTask`: the saved full chunk becomes the level's.
-    fn promote(&mut self, pos: ChunkPos) {
-        let h = self.holders.get_mut(&pos).expect("promoted holders exist");
-        h.promoted = true;
-        h.full_requested = false;
-        if h.update_pending() {
-            self.pending_full.push_back(pos);
+        if let Some(target) = more {
+            self.schedule(pos, target);
         }
     }
 
     /// `scheduleChunkLoad(..., EMPTY, addTicket = false)`: reads the chunk of a held chunk that
     /// nothing asked for yet (a player loader's `LOADED` stage).
     pub fn schedule_load(&mut self, pos: ChunkPos) {
-        if let Some(h) = self.holders.get_mut(&pos)
-            && matches!(h.slot, Slot::Unloaded)
+        if self
+            .holders
+            .get(&pos)
+            .is_some_and(|h| h.gen_status.is_none())
         {
-            h.slot = Slot::Loading;
-            self.storage.load(pos);
+            self.schedule(pos, ChunkStatus::Empty);
+            self.run_ready();
         }
     }
 
-    /// A load's answer: the chunk, or `None` when it is not on disk (or failed).
-    pub fn chunk_loaded(&mut self, pos: ChunkPos, chunk: Option<LevelChunk>) {
+    /// A load's answer: the chunk, or `None` when it is not on disk (or could not be read: its
+    /// data is lost, as Moonrise logs): an empty proto chunk then.
+    pub fn chunk_loaded(&mut self, pos: ChunkPos, chunk: Option<LoadedChunk>) {
         let Some(h) = self.holders.get_mut(&pos) else {
             return;
         };
-        if !matches!(h.slot, Slot::Loading) {
+        if !h
+            .task
+            .as_ref()
+            .is_some_and(|t| t.status == ChunkStatus::Empty && t.phase == Phase::Loading)
+        {
             return;
         }
-        let full = chunk
-            .as_ref()
-            .is_some_and(|c| c.status == ChunkStatus::Full);
-        h.slot = chunk.map_or(Slot::Missing, |c| Slot::Loaded(Box::new(c)));
-        if h.full_requested && full && h.old_level <= FULL_LEVEL {
-            self.promote(pos);
+        h.chunk = Some(match chunk {
+            Some(LoadedChunk::Level(chunk)) => Held::Level {
+                chunk: Box::new(chunk),
+                view: None,
+            },
+            Some(LoadedChunk::Proto(chunk, extras)) => Held::Proto {
+                chunk: Arc::new(chunk),
+                extras: Box::new(extras),
+            },
+            None => Held::Proto {
+                chunk: Arc::new(self.storage.empty_chunk(pos)),
+                extras: Box::default(),
+            },
+        });
+        self.complete(pos, ChunkStatus::Empty);
+        self.run_ready();
+        self.process_pending_full();
+    }
+
+    /// A generation step's answer: the chunks it wrote replace the holders' (they are unsaved),
+    /// the written chunks are free again, then the step completes. A failed step is logged and
+    /// stops the chunk's generation.
+    pub fn generation_done(&mut self, done: GenerationResult) {
+        let GenerationResult {
+            pos,
+            status,
+            result,
+            nanos,
+        } = done;
+        let write_radius = status_facts(status).write_radius.min(1);
+        for dz in -write_radius..=write_radius {
+            for dx in -write_radius..=write_radius {
+                self.writing.remove(&ChunkPos::new(pos.x + dx, pos.z + dz));
+            }
         }
-        self.check_unload(pos);
+        let running = self.holders.get(&pos).is_some_and(|h| {
+            h.task
+                .as_ref()
+                .is_some_and(|t| t.status == status && t.phase == Phase::Running)
+        });
+        if !running {
+            return;
+        }
+        match result {
+            Ok(written) => {
+                self.generated.steps += 1;
+                self.generated.nanos += nanos;
+                for chunk in written {
+                    let at = chunk.pos();
+                    if let Some(Held::Proto {
+                        chunk: slot,
+                        extras,
+                    }) = self.holders.get_mut(&at).and_then(|h| h.chunk.as_mut())
+                    {
+                        *slot = Arc::new(chunk);
+                        extras.unsaved = true;
+                    }
+                }
+                self.complete(pos, status);
+            }
+            Err(Some(e)) => {
+                tracing::error!(
+                    "Failed to complete status for chunk: status:{}, chunk: ({},{}): {e}",
+                    status.name(),
+                    pos.x,
+                    pos.z
+                );
+                self.fail(pos);
+            }
+            Err(None) => self.refuse(pos),
+        }
+        self.run_ready();
+        self.process_pending_full();
     }
 
     /// `handleFullStatusChange`: steps towards the pending status, in Moonrise's order.
@@ -622,8 +1209,8 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         if h.in_autosave {
             self.autosave.remove(&(h.last_auto_save, key(pos)));
         }
-        if let Slot::Loaded(mut chunk) = h.slot {
-            save_chunk(&mut self.storage, pos, &mut chunk, game_time);
+        if let Some(mut held) = h.chunk {
+            save_held(&mut self.storage, pos, &mut held, game_time);
         }
     }
 
@@ -644,9 +1231,10 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
             let h = self.holders.get_mut(&pos).expect("queued holders exist");
             h.last_auto_save = self.current_tick;
             h.in_autosave = false;
-            if let Slot::Loaded(chunk) = &mut h.slot
-                && h.promoted
-                && save_chunk(&mut self.storage, pos, chunk, game_time)
+            let promoted = h.promoted();
+            if let Some(held @ Held::Level { .. }) = &mut h.chunk
+                && promoted
+                && save_held(&mut self.storage, pos, held, game_time)
             {
                 saved += 1;
             }
@@ -661,8 +1249,8 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         }
     }
 
-    /// `saveAllChunks`: every unsaved chunk (on shutdown also those not yet the level's), then
-    /// the regions synced when `flush`. Returns how many were saved.
+    /// `saveAllChunks`: every unsaved chunk (on shutdown also those not yet the level's, proto
+    /// chunks included), then the regions synced when `flush`. Returns how many were saved.
     pub fn save_all(
         &mut self,
         flush: bool,
@@ -678,9 +1266,10 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         let total = self.holders.len();
         let mut saved = 0;
         for (i, (&pos, h)) in self.holders.iter_mut().enumerate() {
-            if let Slot::Loaded(chunk) = &mut h.slot
-                && (shutdown || h.promoted)
-                && save_chunk(&mut self.storage, pos, chunk, game_time)
+            let promoted = h.promoted();
+            if let Some(held) = &mut h.chunk
+                && (shutdown || promoted)
+                && save_held(&mut self.storage, pos, held, game_time)
             {
                 saved += 1;
             }
@@ -706,19 +1295,22 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         saved
     }
 
-    /// The chunk, when loaded (whatever its status).
+    /// The chunk, when it is a full chunk (whatever its holder's status).
     pub fn chunk(&self, pos: ChunkPos) -> Option<&LevelChunk> {
-        match &self.holders.get(&pos)?.slot {
-            Slot::Loaded(chunk) => Some(chunk),
-            _ => None,
+        match self.holders.get(&pos)?.chunk.as_ref()? {
+            Held::Level { chunk, .. } => Some(chunk),
+            Held::Proto { .. } => None,
         }
     }
 
     /// The chunk, to change it (a change must [`LevelChunk::mark_unsaved`]).
     pub fn chunk_mut(&mut self, pos: ChunkPos) -> Option<&mut LevelChunk> {
-        match &mut self.holders.get_mut(&pos)?.slot {
-            Slot::Loaded(chunk) => Some(chunk),
-            _ => None,
+        match self.holders.get_mut(&pos)?.chunk.as_mut()? {
+            Held::Level { chunk, view } => {
+                *view = None;
+                Some(chunk)
+            }
+            Held::Proto { .. } => None,
         }
     }
 
@@ -728,27 +1320,34 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         if h.current < FullChunkStatus::Full {
             return None;
         }
-        match &h.slot {
-            Slot::Loaded(chunk) => Some(chunk),
-            _ => None,
-        }
+        self.chunk(pos)
     }
 
-    /// `getAnyChunkIfLoaded` is not null: the load is done (a missing chunk counts, as the empty
-    /// proto chunk Moonrise would have). `Some(true)` when the chunk on disk is full.
+    /// `getAnyChunkIfLoaded` is not null: the load is done. `Some(true)` when the chunk is full
+    /// (on disk, or generated).
     pub fn loaded(&self, pos: ChunkPos) -> Option<bool> {
-        match &self.holders.get(&pos)?.slot {
-            Slot::Loaded(chunk) => Some(chunk.status == ChunkStatus::Full),
-            Slot::Missing => Some(false),
-            Slot::Unloaded | Slot::Loading => None,
-        }
+        let held = self.holders.get(&pos)?.chunk.as_ref()?;
+        Some(held.status() == ChunkStatus::Full)
     }
 
-    /// Whether a load asked for at `FULL` is still running (or not yet started).
+    /// Whether a chunk asked for at `FULL` is still on its way (loading or generating; a chunk
+    /// whose generation failed is not).
     pub fn is_loading(&self, pos: ChunkPos) -> bool {
         self.holders.get(&pos).is_some_and(|h| {
-            matches!(h.slot, Slot::Loading)
-                || (matches!(h.slot, Slot::Unloaded) && h.old_level <= FULL_LEVEL)
+            h.old_level <= FULL_LEVEL
+                && !h.promoted()
+                && !h.failed()
+                && !h.cannot_generate
+                && !self.blocked_by_failure(pos)
+        })
+    }
+
+    /// Whether the chunk's generation waits on a neighbour whose generation failed.
+    fn blocked_by_failure(&self, pos: ChunkPos) -> bool {
+        self.holders.get(&pos).is_some_and(|h| {
+            h.blocking
+                .iter()
+                .any(|n| self.holders.get(n).is_some_and(Holder::failed))
         })
     }
 
@@ -764,23 +1363,44 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
         self.holders.get(&pos).map_or(MAX_LEVEL + 1, |h| h.level)
     }
 
-    /// The hook for world generation (WP6): chunks at `FULL` that are not on disk, or not
-    /// finished. Without a generator they stay as they are and are never sent.
-    pub fn awaiting_generation(&self) -> impl Iterator<Item = ChunkPos> + '_ {
-        self.holders
-            .iter()
-            .filter(|(_, h)| h.full_requested && !matches!(h.slot, Slot::Loading))
-            .map(|(&pos, _)| pos)
+    /// The holder's generation status (`currentGenStatus`).
+    pub fn gen_status(&self, pos: ChunkPos) -> Option<ChunkStatus> {
+        self.holders.get(&pos)?.gen_status
+    }
+
+    /// Whether a step is running or waiting to run anywhere.
+    pub fn is_generating(&self) -> bool {
+        !self.ready.is_empty()
+            || self
+                .holders
+                .values()
+                .any(|h| h.task.as_ref().is_some_and(|t| t.phase != Phase::Failed))
+    }
+
+    /// A holder's state, for debugging.
+    pub fn describe(&self, pos: ChunkPos) -> String {
+        let Some(h) = self.holders.get(&pos) else {
+            return "no holder".into();
+        };
+        format!(
+            "level {} old {} gen {:?} req {:?} task {:?} blocking {:?} waiting {:?} using {} cannot {} current {:?} queued {}",
+            h.level,
+            h.old_level,
+            h.gen_status,
+            h.requested,
+            h.task.as_ref().map(|t| (t.status, t.phase)),
+            h.blocking,
+            h.waiting,
+            h.using,
+            h.cannot_generate,
+            h.current,
+            h.in_unload_queue
+        )
     }
 
     /// How many holders there are (for tests and logs).
     pub fn holder_count(&self) -> usize {
         self.holders.len()
-    }
-
-    #[cfg(test)]
-    pub(super) fn storage_mut(&mut self) -> &mut S {
-        &mut self.storage
     }
 
     #[cfg(test)]
@@ -795,4 +1415,16 @@ impl<S: ChunkStorage> ChunkHolderManager<S> {
     pub(super) fn unload_queue_len(&self) -> usize {
         self.unload_queue.values().map(IndexSet::len).sum()
     }
+}
+
+/// `ParallelSearchRadiusIteration.getSearchIteration(radius)`'s chunks: by ring from the centre
+/// outwards (the order only decides which neighbour is scheduled first).
+fn search_order(radius: i32) -> impl Iterator<Item = (i32, i32)> {
+    (1..=radius).flat_map(|r| {
+        (-r..=r).flat_map(move |dz| {
+            (-r..=r)
+                .filter(move |&dx| dx.abs().max(dz.abs()) == r)
+                .map(move |dx| (dx, dz))
+        })
+    })
 }

@@ -13,9 +13,11 @@
 //!   second. Queues are heaps by squared distance; ties (unordered in Moonrise's heap) go by
 //!   chunk coordinates.
 //! - A loaded chunk is generated when it is full on disk, or when the player may generate
-//!   chunks: no generator exists yet (WP6), so a chunk that is not on disk (or not finished)
-//!   stays loaded and is never sent; the chunks next to it are not sent either (their neighbours
-//!   are not generated), and the send queue waits on the nearest such chunk, as Moonrise's does.
+//!   chunks (`canPlayerGenerateChunks`: not a spectator, or the `spectatorsGenerateChunks` game
+//!   rule, on by default; game rules and spectators are not ported, so players always may). A
+//!   chunk whose generation never finishes (a level without a generator) is never sent; the
+//!   chunks next to it are not sent either (their neighbours are not generated), and the send
+//!   queue waits on the nearest such chunk, as Moonrise's does.
 //! - Removing the loader moves every ticket to `PLAYER_TICKET_DELAYED`. The forget packets
 //!   Moonrise sends then would reach a closed or closing connection (leaving, stopping): none are
 //!   sent.
@@ -190,7 +192,7 @@ impl PlayerChunkLoader {
             id,
             center,
             distances,
-            can_generate: false,
+            can_generate: true,
             last_sent_center: center,
             last_sent_radius: distances.send,
             last_sent_simulation: distances.tick,

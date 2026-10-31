@@ -99,6 +99,7 @@ fn tables() -> WorldTables {
         blocks,
         block_data,
         registries: Arc::new(registries),
+        worldgen: None,
     }
 }
 
@@ -200,6 +201,7 @@ fn start_with(
         chunks,
         allow_nether: true,
         allow_end: true,
+        generation: Default::default(),
     };
     let server = Server::start(config, tables.registries.clone(), || {
         World::open(dir.path(), &settings, &tables)
@@ -685,8 +687,9 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
             client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
         }
         wait.recv().unwrap();
-        // Eight chunks east: every chunk on disk is out of the load area.
-        client.move_to(136.5, 4.0, 8.5);
+        // Forty chunks east: every chunk on disk is out of the load area, and out of the 11
+        // chunks the generation requests of the new area hold around them.
+        client.move_to(648.5, 4.0, 8.5);
         seen.clear();
         // Until the server stops: keep-alives answered, packets counted.
         while let Some(packet) = client.recv() {
@@ -737,7 +740,7 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     }
     go.send(()).unwrap();
     tick_until(&mut server, "the player moved", |s| {
-        s.players[0].player.position[0] == 136.5
+        s.players[0].player.position[0] == 648.5
     });
     let held = |s: &Server| {
         (-2..=2)
@@ -1079,6 +1082,7 @@ fn a_disabled_nether_and_end_are_not_loaded() {
         chunks: ChunkSettings::default(),
         allow_nether,
         allow_end,
+        generation: Default::default(),
     };
     let dimensions = |world: &World| -> Vec<String> {
         world.levels.iter().map(|l| l.dimension.clone()).collect()

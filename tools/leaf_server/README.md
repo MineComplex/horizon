@@ -24,7 +24,7 @@ cargo test -p horizon-server --release -- --ignored                   # oracle c
 
 It writes, under the scratch dir: the prepare step's `serverdir/cache/vanilla-26.3/{reports/,block_states.bin}`
 (`tools/leaf_server_reports.py`: vanilla's data generator + `LeafBlockStatesExporter.java`), the oracles'
-outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `placement.txt`, `feature.txt`, `tickets.txt`, `user_lists.jsonl`, `level_data.jsonl`), a flat world made by the real 26.3 server (the fixture that
+outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.txt`, `placement.txt`, `feature.txt`, `tickets.txt`, `user_lists.jsonl`, `level_data.jsonl`, `chunkgen.txt`), a flat world made by the real 26.3 server (the fixture that
 `world/storage_tests.rs` describes), and `realdata.env` with the variables below.
 
 | Variable | Used by |
@@ -43,6 +43,7 @@ outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.t
 | `HORIZON_TERRAIN_ORACLE` | `worldgen/terrain/oracle_tests.rs` (`LeafTerrainOracle.java`: `doFill` blocks, WG heightmaps, fluid marks, base columns; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES`); `terrain_fill_speed` is a benchmark |
 | `HORIZON_SURFACE_ORACLE` | `worldgen/surface/oracle_tests.rs` (`LeafSurfaceOracle.java`: `doFill` then `buildSurface` blocks, WG heightmaps, fluid marks over the stems' real biomes; every biome's temperature; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES` and `HORIZON_BIOME_REPORTS`); `surface_build_speed` is a benchmark, `flat_bedrock_is_one_layer` checks Paper's flag (derived from its source, not an oracle) |
 | `HORIZON_CARVER_ORACLE` | `worldgen/carver/oracle_tests.rs` (`LeafCarverOracle.java`: fill, surface, then `generateCarvers`'s body around the generator's own `getBiomeGenerationSettingsForCarver`/`applyCarvingMask`: the carving mask's runs, blocks, WG heightmaps and fluid marks, overworld/large biomes/amplified/Nether; same extra variables as the surface oracle) |
+| `HORIZON_CHUNKGEN_ORACLE` | `worldgen/generator/oracle_tests.rs` (`LeafChunkGenOracle.java`: the generation pyramid's steps and `ChunkLevel.generationStatus`, then whole chunks of the normal preset's overworld, Nether and End x 2 seeds through STRUCTURE_STARTS, STRUCTURE_REFERENCES (structures off: the jar cannot place pieces without a level), BIOMES of the 3 x 3 chunks and TERRAIN as `ChunkStatusTasks` runs them: blocks, biomes, all six heightmaps, fluid marks, status, starts and references; same extra variables as the surface oracle) |
 
 ## Oracles
 

@@ -12,44 +12,68 @@
 //! ported).
 //!
 //! **Chunks.** A [`Level`] holds its chunks in Moonrise's chunk holders (`server::chunk_system`),
-//! owned by the tick thread; the region I/O workers read and write them and hand the answers back
-//! as [`ChunkIoEvent`]s, which [`Level::tick_io`] drains at the start of each tick. Chunks are saved
-//! when unloaded and by autosave when changed, and all of them on stop. World generation is not
-//! ported: a chunk the region files do not have stays missing and is never sent (logged once per
-//! level); the holders keep it as waiting for the generator.
+//! owned by the tick thread; the region I/O workers read and write them and the level's generation
+//! workers run the status pipeline's steps (`worldgen::generator`), both handing their answers back
+//! as messages, which [`Level::tick_io`] drains at the start of each tick. Chunks are saved when
+//! unloaded and by autosave when changed, and all of them on stop. A level whose stem is a
+//! `minecraft:noise` generator generates the chunks its region files do not have; the flat and
+//! debug generators are not ported: there such a chunk never finishes (logged once per level)
+//! and is never sent.
+//!
+//! **A new world.** Without `level.dat`, the world is created as `MinecraftServer.loadLevel` does
+//! from `server.properties` (`level-seed`, `level-type`'s world preset, `generate-structures`):
+//! `level.dat` and the overworld's `world_gen_settings` are written at once, and each level that
+//! is not `initialized` gets its spawn (`setInitialSpawn`, Paper's per-level `initWorld`) from its
+//! generator, generating the chunks it looks at.
 
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
-use super::chunk_system::{ChunkHolderManager, ChunkSettings, ChunkStorage};
-use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, WorldBorder};
+use super::chunk_system::{
+    ChunkHolderManager, ChunkSettings, ChunkStorage, GenerationJob, GenerationPool,
+    GenerationResult, LoadedChunk, TicketType,
+};
+use super::config::SpigotConfig;
+use super::level_data::{BorderSettings, LevelClocks, LevelOverrides, Respawn, WorldBorder};
 use super::player_data::PlayerDataStorage;
-use crate::block::BlockStates;
 use crate::block::flags::BlockStateData;
-use crate::core::position::ChunkPos;
+use crate::block::{BlockState, BlockStates};
+use crate::core::geometry::{Direction, ShapeOp, VoxelShape};
+use crate::core::position::{BlockPos, ChunkPos};
 use crate::nbt::{Compound, Tag};
 use crate::network::play::chunk::{LightSection, level_chunk_with_light};
 use crate::registry::Registries;
 use crate::world::chunk::serial::Heightmap;
 use crate::world::chunk::{BiomeIds, ChunkData, ContainerFactory};
+use crate::world::chunk::{ChunkStatus, SectionFlags, StateFlags};
 use crate::world::chunk_io::{ChunkIo, ChunkIoEvent, CodecTables};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
+use crate::world::level_storage::WorldGenSettings;
 use crate::world::level_storage::{
     Difficulty, DimensionData, GameType, LevelData, LevelStorageAccess, LevelStorageError,
     RespawnData, WeatherData,
 };
 use crate::world::storage::compression::Compression;
+use crate::worldgen::biome::codec::{BiomePresets, decode_noise_generator_nbt};
+use crate::worldgen::data::WorldgenData;
+use crate::worldgen::generator::convert::{
+    ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
+};
+use crate::worldgen::generator::{
+    GeneratorTables, LevelGenerator, LevelGeneratorSettings, respawn_pos_in_column,
+};
+use crate::worldgen::proto_chunk::ProtoChunk;
+use crate::worldgen::structure::StructureRegistry;
 
 pub const OVERWORLD: &str = "minecraft:overworld";
 pub const NETHER: &str = "minecraft:the_nether";
 pub const END: &str = "minecraft:the_end";
 
-/// A level stem of the world generation settings, as far as a level needs it before generation
-/// is ported.
+/// A level stem of the world generation settings.
 #[derive(Debug, PartialEq, Eq)]
 struct Stem {
     /// The stem's key, which is also its level's dimension.
@@ -60,6 +84,8 @@ struct Stem {
     flat: bool,
     /// The generator's `settings` id when it names noise settings.
     settings: Option<String>,
+    /// The `generator` compound as saved.
+    generator: Option<Tag>,
 }
 
 impl Stem {
@@ -79,11 +105,12 @@ impl Stem {
             flat: string(generator.and_then(|g| g.get(&"type".into()))).as_deref()
                 == Some("minecraft:flat"),
             settings: string(generator.and_then(|g| g.get(&"settings".into()))),
+            generator: generator.map(|g| Tag::Compound(g.clone())),
         }
     }
 
-    /// `ServerLevel.getSeaLevel`, which is the generator's: flat worlds -63, else the noise
-    /// settings' (the noise settings are not read yet: the three vanilla ones' values).
+    /// `ServerLevel.getSeaLevel` of a level without a generator here: flat worlds -63, else the
+    /// three vanilla noise settings' values (a level with a generator has its settings' own).
     fn sea_level(&self) -> i32 {
         match (self.flat, self.settings.as_deref()) {
             (true, _) => -63,
@@ -134,6 +161,61 @@ fn level_stems(dimensions: Option<&Compound>) -> Result<Vec<Stem>, WorldError> {
         .collect())
 }
 
+/// `DedicatedServerProperties.WorldDimensionData.create` and `WorldOptions` for a new world:
+/// `level-type`'s world preset (`default` and `largebiomes` are the legacy names of `normal` and
+/// `large_biomes`; an unknown one is `normal`), `level-seed` (random without one) and
+/// `generate-structures`. `None` without the worldgen tables.
+fn new_world_gen_settings(
+    generation: &GenerationSettings<'_>,
+    tables: &WorldTables,
+) -> Option<WorldGenSettings> {
+    let worldgen = tables.worldgen.as_ref()?;
+    let presets = worldgen.data.raw("minecraft:worldgen/world_preset")?;
+    let name = match generation.level_type {
+        "default" => "minecraft:normal".to_owned(),
+        "largebiomes" => "minecraft:large_biomes".to_owned(),
+        other if other.contains(':') => other.to_owned(),
+        other => format!("minecraft:{other}"),
+    };
+    let find = |id: &str| presets.elements.iter().find(|(e, _)| e == id);
+    let (_, raw) = find(&name).or_else(|| {
+        warn!("Unknown level type {name}, using minecraft:normal");
+        find("minecraft:normal")
+    })?;
+    let preset: serde_json::Value = serde_json::from_str(raw.get()).ok()?;
+    let Tag::Compound(dimensions) = json_to_nbt(preset.get("dimensions")?) else {
+        return None;
+    };
+    Some(WorldGenSettings {
+        seed: generation.level_seed.unwrap_or_else(rand::random),
+        generate_structures: generation.generate_structures,
+        bonus_chest: false,
+        legacy_custom_options: None,
+        dimensions,
+    })
+}
+
+/// A world preset's JSON as `WorldGenSettings.CODEC` writes it in NBT (strings, compounds,
+/// lists; integers as ints, other numbers as doubles, booleans as bytes).
+fn json_to_nbt(value: &serde_json::Value) -> Tag {
+    use serde_json::Value;
+    match value {
+        Value::Null => Tag::End,
+        Value::Bool(b) => Tag::Byte((*b).into()),
+        Value::Number(n) => match n.as_i64().and_then(|v| i32::try_from(v).ok()) {
+            Some(v) => Tag::Int(v),
+            None => Tag::Double(n.as_f64().unwrap_or(0.0).to_bits()),
+        },
+        Value::String(s) => Tag::String(s.as_str().into()),
+        Value::Array(items) => Tag::List(items.iter().map(json_to_nbt).collect()),
+        Value::Object(map) => Tag::Compound(
+            map.iter()
+                .map(|(k, v)| (k.as_str().into(), json_to_nbt(v)))
+                .collect(),
+        ),
+    }
+}
+
 /// A level with no `weather.dat`.
 const CLEAR_WEATHER: WeatherData = WeatherData {
     clear_weather_time: 0,
@@ -154,6 +236,46 @@ pub enum WorldError {
     /// `PaperWorldLoader.loadInitialWorlds`: `requireNonNull(..., "Overworld stem missing")`.
     #[error("Overworld stem missing")]
     NoOverworld,
+    /// A level's generator could not be made (its stem or noise settings do not decode, or its
+    /// `spigot.yml` seeds are not numbers).
+    #[error("Exception initializing level {level}: {message}")]
+    Generator { level: String, message: String },
+}
+
+/// The worldgen registries and multi-noise presets (startup's, shared by the levels).
+pub struct WorldgenTables {
+    pub data: Arc<WorldgenData>,
+    pub presets: Arc<BiomePresets>,
+}
+
+/// How levels generate (`server.properties` for a new world, the Paper/Purpur/Spigot settings).
+#[derive(Clone, Debug)]
+pub struct GenerationSettings<'a> {
+    /// `level-seed` (`None`: a random seed for a new world).
+    pub level_seed: Option<i64>,
+    /// `level-type`: the new world's preset.
+    pub level_type: &'a str,
+    /// `generate-structures` for a new world.
+    pub generate_structures: bool,
+    /// Paper's `environment.generate-flat-bedrock`.
+    pub flat_bedrock: bool,
+    /// Purpur's `settings.generate-end-void-rings`.
+    pub end_void_rings: bool,
+    /// `spigot.yml`'s structure seeds (`None`: the jar's salts).
+    pub spigot: Option<&'a SpigotConfig>,
+}
+
+impl Default for GenerationSettings<'_> {
+    fn default() -> Self {
+        Self {
+            level_seed: None,
+            level_type: "minecraft:normal",
+            generate_structures: true,
+            flat_bedrock: false,
+            end_void_rings: false,
+            spigot: None,
+        }
+    }
 }
 
 /// The read-only tables a world is opened with (startup's, shared with the I/O workers).
@@ -161,6 +283,8 @@ pub struct WorldTables {
     pub blocks: Arc<BlockStates>,
     pub block_data: Arc<BlockStateData>,
     pub registries: Arc<Registries>,
+    /// `None`: no level generates (tests over saved worlds).
+    pub worldgen: Option<WorldgenTables>,
 }
 
 /// How the world is opened (`server.properties`).
@@ -177,6 +301,7 @@ pub struct WorldSettings<'a> {
     pub allow_nether: bool,
     /// `settings.allow-end` of `bukkit.yml` (`CraftServer.getAllowEnd`).
     pub allow_end: bool,
+    pub generation: GenerationSettings<'a>,
 }
 
 impl WorldSettings<'_> {
@@ -195,7 +320,8 @@ pub struct World {
     /// `level-name` (Bukkit's world name in the chunk system's logs).
     pub name: String,
     pub data: LevelData,
-    /// Whether `level.dat` was there: a new world is not written (generation is not ported).
+    /// Whether `level.dat` is written: a world found without one and that could not be created
+    /// (no worldgen tables) is not.
     pub has_level_data: bool,
     pub players: PlayerDataStorage,
     /// The levels in `MinecraftServer.levels`' order; the overworld is the first.
@@ -211,28 +337,44 @@ impl World {
     ) -> Result<Self, WorldError> {
         let storage = LevelStorageAccess::open(base_dir, settings.level_name)?;
         info!("Preparing level \"{}\"", settings.level_name);
-        let has_level_data = storage.has_world_data();
+        let mut has_level_data = storage.has_world_data();
+        let mut new_world_gen = None;
         let data = if has_level_data {
             let data = storage.read_level_data()?;
             data.check_compatible()?;
             data
         } else {
-            // Leaf creates and generates a new world here; generation is not ported, so the
-            // world stays empty and nothing is written: the folder stays a new world.
-            warn!(
-                "No level.dat in \"{}\": Leaf would create a new world, but world generation is not \
-                 ported, so this world has no chunks (none are sent) and no level.dat is written; player files still are",
-                settings.level_name
-            );
             let (game_type, difficulty, hardcore) = settings.new_world;
-            LevelData {
+            let data = LevelData {
                 game_type,
                 difficulty,
                 hardcore,
+                level_name: settings.level_name.to_owned(),
                 ..LevelData::parse(&Default::default())
+            };
+            match new_world_gen_settings(&settings.generation, tables) {
+                Some(world_gen) => {
+                    storage.save_level_data(&data)?;
+                    storage.write_saved_data(
+                        OVERWORLD,
+                        "world_gen_settings",
+                        world_gen.to_tag(),
+                    )?;
+                    has_level_data = true;
+                    new_world_gen = Some(world_gen);
+                }
+                None => warn!(
+                    "No level.dat in \"{}\" and no world generation data: the world stays empty \
+                     (no chunks are sent) and no level.dat is written; player files still are",
+                    settings.level_name
+                ),
             }
+            data
         };
         let mut overworld_data = Some(storage.read_dimension_data(OVERWORLD)?);
+        if let (Some(world_gen), Some(overworld)) = (new_world_gen, overworld_data.as_mut()) {
+            overworld.world_gen = Some(world_gen);
+        }
         let stems = level_stems(
             overworld_data
                 .as_ref()
@@ -243,6 +385,10 @@ impl World {
             .as_ref()
             .and_then(|d| d.world_gen.as_ref())
             .map_or(0, |w| w.seed);
+        let overworld_structures = overworld_data
+            .as_ref()
+            .and_then(|d| d.world_gen.as_ref())
+            .is_none_or(|w| w.generate_structures);
         let players = PlayerDataStorage::new(storage.dir())?;
         let mut levels = Vec::with_capacity(stems.len());
         for stem in &stems {
@@ -256,11 +402,15 @@ impl World {
                 None => storage.read_dimension_data(&stem.key)?,
             };
             let seed = saved.world_gen.as_ref().map_or(overworld_seed, |w| w.seed);
+            let generate_structures = saved
+                .world_gen
+                .as_ref()
+                .map_or(overworld_structures, |w| w.generate_structures);
             let region = storage.region_path(&stem.key, "region");
             levels.push(Level::open(
                 stem,
                 stem.world_name(settings.level_name),
-                seed,
+                (seed, generate_structures),
                 LevelStart::new(saved, &data),
                 &region,
                 settings,
@@ -275,6 +425,15 @@ impl World {
             players,
             levels,
         };
+        // `initWorld` per level: a level not initialized gets its spawn from its generator.
+        for level in &mut world.levels {
+            if !level.overrides.initialized && level.generator.is_some() {
+                level.set_initial_spawn();
+                if level.dimension == OVERWORLD {
+                    world.data.initialized = true;
+                }
+            }
+        }
         world.update_effective_respawn();
         Ok(world)
     }
@@ -376,17 +535,94 @@ impl World {
     }
 }
 
-/// The region workers are the chunk holders' storage: requests are messages, answers come back
-/// through [`Level::tick_io`].
-impl ChunkStorage for ChunkIo {
+/// A level's chunk storage and generation: the region workers, the generation workers (none for
+/// a level without a generator) and the level's chunk shape. Requests are messages; answers come
+/// back through [`Level::tick_io`].
+pub struct LevelChunks {
+    io: ChunkIo,
+    pool: Option<GenerationPool>,
+    tables: Arc<CodecTables<BlockStateData>>,
+    heightmaps: Arc<HeightmapTable>,
+    /// The structure registry the saved starts are read with (empty without worldgen data).
+    structures: Option<Arc<WorldgenData>>,
+    empty_structures: StructureRegistry,
+    void_air: BlockState,
+    /// Steps a level without a generator cannot run: they fail on the next tick.
+    refused: Vec<GenerationResult>,
+    refusal_logged: bool,
+    dimension: String,
+}
+
+impl LevelChunks {
+    fn shape(&self) -> ChunkShape<'_> {
+        ChunkShape {
+            min_section_y: self.tables.min_section_y,
+            section_count: (self.tables.max_section_y - self.tables.min_section_y + 1) as usize,
+            factory: &self.tables.factory,
+            void_air: self.void_air,
+        }
+    }
+    fn structures(&self) -> &StructureRegistry {
+        self.structures
+            .as_ref()
+            .map_or(&self.empty_structures, |d| d.structures())
+    }
+}
+
+impl ChunkStorage for LevelChunks {
     fn load(&mut self, pos: ChunkPos) {
-        ChunkIo::load(self, pos);
+        self.io.load(pos);
     }
     fn save(&mut self, pos: ChunkPos, chunk: Box<ChunkData>) {
-        ChunkIo::save(self, pos, Some(chunk));
+        self.io.save(pos, Some(chunk));
     }
     fn flush(&mut self) {
-        ChunkIo::flush(self);
+        self.io.flush();
+    }
+    fn generate(&mut self, job: GenerationJob) {
+        match &self.pool {
+            Some(pool) => pool.submit(job),
+            None => {
+                if !std::mem::replace(&mut self.refusal_logged, true) {
+                    warn!(
+                        "Chunk [{}, {}] of {} is not on disk, and this level's generator is not \
+                         ported (flat and debug worlds): it is not sent (further chunks are not logged)",
+                        job.pos.x, job.pos.z, self.dimension
+                    );
+                }
+                self.refused.push(GenerationResult {
+                    pos: job.pos,
+                    status: job.status,
+                    result: Err(None),
+                    nanos: 0,
+                });
+            }
+        }
+    }
+    fn empty_chunk(&self, pos: ChunkPos) -> ProtoChunk {
+        self.shape().empty(pos)
+    }
+    fn proto_data(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> ChunkData {
+        proto_to_data(chunk, extras, self.structures())
+    }
+    fn level_chunk(&self, chunk: &ProtoChunk, extras: &ProtoExtras) -> LevelChunk {
+        proto_into_level_chunk(
+            chunk,
+            extras,
+            self.shape(),
+            self.structures(),
+            &*self.heightmaps,
+        )
+    }
+    fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk {
+        match proto_from_data(chunk.to_data(), self.shape(), self.structures()) {
+            Ok((view, _)) => view,
+            Err(_) => {
+                let mut view = self.shape().empty(chunk.pos());
+                view.set_status(ChunkStatus::Full);
+                view
+            }
+        }
     }
 }
 
@@ -417,12 +653,17 @@ pub struct Level {
     pub dimension_type: i32,
     pub min_section_y: i32,
     pub section_count: usize,
-    /// The chunk holders, over the region I/O workers.
-    pub chunks: ChunkHolderManager<ChunkIo>,
+    /// The chunk holders, over the region I/O and generation workers.
+    pub chunks: ChunkHolderManager<LevelChunks>,
+    /// The level's generator (`None`: its stem's generator is not ported).
+    pub generator: Option<Arc<LevelGenerator>>,
     io_events: Receiver<ChunkIoEvent>,
+    gen_events: Receiver<GenerationResult>,
     tables: Arc<CodecTables<BlockStateData>>,
-    heightmaps: HeightmapTable,
-    missing_logged: bool,
+    heightmaps: Arc<HeightmapTable>,
+    block_data: Arc<BlockStateData>,
+    /// Whether the dimension type has a ceiling (`hasCeiling`: the spawn finder's height).
+    has_ceiling: bool,
 }
 
 /// What a level starts with from its saved data (`ServerLevel`'s constructor and `loadWorldData`).
@@ -476,7 +717,7 @@ impl Level {
     fn open(
         stem: &Stem,
         world_name: String,
-        seed: i64,
+        (seed, generate_structures): (i64, bool),
         start: LevelStart,
         region: &Path,
         settings: &WorldSettings<'_>,
@@ -512,6 +753,11 @@ impl Level {
             .get("default_clock")
             .and_then(|v| v.as_str())
             .map(str::to_owned);
+        let has_ceiling = entry
+            .json
+            .get("has_ceiling")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let clock_ids: Vec<String> = tables
             .registries
             .synced("minecraft:world_clock")
@@ -527,6 +773,7 @@ impl Level {
         if biomes.is_empty() {
             biomes.push("minecraft:plains");
         }
+        let biome_count = biomes.len();
         let biomes = BiomeIds::new(biomes);
         let plains = biomes.id("minecraft:plains").unwrap_or(0);
         let codec = Arc::new(CodecTables {
@@ -537,12 +784,32 @@ impl Level {
             min_section_y: min_y >> 4,
             max_section_y: ((min_y + height) >> 4) - 1,
         });
-        let heightmaps = HeightmapTable::vanilla(
+        let heightmaps = Arc::new(HeightmapTable::vanilla(
             &tables.blocks,
             &tables.block_data,
             &block_tag(tables, "minecraft:blocks_motion_in_heightmap"),
             &block_tag(tables, "minecraft:blocks_motion_in_heightmap_no_leaves"),
-        );
+        ));
+        let generator = Self::generator(
+            stem,
+            &world_name,
+            (seed, generate_structures),
+            (min_y, height, biome_count as u32, plains),
+            settings,
+            tables,
+            &heightmaps,
+        )?;
+        let (gen_sender, gen_events) = std::sync::mpsc::channel();
+        // Moonrise's `chunk-system.worker-threads` default: half the processors, at least one.
+        let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
+        let pool = generator
+            .as_ref()
+            .map(|g| GenerationPool::spawn(g.clone(), threads, gen_sender, &world_name))
+            .transpose()?;
+        let void_air = tables
+            .blocks
+            .block_by_name("minecraft:void_air")
+            .map_or(BlockState::AIR, |b| tables.blocks.default_state(b));
         // Moonrise sizes its I/O pool from the processors; regions spread over the workers.
         let workers = std::thread::available_parallelism().map_or(1, |n| (n.get() / 4).max(1));
         let (io, io_events) = ChunkIo::spawn(
@@ -552,12 +819,27 @@ impl Level {
             codec.clone(),
             workers,
         )?;
+        let sea_level = generator
+            .as_ref()
+            .map_or_else(|| stem.sea_level(), |g| g.sea_level());
+        let backend = LevelChunks {
+            io,
+            pool,
+            tables: codec.clone(),
+            heightmaps: heightmaps.clone(),
+            structures: tables.worldgen.as_ref().map(|w| w.data.clone()),
+            empty_structures: StructureRegistry::default(),
+            void_air,
+            refused: Vec::new(),
+            refusal_logged: false,
+            dimension: stem.key.clone(),
+        };
         Ok(Self {
             dimension: stem.key.clone(),
             world_name,
             seed,
             flat: stem.flat,
-            sea_level: stem.sea_level(),
+            sea_level,
             weather: start.weather,
             overrides: start.overrides,
             border,
@@ -567,12 +849,82 @@ impl Level {
             dimension_type: dimension_type as i32,
             min_section_y: min_y >> 4,
             section_count: (height / 16) as usize,
-            chunks: ChunkHolderManager::new(io, settings.chunks),
+            chunks: ChunkHolderManager::new(backend, settings.chunks),
+            generator,
             io_events,
+            gen_events,
             tables: codec,
             heightmaps,
-            missing_logged: false,
+            block_data: tables.block_data.clone(),
+            has_ceiling,
         })
+    }
+
+    /// The level's generator from its stem (`LevelStem.generator()`, Paper's world settings), or
+    /// `None` for a stem whose generator is not ported or without worldgen tables.
+    fn generator(
+        stem: &Stem,
+        world_name: &str,
+        (seed, generate_structures): (i64, bool),
+        (min_y, height, biome_count, plains): (i32, i32, u32, u32),
+        settings: &WorldSettings<'_>,
+        tables: &WorldTables,
+        heightmaps: &Arc<HeightmapTable>,
+    ) -> Result<Option<Arc<LevelGenerator>>, WorldError> {
+        let (Some(worldgen), Some(generator)) = (&tables.worldgen, &stem.generator) else {
+            return Ok(None);
+        };
+        let error = |message: String| WorldError::Generator {
+            level: world_name.to_owned(),
+            message,
+        };
+        let kind = match generator {
+            Tag::Compound(g) => match g.get(&"type".into()) {
+                Some(Tag::String(t)) => t.to_string_lossy(),
+                _ => String::new(),
+            },
+            _ => String::new(),
+        };
+        if kind != "minecraft:noise" {
+            warn!(
+                "Level {world_name}: the {kind} generator is not ported; its chunks are not generated"
+            );
+            return Ok(None);
+        }
+        let biome_registry = tables
+            .registries
+            .synced("minecraft:worldgen/biome")
+            .ok_or_else(|| WorldError::Registry("minecraft:worldgen/biome".into()))?;
+        let biomes = crate::worldgen::biome::codec::BiomeIds::new(biome_registry);
+        let noise_stem = decode_noise_generator_nbt(generator, &biomes, &worldgen.presets)
+            .map_err(|e| error(e.to_string()))?;
+        let spigot_seeds = match settings.generation.spigot {
+            Some(spigot) => spigot
+                .world_seeds(&stem.key)
+                .map_err(|e| error(e.to_string()))?,
+            None => Default::default(),
+        };
+        let generator = LevelGenerator::new(
+            GeneratorTables {
+                data: worldgen.data.clone(),
+                blocks: tables.blocks.clone(),
+                flags: tables.block_data.clone(),
+                heightmaps: heightmaps.clone(),
+            },
+            LevelGeneratorSettings {
+                stem: noise_stem,
+                seed,
+                generate_structures,
+                flat_bedrock: settings.generation.flat_bedrock,
+                end_void_rings: settings.generation.end_void_rings,
+                spigot_seeds,
+                min_section_y: min_y >> 4,
+                section_count: (height / 16) as usize,
+                factory: ContainerFactory::new(tables.blocks.state_count(), biome_count, plains),
+            },
+        )
+        .map_err(|e| error(e.to_string()))?;
+        Ok(Some(Arc::new(generator)))
     }
 
     /// `SavedDataStorage.saveAndJoin` for what changed: the overrides, the border and the clocks.
@@ -593,7 +945,9 @@ impl Level {
         }
     }
 
-    /// The I/O workers' answers: loaded chunks go to their holders; failed writes are logged.
+    /// The workers' answers: loaded chunks go to their holders (a proto chunk for a status before
+    /// `full`; an unreadable chunk is logged and generated anew, as Moonrise does), finished
+    /// generation steps to theirs; failed writes are logged.
     pub fn tick_io(&mut self) {
         while let Ok(event) = self.io_events.try_recv() {
             let (pos, result) = match event {
@@ -615,33 +969,43 @@ impl Level {
                 }
             };
             let chunk = match result {
-                Ok(Some(data)) => Some(LevelChunk::from_data(
-                    *data,
-                    self.section_count,
-                    &self.tables.factory,
-                    &self.heightmaps,
-                )),
-                Ok(None) => {
-                    if !std::mem::replace(&mut self.missing_logged, true) {
-                        warn!(
-                            "Chunk [{}, {}] of {} is not on disk, and world generation is not ported: \
-                             it is not sent (further missing chunks are logged at debug level)",
-                            pos.x, pos.z, self.dimension
-                        );
-                    } else {
-                        debug!(
-                            "Chunk [{}, {}] of {} is not on disk",
-                            pos.x, pos.z, self.dimension
-                        );
-                    }
-                    None
+                Ok(Some(data)) if data.status == ChunkStatus::Full => {
+                    Some(LoadedChunk::Level(LevelChunk::from_data(
+                        *data,
+                        self.section_count,
+                        &self.tables.factory,
+                        &*self.heightmaps,
+                    )))
                 }
+                Ok(Some(data)) => {
+                    let storage = self.chunks.storage();
+                    match proto_from_data(*data, storage.shape(), storage.structures()) {
+                        Ok((chunk, extras)) => Some(LoadedChunk::Proto(chunk, extras)),
+                        Err(e) => {
+                            error!(
+                                "Failed to parse chunk data for task: [{}, {}] in {}, chunk data will be lost: {e}",
+                                pos.x, pos.z, self.dimension
+                            );
+                            None
+                        }
+                    }
+                }
+                Ok(None) => None,
                 Err(e) => {
-                    error!("Couldn't load chunk [{}, {}]: {e}", pos.x, pos.z);
+                    error!(
+                        "Failed to load chunk data for task: [{}, {}] in {}, chunk data will be lost: {e}",
+                        pos.x, pos.z, self.dimension
+                    );
                     None
                 }
             };
             self.chunks.chunk_loaded(pos, chunk);
+        }
+        while let Ok(done) = self.gen_events.try_recv() {
+            self.chunks.generation_done(done);
+        }
+        for done in std::mem::take(&mut self.chunks.storage_mut().refused) {
+            self.chunks.generation_done(done);
         }
     }
 
@@ -663,10 +1027,27 @@ impl Level {
         let world = std::mem::take(&mut self.world_name);
         let world = world.as_str();
         info!("Waiting 60s for chunk system to halt for world '{world}'");
+        // The running generation steps finish and their chunks come back; queued ones are
+        // dropped (their chunks stay as they were).
+        if let Some(pool) = &mut self.chunks.storage_mut().pool {
+            pool.halt();
+        }
+        while let Ok(done) = self.gen_events.try_recv() {
+            self.chunks.generation_done(done);
+        }
         info!("Halted chunk system for world '{world}'");
+        let generated = self.chunks.generated;
+        if generated.steps > 0 {
+            info!(
+                "Generated {} chunks in world '{world}' ({} steps, {:.2} ms of worker time per chunk)",
+                generated.chunks,
+                generated.steps,
+                generated.nanos as f64 / 1e6 / generated.chunks.max(1) as f64
+            );
+        }
         self.chunks.save_all(true, true, Some(world), game_time);
         info!("Waiting 60s for chunk I/O to halt for world '{world}'");
-        self.chunks.into_storage().shutdown();
+        self.chunks.into_storage().io.shutdown();
         info!("Halted I/O scheduler for world '{world}'");
         // The answers to the last writes: their failures are logged.
         while let Ok(event) = self.io_events.try_recv() {
@@ -731,6 +1112,135 @@ impl Level {
     pub fn held_count(&self) -> usize {
         self.chunks.holder_count()
     }
+
+    /// `getChunk(x, z)` from the tick thread (`ServerChunkCache.syncLoad`): a `CHUNK_LOAD` ticket
+    /// at `FULL` until the chunk is full, the workers' answers taken meanwhile, then the ticket
+    /// removed. `false` when the chunk cannot be made full (its generation failed).
+    pub fn load_full_blocking(&mut self, pos: ChunkPos) -> bool {
+        let id = self.chunks.next_ticket_id();
+        let level = super::chunk_system::ticket::FULL_LEVEL;
+        self.chunks
+            .add_ticket(TicketType::ChunkLoad, pos, level, id);
+        self.chunks.process_ticket_updates();
+        let loaded = loop {
+            self.tick_io();
+            self.chunks.process_ticket_updates();
+            if self.chunks.full_chunk(pos).is_some() {
+                break true;
+            }
+            if !self.chunks.is_loading(pos) {
+                break false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        };
+        self.chunks
+            .remove_ticket(TicketType::ChunkLoad, pos, level, id);
+        loaded
+    }
+
+    /// `MinecraftServer.setInitialSpawn` for this level (Paper's `initWorld` runs it per level
+    /// that is not `initialized`): the generator's origin chunk at the spawn height, then the
+    /// first chunk of the 11 x 11 spiral around it where `PlayerSpawnFinder.getSpawnPosInChunk`
+    /// finds a column; the level is then `initialized`. No bonus chest (the option is not read).
+    pub fn set_initial_spawn(&mut self) {
+        let Some(generator) = self.generator.clone() else {
+            return;
+        };
+        let start = std::time::Instant::now();
+        let origin = generator.origin();
+        let min_y = self.min_section_y << 4;
+        let mut height = generator.spawn_height();
+        let (block_x, block_z) = (origin.x * 16, origin.z * 16);
+        if height < min_y && self.load_full_blocking(origin) {
+            height = self
+                .chunks
+                .chunk(origin)
+                .and_then(|c| c.height_at(Heightmap::WorldSurface, 8, 8))
+                .map_or(min_y, |h| h + 1);
+        }
+        let mut spawn = BlockPos::new(block_x + 8, height, block_z + 8);
+        let (mut x, mut z, mut dx, mut dz) = (0i32, 0i32, 0i32, -1i32);
+        for _ in 0..11 * 11 {
+            if (-5..=5).contains(&x) && (-5..=5).contains(&z) {
+                let pos = ChunkPos::new(origin.x + x, origin.z + z);
+                if let Some(found) = self.spawn_pos_in_chunk(pos) {
+                    spawn = found;
+                    break;
+                }
+            }
+            if x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z) {
+                (dx, dz) = (-dz, dx);
+            }
+            x += dx;
+            z += dz;
+        }
+        self.overrides.set_respawn(Respawn {
+            pos: spawn,
+            yaw: 0.0,
+            pitch: 0.0,
+        });
+        self.overrides.set_initialized(true);
+        info!(
+            "Set the spawn of {} to {}, {}, {} ({:.0} ms)",
+            self.dimension,
+            spawn.x,
+            spawn.y,
+            spawn.z,
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+    }
+
+    /// `PlayerSpawnFinder.getSpawnPosInChunk`: the first column, x then z, with a spawn block.
+    fn spawn_pos_in_chunk(&mut self, pos: ChunkPos) -> Option<BlockPos> {
+        if !self.load_full_blocking(pos) {
+            return None;
+        }
+        let spawn_height = self.generator.as_ref().map_or(64, |g| g.spawn_height());
+        let chunk = self.chunks.chunk(pos)?;
+        let min_y = chunk.min_y();
+        let data = &*self.block_data;
+        let full_top = |state: BlockState| {
+            data.collision_shape(state)
+                .is_some_and(|shape| is_face_full(shape, Direction::Up))
+        };
+        let fluid = |state: BlockState| data.section_flags(state).has(StateFlags::HAS_FLUID);
+        for bx in 0..16 {
+            for bz in 0..16 {
+                let height = |kind| chunk.height_at(kind, bx, bz).unwrap_or(min_y - 1);
+                let top = if self.has_ceiling {
+                    spawn_height
+                } else {
+                    height(Heightmap::MotionBlocking)
+                };
+                let (x, z) = (pos.x * 16 + bx, pos.z * 16 + bz);
+                let found = respawn_pos_in_column(
+                    [
+                        top,
+                        height(Heightmap::WorldSurface),
+                        height(Heightmap::OceanFloor),
+                        min_y,
+                    ],
+                    |y| chunk.block_state(BlockPos::new(x, y, z)),
+                    fluid,
+                    full_top,
+                    (x, z),
+                );
+                if found.is_some() {
+                    return found;
+                }
+            }
+        }
+        None
+    }
+}
+
+/// `Block.isFaceFull(shape, direction)`: the face's shape is the whole block face
+/// (`!joinIsNotEmpty(block(), faceShape, NOT_SAME)`).
+fn is_face_full(shape: &VoxelShape, direction: Direction) -> bool {
+    shape
+        .face_shape(direction)
+        .and_then(|face| VoxelShape::block().join_is_not_empty(&face, ShapeOp::XOR))
+        .is_ok_and(|differs| !differs)
 }
 
 #[cfg(test)]
@@ -824,6 +1334,7 @@ mod tests {
             chunks: ChunkSettings::default(),
             allow_nether,
             allow_end,
+            generation: GenerationSettings::default(),
         }
     }
 

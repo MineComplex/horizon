@@ -192,6 +192,14 @@ impl LevelOverrides {
         }
     }
 
+    /// `setInitialized`: dirty only when it changes.
+    pub fn set_initialized(&mut self, initialized: bool) {
+        if self.initialized != initialized {
+            self.initialized = initialized;
+            self.dirty = true;
+        }
+    }
+
     pub fn take_dirty(&mut self) -> bool {
         std::mem::take(&mut self.dirty)
     }

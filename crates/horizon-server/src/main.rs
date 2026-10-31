@@ -7,10 +7,11 @@ use std::sync::Arc;
 use clap::Parser;
 use horizon_server::{
     azalea::language,
-    registry::{self, Registries},
+    registry::{self, DataPack, Registries},
     server::{
         bootstrap::{self, BootstrapOptions, ServerPaths},
-        level::{World, WorldSettings, WorldTables},
+        config,
+        level::{GenerationSettings, World, WorldSettings, WorldTables, WorldgenTables},
         runtime::{self, RuntimeConfig, Server, StartError},
         server_properties::{CommandLineOverrides, StartupOptions},
     },
@@ -116,6 +117,7 @@ fn main() -> std::process::ExitCode {
     let boot = std::time::Instant::now();
     tracing_subscriber::fmt().with_target(false).init();
     let options = Options::parse();
+    let paper_dir = options.paper_settings_directory.clone();
     let bootstrap_options = BootstrapOptions {
         paths: ServerPaths {
             properties: options.config,
@@ -158,11 +160,28 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
+    // The worldgen registries of the same packs, and the multi-noise presets from the prepare
+    // step's reports (what `RegistryDataLoader` and `MultiNoiseBiomeSourceParameterLists` give).
+    let worldgen = match load_worldgen(&mut config.vanilla_jar, &config.blocks, &registries) {
+        Ok(worldgen) => worldgen,
+        Err(e) => {
+            tracing::error!("Failed to load datapacks, can't proceed with server load: {e}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let flat_bedrock = match config::load_generate_flat_bedrock(&paper_dir) {
+        Ok(flat) => flat,
+        Err(e) => {
+            tracing::error!("Failed to start the minecraft server: {e}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
     let properties = config.properties.properties();
     let tables = WorldTables {
         blocks: Arc::new(config.blocks),
         block_data: Arc::new(config.block_data),
         registries: registries.clone(),
+        worldgen: Some(worldgen),
     };
     let settings = WorldSettings {
         level_name: &properties.level_name,
@@ -176,6 +195,14 @@ fn main() -> std::process::ExitCode {
         chunks: config.yaml.paper_world_chunks,
         allow_nether: config.yaml.paper.enable_nether,
         allow_end: config.yaml.bukkit.allow_end,
+        generation: GenerationSettings {
+            level_seed: properties.level_seed,
+            level_type: &properties.level_type,
+            generate_structures: properties.generate_structures,
+            flat_bedrock,
+            end_void_rings: config.yaml.purpur.generate_end_void_rings,
+            spigot: Some(&config.yaml.spigot),
+        },
     };
     let _ = language::install(config.language);
     let open_world = || World::open(std::path::Path::new("."), &settings, &tables);
@@ -198,4 +225,30 @@ fn main() -> std::process::ExitCode {
         tracing::error!("Could not start the console: {e}");
     }
     std::process::ExitCode::from(server.run())
+}
+
+/// The worldgen registries and the multi-noise presets (see `main`).
+fn load_worldgen(
+    jar: &mut horizon_server::server::vanilla_jar::VanillaJar,
+    blocks: &horizon_server::block::BlockStates,
+    registries: &Registries,
+) -> Result<WorldgenTables, String> {
+    use horizon_server::worldgen::biome::codec::{BiomeIds, BiomePresets};
+    use horizon_server::worldgen::data::WorldgenData;
+    let packs = [
+        DataPack::vanilla(jar).map_err(|e| e.to_string())?,
+        DataPack::paper(),
+    ];
+    let data = WorldgenData::load(&packs, blocks).map_err(|e| e.to_string())?;
+    let biomes = registries
+        .synced("minecraft:worldgen/biome")
+        .ok_or("no minecraft:worldgen/biome registry")?;
+    let reports = registry::default_report_path(std::path::Path::new("."));
+    let reports = reports.parent().ok_or("no reports folder")?;
+    let presets =
+        BiomePresets::load(reports, &data, &BiomeIds::new(biomes)).map_err(|e| e.to_string())?;
+    Ok(WorldgenTables {
+        data: Arc::new(data),
+        presets: Arc::new(presets),
+    })
 }

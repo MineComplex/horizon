@@ -88,6 +88,21 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
   sources. Real binary checked with `real_binary_session` (join, 9 chunks, walk, clean stop).
+- WP6 driver (`src/worldgen/generator/`, `src/server/chunk_system/{manager,generation}.rs`, `src/server/level.rs`): the
+  26.3 pyramid (`ChunkPyramid`/`ChunkStep` accumulated requirements, `ChunkLevel.generationStatus`, Moonrise's write
+  radii, parallel/empty-load statuses, access radii, `byRadius`); Moonrise's scheduler as tick-thread data (requested gen
+  status, blocking/waiting neighbours, neighbours using a chunk, loading vs generation pyramid, falling levels clamp the
+  request); worker steps (STRUCTURE_STARTS..FEATURES) on a per-level pool (half the cores) over `GenerationRegion`s of
+  `Arc<ProtoChunk>` snapshots, results back by channel; a step is handed out only when no running step writes its chunks;
+  light steps/SPAWN/FULL on the tick thread. `LevelGenerator` per noise stem (biome source, density with the real sea
+  level, surface with Paper's flat bedrock, Purpur void rings, carvers, placements with ring searches + Spigot seeds);
+  TERRAIN = fill + surface (region biomes via the zoom, 3x3 palette biomes) + carvers + final heightmaps. New worlds
+  (no `level.dat`) are created from `server.properties` (`level-type` preset, `level-seed`, `generate-structures`);
+  `setInitialSpawn` per non-initialized level. Proto chunks saved/loaded (`generator/convert.rs`).
+  `LeafChunkGenOracle`: pyramid + generationStatus + 96 chunks (overworld/nether/end x 2 seeds, structures off) equal.
+  Stand-ins: `decorate` (FEATURES) and `structures::generate_start` (pieces) are no-ops awaiting WP4/WP5; Starlight not
+  ported (chunks reach `light` with `isLightCorrect` false, sent without light); SPAWN mobs, flat/debug generators,
+  priorities, FEATURES writes into already-full neighbours (they are read-only views) not ported.
 
 - User lists (`src/server/user_lists/`): whitelist and ops as MineComplex's Leaf has them (its cleanup removed
   the ban lists, so none): files as Gson writes them, Paper's `ConcurrentHashMap` save order, `.backup` of
@@ -102,7 +117,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`); WP4 rest (trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler (carvers' light sources).
+WP2 rest (biome predicates; per-world `paper-world.yml` flat bedrock); WP4 rest (trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 rest: wire `decorate`/`generate_start`, flat/debug generators, Starlight (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
@@ -111,20 +126,18 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
   colliding keys differ; saves are synchronous (Leaf's are async).
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
 - Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
-  block/fluid ticks don't mark a chunk unsaved; a missing chunk stalls sending (Moonrise's rule for players
-  who can't generate) until WP6; `paper-world.yml` per world and `chunk-loading-*` rates not read.
+  block/fluid ticks don't mark a chunk unsaved; a chunk of a level without a generator (flat/debug) never finishes and stalls sending; `paper-world.yml` per world and `chunk-loading-*` rates not read.
 - Levels: one `Level` per stem (overworld, nether, end, then custom ones) with its own region I/O, holders,
   weather and dimension type; ticked/saved/stopped in `keysInOrder` order (Leaf's parallel world ticking is
   off by default, not ported). A player joins the level its file's `Dimension` names; an unknown one gets
-  the respawn data's level (Paper's warn). Sea level is the stand-in 63/32/0/-63 (noise settings unread).
+  the respawn data's level (Paper's warn). Sea level is the generator's noise settings' (stand-in only for flat levels).
   Per level, as Paper keeps it (`server/level_data.rs`, 26.3 sources): `paper:level_overrides` (game time,
   spawn, `initialized`, game type, difficulty/hardcore/locked; overworld also synced to `level.dat`),
   `world_border`, `world_clocks` (day time; per-world, `time.affects-all-worlds` true not ported),
   `weather`, written only when dirty; ticked while the game runs normally (game time, clocks, moving
   border), game time resent every 20 ticks. The server's spawn is the respawn level's (`paperSpawnDimension`).
   `misc.enable-nether` (`paper-global.yml`) and `settings.allow-end` (`bukkit.yml`, read, not written) off:
-  that stem is not a level. Not ported: `setInitialSpawn` for `initialized: false` levels (needs worldgen),
-  the border-adjusted respawn of a spawn outside the border, Purpur's day/night length (rate 1 assumed),
+  that stem is not a level. `setInitialSpawn` runs for non-initialized noise levels (no bonus chest). Not ported: the border-adjusted respawn of a spawn outside the border, Purpur's day/night length (rate 1 assumed),
   game rules (`advance_time` on), vanilla-world root-file migration and the pre-31 `allow-nether` property move.
   `Server::move_player_to_level` = `ServerPlayer.teleport(TeleportTransition)` (respawn, difficulty, op event,
   position, loader distances, abilities, level info, `sendAllPlayerInfo`; markers for attributes, entity
