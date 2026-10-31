@@ -7,14 +7,25 @@
 //! (`Structure.StructureSettings`); each type's own fields stay as the element's JSON for the
 //! piece generators (jigsaw, templates, legacy pieces), which come next.
 //!
+//! Pieces build on templates ([`template`]: `StructureTemplate` and its manager), their placement
+//! ([`place`]: `StructurePlaceSettings`, `placeInWorld`) and the structure processors with the
+//! `worldgen/processor_list` registry ([`processor`]).
+//!
 //! Ported from Horizon's generator (`horizon-world::worldgen::structure::start`), without its
 //! modpack placements and keys (`horizon:*`).
 
+pub mod place;
 pub mod placement;
+pub mod processor;
 pub mod start;
+pub mod template;
 
 #[cfg(test)]
 mod oracle_tests;
+#[cfg(test)]
+mod template_oracle_tests;
+#[cfg(test)]
+mod template_tests;
 #[cfg(test)]
 mod tests;
 

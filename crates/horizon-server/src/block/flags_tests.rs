@@ -97,6 +97,13 @@ pub(crate) fn synthetic(count: u32) -> Vec<u8> {
         0.0,
         [u32::MAX, 3],
     );
+    // Transforms: every state is its own rotation and mirror; the slab takes no water.
+    for id in 0..4u32 {
+        for _ in 0..5 {
+            out.extend(id.to_le_bytes());
+        }
+        out.extend(u32::MAX.to_le_bytes());
+    }
     out
 }
 
@@ -360,6 +367,44 @@ fn real_26_3_state_data() {
             .any(|a| c.min(a) < 0.0 || c.max(a) > 1.0);
         assert_eq!(large, d.has(s, FLAG_LARGE_COLLISION_SHAPE), "{id}");
     }
+    // Version 3's template columns.
+    use super::transform::{Mirror, Rotation};
+    let stairs = |facing, waterlogged| {
+        state(
+            "minecraft:oak_stairs",
+            &[("facing", facing), ("waterlogged", waterlogged)],
+        )
+    };
+    assert_eq!(
+        d.rotate(stairs("north", "false"), Rotation::Clockwise90),
+        stairs("east", "false")
+    );
+    assert_eq!(
+        d.mirror(stairs("north", "false"), Mirror::LeftRight),
+        stairs("south", "false")
+    );
+    assert_eq!(
+        d.waterlogged(stairs("west", "false")),
+        Some((stairs("west", "true"), 3))
+    );
+    assert_eq!(d.waterlogged(stairs("west", "true")), None);
+    let candle = |lit, waterlogged| {
+        state(
+            "minecraft:candle",
+            &[("lit", lit), ("waterlogged", waterlogged)],
+        )
+    };
+    assert_eq!(
+        d.waterlogged(candle("true", "false")),
+        Some((candle("false", "true"), 11))
+    );
+    let chest = plain("minecraft:chest");
+    assert!(d.has(
+        chest,
+        FLAG_HAS_BLOCK_ENTITY | FLAG_RANDOMIZABLE_CONTAINER | FLAG_LIQUID_CONTAINER
+    ));
+    assert!(!d.has(plain("minecraft:furnace"), FLAG_RANDOMIZABLE_CONTAINER));
+    assert!(d.has(stone, FLAG_SHAPE_FULL_BLOCK) && !d.has(torch, FLAG_SHAPE_FULL_BLOCK));
     eprintln!(
         "{} states ({cached} with a cached collision shape), {} shapes checked",
         t.state_count(),

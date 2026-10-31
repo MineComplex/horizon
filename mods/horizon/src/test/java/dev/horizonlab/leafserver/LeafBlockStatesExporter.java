@@ -53,7 +53,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class LeafBlockStatesExporter {
-    static final int VERSION = 2;
+    static final int VERSION = 3;
     static final int NO_SHAPE = -1;
 
     // Per-state flag bits (flags.rs `Flag`).
@@ -64,7 +64,9 @@ public final class LeafBlockStatesExporter {
         COLLISION_FULL_BLOCK = 1 << 12, LARGE_COLLISION_SHAPE = 1 << 13, DYNAMIC_SHAPE = 1 << 14,
         HAS_OFFSET = 1 << 15, SIGNAL_SOURCE = 1 << 16, ANALOG_OUTPUT = 1 << 17,
         CONSTANT_COLLISION = 1 << 18, SPECIAL_COLLIDING = 1 << 19, OCCLUDES_FULL_BLOCK = 1 << 20,
-        FLAMMABLE = 1 << 21, FENCE_GATE = 1 << 22, DOUBLE_PLANT = 1 << 23, MOSSY_CARPET = 1 << 24;
+        FLAMMABLE = 1 << 21, FENCE_GATE = 1 << 22, DOUBLE_PLANT = 1 << 23, MOSSY_CARPET = 1 << 24,
+        HAS_BLOCK_ENTITY = 1 << 25, RANDOMIZABLE_CONTAINER = 1 << 26, SHAPE_FULL_BLOCK = 1 << 27,
+        LIQUID_CONTAINER = 1 << 28;
 
     static Field discreteField;
     static final Map<ByteBuffer, Integer> shapeIds = new HashMap<>();
@@ -237,6 +239,31 @@ public final class LeafBlockStatesExporter {
         return ((it.unimi.dsi.fastutil.objects.Object2IntMap<Block>) field.get(Blocks.FIRE)).getInt(block);
     }
 
+    /**
+     * What `LiquidBlockContainer.placeLiquid(level, pos, state, water source)` sets (the template's
+     * waterlogging): the classes overriding it are SimpleWaterloggedBlock's default, SlabBlock (not
+     * double), CampfireBlock and CandleBlock (also put out; a lit candle's write is
+     * AbstractCandleBlock.setLit's, flags 11, marked by bit 31), DriedGhastBlock (the default's
+     * write); kelp and seagrass take no water. -1: no change.
+     */
+    static int waterlogged(BlockState state) {
+        Block block = state.getBlock();
+        if (!(block instanceof net.minecraft.world.level.block.SimpleWaterloggedBlock)
+                || !state.hasProperty(BlockStateProperties.WATERLOGGED) || state.getValue(BlockStateProperties.WATERLOGGED)) {
+            return -1;
+        }
+        if (block instanceof net.minecraft.world.level.block.SlabBlock
+                && state.getValue(net.minecraft.world.level.block.SlabBlock.TYPE) == net.minecraft.world.level.block.state.properties.SlabType.DOUBLE) {
+            return -1;
+        }
+        BlockState wet = state.setValue(BlockStateProperties.WATERLOGGED, true);
+        boolean litCandle = block instanceof net.minecraft.world.level.block.CandleBlock && state.getValue(BlockStateProperties.LIT);
+        if (block instanceof net.minecraft.world.level.block.CampfireBlock || block instanceof net.minecraft.world.level.block.CandleBlock) {
+            wet = wet.setValue(BlockStateProperties.LIT, false);
+        }
+        return Block.getId(wet) | (litCandle ? 1 << 31 : 0);
+    }
+
     @SuppressWarnings("deprecation")
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion();
@@ -249,6 +276,7 @@ public final class LeafBlockStatesExporter {
         var ruleNames = new ArrayList<String>();
         var ruleIds = new HashMap<String, Integer>();
         var records = ByteBuffer.allocate(count * 28).order(ByteOrder.LITTLE_ENDIAN);
+        var transforms = ByteBuffer.allocate(count * 24).order(ByteOrder.LITTLE_ENDIAN);
         for (int id = 0; id < count; id++) {
             BlockState state = Block.BLOCK_STATE_REGISTRY.byId(id);
             boolean dynamic = state.getBlock().hasDynamicShape();
@@ -265,6 +293,43 @@ public final class LeafBlockStatesExporter {
                 return ruleNames.size();
             });
             if (state.isAir()) flags |= AIR;
+            if (state.hasBlockEntity()) {
+                flags |= HAS_BLOCK_ENTITY;
+                // The blocks whose block entity is a RandomizableContainer (the
+                // RandomizableContainerBlockEntity subclasses and the decorated pot). Some block
+                // entities cannot be made before the item components are bound; where one can, it
+                // must agree.
+                Block block = state.getBlock();
+                boolean randomizable = block instanceof net.minecraft.world.level.block.ChestBlock
+                    || block instanceof net.minecraft.world.level.block.BarrelBlock
+                    || block instanceof net.minecraft.world.level.block.ShulkerBoxBlock
+                    || block instanceof net.minecraft.world.level.block.CrafterBlock
+                    || block instanceof net.minecraft.world.level.block.HopperBlock
+                    || block instanceof net.minecraft.world.level.block.DispenserBlock
+                    || block instanceof net.minecraft.world.level.block.DecoratedPotBlock;
+                Boolean made = null;
+                try {
+                    made = ((net.minecraft.world.level.block.EntityBlock) block).newBlockEntity(pos, state)
+                        instanceof net.minecraft.world.RandomizableContainer;
+                } catch (Throwable e) {
+                    // not constructible here
+                }
+                if (made != null && made != randomizable) {
+                    throw new IllegalStateException("randomizable container table wrong for " + state);
+                }
+                if (randomizable) flags |= RANDOMIZABLE_CONTAINER;
+            }
+            if (Block.isShapeFullBlock(state.getShape(level, pos))) flags |= SHAPE_FULL_BLOCK;
+            if (state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlockContainer) flags |= LIQUID_CONTAINER;
+            for (var rotation : new net.minecraft.world.level.block.Rotation[] {
+                    net.minecraft.world.level.block.Rotation.CLOCKWISE_90,
+                    net.minecraft.world.level.block.Rotation.CLOCKWISE_180,
+                    net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90}) {
+                transforms.putInt(Block.getId(state.rotate(rotation)));
+            }
+            transforms.putInt(Block.getId(state.mirror(net.minecraft.world.level.block.Mirror.LEFT_RIGHT)));
+            transforms.putInt(Block.getId(state.mirror(net.minecraft.world.level.block.Mirror.FRONT_BACK)));
+            transforms.putInt(waterlogged(state));
             if (state.ignitedByLava()) flags |= IGNITED_BY_LAVA;
             if (state.liquid()) flags |= LIQUID;
             if (state.isSolid()) flags |= LEGACY_SOLID;
@@ -339,6 +404,7 @@ public final class LeafBlockStatesExporter {
                 file.write(shape);
             }
             file.write(records.array());
+            file.write(transforms.array());
         }
         System.out.println("wrote " + count + " block states, " + shapes.size() + " shapes to " + args[0]);
     }

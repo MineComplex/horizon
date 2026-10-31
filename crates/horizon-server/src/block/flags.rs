@@ -9,10 +9,13 @@
 //! it as parallel flat arrays indexed by state id; shapes are de-duplicated into one list (529
 //! for 35,723 states in 26.3) and states hold an index into it.
 //!
-//! # `block_states.bin`, version 2 (little-endian)
+//! # `block_states.bin`, version 3 (little-endian)
 //!
 //! Version 2 added the survival rules: a name list after the instruments and, in each record,
-//! a rule index (the old padding). Version 1 files are rejected (rerun `tools/leaf_server_reports.py`).
+//! a rule index (the old padding). Version 3 added the structure template columns: four flags
+//! (block entity, randomizable container, full outline shape, liquid container) and, after the
+//! records, each state's `rotate`/`mirror` results and what waterlogging makes of it. Older files
+//! are rejected (rerun `tools/leaf_server_reports.py`).
 //!
 //! ```text
 //! "HZBS"  u32 version  u32 state_count
@@ -30,6 +33,11 @@
 //!   u8 fluid: type id (bits 0-2) | amount << 3 (bits 3-6) | falling (bit 7)
 //!   u16 survival rule: 0 none, else 1 + the index in the rule names
 //!   f32 destroy speed  u32 collision shape (u32::MAX: dynamic shape, not cached)  u32 occlusion shape
+//! state_count transform records of 24 bytes (state ids):
+//!   u32 rotate(CLOCKWISE_90)  u32 rotate(CLOCKWISE_180)  u32 rotate(COUNTERCLOCKWISE_90)
+//!   u32 mirror(LEFT_RIGHT)  u32 mirror(FRONT_BACK)
+//!   u32 the state `LiquidBlockContainer.placeLiquid` sets for a water source (u32::MAX: none);
+//!       bit 31 set: it is written with flags 11 (a lit candle's `setLit`), else 3
 //! ```
 //!
 //! Equal grids share one shape, so two states whose vanilla shapes are distinct but equal objects
@@ -38,11 +46,17 @@
 
 use std::path::{Path, PathBuf};
 
+use super::transform::{Mirror, Rotation};
 use super::{BlockDataError, BlockState, BlockStates};
 use crate::core::geometry::{Direction, VoxelShape};
 
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 const RECORD: usize = 28;
+const TRANSFORM_RECORD: usize = 24;
+/// In the waterlogged column: the write uses flags 11.
+const WATERLOG_SET_LIT: u32 = 1 << 31;
+/// In the waterlogged column: no write.
+const NO_STATE: u32 = u32::MAX;
 const NO_SHAPE: u32 = u32::MAX;
 
 pub const FLAG_AIR: u32 = 1;
@@ -84,6 +98,14 @@ pub const FLAG_FENCE_GATE: u32 = 1 << 22;
 pub const FLAG_DOUBLE_PLANT: u32 = 1 << 23;
 /// The block is a `MossyCarpetBlock` (the simple block feature places it with its own rules).
 pub const FLAG_MOSSY_CARPET: u32 = 1 << 24;
+/// `hasBlockEntity()`: the block makes a block entity.
+pub const FLAG_HAS_BLOCK_ENTITY: u32 = 1 << 25;
+/// The block entity is a `RandomizableContainer` (templates give it a `LootTableSeed`).
+pub const FLAG_RANDOMIZABLE_CONTAINER: u32 = 1 << 26;
+/// `Block.isShapeFullBlock(getShape(EmptyBlockGetter, ZERO))`: the outline shape is the full cube.
+pub const FLAG_SHAPE_FULL_BLOCK: u32 = 1 << 27;
+/// The block is a `LiquidBlockContainer`.
+pub const FLAG_LIQUID_CONTAINER: u32 = 1 << 28;
 
 /// `PushReaction` (26.3's names), in vanilla's order (checked against the file's names).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -139,6 +161,8 @@ pub struct BlockStateData {
     instrument_names: Vec<Box<str>>,
     survival_names: Vec<Box<str>>,
     survival: Vec<u16>,
+    /// Per state: rotate CW 90, 180, CCW 90, mirror left-right, front-back, waterlogged.
+    transforms: Vec<[u32; 6]>,
     /// Bit `i` set: fluid `i` is `minecraft:empty` (`FluidState.isEmpty`).
     empty_fluids: u8,
     /// Bit `i` set: fluid `i` ticks randomly (`Fluid.isRandomlyTicking`: only `LavaFluid` does).
@@ -270,6 +294,7 @@ impl BlockStateData {
             .collect::<Result<Vec<_>, _>>()?;
         let n = count as usize;
         let records = r.take(n * RECORD)?;
+        let transforms = r.take(n * TRANSFORM_RECORD)?;
         if !r.bytes.is_empty() {
             return Err(format_error("trailing bytes"));
         }
@@ -335,6 +360,16 @@ impl BlockStateData {
                 .push(f32::from_le_bytes(rec[16..20].try_into().unwrap()));
             data.collision.push(collision);
             data.occlusion.push(occlusion);
+        }
+        for rec in transforms.as_chunks::<TRANSFORM_RECORD>().0 {
+            let ids: [u32; 6] = std::array::from_fn(|i| {
+                u32::from_le_bytes(rec[i * 4..i * 4 + 4].try_into().unwrap())
+            });
+            let wet = ids[5] & !WATERLOG_SET_LIT;
+            if ids[..5].iter().any(|&id| id >= count) || (ids[5] != NO_STATE && wet >= count) {
+                return Err(format_error("a transformed state is out of range"));
+            }
+            data.transforms.push(ids);
         }
         Ok(data)
     }
@@ -403,6 +438,27 @@ impl BlockStateData {
             amount: byte >> 3 & 15,
             falling: byte & 0x80 != 0,
         }
+    }
+    /// `BlockState.rotate(rotation)`.
+    pub fn rotate(&self, state: BlockState, rotation: Rotation) -> BlockState {
+        match rotation {
+            Rotation::None => state,
+            r => BlockState(Self::at(&self.transforms, state)[r as usize - 1]),
+        }
+    }
+    /// `BlockState.mirror(mirror)`.
+    pub fn mirror(&self, state: BlockState, mirror: Mirror) -> BlockState {
+        match mirror {
+            Mirror::None => state,
+            m => BlockState(Self::at(&self.transforms, state)[m as usize + 2]),
+        }
+    }
+    /// What `LiquidBlockContainer.placeLiquid` writes for a water source, with the write's flags
+    /// (`setBlockAndUpdate`'s 3, or 11 for a lit candle put out); `None` when it takes none.
+    pub fn waterlogged(&self, state: BlockState) -> Option<(BlockState, i32)> {
+        let id = Self::at(&self.transforms, state)[5];
+        let flags = if id & WATERLOG_SET_LIT != 0 { 11 } else { 3 };
+        (id != NO_STATE).then_some((BlockState(id & !WATERLOG_SET_LIT), flags))
     }
     /// The survival rule names the file lists (`survival.rs` resolves them).
     pub fn survival_rule_names(&self) -> &[Box<str>] {

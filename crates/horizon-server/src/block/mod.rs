@@ -19,6 +19,7 @@ mod report;
 pub mod survival;
 #[cfg(test)]
 mod tests;
+pub mod transform;
 
 use std::collections::HashMap;
 use std::ops::Range;

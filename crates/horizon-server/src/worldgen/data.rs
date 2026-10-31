@@ -6,7 +6,7 @@
 //! Decoded so far: `worldgen/noise`, `worldgen/density_function` and `worldgen/noise_settings`
 //! (into one [`DensityGraph`]), `worldgen/material_rule` and `material_condition` (the surface
 //! rules, [`MaterialRules`], with each biome's climate), and `worldgen/structure` and `worldgen/structure_set` with `tags/worldgen/structure`
-//! ([`StructureRegistry`]), `worldgen/carver` with each biome's carvers ([`CarverRegistry`]). The other worldgen registries are kept as parsed JSON
+//! ([`StructureRegistry`]), `worldgen/processor_list` ([`ProcessorLists`]), `worldgen/carver` with each biome's carvers ([`CarverRegistry`]). The other worldgen registries are kept as parsed JSON
 //! ([`RawRegistry`]) for the packages that decode them (presets).
 
 use serde_json::value::RawValue;
@@ -20,6 +20,7 @@ use super::density::{
 };
 use super::feature::FeatureRegistry;
 use super::settings::{AquiferField, NoiseGeneratorSettings, RouterField};
+use super::structure::processor::ProcessorLists;
 use super::structure::{
     BiomeLookup, InlineElements, StructureId, StructureRegistry, decode_structure,
     decode_structure_set,
@@ -58,6 +59,8 @@ pub struct WorldgenData {
     /// Each biome's climate (by registry id) and the fixed temperature noises.
     climates: BiomeClimates,
     structures: StructureRegistry,
+    /// `worldgen/processor_list` and the built-in processors' blocks.
+    processor_lists: ProcessorLists,
     features: FeatureRegistry,
     /// `worldgen/carver` and each biome's carvers.
     carvers: CarverRegistry,
@@ -181,6 +184,7 @@ impl WorldgenData {
                     | "minecraft:worldgen/feature"
                     | "minecraft:worldgen/placed_feature"
                     | "minecraft:worldgen/carver"
+                    | "minecraft:worldgen/processor_list"
             ) {
                 continue;
             }
@@ -197,6 +201,7 @@ impl WorldgenData {
             surface,
             climates: BiomeClimates::new(biome_climates),
             structures,
+            processor_lists: ProcessorLists::load(packs, blocks)?,
             features: FeatureRegistry::load(packs, blocks)?,
             carvers: CarverRegistry::load(packs, blocks)?,
             raw,
@@ -218,6 +223,10 @@ impl WorldgenData {
     }
 
     /// `worldgen/structure`, `worldgen/structure_set` and their tags.
+    pub fn processor_lists(&self) -> &ProcessorLists {
+        &self.processor_lists
+    }
+
     pub fn structures(&self) -> &StructureRegistry {
         &self.structures
     }
