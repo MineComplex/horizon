@@ -34,6 +34,7 @@ mkdir -p "$out/oracle-run"
     "$java" -cp "$cp" "$oracles/LeafDensityOracle.java" "$out/density.txt" &&
     "$java" -cp "$cp" "$oracles/LeafTerrainOracle.java" "$out/terrain.txt" &&
     "$java" -cp "$cp" "$oracles/LeafSurfaceOracle.java" "$out/surface.txt" &&
+    "$java" -cp "$cp" "$oracles/LeafCarverOracle.java" "$out/carver.txt" &&
     "$java" -cp "$cp" "$oracles/LeafBiomeOracle.java" "$out/biomes.txt" &&
     "$java" -cp "$cp" "$oracles/LeafStructurePlacementOracle.java" "$out/structures.txt" &&
     "$java" -cp "$cp" "$oracles/LeafPlacementOracle.java" "$out/placement.txt" &&
@@ -79,6 +80,7 @@ export HORIZON_ORACLE_TSV=$out/config.tsv
 export HORIZON_DENSITY_ORACLE=$out/density.txt
 export HORIZON_TERRAIN_ORACLE=$out/terrain.txt
 export HORIZON_SURFACE_ORACLE=$out/surface.txt
+export HORIZON_CARVER_ORACLE=$out/carver.txt
 export HORIZON_BIOME_ORACLE=$out/biomes.txt
 export HORIZON_BIOME_REPORTS=$reports/reports
 export HORIZON_STRUCTURE_ORACLE=$out/structures.txt

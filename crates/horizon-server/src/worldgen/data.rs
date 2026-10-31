@@ -6,12 +6,13 @@
 //! Decoded so far: `worldgen/noise`, `worldgen/density_function` and `worldgen/noise_settings`
 //! (into one [`DensityGraph`]), `worldgen/material_rule` and `material_condition` (the surface
 //! rules, [`MaterialRules`], with each biome's climate), and `worldgen/structure` and `worldgen/structure_set` with `tags/worldgen/structure`
-//! ([`StructureRegistry`]). The other worldgen registries are kept as parsed JSON
-//! ([`RawRegistry`]) for the packages that decode them (carvers, features, presets).
+//! ([`StructureRegistry`]), `worldgen/carver` with each biome's carvers ([`CarverRegistry`]). The other worldgen registries are kept as parsed JSON
+//! ([`RawRegistry`]) for the packages that decode them (presets).
 
 use serde_json::value::RawValue;
 
 use super::aquifer::AquiferRandom;
+use super::carver::CarverRegistry;
 use super::climate::Parameter;
 use super::codec::{DecodeError, DensityLoader, decode_noise};
 use super::density::{
@@ -58,6 +59,8 @@ pub struct WorldgenData {
     climates: BiomeClimates,
     structures: StructureRegistry,
     features: FeatureRegistry,
+    /// `worldgen/carver` and each biome's carvers.
+    carvers: CarverRegistry,
     raw: Vec<RawRegistry>,
 }
 
@@ -177,6 +180,7 @@ impl WorldgenData {
                     | "minecraft:worldgen/structure_set"
                     | "minecraft:worldgen/feature"
                     | "minecraft:worldgen/placed_feature"
+                    | "minecraft:worldgen/carver"
             ) {
                 continue;
             }
@@ -194,6 +198,7 @@ impl WorldgenData {
             climates: BiomeClimates::new(biome_climates),
             structures,
             features: FeatureRegistry::load(packs, blocks)?,
+            carvers: CarverRegistry::load(packs, blocks)?,
             raw,
         })
     }
@@ -201,6 +206,11 @@ impl WorldgenData {
     /// The configured and placed features, and each biome's features per step.
     pub fn features(&self) -> &FeatureRegistry {
         &self.features
+    }
+
+    /// The carvers and each biome's carver list.
+    pub fn carvers(&self) -> &CarverRegistry {
+        &self.carvers
     }
 
     pub fn graph(&self) -> &DensityGraph {

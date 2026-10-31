@@ -86,12 +86,25 @@ impl<'a> NoiseTerrain<'a> {
         flags: &impl SectionFlags,
         heightmap_flags: &impl HeightmapFlags,
     ) -> Result<(), TerrainError> {
+        self.fill_with_aquifer(chunk, context, flags, heightmap_flags)
+            .map(drop)
+    }
+
+    /// [`Self::fill`], keeping the chunk's aquifer (`NoiseChunk.aquifer()`), which the carvers
+    /// ask again for what fills the blocks they dig. `None` for a world without height.
+    pub fn fill_with_aquifer(
+        &self,
+        chunk: &mut ProtoChunk,
+        context: &mut DensityContext,
+        flags: &impl SectionFlags,
+        heightmap_flags: &impl HeightmapFlags,
+    ) -> Result<Option<Aquifer<'a>>, TerrainError> {
         let noise = self
             .settings
             .noise
             .clamp_to_height(chunk.min_y(), chunk.height());
         if noise.height <= 0 {
-            return Ok(());
+            return Ok(None);
         }
         let pos = chunk.pos();
         let volume = DensityVolume::new(
@@ -150,7 +163,7 @@ impl<'a> NoiseTerrain<'a> {
                 }
             }
         }
-        Ok(())
+        Ok(Some(aquifer))
     }
 
     /// `iterateNoiseColumn`: the blocks of the column at `x`, `z`, top down, without structures

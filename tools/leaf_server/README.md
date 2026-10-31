@@ -42,6 +42,7 @@ outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.t
 | `HORIZON_DENSITY_ORACLE` | `worldgen/oracle_tests.rs` (`LeafDensityOracle.java`); `density_program_speed` is a benchmark |
 | `HORIZON_TERRAIN_ORACLE` | `worldgen/terrain/oracle_tests.rs` (`LeafTerrainOracle.java`: `doFill` blocks, WG heightmaps, fluid marks, base columns; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES`); `terrain_fill_speed` is a benchmark |
 | `HORIZON_SURFACE_ORACLE` | `worldgen/surface/oracle_tests.rs` (`LeafSurfaceOracle.java`: `doFill` then `buildSurface` blocks, WG heightmaps, fluid marks over the stems' real biomes; every biome's temperature; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES` and `HORIZON_BIOME_REPORTS`); `surface_build_speed` is a benchmark, `flat_bedrock_is_one_layer` checks Paper's flag (derived from its source, not an oracle) |
+| `HORIZON_CARVER_ORACLE` | `worldgen/carver/oracle_tests.rs` (`LeafCarverOracle.java`: fill, surface, then `generateCarvers`'s body around the generator's own `getBiomeGenerationSettingsForCarver`/`applyCarvingMask`: the carving mask's runs, blocks, WG heightmaps and fluid marks, overworld/large biomes/amplified/Nether; same extra variables as the surface oracle) |
 
 ## Oracles
 

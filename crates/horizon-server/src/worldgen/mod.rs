@@ -14,6 +14,8 @@
 //! - [`terrain`]: the noise fill (`NoiseChunk`, `doFill`) of a proto chunk.
 //! - [`surface`]: the surface rules (`buildSurface`) with Paper's optionally flat bedrock, a biome's
 //!   temperature.
+//! - [`carver`]: the carver registry and the CARVERS part of the TERRAIN step (caves, canyons, the
+//!   carving mask and its application).
 //! - [`proto_chunk`]: the chunk the generation steps write into before it becomes a
 //!   `LevelChunk`.
 //! - [`structure`]: the structure registries, where structures start (with Paper's
@@ -30,6 +32,7 @@
 pub mod anchor;
 pub mod aquifer;
 pub mod biome;
+pub mod carver;
 pub mod climate;
 pub mod codec;
 pub mod data;

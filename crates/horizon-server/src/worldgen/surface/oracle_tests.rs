@@ -34,14 +34,14 @@ use crate::worldgen::terrain::NoiseTerrain;
 use crate::worldgen::terrain::oracle_tests::{Real, env_path, expand, load_real};
 
 /// `BiomeManager.obfuscateSeed`: the first 8 bytes of SHA-256 over the seed, little-endian.
-fn obfuscate_seed(seed: i64) -> i64 {
+pub(crate) fn obfuscate_seed(seed: i64) -> i64 {
     use sha2::Digest;
     let hash = sha2::Sha256::digest(seed.to_le_bytes());
     i64::from_le_bytes(hash[..8].try_into().expect("8 bytes"))
 }
 
 /// Every block of a chunk, by section, y, z, x.
-fn snapshot(chunk: &ProtoChunk) -> Vec<u32> {
+pub(crate) fn snapshot(chunk: &ProtoChunk) -> Vec<u32> {
     let mut blocks = Vec::with_capacity(chunk.height() as usize * 256);
     for y in chunk.min_y()..chunk.min_y() + chunk.height() {
         for z in 0..16 {
@@ -54,21 +54,29 @@ fn snapshot(chunk: &ProtoChunk) -> Vec<u32> {
 }
 
 /// What a stem of a world preset gives a row.
-struct Stem {
-    source: BiomeSource,
-    density: LevelDensity,
-    settings: String,
+pub(crate) struct Stem {
+    pub(crate) source: BiomeSource,
+    pub(crate) density: LevelDensity,
+    pub(crate) settings: String,
 }
 
 /// A chunk's biomes and its neighbours', as the BIOMES steps store them, read through the zoom.
-struct BiomeChunks {
+pub(crate) struct BiomeChunks {
     chunks: HashMap<ChunkPos, ProtoChunk>,
-    zoom: BiomeZoom,
+    pub(crate) zoom: BiomeZoom,
+    /// The climate tree's last result after building them (vanilla keeps it per thread).
+    pub(crate) search: ClimateSearch,
 }
 
 impl BiomeChunks {
     /// The 3 x 3 chunks around `center`, built in the oracle's order with a fresh search state.
-    fn build(real: &Real, stem: &Stem, biome_count: u32, center: ChunkPos, seed: i64) -> Self {
+    pub(crate) fn build(
+        real: &Real,
+        stem: &Stem,
+        biome_count: u32,
+        center: ChunkPos,
+        seed: i64,
+    ) -> Self {
         let settings = real.data.noise_settings(&stem.settings).unwrap();
         let factory = crate::world::chunk::ContainerFactory::new(1, biome_count, 0);
         let mut search = ClimateSearch::default();
@@ -91,11 +99,12 @@ impl BiomeChunks {
         Self {
             chunks,
             zoom: BiomeZoom::new(obfuscate_seed(seed)),
+            search,
         }
     }
 
     /// `BiomeManager.getBiome(pos)`.
-    fn biome_at(&self, pos: BlockPos) -> u32 {
+    pub(crate) fn biome_at(&self, pos: BlockPos) -> u32 {
         let [x, y, z] = self.zoom.quart_at_block(pos);
         self.chunks[&ChunkPos::new(x >> 2, z >> 2)].noise_biome(x, y, z)
     }

@@ -41,7 +41,16 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   real biome sources, plus chunks of 35 biomes and 16 of the eroded badlands) and 4,154 temperatures, all equal;
   4.6 ms per overworld chunk (release). Flat bedrock (`environment.generate-flat-bedrock`, read by
   `config::load_generate_flat_bedrock`) cannot run on the vanilla jar: `flat_bedrock_is_one_layer` checks Paper's
-  arithmetic through the real rules. Carvers are the rest of WP3.
+  arithmetic through the real rules.
+- Worldgen WP3 rest (`src/worldgen/carver`): `worldgen/carver` registry + each biome's `carvers` (id, `#tag`, inline or
+  list; `WorldgenData::carvers`) and `#minecraft:uncarvable`, `FloatProvider`, `CarvingMask`, `cave` (also `nether_cave`,
+  `cave_extra_underground`) and `canyon` carvers, and `CarverStep::carve` = `generateCarvers` + `applyCarvingMask` (17 x 17
+  sources, biome at the source's minimum quart `y=0` from the raw source, `setLargeFeatureSeed(seed + index)`, the fill's
+  own aquifer via `NoiseTerrain::fill_with_aquifer`, `SurfaceSystem::top_material` under carved grass/mycelium). 26.3 has
+  no separate nether carver class. `LeafCarverOracle`: 224 chunks (overworld, large biomes, amplified, Nether x 2 seeds; 205
+  carved, 54,365 mask runs, 18.4M blocks, 214,515 changed by the carvers, 15,961 fluid marks), all equal; 2.0 ms per chunk
+  (release, incl. the 289 biome reads). Not ported: old-world blending's carving filter and upgrading chunks (mask to the
+  top). Not done: `ProtoChunk.setBlockState`'s light-source list (lava etc.) comes with the light work (WP6).
 - Worldgen WP5 slice (`src/worldgen/structure`): structure/structure_set registries + tags, random spread,
   frequency reducers, exclusion zones, ring geometry (biome search as a closure), Spigot `seed-*` salts
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
@@ -93,7 +102,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`) → WP3 rest (carvers, `topMaterial` for them); WP4 rest (`ore`, patches, trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
+WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`); WP4 rest (trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler (carvers' light sources).
 Core: portals and `/execute in` (the level change itself is `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

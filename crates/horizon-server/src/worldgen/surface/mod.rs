@@ -2,7 +2,7 @@
 //! `MaterialSystem`/`MaterialRuleContext` with Paper's optionally flat bedrock): the noise settings'
 //! material rule decides each block of a filled chunk from the biome, the depth below the surface
 //! and the surface noises, column by column, with the eroded badlands' pillars and the frozen
-//! ocean's icebergs. Carvers are not here.
+//! ocean's icebergs. The carvers come in [`super::carver`], which asks for `topMaterial`.
 //!
 //! - [`rules`]: the decoded `worldgen/material_rule` and `material_condition` registries.
 //! - [`temperature`]: a biome's temperature, for the temperature condition and the icebergs.
@@ -20,7 +20,7 @@ pub mod rules;
 pub mod temperature;
 
 #[cfg(test)]
-mod oracle_tests;
+pub(crate) mod oracle_tests;
 #[cfg(test)]
 mod tests;
 
@@ -377,6 +377,50 @@ impl<'a> SurfaceSystem<'a> {
                 }
             }
         }
+    }
+
+    /// `MaterialSystem.topMaterial`: what the rule makes of the block at `pos` with one stone
+    /// above and below it, as the carvers ask when they dig under a grass block (`under_fluid`:
+    /// the block above is a fluid). `density` is the context the chunk's fill used.
+    #[allow(clippy::too_many_arguments)]
+    pub fn top_material(
+        &self,
+        chunk: &mut ProtoChunk,
+        density: &mut DensityContext,
+        heightmap_flags: &impl HeightmapFlags,
+        generation: WorldGenerationContext,
+        biome_at: impl FnMut(BlockPos) -> u32,
+        pos: BlockPos,
+        under_fluid: bool,
+    ) -> Option<BlockState> {
+        let volume = DensityVolume::new([1; 3], [pos.x, pos.y, pos.z], [1; 3])
+            .expect("a one block volume is valid");
+        let mut context = RuleContext::new(self, density, volume, generation, None, biome_at);
+        let (local_x, local_z) = (pos.x & 15, pos.z & 15);
+        let mut height = |x: i32, z: i32| {
+            if chunk.heightmap(Heightmap::WorldSurfaceWg).is_none() {
+                chunk.prime_heightmaps(&[Heightmap::WorldSurfaceWg], heightmap_flags);
+            }
+            chunk
+                .height_at(Heightmap::WorldSurfaceWg, x, z)
+                .expect("primed")
+        };
+        let gradient_x = height((local_x + 1).min(15), local_z)
+            .wrapping_sub(height((local_x - 1).max(0), local_z));
+        let gradient_z = height(local_x, (local_z + 1).min(15))
+            .wrapping_sub(height(local_x, (local_z - 1).max(0)));
+        context.update_xz(pos.x, pos.z, [gradient_x, gradient_z]);
+        context.update_y(
+            1,
+            1,
+            if under_fluid {
+                pos.y.wrapping_add(1)
+            } else {
+                i32::MIN
+            },
+            pos.y,
+        );
+        context.apply(self.root)
     }
 
     /// `erodedBadlandsExtension`: pillars of the default block up from the ground, unless the
