@@ -81,6 +81,7 @@ export HORIZON_DENSITY_ORACLE=$out/density.txt
 export HORIZON_TERRAIN_ORACLE=$out/terrain.txt
 export HORIZON_SURFACE_ORACLE=$out/surface.txt
 export HORIZON_CARVER_ORACLE=$out/carver.txt
+export HORIZON_LEVEL_DATA_ORACLE=$out/level_data.jsonl
 export HORIZON_BIOME_ORACLE=$out/biomes.txt
 export HORIZON_BIOME_REPORTS=$reports/reports
 export HORIZON_STRUCTURE_ORACLE=$out/structures.txt
