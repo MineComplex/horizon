@@ -33,23 +33,30 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
 - Worldgen WP5 slice (`src/worldgen/structure`): structure/structure_set registries + tags, random spread,
   frequency reducers, exclusion zones, ring geometry (biome search as a closure), Spigot `seed-*` salts
   (derived from sources), `createStructures` choice, StructureStart/references NBT in Leaf's orders.
-  `LeafStructurePlacementOracle`: 97,412 answers, all equal.
+  `LeafStructurePlacementOracle`: 97,412 answers, all equal. Matches Leaf (user, 2026-10-31): a malformed
+  inner start id fails the chunk load, inline structures/sets decode, dotted `spigot.yml` world names nest.
+- 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
+  statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
+  tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
+  sources. Real binary checked with `real_binary_session` (join, 9 chunks, walk, clean stop).
 
 ## Reusable Rust pieces (use these, don't add parallel ones)
 `src/util/{random,jmath,number_text}`, `src/core/{position,geometry}`, `src/nbt.rs`, `src/azalea/{buf,chat,
 crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storage,chunk_io}`,
 `src/worldgen/{noise,density,data,codec,proto_chunk}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
-## In progress (wave 1, 2026-10-31; branches merged by cherry-pick)
-- 4.B.1: Moonrise tickets/holders, unload with save, autosave (`src/server/level.rs`, `src/world/`).
-
 ## Next
 WP2 rest (biome predicates, terrain fill, aquifer, Purpur end void rings; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level) → WP3 (surface rules + Paper flat bedrock, carvers); WP4 (features,
 placement, trees); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
-Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops/bans), block/fluid ticks,
+Small cleanups: `obfuscate_seed` (server/runtime.rs) → `worldgen/biome/zoom.rs`; `find_biome_horizontal`
+(structure/placement.rs) → `worldgen/biome`; `world/chunk/serial.rs` private int reader → `Tag::int_value`.
+Core: whitelist/ops/bans first (Leaf's `white-list` defaults to true and nobody is refused yet), Nether/End levels, commands (registry args, vanilla tree, executor, ops/bans), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
+- Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
+  block/fluid ticks don't mark a chunk unsaved; a missing chunk stalls sending (Moonrise's rule for players
+  who can't generate) until WP6; `paper-world.yml` per world and `chunk-loading-*` rates not read.
 - Stand-ins: no movement checks; default game rules/world border/clocks; only the overworld; no block
   entities in chunk packets; no ops/whitelist/bans; `bukkit.yml` not read; YAML comments dropped on save.
