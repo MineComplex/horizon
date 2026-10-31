@@ -31,6 +31,14 @@ impl From<FixedGenerator> for ChunkGenerator {
 }
 
 impl ChunkGenerator {
+    /// The noise generator (`None` for a flat or debug level).
+    pub fn noise(&self) -> Option<&LevelGenerator> {
+        match self {
+            Self::Noise(g) => Some(g),
+            Self::Fixed(_) => None,
+        }
+    }
+
     /// `getSeaLevel`.
     pub fn sea_level(&self) -> i32 {
         match self {

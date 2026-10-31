@@ -191,6 +191,13 @@ pub(super) fn structure(
     let Some(generator) = generator else {
         return Err(invalid());
     };
+    // Flat and debug levels: not searched yet (PORTING_STATE).
+    let Some(generator) = generator.noise() else {
+        return Err(CommandError::locate(
+            "commands.locate.structure.not_found",
+            &name,
+        ));
+    };
     let registry = generator.data().structures();
     let target = if tag {
         registry.tag(id).ok_or_else(invalid)?.to_vec()
@@ -246,6 +253,10 @@ pub(super) fn biome(
     let name = printable(tag, id);
     let not_found = || CommandError::locate("commands.locate.biome.not_found", &name);
     let Some(generator) = server.world.levels[source.level].generator.clone() else {
+        return Err(not_found());
+    };
+    // Flat and debug levels: not searched yet (PORTING_STATE).
+    let Some(generator) = generator.noise() else {
         return Err(not_found());
     };
     let at = source_pos(source);
