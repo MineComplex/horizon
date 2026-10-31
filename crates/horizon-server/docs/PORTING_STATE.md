@@ -129,7 +129,7 @@ redstone, Starlight light, entities, play basics (recipes, inventory, block enti
   `Server::move_player_to_level` = `ServerPlayer.teleport(TeleportTransition)` (respawn, difficulty, op event,
   position, loader distances, abilities, level info, `sendAllPlayerInfo`; markers for attributes, entity
   data, inventory menu, effects until those exist); `HORIZON_TEST_HOOKS=1` adds console
-  `horizon-test-move <player> <dimension> <x> <y> <z>`. Portals and `/execute in` are not ported.
+  `horizon-test-move <player> <dimension> <x> <y> <z>` (kept in the release binary, off by default: the user's decision). Portals and `/execute in` are not ported.
 - A `messages.whitelist` Adventure cannot deserialize (a `§#rrggbb` overlapping a later code: no input
   found that reaches it) fails `canPlayerLogin` for every login: warn "Failed to handle packet for", the
   login answered "Internal server error" (Java's `ServerConnectionListener.tick` catch).
