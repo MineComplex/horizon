@@ -16,6 +16,7 @@ pub mod flags;
 #[cfg(test)]
 pub(crate) mod flags_tests;
 mod report;
+pub mod survival;
 #[cfg(test)]
 mod tests;
 

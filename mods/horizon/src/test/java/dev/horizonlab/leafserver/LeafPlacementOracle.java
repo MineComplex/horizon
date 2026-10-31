@@ -272,6 +272,12 @@ public final class LeafPlacementOracle {
                         BlockPos p = (BlockPos) args[0];
                         yield this.block(p.getX(), p.getY(), p.getZ()).defaultBlockState();
                     }
+                    case "getFluidState" -> {
+                        BlockPos p = (BlockPos) args[0];
+                        yield this.block(p.getX(), p.getY(), p.getZ()).defaultBlockState().getFluidState();
+                    }
+                    // Paper's WorldGenRegion: no light yet during features.
+                    case "getRawBrightness" -> 0;
                     case "getBiome" -> {
                         BlockPos p = (BlockPos) args[0];
                         yield this.biome(p.getX(), p.getY(), p.getZ());
@@ -288,27 +294,6 @@ public final class LeafPlacementOracle {
 
     private static RandomSource random(boolean legacy, long seed) {
         return legacy ? new LegacyRandomSource(seed) : new XoroshiroRandomSource(seed);
-    }
-
-    /** Replaces would_survive predicates by true, in a modifier list. */
-    private static JsonElement withoutSurvival(JsonElement element) {
-        if (element.isJsonArray()) {
-            JsonArray array = new JsonArray();
-            element.getAsJsonArray().forEach(e -> array.add(withoutSurvival(e)));
-            return array;
-        }
-        if (element.isJsonObject()) {
-            JsonObject object = element.getAsJsonObject();
-            if (object.has("type") && object.get("type").getAsString().equals("minecraft:would_survive")) {
-                JsonObject replaced = new JsonObject();
-                replaced.addProperty("type", "minecraft:true");
-                return replaced;
-            }
-            JsonObject copy = new JsonObject();
-            object.entrySet().forEach(e -> copy.add(e.getKey(), withoutSurvival(e.getValue())));
-            return copy;
-        }
-        return element;
     }
 
     public static void main(String[] args) throws Exception {
@@ -366,7 +351,7 @@ public final class LeafPlacementOracle {
             String name = holder.key().identifier().toString();
             Holder.Reference<Biome> owner = biomes.stream().filter(b -> b.value().getGenerationSettings().hasFeature(holder.value())).findFirst().orElse(plains);
             JsonElement json = JsonParser.parseString(new String(resources.getResourceOrThrow(Identifier.parse("minecraft:worldgen/placed_feature/" + holder.key().identifier().getPath() + ".json")).open().readAllBytes()));
-            String chain = withoutSurvival(json.getAsJsonObject().get("placement")).toString();
+            String chain = json.getAsJsonObject().get("placement").toString();
             List<PlacementModifier> modifiers = decodeChain(chain, ops);
             for (int profile = 0; profile < 2; profile++) {
                 for (int o = 0; o < ORIGINS.length; o++) {

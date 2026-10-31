@@ -258,12 +258,12 @@ impl NoiseGeneratorSettings {
     }
 }
 
-/// A block state: a block id (its default state) or `{"Name": ..., "Properties": {...}}`.
+/// A block state: a block id (its default state) or `{"id": ..., "properties": {...}}` (26.3's `StateHolder` codec).
 pub fn block_state(raw: &RawValue, blocks: &BlockStates) -> Result<BlockState, DecodeError> {
     let unknown = |what: &str| DecodeError::Registry(format!("unknown block state {what}"));
     let (name, properties) = if raw.get().starts_with('{') {
         let object = object(raw)?;
-        let properties: Vec<(String, String)> = match optional(&object, "Properties") {
+        let properties: Vec<(String, String)> = match optional(&object, "properties") {
             Some(raw) => {
                 serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(raw.get())?
                     .into_iter()
@@ -275,7 +275,7 @@ pub fn block_state(raw: &RawValue, blocks: &BlockStates) -> Result<BlockState, D
             }
             None => Vec::new(),
         };
-        (string(required(&object, "Name")?)?, properties)
+        (string(required(&object, "id")?)?, properties)
     } else {
         (string(raw)?, Vec::new())
     };

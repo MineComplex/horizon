@@ -39,6 +39,7 @@ pub mod noise;
 pub mod placement;
 pub mod proto_chunk;
 pub mod settings;
+pub mod state_provider;
 pub mod structure;
 pub mod surface;
 pub mod terrain;

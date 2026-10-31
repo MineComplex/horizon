@@ -37,6 +37,7 @@ mkdir -p "$out/oracle-run"
     "$java" -cp "$cp" "$oracles/LeafBiomeOracle.java" "$out/biomes.txt" &&
     "$java" -cp "$cp" "$oracles/LeafStructurePlacementOracle.java" "$out/structures.txt" &&
     "$java" -cp "$cp" "$oracles/LeafPlacementOracle.java" "$out/placement.txt" &&
+    "$java" -cp "$cp" "$oracles/LeafFeatureOracle.java" "$out/feature.txt" &&
     "$java" -cp "$cp" "$oracles/LeafChunkTicketsOracle.java" "$out/tickets.txt" &&
     "$java" -cp "$cp" "$oracles/LeafUserListsOracle.java" "$out/user_lists.jsonl") 2>&1 |
     grep -v -i warning || true
@@ -81,6 +82,7 @@ export HORIZON_BIOME_ORACLE=$out/biomes.txt
 export HORIZON_BIOME_REPORTS=$reports/reports
 export HORIZON_STRUCTURE_ORACLE=$out/structures.txt
 export HORIZON_PLACEMENT_ORACLE=$out/placement.txt
+export HORIZON_FEATURE_ORACLE=$out/feature.txt
 export HORIZON_TICKETS_ORACLE=$out/tickets.txt
 export HORIZON_USER_LISTS_ORACLE=$out/user_lists.jsonl
 EOF

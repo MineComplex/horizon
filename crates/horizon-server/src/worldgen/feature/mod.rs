@@ -17,9 +17,15 @@ use crate::worldgen::codec::{DecodeError, object, required, string};
 use crate::worldgen::data::WorldgenError;
 use crate::worldgen::noise::SimplexNoise;
 use crate::worldgen::placement::{DecodeContext, FLUIDS, PlacementModifier};
+use crate::worldgen::state_provider::{NamedProviders, ProviderContext};
 use crate::worldgen::structure::BiomeSet;
 
+#[cfg(test)]
+mod oracle_tests;
+pub mod rule_test;
+pub mod simple;
 pub mod sort;
+pub use simple::{Feature, FeatureWorld};
 
 /// A `worldgen/feature` element's (a configured feature's) index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -39,6 +45,8 @@ pub struct ConfiguredFeature {
     pub kind: String,
     /// The whole element, for the feature's implementation to decode.
     pub config: Box<RawValue>,
+    /// The decoded feature, for the types [`simple`] implements.
+    pub feature: Option<Feature>,
 }
 
 /// `PlacedFeature`.
@@ -152,11 +160,20 @@ impl FeatureRegistry {
             fluid_tags: &fluid_tags,
         };
 
+        let mut named = Vec::new();
+        for_each_element(packs, "minecraft:worldgen/block_state_provider", |file| {
+            named.push((file.id.to_owned(), parse(&file)?));
+            Ok(())
+        })?;
+        let providers = ProviderContext {
+            names: &names,
+            named: NamedProviders(&named),
+        };
         let mut configured = Vec::new();
         let mut configured_ids = HashMap::new();
         for_each_element(packs, "minecraft:worldgen/feature", |file| {
-            let feature =
-                decode_configured(file.id, &parse(&file)?).map_err(|e| error(&file, e))?;
+            let feature = decode_configured(file.id, &parse(&file)?, &providers)
+                .map_err(|e| error(&file, e))?;
             configured_ids.insert(
                 file.id.to_owned(),
                 ConfiguredFeatureId(configured.len() as u32),
@@ -174,6 +191,7 @@ impl FeatureRegistry {
                 &configured_ids,
                 &mut configured,
                 &names,
+                &providers,
             )
             .map_err(|e| error(&file, e))?;
             placed_ids.insert(file.id.to_owned(), PlacedFeatureId(placed.len() as u32));
@@ -202,6 +220,7 @@ impl FeatureRegistry {
                 owner: file.id,
                 configured_ids: &configured_ids,
                 names: &names,
+                providers: &providers,
             };
             let steps =
                 decode_biome_features(&parse(&file)?, &mut lookup, &mut placed, &mut configured)
@@ -221,11 +240,17 @@ impl FeatureRegistry {
 }
 
 /// `Feature.DIRECT_CODEC`: dispatched on `type`; the rest is the feature's own to decode.
-fn decode_configured(id: &str, raw: &RawValue) -> Result<ConfiguredFeature, DecodeError> {
+fn decode_configured(
+    id: &str,
+    raw: &RawValue,
+    ctx: &ProviderContext<'_>,
+) -> Result<ConfiguredFeature, DecodeError> {
     let fields = object(raw)?;
+    let kind = crate::worldgen::codec::identifier(&string(required(&fields, "type")?)?)?;
     Ok(ConfiguredFeature {
         id: id.to_owned(),
-        kind: crate::worldgen::codec::identifier(&string(required(&fields, "type")?)?)?,
+        feature: Feature::decode(&kind, raw, ctx)?,
+        kind,
         config: raw.to_owned(),
     })
 }
@@ -238,11 +263,16 @@ fn decode_placed(
     configured_ids: &HashMap<String, ConfiguredFeatureId>,
     configured: &mut Vec<ConfiguredFeature>,
     names: &DecodeContext<'_>,
+    providers: &ProviderContext<'_>,
 ) -> Result<PlacedFeature, DecodeError> {
     let fields = object(raw)?;
     let reference = required(&fields, "feature")?;
     let feature = if reference.get().starts_with('{') {
-        configured.push(decode_configured(&format!("{id}#feature"), reference)?);
+        configured.push(decode_configured(
+            &format!("{id}#feature"),
+            reference,
+            providers,
+        )?);
         ConfiguredFeatureId(configured.len() as u32 - 1)
     } else {
         let name = crate::worldgen::codec::identifier(&string(reference)?)?;
@@ -270,6 +300,7 @@ struct PlacedLookup<'a> {
     owner: &'a str,
     configured_ids: &'a HashMap<String, ConfiguredFeatureId>,
     names: &'a DecodeContext<'a>,
+    providers: &'a ProviderContext<'a>,
 }
 
 /// `BiomeGenerationSettings.CODEC`'s `features`: per step a `HolderSet<PlacedFeature>` (an id,
@@ -299,6 +330,7 @@ fn decode_biome_features(
                     lookup.configured_ids,
                     configured,
                     lookup.names,
+                    lookup.providers,
                 )?);
                 features.push(PlacedFeatureId(placed.len() as u32 - 1));
                 continue;

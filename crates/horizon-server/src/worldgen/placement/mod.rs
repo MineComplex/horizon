@@ -25,6 +25,7 @@ mod chain;
 mod layer;
 pub mod predicate;
 pub mod provider;
+pub mod survival;
 pub mod world;
 
 #[cfg(test)]
@@ -117,18 +118,18 @@ impl DecodeContext<'_> {
         holder_set(raw, "fluid", id, self.fluid_tags)
     }
 
-    /// `BlockState.CODEC`: `{"Name": ..., "Properties": {...}}`, or a block's id for its
-    /// default state.
+    /// `BlockState.CODEC` (26.3's `StateHolder` codec): `{"id": ..., "properties": {...}}`, or a
+    /// block's id for its default state.
     pub fn block_state(&self, raw: &RawValue) -> Result<crate::block::BlockState, DecodeError> {
         let (name, properties) = if raw.get().starts_with('"') {
             (string(raw)?, Default::default())
         } else {
             let fields = object(raw)?;
             let properties: std::collections::BTreeMap<String, String> =
-                optional(&fields, "Properties").map_or(Ok(Default::default()), |raw| {
+                optional(&fields, "properties").map_or(Ok(Default::default()), |raw| {
                     serde_json::from_str(raw.get())
                 })?;
-            (string(required(&fields, "Name")?)?, properties)
+            (string(required(&fields, "id")?)?, properties)
         };
         let name = crate::worldgen::codec::identifier(&name)?;
         let block = (self.blocks.block_by_name(&name))

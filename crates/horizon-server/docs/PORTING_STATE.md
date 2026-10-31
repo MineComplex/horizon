@@ -54,6 +54,21 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   world, 273 vanilla placed features), all equal. `would_survive` is the block-behaviour boundary
   (`SurvivalRules`; the oracle replaces it by `true`). Feature implementations, state providers, rule tests,
   block survival rules and the decoration driver are still WP4.
+- Worldgen WP4b first part (`src/block/survival.rs`, `src/worldgen/{state_provider,feature/{simple,rule_test}}`):
+  `block_states.bin` version 2 carries each block's `canSurvive` rule (the exporter maps the declaring class, as
+  Horizon's prepare step did) and flammable / fence gate / double plant / mossy carpet flags; `BlockSurvival`
+  evaluates all 50 rules over the state tables and the data-pack tags (`RegionWorld` + `BlockSurvivalRules` give
+  placement the real `would_survive`; light is 0 as in Paper's `WorldGenRegion`). State providers (all 10 types,
+  named ones inlined) and the features `simple_block`, `scattered_ore`, `disk`, `block_column` are decoded with the
+  registries (`ConfiguredFeature::feature`) and placed through `FeatureWorld` (`RegionWorld` writes the region).
+  `LeafFeatureOracle`: 35,723 states x 40 neighbourhoods (1,428,920 `canSurvive` cases), 720 provider rows, 1,200
+  feature rows over 50 vanilla features, 4 feature-order cycle messages, all equal; `placement_matches_java` now runs
+  the real survival rules (8,010 rows). 26.3's block state JSON is `{"id","properties"}`, not `Name`/`Properties`
+  (fixed in `DecodeContext::block_state` and `settings.rs`). Feature-order cycles name their involved sources as
+  `FeatureSorter.tryReducingError` does (`FeatureCycle::message`; Java prints a `Biome@<identity hash>`, unportable).
+  Not yet: `ore` (needs `BulkSectionAccess` over proto-chunk sections; `OreFeature` writes sections directly),
+  `random_patch`/`flower`/`no_bonemeal_flower`, mossy-carpet `simple_block` (level random), `schedule_tick` on a
+  region (the proto chunk keeps no ticks), block entities / POI / `getPostProcessPos` on `setBlock` (WP6).
 - 4.B.1 chunk holding (`src/server/chunk_system/`): Moonrise tickets + propagation, holders and full
   statuses, unload queue with save-on-unload, Paper's incremental autosave, player chunk loader, Leaf's
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
@@ -72,7 +87,7 @@ crypto,language}`, `src/registry`, `src/server/config`, `src/world/{chunk,storag
 `src/worldgen/{noise,density,data,codec,proto_chunk,feature,placement}`. Crates: tokio, serde_json, saphyr, tracing, rayon.
 
 ## Next
-WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`) → WP3 rest (carvers, `topMaterial` for them); WP4 rest (feature implementations, trees, state providers, block survival rules, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
+WP2 rest (biome predicates; wire BiomeSource/LevelDensity into `Level`, one `ClimateSearch` per worker, spawn origin once per level; read the flat-bedrock flag per world and pass it to `SurfaceSystem::new`) → WP3 rest (carvers, `topMaterial` for them); WP4 rest (`ore`, patches, trees and the other feature implementations, the decoration driver); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
 Core: dimension switching (portals, `/execute in`, `move_player_to_level`), commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 

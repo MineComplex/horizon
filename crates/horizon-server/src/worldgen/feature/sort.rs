@@ -30,20 +30,63 @@ impl StepFeatureData {
     }
 }
 
-/// Two biomes want incompatible orders (`Feature order cycle found`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("Feature order cycle found")]
-pub struct FeatureCycle;
+/// Two biomes want incompatible orders (`Feature order cycle found, involved sources: [...]`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FeatureCycle {
+    /// `tryReducingError`'s result: the indices (into the input sources, in order) of the
+    /// sources that still form a cycle once every source whose removal leaves one is dropped.
+    pub involved: Vec<usize>,
+}
 
-/// `buildFeaturesPerStep` over each source's per-step feature lists.
+impl FeatureCycle {
+    /// The `IllegalStateException` message, the sources listed as `List.toString` does.
+    pub fn message(&self, describe: impl Fn(usize) -> String) -> String {
+        let list: Vec<String> = self.involved.iter().map(|&i| describe(i)).collect();
+        format!(
+            "Feature order cycle found, involved sources: [{}]",
+            list.join(", ")
+        )
+    }
+}
+
+/// `buildFeaturesPerStep(sources, getter, true)` over each source's per-step feature lists.
 pub fn build_features_per_step(
     sources: &[Vec<Vec<PlacedFeatureId>>],
 ) -> Result<Vec<StepFeatureData>, FeatureCycle> {
+    let all: Vec<usize> = (0..sources.len()).collect();
+    if let Ok(steps) = build(sources, &all) {
+        return Ok(steps);
+    }
+    // `tryReducingError`: take each source out in turn and put it back only when the rest still
+    // has a cycle without it (Java's `ListIterator` remove/add), until a pass changes nothing.
+    let mut reduced = all;
+    loop {
+        let last = reduced.len();
+        let mut i = 0;
+        while i < reduced.len() {
+            let source = reduced.remove(i);
+            if build(sources, &reduced).is_err() {
+                // Still a cycle without it: the source is not needed to explain it.
+                continue;
+            }
+            reduced.insert(i, source);
+            i += 1;
+        }
+        if last == reduced.len() {
+            break;
+        }
+    }
+    Err(FeatureCycle { involved: reduced })
+}
+
+/// One `buildFeaturesPerStep(.., false)` over the chosen sources: `Err` is a cycle.
+fn build(all: &[Vec<Vec<PlacedFeatureId>>], chosen: &[usize]) -> Result<Vec<StepFeatureData>, ()> {
     let mut first_index = HashMap::new();
     let mut by_index = Vec::new();
     let mut edges: BTreeMap<Node, BTreeSet<Node>> = BTreeMap::new();
     let mut max_step = 0;
-    for source in sources {
+    for &source in chosen {
+        let source = &all[source];
         max_step = max_step.max(source.len());
         let mut chain = Vec::new();
         for (step, features) in source.iter().enumerate() {
@@ -70,7 +113,7 @@ pub fn build_features_per_step(
         if !discovered.contains(&node)
             && depth_first(&edges, &mut discovered, &mut visiting, &mut sorted, node)
         {
-            return Err(FeatureCycle);
+            return Err(());
         }
     }
     sorted.reverse();
@@ -118,7 +161,8 @@ fn depth_first(
 
 impl FeatureRegistry {
     /// A generator's feature order: `FeatureSorter` over the biomes its biome source can
-    /// produce (a chunk generator builds it once, from `possibleBiomes()`).
+    /// produce (a chunk generator builds it once, from `possibleBiomes()`). A cycle's
+    /// `involved` indexes `biomes`.
     pub fn features_per_step(&self, biomes: &[u32]) -> Result<Vec<StepFeatureData>, FeatureCycle> {
         let sources: Vec<_> = biomes
             .iter()

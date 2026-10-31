@@ -2,8 +2,8 @@
 //! (`mods/horizon/src/test/java/dev/horizonlab/leafserver/`) runs the int and height providers, every
 //! placed feature's modifier chain (and custom chains covering every modifier and predicate), and the
 //! feature sorter on vanilla's own classes; this compares each result. The chains run over a synthetic
-//! world given by formulas, repeated here (`Synth`); `would_survive` predicates are replaced by `true` in
-//! both, as their answer is block behaviour.
+//! world given by formulas, repeated here (`Synth`); `would_survive` runs `BlockState.canSurvive` over
+//! that world on both sides (light 0, as Paper's `WorldGenRegion` answers during features).
 //!
 //! ```sh
 //! java -cp <26.3 jar:libraries> LeafPlacementOracle.java placement.txt
@@ -14,11 +14,11 @@
 
 use std::collections::HashMap;
 
-use serde_json::Value;
 use serde_json::value::RawValue;
 
 use super::{DecodeContext, FLUIDS, FeaturePlacer, HeightProvider, IntProvider, PlacementModifier};
 use super::{PlacementWorld, WorldError};
+use crate::block::survival::{BlockSurvival, SurvivalError, SurvivalWorld};
 use crate::block::{BlockState, BlockStateData, BlockStates};
 use crate::core::position::BlockPos;
 use crate::registry::{DataPack, for_each_element, load_tags, registry_dir};
@@ -60,6 +60,7 @@ struct Synth<'a> {
     /// Biome ids by name order.
     biomes: &'a [u32],
     fixed: Option<u32>,
+    survival: &'a BlockSurvival,
 }
 
 fn floor_mod(value: i32, modulus: i32) -> i32 {
@@ -86,6 +87,19 @@ impl Synth<'_> {
             .wrapping_add(z.wrapping_mul(13))
             .wrapping_add((x >> 2).wrapping_mul(y >> 1));
         self.palette[floor_mod(hash, 16) as usize]
+    }
+}
+
+/// `canSurvive` reads the same world; light is 0 as in Paper's `WorldGenRegion` during features.
+struct SynthReader<'a, 'b>(&'a Synth<'b>);
+
+impl SurvivalWorld for SynthReader<'_, '_> {
+    type Error = WorldError;
+    fn block_state(&self, x: i32, y: i32, z: i32) -> Result<BlockState, WorldError> {
+        Ok(self.0.block_at(x, y, z))
+    }
+    fn raw_brightness(&self, _: i32, _: i32, _: i32) -> Result<i32, WorldError> {
+        Ok(0)
     }
 }
 
@@ -123,23 +137,14 @@ impl PlacementWorld for Synth<'_> {
             .wrapping_add((pos.y >> 2).wrapping_mul(7));
         Ok(self.biomes[floor_mod(hash, self.biomes.len() as i32) as usize])
     }
-    fn block_survives(&self, _: BlockState, _: BlockPos) -> Result<bool, WorldError> {
-        Err(WorldError::Unsupported("block survival rules"))
-    }
-}
-
-/// `would_survive` replaced by `true`, as the oracle does.
-fn without_survival(value: &mut Value) {
-    match value {
-        Value::Array(items) => items.iter_mut().for_each(without_survival),
-        Value::Object(fields) => {
-            if fields.get("type").and_then(Value::as_str) == Some("minecraft:would_survive") {
-                *value = serde_json::json!({"type": "minecraft:true"});
-            } else {
-                fields.values_mut().for_each(without_survival);
-            }
-        }
-        _ => {}
+    fn block_survives(&self, state: BlockState, pos: BlockPos) -> Result<bool, WorldError> {
+        let at = [pos.x, pos.y, pos.z];
+        (self.survival)
+            .can_survive(self.blocks, self.data, &SynthReader(self), state, at)
+            .map_err(|e| match e {
+                SurvivalError::World(e) => e,
+                SurvivalError::Unsupported(what) => WorldError::Unsupported(what),
+            })
     }
 }
 
@@ -154,6 +159,7 @@ struct Fixture {
     biome_tags: Vec<(String, Vec<i32>)>,
     block_tags: Vec<(String, Vec<i32>)>,
     fluid_tags: Vec<(String, Vec<i32>)>,
+    survival: BlockSurvival,
 }
 
 impl Fixture {
@@ -161,14 +167,7 @@ impl Fixture {
         let var =
             |name: &str| std::env::var_os(name).unwrap_or_else(|| panic!("{name} is not set"));
         let mut jar = VanillaJar::open(var("HORIZON_VANILLA_JAR").as_ref()).expect("the 26.3 jar");
-        let mut pack = DataPack::vanilla(&mut jar).expect("the vanilla pack");
-        for (path, bytes) in pack.files.iter_mut() {
-            if path.starts_with("minecraft/worldgen/placed_feature/") {
-                let mut json: Value = serde_json::from_slice(bytes).unwrap();
-                without_survival(&mut json);
-                *bytes = serde_json::to_vec(&json).unwrap();
-            }
-        }
+        let pack = DataPack::vanilla(&mut jar).expect("the vanilla pack");
         let blocks = BlockStates::load(var("HORIZON_SERVER_BLOCKS_JSON").as_ref()).unwrap();
         let state_data =
             BlockStateData::load(var("HORIZON_SERVER_BLOCK_STATES").as_ref(), &blocks).unwrap();
@@ -192,6 +191,7 @@ impl Fixture {
         let fluid_tags = load_tags(packs, &registry_dir("minecraft:fluid"), |id| {
             FLUIDS.iter().position(|f| *f == id).map(|i| i as i32)
         });
+        let survival = BlockSurvival::new(&blocks, &state_data, &block_tags, &fluid_tags).unwrap();
         let data = WorldgenData::load(packs, &blocks).expect("the worldgen registries");
         let mut sorted_biomes: Vec<u32> = (0..biome_names.len() as u32).collect();
         sorted_biomes.sort_by(|a, b| biome_names[*a as usize].cmp(&biome_names[*b as usize]));
@@ -208,6 +208,7 @@ impl Fixture {
             biome_tags,
             block_tags,
             fluid_tags,
+            survival,
         }
     }
 
@@ -260,6 +261,7 @@ impl Fixture {
             generator,
             biomes: &self.sorted_biomes,
             fixed,
+            survival: &self.survival,
         }
     }
 }

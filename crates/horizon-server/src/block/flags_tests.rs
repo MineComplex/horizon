@@ -52,6 +52,7 @@ pub(crate) fn synthetic(count: u32) -> Vec<u8> {
         &["PUSH_PULL", "PUSH", "POPPED", "IMMOVEABLE", "IGNORE_ENTITY"],
     );
     names(&mut out, &["harp", "basedrum"]);
+    names(&mut out, &["Always", "TagBelow:minecraft:dirt"]);
     out.extend(4u32.to_le_bytes());
     out.push(0); // empty
     out.push(1); // block
@@ -97,6 +98,23 @@ pub(crate) fn synthetic(count: u32) -> Vec<u8> {
         [u32::MAX, 3],
     );
     out
+}
+
+/// Version 2's survival rules: the name list and each state's index (the synthetic file gives
+/// every state rule 0, "none"); a version 1 file is refused with the way to remake it.
+#[test]
+fn survival_rule_names_are_read() {
+    let data = BlockStateData::from_bytes(&synthetic(4), 4).unwrap();
+    let names: Vec<&str> = data.survival_rule_names().iter().map(|n| &**n).collect();
+    assert_eq!(names, ["Always", "TagBelow:minecraft:dirt"]);
+    assert_eq!(data.survival_rule(BlockState(0)), None);
+    let mut old = synthetic(4);
+    old[4..8].copy_from_slice(&1u32.to_le_bytes());
+    let error = BlockStateData::from_bytes(&old, 4).unwrap_err().to_string();
+    assert!(
+        error.contains("version 1") && error.contains("leaf_server_reports.py"),
+        "{error}"
+    );
 }
 
 /// The flags chunk sections count with, from the synthetic file: air; stone; a waterlogged slab

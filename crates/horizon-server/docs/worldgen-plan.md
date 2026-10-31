@@ -367,6 +367,14 @@ placement modifiers, block predicates, `IntProvider`/`HeightProvider`, `FeatureP
 `SurvivalRules`, unimplemented), `FloatProvider` (carvers). Leaf's optional `FastRNG` for worldgen (`Biome.BIOME_INFO_NOISE`) is
 not ported (off by default).
 
+**Done (4b, first part)**: block survival (`S/block/survival.rs`, exporter + `block_states.bin` v2: a rule name per block from the
+class that declares `canSurvive`/`mayPlaceOn`, plus flammable/fence gate/double plant/mossy carpet flags; tags from the
+data packs; shapes of dynamic-shape neighbours make a case `Unsupported`), `S/worldgen/state_provider.rs` (all 10 types,
+`worldgen/block_state_provider` inlined at decode, noise from `WorldgenRandom(LegacyRandomSource(seed))`), `feature/rule_test.rs`,
+`feature/simple.rs` (`simple_block` with double plants, `scattered_ore`, `disk`, `block_column`; `FeatureWorld` over a writable
+`RegionWorld`), `FeatureCycle::message` (`tryReducingError`). Oracle `LeafFeatureOracle` (README). Left in 4b: `ore`
+(`BulkSectionAccess`), `random_patch` and the flower variants, mossy-carpet placement, trees, and the remaining ~20 feature files.
+
 - **Copy (4a, infra + block facts)**: `W/{feature.rs, feature_catalog.rs, feature_graph.rs, feature_sort.rs,
   decoration.rs, placement.rs + placement/*, block_predicate.rs, fluid_predicate.rs, rule_test.rs (without
   `horizon:matter_phase`), state_provider.rs + state_provider/*, block_feature.rs}` (≈5.1k) and the block-fact layer

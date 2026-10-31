@@ -25,7 +25,7 @@ pub struct WeightedList<T> {
 
 impl<T> WeightedList<T> {
     /// The codec's list of `{"data": ..., "weight": n}`.
-    fn decode(
+    pub(crate) fn decode(
         raw: &RawValue,
         mut data: impl FnMut(&RawValue) -> Result<T, DecodeError>,
     ) -> Result<Self, DecodeError> {
@@ -47,7 +47,7 @@ impl<T> WeightedList<T> {
     }
 
     /// `getRandom`: one bounded draw, then the entry whose cumulative weight passes it.
-    fn pick(&self, random: &mut impl RandomSource) -> Result<&T, InvalidBound> {
+    pub(crate) fn pick(&self, random: &mut impl RandomSource) -> Result<&T, InvalidBound> {
         let mut index = random.next_int_bound(self.total)?;
         for (value, weight) in &self.entries {
             index -= weight;

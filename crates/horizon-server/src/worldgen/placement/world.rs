@@ -9,6 +9,7 @@
 use crate::block::{BlockState, BlockStateData, BlockStates};
 use crate::core::position::BlockPos;
 use crate::world::chunk::serial::Heightmap;
+use crate::world::level_chunk::HeightmapTable;
 use crate::worldgen::anchor::WorldGenerationContext;
 use crate::worldgen::biome::zoom::BiomeZoom;
 use crate::worldgen::proto_chunk::{GenerationRegion, OutsideRegion};
@@ -81,7 +82,9 @@ impl SurvivalRules for NoSurvivalRules {
 
 /// A [`GenerationRegion`] with the facts placement reads from outside it.
 pub struct RegionWorld<'a, 'r, S> {
-    pub region: &'a GenerationRegion<'r>,
+    /// Writable: features set blocks through [`FeatureWorld`](crate::worldgen::feature::FeatureWorld).
+    pub region: &'a mut GenerationRegion<'r>,
+    pub heightmaps: &'a HeightmapTable,
     pub blocks: &'a BlockStates,
     pub data: &'a BlockStateData,
     pub level: WorldGenerationContext,
@@ -128,6 +131,6 @@ impl<S: SurvivalRules> PlacementWorld for RegionWorld<'_, '_, S> {
         Ok(self.region.noise_biome(self.zoom.quart_at_block(pos))?)
     }
     fn block_survives(&self, state: BlockState, pos: BlockPos) -> Result<bool, WorldError> {
-        self.survival.can_survive(state, pos, self.region)
+        self.survival.can_survive(state, pos, &*self.region)
     }
 }

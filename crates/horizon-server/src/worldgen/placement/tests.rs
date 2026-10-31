@@ -196,7 +196,22 @@ fn sorter_merges_orders_and_finds_cycles() {
     // Opposite orders of one step are a cycle, and so is a feature listed twice in a biome.
     assert_eq!(
         build_features_per_step(&[vec![vec![f(0), f(1)]], vec![vec![f(1), f(0)]]]).unwrap_err(),
-        FeatureCycle
+        FeatureCycle {
+            involved: vec![0, 1]
+        }
     );
     assert!(build_features_per_step(&[vec![vec![f(0), f(1), f(0)]]]).is_err());
+    // `tryReducingError` drops the sources that are not part of the cycle.
+    let cycle = build_features_per_step(&[
+        vec![vec![f(5)]],
+        vec![vec![f(0), f(1)]],
+        vec![vec![f(7), f(8)]],
+        vec![vec![f(1), f(0)]],
+    ])
+    .unwrap_err();
+    assert_eq!(cycle.involved, [1, 3]);
+    assert_eq!(
+        cycle.message(|i| format!("s{i}")),
+        "Feature order cycle found, involved sources: [s1, s3]"
+    );
 }

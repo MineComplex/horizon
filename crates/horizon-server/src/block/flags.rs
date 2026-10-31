@@ -9,11 +9,15 @@
 //! it as parallel flat arrays indexed by state id; shapes are de-duplicated into one list (529
 //! for 35,723 states in 26.3) and states hold an index into it.
 //!
-//! # `block_states.bin`, version 1 (little-endian)
+//! # `block_states.bin`, version 2 (little-endian)
+//!
+//! Version 2 added the survival rules: a name list after the instruments and, in each record,
+//! a rule index (the old padding). Version 1 files are rejected (rerun `tools/leaf_server_reports.py`).
 //!
 //! ```text
 //! "HZBS"  u32 version  u32 state_count
-//! names: fluids (BuiltInRegistries.FLUID order), PushReaction values, NoteBlockInstrument values;
+//! names: fluids (BuiltInRegistries.FLUID order), PushReaction values, NoteBlockInstrument values,
+//!        survival rules (`survival.rs`: `Fire`, `TagBelow:<tag>`...);
 //!        each list is u16 count, then per name u8 length + UTF-8
 //! u32 shape_count, then each shape:
 //!   u8 kind: 0 Shapes.empty(), 1 Shapes.block(), 2 a grid:
@@ -23,7 +27,8 @@
 //! state_count records of 28 bytes:
 //!   u32 flags (FLAG_* below)  u32 face sturdy bits (bit direction*3 + SupportType)
 //!   u8 light emission  u8 light dampening  u8 push reaction  u8 map colour id  u8 instrument
-//!   u8 fluid: type id (bits 0-2) | amount << 3 (bits 3-6) | falling (bit 7)  u16 zero
+//!   u8 fluid: type id (bits 0-2) | amount << 3 (bits 3-6) | falling (bit 7)
+//!   u16 survival rule: 0 none, else 1 + the index in the rule names
 //!   f32 destroy speed  u32 collision shape (u32::MAX: dynamic shape, not cached)  u32 occlusion shape
 //! ```
 //!
@@ -36,7 +41,7 @@ use std::path::{Path, PathBuf};
 use super::{BlockDataError, BlockState, BlockStates};
 use crate::core::geometry::{Direction, VoxelShape};
 
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 const RECORD: usize = 28;
 const NO_SHAPE: u32 = u32::MAX;
 
@@ -71,6 +76,14 @@ pub const FLAG_CONSTANT_COLLISION: u32 = 1 << 18;
 pub const FLAG_SPECIAL_COLLIDING: u32 = 1 << 19;
 /// Moonrise's `occludesFullBlock`: the collision shape covers the whole unit cube.
 pub const FLAG_OCCLUDES_FULL_BLOCK: u32 = 1 << 20;
+/// `FireBlock.getIgniteOdds(state) > 0`: burnable and not waterlogged (`canSurvive` of fire).
+pub const FLAG_FLAMMABLE: u32 = 1 << 21;
+/// The block is a `FenceGateBlock` (`PathBlock.canSurvive`).
+pub const FLAG_FENCE_GATE: u32 = 1 << 22;
+/// The block is a `DoublePlantBlock` (the simple block feature places both halves).
+pub const FLAG_DOUBLE_PLANT: u32 = 1 << 23;
+/// The block is a `MossyCarpetBlock` (the simple block feature places it with its own rules).
+pub const FLAG_MOSSY_CARPET: u32 = 1 << 24;
 
 /// `PushReaction` (26.3's names), in vanilla's order (checked against the file's names).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,6 +137,8 @@ pub struct BlockStateData {
     shapes: Vec<VoxelShape>,
     fluid_names: Vec<Box<str>>,
     instrument_names: Vec<Box<str>>,
+    survival_names: Vec<Box<str>>,
+    survival: Vec<u16>,
     /// Bit `i` set: fluid `i` is `minecraft:empty` (`FluidState.isEmpty`).
     empty_fluids: u8,
     /// Bit `i` set: fluid `i` ticks randomly (`Fluid.isRandomlyTicking`: only `LavaFluid` does).
@@ -249,6 +264,7 @@ impl BlockStateData {
             return Err(format_error("unexpected PushReaction values"));
         }
         let instrument_names = r.names()?;
+        let survival_names = r.names()?;
         let shapes = (0..r.u32()?)
             .map(|_| r.shape())
             .collect::<Result<Vec<_>, _>>()?;
@@ -271,6 +287,7 @@ impl BlockStateData {
             shapes,
             fluid_names,
             instrument_names,
+            survival_names,
             empty_fluids,
             random_ticking_fluids,
             ..Default::default()
@@ -309,6 +326,11 @@ impl BlockStateData {
             data.map_color.push(rec[11]);
             data.instrument.push(rec[12]);
             data.fluid.push(rec[13]);
+            let rule = u16::from_le_bytes([rec[14], rec[15]]);
+            if rule as usize > data.survival_names.len() {
+                return Err(format_error("a survival rule is out of range"));
+            }
+            data.survival.push(rule);
             data.destroy_speed
                 .push(f32::from_le_bytes(rec[16..20].try_into().unwrap()));
             data.collision.push(collision);
@@ -381,6 +403,14 @@ impl BlockStateData {
             amount: byte >> 3 & 15,
             falling: byte & 0x80 != 0,
         }
+    }
+    /// The survival rule names the file lists (`survival.rs` resolves them).
+    pub fn survival_rule_names(&self) -> &[Box<str>] {
+        &self.survival_names
+    }
+    /// The state's rule: an index into [`Self::survival_rule_names`].
+    pub fn survival_rule(&self, state: BlockState) -> Option<usize> {
+        (Self::at(&self.survival, state) as usize).checked_sub(1)
     }
     /// The fluid's registry name (`minecraft:water`, `minecraft:flowing_lava`, `minecraft:empty`).
     pub fn fluid_name(&self, fluid: u8) -> &str {
