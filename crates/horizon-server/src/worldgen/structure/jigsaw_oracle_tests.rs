@@ -100,7 +100,7 @@ fn canonical(tag: &Tag, out: &mut String) {
     }
 }
 
-pub(super) fn canonical_string(tag: &Tag) -> String {
+pub(crate) fn canonical_string(tag: &Tag) -> String {
     let mut out = String::new();
     canonical(tag, &mut out);
     out

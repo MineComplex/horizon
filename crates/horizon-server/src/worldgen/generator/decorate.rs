@@ -2,9 +2,11 @@
 //! pipeline calls, over [`crate::worldgen::feature::decorate::apply_biome_decoration`].
 //!
 //! Structure starts the chunk references are placed before each step's features
-//! (`worldgen::structure::piece_place`: jigsaw pieces; other piece types are not ported yet).
+//! (`worldgen::structure::piece_place`), with the region's random (`WorldGenRegion.getRandom`);
+//! what placing changes in their pieces goes back to the chunks holding the starts
+//! (`GenerationRegion::defer_piece_changes`).
 //! Stand-ins until they are ported: feature types not ported are skipped, and a feature that fails
-//! (mossy carpet placement) ends the chunk's decoration with a warning instead of failing the chunk.
+//! ends the chunk's decoration with a warning instead of failing the chunk.
 
 use super::LevelGenerator;
 use crate::worldgen::anchor::WorldGenerationContext;
@@ -31,6 +33,25 @@ pub fn decorate(
     generator: &LevelGenerator,
     region: &mut GenerationRegion<'_>,
 ) -> Result<(), DecorateError> {
+    if let Some(e) = decorate_with(generator, region, false)? {
+        let center = region.center();
+        tracing::warn!(
+            "Chunk [{}, {}]: {e}; its decoration stops there",
+            center.x,
+            center.z
+        );
+    }
+    Ok(())
+}
+
+/// [`decorate`], answering what stopped the decoration (a stand-in: feature errors end it) instead
+/// of logging it. `known_shape` places the template pieces with `setKnownShape(true)`, which only
+/// the oracles' worlds ask for ([`PieceTables::known_shape`]).
+pub fn decorate_with(
+    generator: &LevelGenerator,
+    region: &mut GenerationRegion<'_>,
+    known_shape: bool,
+) -> Result<Option<String>, DecorateError> {
     let tables = &generator.tables;
     let settings = generator.settings();
     let (min_y, height) = (
@@ -51,7 +72,7 @@ pub fn decorate(
         processors: data.processor_lists(),
         features: data.features(),
         seed: generator.seed,
-        known_shape: false,
+        known_shape,
     };
     let center_chunk = region.chunk(center).ok_or(DecorateError(format!(
         "the centre chunk {center:?} is outside its region"
@@ -92,15 +113,8 @@ pub fn decorate(
         &mut structures,
         |p| generator.unported_features.contains(&p),
     );
-    if let Err(e) = result {
-        tracing::warn!(
-            "Chunk [{}, {}]: {e}; its decoration stops there",
-            center.x,
-            center.z
-        );
-    }
     // The pieces the starts' placement changed go back to the chunks holding the starts.
     let changes = structures.finish();
     region.defer_piece_changes(changes);
-    Ok(())
+    Ok(result.err().map(|e| e.to_string()))
 }

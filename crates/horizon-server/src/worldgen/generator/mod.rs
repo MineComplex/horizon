@@ -25,6 +25,8 @@ pub mod structures;
 
 #[cfg(test)]
 mod oracle_tests;
+#[cfg(test)]
+mod structure_chunks_oracle_tests;
 
 use std::sync::Arc;
 
@@ -45,7 +47,7 @@ use crate::worldgen::biome::zoom::{BiomeZoom, obfuscate_seed};
 use crate::worldgen::carver::{CarveError, CarverStep};
 use crate::worldgen::climate::ClimateSearch;
 use crate::worldgen::data::{LevelDensity, WorldgenData};
-use crate::worldgen::density::DensityContext;
+use crate::worldgen::density::{DensityContext, WorldFields};
 use crate::worldgen::proto_chunk::{GenerationRegion, OutsideRegion, ProtoChunk};
 use crate::worldgen::settings::NoiseGeneratorSettings;
 use crate::worldgen::structure::placement::{LevelParams, LevelPlacements, ring_searches};
@@ -455,8 +457,10 @@ impl<'g> GenerationWorker<'g> {
         let flags = &*generator.tables.flags;
         let heightmaps = &*generator.tables.heightmaps;
         let zoom = generator.zoom;
+        let beardifier = structures::beardifier_for(region, generator.data().structures());
         let chunk = region.chunk_mut(center)?;
         self.context.reset();
+        self.context.set_fields(WorldFields { beardifier });
         let aquifer =
             self.terrain
                 .fill_with_aquifer(chunk, &mut self.context, flags, heightmaps)?;

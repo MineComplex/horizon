@@ -12,7 +12,8 @@
 //! `WorldGenRegion` answers 0 while a chunk's light is not finished, as it is during features).
 
 use super::flags::{
-    FLAG_DYNAMIC_SHAPE, FLAG_FENCE_GATE, FLAG_FLAMMABLE, FLAG_LEGACY_SOLID, FLAG_LIQUID,
+    FLAG_DYNAMIC_SHAPE, FLAG_FENCE_GATE, FLAG_FLAMMABLE, FLAG_HAS_OFFSET, FLAG_LEGACY_SOLID,
+    FLAG_LIQUID,
 };
 use super::flags::{FLAG_SOLID_RENDER, SupportType};
 use super::{BlockId, BlockState, BlockStateData, BlockStates};
@@ -877,7 +878,9 @@ pub fn shape_fills_face(shape: &VoxelShape, face: Direction) -> bool {
 
 /// `MultifaceBlock.canAttachTo` / `VineBlock.isAcceptableNeighbour` for the neighbour state that
 /// `direction` leads to: a sturdy face, else a collision shape whose face fills the block's.
-/// `None` for a state with a dynamic shape (its shape asks a block entity).
+/// `None` for a state with a dynamic shape (its shape asks a block entity). A dynamic shape that is
+/// only offset by the position (bamboo, pointed dripstone) is narrower than a block: it fills no
+/// face wherever it is moved to.
 pub fn can_attach_to(
     data: &BlockStateData,
     neighbor: BlockState,
@@ -886,6 +889,9 @@ pub fn can_attach_to(
     let face = direction.opposite();
     if data.is_face_sturdy(neighbor, face, SupportType::Full) {
         return Some(true);
+    }
+    if data.collision_shape(neighbor).is_none() && data.has(neighbor, FLAG_HAS_OFFSET) {
+        return Some(false);
     }
     data.collision_shape(neighbor)
         .map(|shape| shape_fills_face(shape, face))
