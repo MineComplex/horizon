@@ -72,7 +72,23 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   (single, legacy single, feature, list, empty), the jigsaw assembler, jigsaw pieces placed into the world, saved starts
   loaded back (an element is found by its saved form: an element listed by several pools has one copy per pool), and
   `Structure.generate` for the jigsaw structures. `LeafJigsawOracle`: 132 starts and 6,445 pieces over two seeds, all start
-  tags equal, 94 placements (73,415 `setBlock` calls), 0 failures. Open: legacy pieces, the other structure types.
+  tags equal, 94 placements (73,415 `setBlock` calls), 0 failures. Open: the other structure types (shipwreck, ocean ruins, igloo, ruined portal, nether fossil, end city, mansion).
+- Worldgen WP5 legacy pieces (`src/worldgen/structure/{legacy_piece,scattered,mineshaft,fortress,stronghold,monument}.rs`,
+  `generator/legacy_structures.rs`): `Structure.generate` and the code-placed pieces of the desert pyramid, jungle temple, swamp hut,
+  buried treasure, both mineshafts, the stronghold, the nether fortress and the ocean monument. `legacy_piece` holds
+  `StructurePiece`'s helpers (`PieceBase`: box, orientation, depth; `placeBlock`, `generateBox` and variants, `fillColumnDown`,
+  `createChest`, `reorient`) over the object-safe `PieceWorld` (blanket over `FeatureWorld`) and `LegacyPiece`, one enum of
+  piece kinds saved/loaded by piece id (`StructurePiece::Legacy`; ids not ported stay `Saved`). Chests, spawners, minecart chests
+  and mobs a placement makes go to `PieceOutput` (no block entities or entities exist yet; `place_start` drops them), as templates'
+  do. `DesertPyramidStructure.afterPlace` runs after the pieces. `LeafLegacyStructuresOracle`: 9 structures x 2 seeds, 54 starts,
+  3,275 pieces (saved NBT equal, start tags equal and reloaded), 44 chunk placements (65,192 `setBlock` calls, block entities with
+  loot tables/seeds/spawner entities, entities, both random streams), 0 failures. Open: (1) `StartPlacer` places clones of the
+  region's starts, so what placing changes in a piece (settled `HPos`, `hasPlacedChest`, a buried treasure's box, a spawner placed)
+  is lost between chunks: WP6 must place the starts in the chunks that hold them; (2) `FeatureWorld::level_boolean/level_float`
+  (`WorldGenLevel.getRandom`, the desert pyramid's cellar) default to unsupported: the region world must supply its random;
+  (3) a loaded ocean monument has no rooms: `MonumentBuilding::regenerate` is `regeneratePiecesAfterLoad` and needs the level
+  seed at load; (4) the oracle cannot make a witch, cat or elder guardian (no server), so those entities are not compared;
+  (5) mineshafts read `BiomeTags.MINESHAFT_BLOCKING` and monuments `required_ocean_monument_surrounding` from the structure registry.
 - Worldgen WP4a first part (`src/worldgen/{feature,placement}`): `worldgen/feature` (type + raw JSON) and
   `placed_feature` registries, tags, each biome's features per step, the feature sorter, placement
   modifiers (all 18), block predicates, int/height providers, `FeaturePlacer` over a narrow `PlacementWorld`
