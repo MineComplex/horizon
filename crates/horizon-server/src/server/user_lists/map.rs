@@ -148,13 +148,4 @@ impl<V> ConcurrentMap<V> {
             .flatten()
             .map(|n| (n.key.as_str(), &n.value))
     }
-
-    /// `values().removeIf(test)`.
-    pub fn remove_if(&mut self, test: impl Fn(&V) -> bool) {
-        for bin in &mut self.table {
-            let before = bin.len();
-            bin.retain(|n| !test(&n.value));
-            self.len -= before - bin.len();
-        }
-    }
 }

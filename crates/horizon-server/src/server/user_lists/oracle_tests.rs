@@ -1,6 +1,6 @@
 //! The user lists against the real classes: `LeafUserListsOracle.java`
 //! (`mods/horizon/src/test/java/dev/horizonlab/leafserver/`) runs the 26.3 jar's `StoredUserList`
-//! family, the JDK's `ConcurrentHashMap`, `SimpleDateFormat` and `UUID`; this compares every row.
+//! family, the JDK's `ConcurrentHashMap` and `UUID`; this compares every row.
 //!
 //! ```sh
 //! java -cp <26.3 jar:libraries> LeafUserListsOracle.java user_lists.jsonl
@@ -8,38 +8,15 @@
 //!     cargo test -p horizon-server user_lists_match_java -- --ignored --nocapture
 //! ```
 
-use std::net::IpAddr;
-
-use jiff::tz::TimeZone;
 use serde_json::Value;
 
 use super::map::ConcurrentMap;
-use super::{
-    Entry, IpBan, LoadFailure, OpEntry, UserBan, UserList, WhitelistEntry, format_date,
-    format_login_date, ip_key, java_uuid, parse_date,
-};
-
-const NOW: i64 = 1_700_000_000_000;
-
-fn zone(name: &str) -> TimeZone {
-    TimeZone::get(if name == "default" {
-        "America/New_York"
-    } else {
-        name
-    })
-    .expect("tz database")
-}
+use super::{Entry, LoadFailure, OpEntry, UserList, WhitelistEntry, java_uuid};
 
 fn str_of<'a>(row: &'a Value, key: &str) -> &'a str {
     row[key]
         .as_str()
         .unwrap_or_else(|| panic!("{key} in {row}"))
-}
-
-fn rows_of<E: Entry>(list: &UserList<E>, row: impl Fn(&E) -> String) -> Vec<String> {
-    let mut rows: Vec<String> = list.entries().map(row).collect();
-    rows.sort();
-    rows
 }
 
 #[test]
@@ -78,12 +55,9 @@ fn user_lists_match_java() {
             "format" => {
                 let file = dir.path().join("format.json");
                 let input = str_of(&row, "input");
-                let tz = zone("default");
                 let output = match str_of(&row, "list") {
-                    "whitelist" => render::<WhitelistEntry>(&file, input, tz),
-                    "ops" => render::<OpEntry>(&file, input, tz),
-                    "bans" => render::<UserBan>(&file, input, tz),
-                    _ => render::<IpBan>(&file, input, tz),
+                    "whitelist" => render::<WhitelistEntry>(&file, input),
+                    _ => render::<OpEntry>(&file, input),
                 };
                 assert_eq!(output, str_of(&row, "output"), "{line}");
             }
@@ -93,22 +67,13 @@ fn user_lists_match_java() {
                     "whitelist" => {
                         read::<WhitelistEntry>(input, |e| format!("{} {}", e.user.id, e.user.name))
                     }
-                    "ops" => read::<OpEntry>(input, |e| {
+                    _ => read::<OpEntry>(input, |e| {
                         format!(
                             "{} {} {} {}",
                             e.user.id,
                             e.user.name,
                             e.level.id(),
                             e.bypasses_player_limit
-                        )
-                    }),
-                    _ => read::<UserBan>(input, |e| {
-                        format!(
-                            "{} {} {} {}",
-                            e.id,
-                            e.name.clone().unwrap(),
-                            e.ban.source,
-                            e.ban.reason.clone().unwrap_or("null".into())
                         )
                     }),
                 };
@@ -132,23 +97,6 @@ fn user_lists_match_java() {
                     }
                 }
             }
-            "date_format" => {
-                let tz = zone(str_of(&row, "zone"));
-                let millis = row["millis"].as_i64().unwrap();
-                assert_eq!(format_date(millis, &tz), str_of(&row, "file"), "{line}");
-                // Java names the zone from its current raw offset, so only recent instants are comparable.
-                let login = str_of(&row, "login");
-                if !login.is_empty() && millis >= 1_700_000_000_000 {
-                    assert_eq!(format_login_date(millis, &tz), login, "{line}");
-                }
-            }
-            "date_parse" => {
-                assert_eq!(
-                    parse_date(str_of(&row, "text")),
-                    row.get("millis").and_then(Value::as_i64),
-                    "{line}"
-                );
-            }
             "uuid" => {
                 assert_eq!(
                     java_uuid(str_of(&row, "text")).map(|u| u.to_string()),
@@ -156,23 +104,19 @@ fn user_lists_match_java() {
                     "{line}"
                 );
             }
-            "ip_key" => {
-                let address: IpAddr = str_of(&row, "address").parse().unwrap();
-                assert_eq!(ip_key(address), str_of(&row, "key"), "{line}");
-            }
             other => panic!("unknown row {other}"),
         }
     }
     println!("checked rows: {counts:?}");
-    assert_eq!(counts.len(), 7, "{counts:?}");
+    assert_eq!(counts.len(), 4, "{counts:?}");
 }
 
 /// `load` then `save` of one list file, and the bytes written.
-fn render<E: Entry>(file: &std::path::Path, input: &str, tz: TimeZone) -> String {
+fn render<E: Entry>(file: &std::path::Path, input: &str) -> String {
     std::fs::write(file, input).unwrap();
-    let mut list = UserList::<E>::new(file, tz);
-    list.load(NOW).unwrap();
-    list.save(NOW).unwrap();
+    let mut list = UserList::<E>::new(file);
+    list.load().unwrap();
+    list.save().unwrap();
     std::fs::read_to_string(file).unwrap()
 }
 
@@ -180,7 +124,9 @@ fn read<E: Entry>(
     input: &str,
     row: impl Fn(&E) -> String,
 ) -> (Vec<String>, Result<(), LoadFailure>) {
-    let mut list = UserList::<E>::new("unused.json", TimeZone::UTC);
-    let result = list.load_text(input, NOW);
-    (rows_of(&list, row), result)
+    let mut list = UserList::<E>::new("unused.json");
+    let result = list.load_text(input);
+    let mut rows: Vec<String> = list.entries().map(row).collect();
+    rows.sort();
+    (rows, result)
 }

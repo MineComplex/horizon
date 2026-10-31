@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
 
 use bytes::BytesMut;
-use jiff::tz::TimeZone;
 
 use super::*;
 use crate::azalea::chat::{FormattedText, read_component};
@@ -44,9 +43,7 @@ fn config(max_players: i32) -> RuntimeConfig {
         proxy_online_mode: true,
         white_list: false,
         whitelist_message: "You are not whitelisted on this server!".into(),
-        operator_level: PermissionLevel::Owners,
         user_lists_dir: PathBuf::new(),
-        time_zone: TimeZone::UTC,
         pause_when_empty_seconds: -1,
         view_distance: 2,
         simulation_distance: 2,
@@ -504,34 +501,27 @@ fn the_whitelist_message_is_spigots() {
 }
 
 #[test]
-fn a_banned_player_is_refused_with_the_ban() {
-    let server = run_with(config(20), |dir| {
-        let ban = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch","created":"2025-01-01 00:00:00 +0000","source":"Server","expires":"2099-01-01 12:30:00 +0000","reason":"Griefing"}]"#;
-        std::fs::write(dir.join("banned-players.json"), ban).unwrap();
+fn the_whitelist_message_with_codes_is_a_styled_component() {
+    let server = run(RuntimeConfig {
+        whitelist_message: "§cApply on Discord".into(),
+        ..whitelist_on()
     });
-    let expected = serde_json::json!({
-        "translate": "multiplayer.disconnect.banned.reason",
-        "with": ["Griefing"],
-        "extra": [{
-            "translate": "multiplayer.disconnect.banned.expiration",
-            "with": ["2099-01-01 at 12:30:00 UTC"],
-        }],
-    });
+    let expected = serde_json::json!({"text": "Apply on Discord", "color": "red"});
     assert_refused(server, &Reason::Component(expected));
 }
 
+/// Bans are gone with MineComplex's cleanup: the files are neither made nor read.
 #[test]
-fn a_banned_address_is_refused_with_the_ban() {
-    // The address Velocity forwards for the test client.
+fn ban_files_are_ignored() {
+    let ban =
+        r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch","expires":"forever"}]"#;
     let server = run_with(config(20), |dir| {
-        let ban = r#"[{"ip":"203.0.113.5","created":"2025-01-01 00:00:00 +0000","source":"Server","expires":"forever"}]"#;
+        std::fs::write(dir.join("banned-players.json"), ban).unwrap();
         std::fs::write(dir.join("banned-ips.json"), ban).unwrap();
     });
-    let expected = serde_json::json!({
-        "translate": "multiplayer.disconnect.banned_ip.reason",
-        "with": [{"translate": "multiplayer.disconnect.banned.reason.default"}],
-    });
-    assert_refused(server, &Reason::Component(expected));
+    let mut client = Client::play(server.addr);
+    client.until_play(play_cb::LOGIN, &mut Vec::new());
+    assert_eq!(server.stop(Control::Signal(Signal::Interrupt)).0, 130);
 }
 
 /// An operator is let past the whitelist and, with `bypassesPlayerLimit`, a full server; the client

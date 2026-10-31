@@ -1,22 +1,21 @@
 //! `StoredUserList`: one JSON file of entries, kept in memory in `ConcurrentHashMap` order (Paper)
 //! and saved whole, as Gson pretty-prints it. Owned by the tick thread: no locks. Leaf saves on
-//! another thread (Akarin); here the file is written before `add`/`remove` return.
+//! another thread (Akarin); here the file is written before `add`/`remove` return. Nothing expires:
+//! MineComplex's cleanup took the ban lists, the only entries that did.
 
 use std::path::{Path, PathBuf};
 
-use jiff::tz::TimeZone;
 use serde_json::{Map, Value};
 
+use super::entries::NameAndId;
 use super::map::ConcurrentMap;
 
-/// One field of a serialized entry (`JsonObject.addProperty`). A `Null` is not written (Gson's
-/// `serializeNulls` is off).
+/// One field of a serialized entry (`JsonObject.addProperty`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Field {
     Str(String),
     Int(i32),
     Bool(bool),
-    Null,
 }
 
 /// Why a file could not be loaded.
@@ -32,46 +31,31 @@ pub enum LoadFailure {
     Failed(String),
 }
 
-/// What a list holds: `StoredUserEntry` and the key `getKeyForUser` makes.
+/// What a list holds: `StoredUserEntry`, keyed by the user's UUID (`getKeyForUser`).
 pub trait Entry: Sized {
-    /// What the list is asked about: a `NameAndId`, or an address.
-    type Lookup: ?Sized;
+    fn user(&self) -> &NameAndId;
 
-    fn lookup_key(lookup: &Self::Lookup) -> String;
-
-    /// The key of this entry (its user). Entries without a user are never stored.
-    fn key(&self) -> String;
-
-    /// `createEntry` at `now`; `Ok(None)` is an entry whose `getUser()` is `null` (not kept).
-    fn read(object: &Map<String, Value>, now: i64) -> Result<Option<Self>, LoadFailure>;
+    /// `createEntry`; `Ok(None)` is an entry whose `getUser()` is `null` (not kept).
+    fn read(object: &Map<String, Value>) -> Result<Option<Self>, LoadFailure>;
 
     /// `serialize`, in the order Java adds the properties.
-    fn fields(&self, zone: &TimeZone) -> Vec<(&'static str, Field)>;
+    fn fields(&self) -> Vec<(&'static str, Field)>;
+}
 
-    /// `hasExpired`.
-    fn has_expired(&self, _now: i64) -> bool {
-        false
-    }
-
-    /// `equals`, which only ban entries override (the others are equal to themselves alone).
-    fn same_as(&self, _other: &Self) -> bool {
-        false
-    }
+fn key(user: &NameAndId) -> String {
+    user.id.to_string()
 }
 
 pub struct UserList<E: Entry> {
     file: PathBuf,
     entries: ConcurrentMap<E>,
-    zone: TimeZone,
 }
 
 impl<E: Entry> UserList<E> {
-    /// `zone` is the JVM's default time zone, which the ban dates are written in.
-    pub fn new(file: impl Into<PathBuf>, zone: TimeZone) -> Self {
+    pub fn new(file: impl Into<PathBuf>) -> Self {
         Self {
             file: file.into(),
             entries: ConcurrentMap::default(),
-            zone,
         }
     }
 
@@ -88,76 +72,61 @@ impl<E: Entry> UserList<E> {
         self.entries.iter().map(|(_, entry)| entry)
     }
 
-    /// `add`: false when an equal entry is there; saves otherwise.
-    pub fn add(&mut self, entry: E, now: i64) -> bool {
-        let key = entry.key();
-        if self.entries.get(&key).is_some_and(|old| entry.same_as(old)) {
-            return false;
-        }
-        self.entries.put(key, entry);
-        if let Err(e) = self.save(now) {
+    /// `add`: always replaces (these entries are only equal to themselves); saves.
+    pub fn add(&mut self, entry: E) -> bool {
+        self.entries.put(key(entry.user()), entry);
+        if let Err(e) = self.save() {
             tracing::warn!("Could not save the list after adding a user. {e}");
         }
         true
     }
 
-    /// `get`: an expired entry is removed (and not saved) and not returned.
-    pub fn get(&mut self, lookup: &E::Lookup, now: i64) -> Option<&E> {
-        let key = E::lookup_key(lookup);
-        if self.entries.get(&key).is_some_and(|e| e.has_expired(now)) {
-            self.entries.remove(&key);
-        }
-        self.entries.get(&key)
+    /// `get`.
+    pub fn get(&self, user: &NameAndId) -> Option<&E> {
+        self.entries.get(&key(user))
     }
 
-    /// `contains` (`removeExpired` first, for every entry).
-    pub fn contains(&mut self, lookup: &E::Lookup, now: i64) -> bool {
-        self.remove_expired(now);
-        self.entries.get(&E::lookup_key(lookup)).is_some()
+    /// `contains`.
+    pub fn contains(&self, user: &NameAndId) -> bool {
+        self.get(user).is_some()
     }
 
     /// `remove`: true when it was there; saves then.
-    pub fn remove(&mut self, lookup: &E::Lookup, now: i64) -> bool {
-        if self.entries.remove(&E::lookup_key(lookup)).is_none() {
+    pub fn remove(&mut self, user: &NameAndId) -> bool {
+        if self.entries.remove(&key(user)).is_none() {
             return false;
         }
-        if let Err(e) = self.save(now) {
+        if let Err(e) = self.save() {
             tracing::warn!("Could not save the list after removing a user. {e}");
         }
         true
     }
 
     /// `clear`.
-    pub fn clear(&mut self, now: i64) {
+    pub fn clear(&mut self) {
         self.entries.clear();
-        if let Err(e) = self.save(now) {
+        if let Err(e) = self.save() {
             tracing::warn!("Could not save the list after removing a user. {e}");
         }
     }
 
-    fn remove_expired(&mut self, now: i64) {
-        self.entries.remove_if(|e| e.has_expired(now));
-    }
-
-    /// The file's text: `GSON.toJson(array)` with pretty printing, after dropping expired entries.
-    pub fn render(&mut self, now: i64) -> String {
-        self.remove_expired(now);
-        let rows: Vec<_> = self.entries().map(|e| e.fields(&self.zone)).collect();
+    /// The file's text: `GSON.toJson(array)` with pretty printing.
+    pub fn render(&self) -> String {
+        let rows: Vec<_> = self.entries().map(Entry::fields).collect();
         pretty_array(&rows)
     }
 
     /// `save`.
-    pub fn save(&mut self, now: i64) -> std::io::Result<()> {
-        let text = self.render(now);
-        std::fs::write(&self.file, text)
+    pub fn save(&self) -> std::io::Result<()> {
+        std::fs::write(&self.file, self.render())
     }
 
     /// `load`: nothing when the file does not exist.
-    pub fn load(&mut self, now: i64) -> Result<(), LoadFailure> {
+    pub fn load(&mut self) -> Result<(), LoadFailure> {
         let Ok(bytes) = std::fs::read(&self.file) else {
             return Ok(());
         };
-        match self.load_text(&String::from_utf8_lossy(&bytes), now) {
+        match self.load_text(&String::from_utf8_lossy(&bytes)) {
             Err(LoadFailure::Unreadable(why)) => {
                 let mut backup = self.file.clone().into_os_string();
                 backup.push(".backup");
@@ -176,12 +145,12 @@ impl<E: Entry> UserList<E> {
 
     /// `load`'s body on the file's text: the entries are replaced, and a failure leaves those read
     /// before it.
-    pub fn load_text(&mut self, text: &str, now: i64) -> Result<(), LoadFailure> {
+    pub fn load_text(&mut self, text: &str) -> Result<(), LoadFailure> {
         self.entries.clear();
-        self.read_all(text, now)
+        self.read_all(text)
     }
 
-    fn read_all(&mut self, text: &str, now: i64) -> Result<(), LoadFailure> {
+    fn read_all(&mut self, text: &str) -> Result<(), LoadFailure> {
         // `GSON.fromJson(reader, JsonArray.class)`: an empty file is `null` (nothing to do); the text
         // `null` is a `JsonNull`, not an array.
         if text.trim().is_empty() {
@@ -206,8 +175,8 @@ impl<E: Entry> UserList<E> {
                     kind(item)
                 )));
             };
-            if let Some(entry) = E::read(object, now)? {
-                self.entries.put(entry.key(), entry);
+            if let Some(entry) = E::read(object)? {
+                self.entries.put(key(entry.user()), entry);
             }
         }
         Ok(())
@@ -234,13 +203,11 @@ fn pretty_array(rows: &[Vec<(&'static str, Field)>]) -> String {
         .map(|row| {
             let fields: Vec<String> = row
                 .iter()
-                .filter(|(_, f)| *f != Field::Null)
                 .map(|(key, field)| {
                     let value = match field {
                         Field::Str(s) => gson_string(s),
                         Field::Int(i) => i.to_string(),
                         Field::Bool(b) => b.to_string(),
-                        Field::Null => unreachable!("filtered"),
                     };
                     format!("    {}: {value}", gson_string(key))
                 })

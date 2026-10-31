@@ -35,7 +35,7 @@ outputs (`config.tsv`, `density.txt`, `terrain.txt`, `biomes.txt`, `structures.t
 | `HORIZON_BIOME_ORACLE`, `HORIZON_BIOME_REPORTS` | `worldgen/biome/oracle_tests.rs` (`LeafBiomeOracle.java`) |
 | `HORIZON_STRUCTURE_ORACLE` | `worldgen/structure/oracle_tests.rs` (`LeafStructurePlacementOracle.java`) |
 | `HORIZON_TICKETS_ORACLE` | `server/chunk_system/oracle_tests.rs` (`LeafChunkTicketsOracle.java`) |
-| `HORIZON_USER_LISTS_ORACLE` | `server/user_lists/oracle_tests.rs` (`LeafUserListsOracle.java`: list files, `ConcurrentHashMap` order, ban dates, UUIDs, IP keys) |
+| `HORIZON_USER_LISTS_ORACLE` | `server/user_lists/oracle_tests.rs` (`LeafUserListsOracle.java`: whitelist/ops files, `ConcurrentHashMap` order, UUIDs) |
 | `HORIZON_DENSITY_ORACLE` | `worldgen/oracle_tests.rs` (`LeafDensityOracle.java`); `density_program_speed` is a benchmark |
 | `HORIZON_TERRAIN_ORACLE` | `worldgen/terrain/oracle_tests.rs` (`LeafTerrainOracle.java`: `doFill` blocks, WG heightmaps, fluid marks, base columns; also needs `HORIZON_SERVER_BLOCKS_JSON`/`_BLOCK_STATES`); `terrain_fill_speed` is a benchmark |
 

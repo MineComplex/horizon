@@ -43,12 +43,12 @@ Real-data checks: `tools/leaf_server/README.md` (`setup_reference.sh` → `reald
   tick order and stop sequence. `LeafChunkTicketsOracle` (125 rows) equal; Moonrise parts derived from
   sources. Real binary checked with `real_binary_session` (join, 9 chunks, walk, clean stop).
 
-- User lists (`src/server/user_lists/`): whitelist, ops, player and IP bans: files as Gson writes them, Paper's
-  `ConcurrentHashMap` save order, expiry, `.backup` of unreadable files, login order (ban, whitelist with
-  operators past it, IP ban, full server with `bypassesPlayerLimit`), op level in the join, Spigot
-  `messages.whitelist`. `LeafUserListsOracle`: 436 rows equal (CHM order and Paper parts derived from sources
-  for the jar; CHM checked on the JDK class). The ban lists come from the pre-cleanup sources
-  (`runLeafSetup`); MineComplex's final tree dropped them.
+- User lists (`src/server/user_lists/`): whitelist and ops as MineComplex's Leaf has them (its cleanup removed
+  the ban lists, so none): files as Gson writes them, Paper's `ConcurrentHashMap` save order, `.backup` of
+  unreadable files, login order (whitelist with operators past it, then full server with `bypassesPlayerLimit`),
+  op level in the join, Spigot `messages.whitelist` with `§` codes as a component (`server/legacy_text.rs`,
+  Adventure's legacy section serializer, derived from its 5.2.0 sources: not in the jar's libraries).
+  `LeafUserListsOracle`: 118 rows equal (the `ConcurrentHashMap` rows run the JDK class).
 
 ## Reusable Rust pieces (use these, don't add parallel ones)
 `src/util/{random,jmath,number_text}`, `src/core/{position,geometry}`, `src/nbt.rs`, `src/azalea/{buf,chat,
@@ -60,14 +60,12 @@ WP2 rest (biome predicates, Purpur end void rings; wire BiomeSource/LevelDensity
 placement, trees); WP5 rest (pieces: jigsaw, templates, processors, legacy; ring search on the real biome source, moving `find_biome_horizontal` to `worldgen/biome`; `structures` tag in `world/chunk/serial.rs` and its private int reader → `Tag::int_value`; structure check, `/locate`); WP6 driver + Moonrise-shaped scheduler.
 Small cleanups: `obfuscate_seed` (server/runtime.rs) → `worldgen/biome/zoom.rs`; `find_biome_horizontal`
 (structure/placement.rs) → `worldgen/biome`; `world/chunk/serial.rs` private int reader → `Tag::int_value`.
-Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops/bans), block/fluid ticks,
+Core: Nether/End levels, commands (registry args, vanilla tree, executor, ops), block/fluid ticks,
 redstone, Starlight light, entities, play basics (recipes, inventory, block entities in chunk packets).
 
 ## Open issues
-- User lists: no commands to edit them; `enforce-whitelist` and the old `.txt` converter not ported; Gson's
-  lenient reading, zone names in dates, Julian dates and bins of 8+ colliding keys differ; the ban `z`
-  zone name matches Java for current offsets only; `§` codes in `messages.whitelist` stay literal text;
-  saves are synchronous (Leaf's are async).
+- User lists: no commands to edit them; `enforce-whitelist` not ported; Gson's lenient reading and bins of 8+
+  colliding keys differ; saves are synchronous (Leaf's are async).
 - Oracles run the vanilla jar only: Paper/Leaf/Moonrise-only behaviour is derived from sources.
 - Chunk holding stand-ins: FULL promoted up to a tick earlier than Moonrise's main-thread task; pending
   block/fluid ticks don't mark a chunk unsaved; a missing chunk stalls sending (Moonrise's rule for players

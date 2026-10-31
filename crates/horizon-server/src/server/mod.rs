@@ -2,6 +2,7 @@
 pub mod bootstrap;
 pub mod chunk_system;
 pub mod config;
+pub mod legacy_text;
 pub mod level;
 pub mod player;
 pub mod player_data;
