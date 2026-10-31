@@ -645,3 +645,69 @@ fn chunks_are_autosaved_unloaded_and_saved_as_the_player_walks_away() {
     // The 9 chunks sent were forgotten when the player moved.
     assert_eq!(client.join().unwrap(), 9);
 }
+
+/// The real binary, end to end: run `horizon-server` on a copy of a world made by vanilla 26.3 with
+/// Velocity forwarding on (`config/paper-global.yml` `proxies.velocity.secret: s3cret`,
+/// `online-mode=false`), then
+/// `HORIZON_SERVER_ADDR=127.0.0.1:<port> cargo test -p horizon-server real_binary_session -- --ignored --nocapture`.
+/// A player joins, accepts the spawn teleport, receives chunks, walks 12 chunks east (the chunks
+/// behind it are forgotten, and unloaded and saved by the server after Paper's delay) and leaves;
+/// the server's log and files are checked by hand (`tools/leaf_server/README.md`).
+#[test]
+#[ignore = "needs a running horizon-server (HORIZON_SERVER_ADDR)"]
+fn real_binary_session() {
+    let addr: SocketAddr = std::env::var("HORIZON_SERVER_ADDR")
+        .expect("HORIZON_SERVER_ADDR")
+        .parse()
+        .unwrap();
+    let mut client = Client::play(addr);
+    let mut seen = Vec::new();
+    client.until_play(play_cb::LOGIN, &mut seen);
+    let position = client.until_play(play_cb::PLAYER_POSITION, &mut seen);
+    let (teleport, n) = crate::network::codec::read_var_int(&position[1..])
+        .unwrap()
+        .unwrap();
+    let at =
+        |i: usize| f64::from_be_bytes(position[1 + n + 8 * i..9 + n + 8 * i].try_into().unwrap());
+    let (x, y, z) = (at(0), at(1), at(2));
+    let mut accept = Vec::new();
+    put_var_int(&mut accept, teleport);
+    for v in [x, y, z] {
+        accept.extend(v.to_be_bytes());
+    }
+    accept.extend([0; 8]);
+    client.send_play(play_sb::ACCEPT_TELEPORTATION, &accept);
+    let mut chunks = seen
+        .iter()
+        .filter(|p| p[0] == play_cb::LEVEL_CHUNK_WITH_LIGHT)
+        .count();
+    while chunks < 9 {
+        client.until_play(play_cb::LEVEL_CHUNK_WITH_LIGHT, &mut seen);
+        chunks += 1;
+    }
+    eprintln!("spawned at {x} {y} {z} (teleport {teleport}), {chunks} chunks so far");
+    let mut forgotten = 0;
+    for step in 1..=12 {
+        seen.clear();
+        client.move_to(x + 16.0 * f64::from(step), y, z);
+        client.until_play(play_cb::SET_CHUNK_CACHE_CENTER, &mut seen);
+        forgotten += seen
+            .iter()
+            .filter(|p| p[0] == play_cb::FORGET_LEVEL_CHUNK)
+            .count();
+        chunks += seen
+            .iter()
+            .filter(|p| p[0] == play_cb::LEVEL_CHUNK_WITH_LIGHT)
+            .count();
+    }
+    // Some time in the new place, answering keep-alives, before leaving.
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < deadline {
+        let packet = client.recv().expect("still connected");
+        if packet[0] == play_cb::KEEP_ALIVE {
+            client.send_play(play_sb::KEEP_ALIVE, &packet[1..]);
+        }
+    }
+    eprintln!("walked 12 chunks east: {chunks} chunks received, {forgotten} forgotten");
+    assert!(forgotten > 0, "chunks behind the player are forgotten");
+}
