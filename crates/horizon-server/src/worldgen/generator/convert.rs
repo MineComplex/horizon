@@ -14,7 +14,7 @@ use crate::world::level_chunk::{HeightmapFlags, LevelChunk, heightmaps_after};
 use crate::world::ticks::ProtoChunkTicks;
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
-use crate::worldgen::structure::start::ChunkStructures;
+use crate::worldgen::structure::start::{ChunkStructures, PieceChange};
 
 /// What a level's chunks are made with.
 #[derive(Clone, Copy, Debug)]
@@ -57,11 +57,13 @@ pub struct ProtoExtras {
 }
 
 /// `SerializableChunkData.read` for a proto chunk of status `data.status` (not `FULL`). A start
-/// whose inner id is malformed fails the read, as it fails the chunk's load in Leaf.
+/// whose inner id is malformed fails the read, as it fails the chunk's load in Leaf. `seed` is the
+/// level's (`loadStaticStart`'s).
 pub fn proto_from_data(
     data: ChunkData,
     shape: ChunkShape<'_>,
     structures: &StructureRegistry,
+    seed: i64,
 ) -> Result<(ProtoChunk, ProtoExtras), String> {
     let pos = data.pos;
     let mut chunk = shape.empty(pos);
@@ -117,7 +119,7 @@ pub fn proto_from_data(
         }
     }
     if let Some(tag) = raw.structures.take() {
-        chunk.structures = ChunkStructures::load(structures, &tag, pos)?;
+        chunk.structures = ChunkStructures::load(structures, &tag, pos, seed)?;
     }
     chunk.entities = std::mem::take(&mut raw.entities);
     chunk.block_ticks = ProtoChunkTicks::load(std::mem::take(&mut raw.block_ticks));
@@ -227,6 +229,28 @@ pub fn proto_into_level_chunk(
     level
 }
 
+/// A piece change for a start a full chunk holds: the chunk keeps its starts as their saved
+/// `structures` tag, which is read, changed and written again. True when it applied.
+pub fn apply_piece_change_to_level(
+    chunk: &mut LevelChunk,
+    registry: &StructureRegistry,
+    seed: i64,
+    change: &PieceChange,
+) -> bool {
+    let pos = chunk.pos();
+    let Some(tag) = chunk.raw.structures.as_ref() else {
+        return false;
+    };
+    let Ok(mut structures) = ChunkStructures::load(registry, tag, pos, seed) else {
+        return false;
+    };
+    if !structures.apply_change(change) {
+        return false;
+    }
+    chunk.raw.structures = Some(structures.save(registry, pos));
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,7 +292,7 @@ mod tests {
         let data = proto_to_data(&chunk, &extras, &registry);
         assert_eq!(data.sections.len(), 5);
         assert_eq!(data.status, ChunkStatus::Terrain);
-        let (back, extras_back) = proto_from_data(data.clone(), shape, &registry).unwrap();
+        let (back, extras_back) = proto_from_data(data.clone(), shape, &registry, 0).unwrap();
         assert_eq!(back.block_state(1, 5, 2), BlockState(1));
         assert_eq!(back.postprocessing(), chunk.postprocessing());
         assert_eq!(

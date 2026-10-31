@@ -40,7 +40,7 @@ pub mod template_pieces;
 pub mod template_start;
 
 #[cfg(test)]
-mod jigsaw_oracle_tests;
+pub(crate) mod jigsaw_oracle_tests;
 #[cfg(test)]
 mod legacy_oracle_tests;
 #[cfg(test)]

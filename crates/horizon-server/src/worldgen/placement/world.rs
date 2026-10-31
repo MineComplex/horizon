@@ -7,7 +7,10 @@
 //! carried here (the bedrock rules read it through `worldgen::anchor`).
 
 use crate::block::{BlockState, BlockStateData, BlockStates};
-use crate::core::position::BlockPos;
+use crate::core::position::{BlockPos, ChunkPos};
+use crate::util::random::{
+    InvalidBound, LegacyRandom, PositionalRandom, RandomSource, XoroshiroRandom,
+};
 use crate::world::chunk::serial::Heightmap;
 use crate::world::level_chunk::HeightmapTable;
 use crate::worldgen::anchor::WorldGenerationContext;
@@ -90,6 +93,56 @@ pub struct RegionWorld<'a, 'r, S> {
     pub survival: S,
     /// `WorldGenLevel.getSeed()`.
     pub seed: i64,
+    /// `WorldGenRegion.getRandom()`.
+    pub random: RegionRandom,
+}
+
+/// `WorldGenRegion.random`: `randomState.getOrCreateRandomFactory("minecraft:worldgen_region_random")
+/// .at(center.getWorldPosition())`, one per region, drawn from by everything placed in it that asks
+/// the level for its random (the desert pyramid's cellar, mossy carpets, a mansion's allays). The
+/// random state's root is the noise settings' kind (`legacy_random_source`).
+#[derive(Clone, Debug)]
+pub enum RegionRandom {
+    Legacy(LegacyRandom),
+    Xoroshiro(XoroshiroRandom),
+}
+
+impl RegionRandom {
+    pub fn new(seed: i64, legacy_random_source: bool, center: ChunkPos) -> Self {
+        const NAME: &str = "minecraft:worldgen_region_random";
+        let corner = BlockPos::new(center.x << 4, 0, center.z << 4);
+        if legacy_random_source {
+            let root = LegacyRandom::new(seed).fork_positional();
+            Self::Legacy(root.from_hash_of(NAME).fork_positional().at(corner))
+        } else {
+            let root = XoroshiroRandom::new(seed).fork_positional();
+            Self::Xoroshiro(root.from_hash_of(NAME).fork_positional().at(corner))
+        }
+    }
+    pub fn next_boolean(&mut self) -> bool {
+        match self {
+            Self::Legacy(r) => r.next_boolean(),
+            Self::Xoroshiro(r) => r.next_boolean(),
+        }
+    }
+    pub fn next_float(&mut self) -> f32 {
+        match self {
+            Self::Legacy(r) => r.next_float(),
+            Self::Xoroshiro(r) => r.next_float(),
+        }
+    }
+    pub fn next_int_bound(&mut self, bound: i32) -> Result<i32, InvalidBound> {
+        match self {
+            Self::Legacy(r) => r.next_int_bound(bound),
+            Self::Xoroshiro(r) => r.next_int_bound(bound),
+        }
+    }
+    pub fn next_long(&mut self) -> i64 {
+        match self {
+            Self::Legacy(r) => r.next_long(),
+            Self::Xoroshiro(r) => r.next_long(),
+        }
+    }
 }
 
 impl<S: SurvivalRules> PlacementWorld for RegionWorld<'_, '_, S> {

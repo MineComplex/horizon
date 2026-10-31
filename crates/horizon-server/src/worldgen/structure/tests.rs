@@ -384,7 +384,7 @@ fn malformed_start_id_fails_the_load_but_unknown_ones_are_skipped() {
             "starts".into(),
             Tag::compound([(key, Tag::compound([("id", Tag::String(id.into()))]))]),
         )]);
-        ChunkStructures::load(&registry, &tag, chunk)
+        ChunkStructures::load(&registry, &tag, chunk, 0)
     };
     assert!(load("minecraft:village", "Not A:Valid Id").is_err());
     assert_eq!(
@@ -739,7 +739,7 @@ fn chunk_structures_round_trip_and_filter() {
         starts[&JavaString::from("minecraft:treasure")],
         Tag::compound([("id", Tag::String("INVALID".into()))])
     );
-    let loaded = ChunkStructures::load(&registry, &tag, chunk).unwrap();
+    let loaded = ChunkStructures::load(&registry, &tag, chunk, 0).unwrap();
     assert_eq!(loaded.start(village), Some(&start));
     assert_eq!(loaded.start(treasure), Some(&StructureStart::invalid()));
     // Loaded references come in the hash set's order.
@@ -774,7 +774,7 @@ fn chunk_structures_round_trip_and_filter() {
             ]),
         ),
     ]);
-    let loaded = ChunkStructures::load(&registry, &tag, chunk).unwrap();
+    let loaded = ChunkStructures::load(&registry, &tag, chunk, 0).unwrap();
     assert_eq!(
         loaded.starts().count(),
         0,
@@ -862,4 +862,37 @@ fn java_round_and_int_value() {
     assert_eq!(Tag::Double((-1.5f64).to_bits()).int_value(), Some(-2));
     assert_eq!(Tag::Float(1e20f32.to_bits()).int_value(), Some(i32::MAX));
     assert_eq!(Tag::String("1".into()).int_value(), None);
+}
+
+#[test]
+fn piece_changes_apply_once_to_the_piece_they_found() {
+    use super::start::PieceChange;
+    let registry = vanilla_like();
+    let village = registry.structure_id("minecraft:village").unwrap();
+    let chunk = ChunkPos::new(3, -4);
+    let held = piece([160, 60, -64, 180, 80, -50]);
+    let mut structures = ChunkStructures::default();
+    structures.set_start(
+        village,
+        StructureStart::new(&registry, village, chunk, 0, vec![held.clone()]),
+    );
+    let settled = |y: i32| PieceChange {
+        origin: chunk,
+        structure: village,
+        index: 0,
+        before: held.clone(),
+        after: piece([160, y, -64, 180, y + 20, -50]),
+    };
+    // The first step to finish settles the piece; a second step that found the same piece loses.
+    assert!(structures.apply_change(&settled(70)));
+    assert!(!structures.accepts(&settled(75)));
+    assert!(!structures.apply_change(&settled(75)));
+    let start = structures.start(village).unwrap();
+    assert_eq!(start.children, [piece([160, 70, -64, 180, 90, -50])]);
+    // The start's cached box stays as it was made (`getBoundingBox` is computed once).
+    assert_eq!(start.bounding_box.unwrap().minimum(), [148, 48, -76]);
+    // A change for another piece index does nothing.
+    let mut other = settled(70);
+    other.index = 3;
+    assert!(!structures.apply_change(&other));
 }

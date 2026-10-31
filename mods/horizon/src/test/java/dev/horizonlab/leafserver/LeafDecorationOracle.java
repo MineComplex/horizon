@@ -152,7 +152,7 @@ public final class LeafDecorationOracle {
 
     /** The region: the nine chunks, all writable (the FEATURES step's write radius is 1). */
     static WorldGenLevel region(Map<Long, ProtoChunk> chunks, ChunkPos center, long seed, BiomeManager biomes,
-                                RegistryAccess registries) {
+                                RegistryAccess registries, RandomSource regionRandom) {
         java.util.function.Function<BlockPos, ProtoChunk> chunkAt = pos -> chunks.get(key(pos.getX() >> 4, pos.getZ() >> 4));
         Map<BlockPos, net.minecraft.world.level.block.entity.BlockEntity> entities = new HashMap<>();
         return (WorldGenLevel) Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(), new Class<?>[] {WorldGenLevel.class},
@@ -220,7 +220,7 @@ public final class LeafDecorationOracle {
                         return 0;
                     }
                     case "getRandom" -> {
-                        return new XoroshiroRandomSource(0L);
+                        return regionRandom;
                     }
                     case "registryAccess" -> {
                         return registries;
@@ -339,7 +339,10 @@ public final class LeafDecorationOracle {
                         chunk.setPersistedStatus(ChunkStatus.TERRAIN);
                     }
                     ChunkPos centerPos = new ChunkPos(c[0], c[1]);
-                    WorldGenLevel level = region(chunks, centerPos, seed, manager, world);
+                    // WorldGenRegion.getRandom(): worldgen_region_random at the centre (mossy carpets draw from it).
+                    RandomSource regionRandom = state.getOrCreateRandomFactory(
+                        net.minecraft.resources.Identifier.withDefaultNamespace("worldgen_region_random")).at(centerPos.getWorldPosition());
+                    WorldGenLevel level = region(chunks, centerPos, seed, manager, world, regionRandom);
                     BlockPos origin = new BlockPos(c[0] << 4, minY, c[1] << 4);
                     WorldgenRandom random = new WorldgenRandom(new XoroshiroRandomSource(0L));
                     long decorationSeed = random.setDecorationSeed(seed, origin.getX(), origin.getZ());

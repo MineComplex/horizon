@@ -991,7 +991,7 @@ pub fn data_marker<W: FeatureWorld, R: RandomSource>(
     let (entity, count) = match marker {
         "Mage" => ("minecraft:evoker", 1),
         "Warrior" => ("minecraft:vindicator", 1),
-        "Group of Allays" => ("minecraft:allay", cx.level_random.next_int_bound(3)? + 1),
+        "Group of Allays" => ("minecraft:allay", cx.world.level_int_bound(3)? + 1),
         _ => return Ok(()),
     };
     for _ in 0..count {

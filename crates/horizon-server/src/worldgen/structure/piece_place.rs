@@ -14,11 +14,11 @@ use super::legacy_piece::{PieceLevel, PieceOutput as LegacyOutput, place_pieces}
 use super::place::{PlaceContext, PlaceError, PlaceSettings, PlacedTemplate, place_in_world};
 use super::pool::{ElementKind, PoolElementId, Projection, template_of};
 use super::processor::{ProcessError, Processor, ProcessorLists};
-use super::start::{StructurePiece, StructureStart};
+use super::start::{PieceChange, StructurePiece, StructureStart};
 use super::template_pieces::{PieceCx, PieceOutput};
 use super::{Decoration, StructureId, StructureRegistry};
 use crate::core::position::{BlockPos, ChunkPos};
-use crate::util::random::{PositionalRandom, RandomSource, WorldgenRandom, XoroshiroRandom};
+use crate::util::random::{RandomSource, WorldgenRandom, XoroshiroRandom};
 use crate::world::chunk::serial::Heightmap;
 use crate::worldgen::density::StructureBounds;
 use crate::worldgen::feature::FeatureRegistry;
@@ -74,7 +74,6 @@ impl PieceTables<'_> {
         world: &mut W,
         random: &mut R,
         chunk_box: &mut StructureBounds,
-        level_random: &mut XoroshiroRandom,
         out: &mut PieceOutput,
     ) -> Result<(), ProviderError> {
         let Some(reference) = reference_of(start) else {
@@ -129,7 +128,6 @@ impl PieceTables<'_> {
                         random: &mut *random,
                         chunk_box: &mut *chunk_box,
                         reference,
-                        level_random: &mut *level_random,
                         out: &mut *out,
                     };
                     piece.post_process(&mut cx)?;
@@ -155,7 +153,6 @@ impl PieceTables<'_> {
                 random,
                 chunk_box,
                 reference,
-                level_random,
                 out,
             };
             super::mansion::after_place(&boxes, &mut cx)?;
@@ -293,16 +290,23 @@ pub fn reference_of(start: &StructureStart) -> Option<BlockPos> {
 
 /// The structures of the FEATURES step for one chunk: the registered structures by decoration
 /// step (`structuresByStep`, registration order), each with the valid starts the chunk references
-/// (`startsForStructure`), cloned out of the region before its decoration starts.
+/// (`startsForStructure`), copied out of the region before its decoration starts. What placing
+/// changes in their pieces is collected as [`PieceChange`]s for the chunks holding the starts
+/// ([`Self::finish`]).
 pub struct StartPlacer<'a> {
     pub tables: PieceTables<'a>,
     by_step: Vec<Vec<StructureId>>,
-    starts: Vec<(StructureId, Vec<StructureStart>)>,
+    starts: Vec<(StructureId, Vec<PlacedStart>)>,
     chunk_box: StructureBounds,
-    /// `WorldGenRegion.getRandom()`: `worldgen_region_random` at the centre chunk's corner.
-    level_random: XoroshiroRandom,
     /// What the placed pieces left for block entities and entities (a stand-in until they exist).
     pub output: PieceOutput,
+}
+
+/// A start being placed: where it is held, its pieces as held there, and the copy placed.
+struct PlacedStart {
+    origin: ChunkPos,
+    held: Vec<StructurePiece>,
+    start: StructureStart,
 }
 
 impl<'a> StartPlacer<'a> {
@@ -327,27 +331,49 @@ impl<'a> StartPlacer<'a> {
         let starts = references
             .map(|(structure, keys)| {
                 let starts = (keys.iter())
-                    .filter_map(|&key| start_at(ChunkPos::unpack(key), structure))
-                    .filter(|start| start.is_valid())
-                    .cloned()
+                    .filter_map(|&key| {
+                        let origin = ChunkPos::unpack(key);
+                        start_at(origin, structure).map(|start| (origin, start))
+                    })
+                    .filter(|(_, start)| start.is_valid())
+                    .map(|(origin, start)| PlacedStart {
+                        origin,
+                        held: start.children.clone(),
+                        start: start.clone(),
+                    })
                     .collect();
                 (structure, starts)
             })
             .collect();
-        let corner = BlockPos::new(chunk_box.minimum()[0], 0, chunk_box.minimum()[2]);
-        let level_random = XoroshiroRandom::new(tables.seed)
-            .fork_positional()
-            .from_hash_of("minecraft:worldgen_region_random")
-            .fork_positional()
-            .at(corner);
         Self {
             tables,
             by_step,
             starts,
             chunk_box,
-            level_random,
             output: PieceOutput::default(),
         }
+    }
+
+    /// The pieces placing changed, for the chunks holding their starts, in placement order.
+    pub fn finish(self) -> Vec<PieceChange> {
+        let mut changes = Vec::new();
+        for (structure, starts) in self.starts {
+            for placed in starts {
+                let pieces = placed.held.into_iter().zip(placed.start.children);
+                for (index, (before, after)) in pieces.enumerate() {
+                    if before != after {
+                        changes.push(PieceChange {
+                            origin: placed.origin,
+                            structure,
+                            index,
+                            before,
+                            after,
+                        });
+                    }
+                }
+            }
+        }
+        changes
     }
 }
 
@@ -368,15 +394,14 @@ impl<W: FeatureWorld> StructureDecorator<W> for StartPlacer<'_> {
             tables,
             starts,
             chunk_box,
-            level_random,
             output,
             ..
         } = self;
         let Some((_, starts)) = starts.iter_mut().find(|(s, _)| *s == structure) else {
             return Ok(());
         };
-        for start in starts {
-            tables.place_start(start, world, random, chunk_box, level_random, output)?;
+        for placed in starts {
+            tables.place_start(&mut placed.start, world, random, chunk_box, output)?;
         }
         Ok(())
     }

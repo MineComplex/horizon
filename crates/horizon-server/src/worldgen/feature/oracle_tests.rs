@@ -737,8 +737,9 @@ fn check_feature2(f: &Fixture, fields: &[&str]) -> Option<bool> {
     world.write_zone = ([at.x >> 4, at.z >> 4], 1);
     let got = match feature.place(registry, &mut world, &mut random, at) {
         Ok(placed) => placed.to_string(),
-        // `MossyCarpetBlock.placeAt` draws from the region's own random: not ported.
-        Err(ProviderError::Invalid("mossy carpet placement is not ported")) => return None,
+        // `MossyCarpetBlock.placeAt` draws from the region's own random, which this world has
+        // not: the decoration and whole-chunk oracles compare it.
+        Err(ProviderError::World(WorldError::Unsupported("level random"))) => return None,
         Err(e) => {
             assert_eq!(*result, "error", "{name} seed {seed} at {pos}: {e}");
             "error".into()

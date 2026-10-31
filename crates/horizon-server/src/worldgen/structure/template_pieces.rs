@@ -32,7 +32,7 @@ use crate::core::geometry::Direction;
 use crate::core::position::BlockPos;
 use crate::nbt::{Compound, JavaString, Tag};
 use crate::registry::parse_identifier;
-use crate::util::random::{RandomSource, XoroshiroRandom};
+use crate::util::random::RandomSource;
 use crate::worldgen::density::StructureBounds;
 use crate::worldgen::feature::FeatureWorld;
 use crate::worldgen::feature::rule_test::RuleTest;
@@ -306,8 +306,6 @@ pub struct PieceCx<'a, 'w, W, R> {
     /// The chunk's writable box (`chunkBB`), shared by every piece of the pass.
     pub chunk_box: &'w mut StructureBounds,
     pub reference: BlockPos,
-    /// `level.getRandom()` (`WorldGenRegion.random`).
-    pub level_random: &'w mut XoroshiroRandom,
     pub out: &'w mut PieceOutput,
 }
 

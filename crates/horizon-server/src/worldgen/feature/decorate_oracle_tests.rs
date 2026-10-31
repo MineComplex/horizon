@@ -227,6 +227,9 @@ fn decoration_matches_java() {
                         zoom: bc.zoom,
                         survival: rules,
                         seed,
+                        random: crate::worldgen::placement::world::RegionRandom::new(
+                            seed, false, center,
+                        ),
                     };
                     // Skipped on both sides: the types not ported, by the oracle's `PORTED`.
                     let skipped = super::decorate::unported_features(registry, &steps);

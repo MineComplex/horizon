@@ -12,11 +12,13 @@ use crate::world::chunk::{ChunkData, ChunkStatus, ContainerFactory};
 use crate::world::level_chunk::{HeightmapTable, LevelChunk};
 use crate::world::ticks::{SavedTick, TickPriority};
 use crate::worldgen::generator::convert::{
-    ChunkShape, ProtoExtras, proto_from_data, proto_into_level_chunk, proto_to_data,
+    ChunkShape, ProtoExtras, apply_piece_change_to_level, proto_from_data, proto_into_level_chunk,
+    proto_to_data,
 };
 use crate::worldgen::generator::pyramid::{Pyramids, status_facts};
 use crate::worldgen::proto_chunk::ProtoChunk;
 use crate::worldgen::structure::StructureRegistry;
+use crate::worldgen::structure::start::PieceChange;
 
 /// Records the requests; loads are answered by [`answer`], generation steps by [`generate`].
 #[derive(Default)]
@@ -88,9 +90,12 @@ impl ChunkStorage for Fake {
         })
     }
     fn proto_view(&self, chunk: &LevelChunk) -> ProtoChunk {
-        shape_with(|shape| proto_from_data(chunk.to_data(), shape, &self.structures))
+        shape_with(|shape| proto_from_data(chunk.to_data(), shape, &self.structures, 0))
             .unwrap()
             .0
+    }
+    fn apply_piece_change(&self, chunk: &mut LevelChunk, change: &PieceChange) -> bool {
+        apply_piece_change_to_level(chunk, &self.structures, 0, change)
     }
 }
 
@@ -133,6 +138,7 @@ fn generate(m: &mut ChunkHolderManager<Fake>) -> usize {
             pos: job.pos,
             status: job.status,
             result: Ok(written),
+            piece_changes: Vec::new(),
             nanos: 1,
         });
     }
@@ -477,6 +483,7 @@ fn level_tick(
             pos: job.pos,
             status: job.status,
             result: Err(None),
+            piece_changes: Vec::new(),
             nanos: 0,
         });
     }

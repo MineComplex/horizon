@@ -16,13 +16,17 @@ use crate::worldgen::biome::BiomeSource;
 use crate::worldgen::climate::{ClimateSampler, ClimateSearch};
 use crate::worldgen::data::LevelDensity;
 use crate::worldgen::density::DensityContext;
+use crate::worldgen::density::{
+    Beardifier, JigsawJunction, RigidPiece, StructureBounds, TerrainAdjustment,
+};
 use crate::worldgen::proto_chunk::{GenerationRegion, OutsideRegion, ProtoChunk};
 use crate::worldgen::structure::jigsaw::{GenerationContext, JigsawTables, JigsawWorld, generate};
+use crate::worldgen::structure::pool::Projection;
 use crate::worldgen::structure::start::{StructurePiece, StructureStart, create_references};
 use crate::worldgen::structure::template_start::{
     TemplateGen, TemplateGenWorld, generate as template_generate, is_template_structure,
 };
-use crate::worldgen::structure::{BiomeSet, StructureId};
+use crate::worldgen::structure::{BiomeSet, StructureId, StructureRegistry};
 use crate::worldgen::terrain::NoiseTerrain;
 
 /// What a structure's generation reads of the level: the noise columns' heights and the biome
@@ -298,4 +302,79 @@ pub fn create_references_in(region: &mut GenerationRegion<'_>) -> Result<(), Out
         chunk.structures.add_reference(structure, key);
     }
     Ok(())
+}
+
+/// `Beardifier.forStructuresInChunk(structureManager, chunk)`: the pieces within 12 blocks of the
+/// chunk of the starts it references whose structure adapts the terrain (rigid jigsaw pieces with
+/// their ground delta, every other piece kind whole) and the jigsaw junctions near it. `None` (the
+/// empty beardifier) when nothing is near. The order is the references' (structure, then key),
+/// then each start's pieces.
+pub fn beardifier_for(
+    region: &GenerationRegion<'_>,
+    registry: &StructureRegistry,
+) -> Option<Beardifier> {
+    let pos = region.center();
+    let chunk = region.chunk(pos)?;
+    let (cx, cz) = (pos.x << 4, pos.z << 4);
+    let mut rigids = Vec::new();
+    let mut junctions = Vec::new();
+    let mut any: Option<StructureBounds> = None;
+    let mut include = |bounds: StructureBounds| {
+        any = Some(any.map_or(bounds, |a| a.encapsulating(bounds)));
+    };
+    for (structure, keys) in chunk.structures.all_references() {
+        let adjustment = registry.structure(structure).terrain_adaptation;
+        if adjustment == TerrainAdjustment::None {
+            continue;
+        }
+        for &key in keys {
+            let Some(start) = region
+                .chunk(ChunkPos::unpack(key))
+                .and_then(|c| c.structures.start(structure))
+                .filter(|s| s.is_valid())
+            else {
+                continue;
+            };
+            for piece in &start.children {
+                let Some(bounds) = piece.bounding_box() else {
+                    continue;
+                };
+                // `isCloseToChunk(chunk, 12)`.
+                if !bounds.intersects_columns(cx - 12, cz - 12, cx + 15 + 12, cz + 15 + 12) {
+                    continue;
+                }
+                let StructurePiece::Jigsaw(piece) = piece else {
+                    rigids.push(RigidPiece {
+                        bounds,
+                        adjustment,
+                        ground_level_delta: 0,
+                    });
+                    include(bounds);
+                    continue;
+                };
+                if registry.pools.element(piece.element).projection == Projection::Rigid {
+                    rigids.push(RigidPiece {
+                        bounds,
+                        adjustment,
+                        ground_level_delta: piece.ground_level_delta,
+                    });
+                    include(bounds);
+                }
+                for junction in &piece.junctions {
+                    let (x, z) = (junction.source_x, junction.source_z);
+                    if x > cx - 12 && z > cz - 12 && x < cx + 15 + 12 && z < cz + 15 + 12 {
+                        junctions.push(JigsawJunction {
+                            source_x: x,
+                            source_ground_y: junction.source_ground_y,
+                            source_z: z,
+                        });
+                        let at = [x, junction.source_ground_y, z];
+                        include(StructureBounds::from_corners(at, at));
+                    }
+                }
+            }
+        }
+    }
+    let affected = any?.inflated_by(24);
+    Some(Beardifier::new(rigids, junctions, Some(affected)))
 }

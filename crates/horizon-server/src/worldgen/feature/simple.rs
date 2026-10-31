@@ -25,6 +25,7 @@ use super::terrain::Terrain;
 use super::tree::{FallenTreeFeature, TreeBlocksCell, TreeFeature};
 use crate::block::BlockState;
 use crate::block::flags::{FLAG_AIR, FLAG_DOUBLE_PLANT, FLAG_MOSSY_CARPET};
+use crate::block::survival::can_attach_to;
 use crate::core::geometry::Direction;
 use crate::core::position::BlockPos;
 use crate::util::random::RandomSource;
@@ -83,6 +84,15 @@ pub trait FeatureWorld: PlacementWorld {
     fn level_float(&mut self) -> Result<f32, WorldError> {
         Err(WorldError::Unsupported("level random"))
     }
+    /// `WorldGenLevel.getRandom().nextInt(bound)`.
+    fn level_int_bound(&mut self, _bound: i32) -> Result<i32, WorldError> {
+        Err(WorldError::Unsupported("level random"))
+    }
+    /// Whether `WorldGenLevel.getRandom()` answers (taken before a draw where vanilla takes the
+    /// random first and draws later, as `MossyCarpetBlock.placeAt(level, pos, level.getRandom())`).
+    fn has_level_random(&self) -> bool {
+        false
+    }
     /// `WorldGenLevel.getSeed()`: the level's seed (the geode's noise reads it).
     fn world_seed(&self) -> Result<i64, WorldError> {
         Err(WorldError::Unsupported("the level seed"))
@@ -103,6 +113,18 @@ pub trait FeatureWorld: PlacementWorld {
 }
 
 impl<S: SurvivalRules> FeatureWorld for RegionWorld<'_, '_, S> {
+    fn has_level_random(&self) -> bool {
+        true
+    }
+    fn level_boolean(&mut self) -> Result<bool, WorldError> {
+        Ok(self.random.next_boolean())
+    }
+    fn level_float(&mut self) -> Result<f32, WorldError> {
+        Ok(self.random.next_float())
+    }
+    fn level_int_bound(&mut self, bound: i32) -> Result<i32, WorldError> {
+        (self.random.next_int_bound(bound)).map_err(|_| WorldError::Unsupported("a positive bound"))
+    }
     fn set_block(
         &mut self,
         pos: BlockPos,
@@ -445,10 +467,7 @@ fn simple_block<W: FeatureWorld>(
             world.set_block(at, half_state, 2)?;
         }
     } else if data.has(state, FLAG_MOSSY_CARPET) {
-        // `MossyCarpetBlock.placeAt` draws from the level's own random: not ported.
-        return Err(ProviderError::Invalid(
-            "mossy carpet placement is not ported",
-        ));
+        mossy_carpet_place_at(world, origin, 2)?;
     } else {
         world.set_block(origin, state, 2)?;
     }
@@ -456,6 +475,147 @@ fn simple_block<W: FeatureWorld>(
         world.schedule_tick(origin, 1)?;
     }
     Ok(true)
+}
+
+/// `Direction.Plane.HORIZONTAL` in order, with `MossyCarpetBlock`'s property of each face.
+const CARPET_FACES: [(Direction, &str); 4] = [
+    (Direction::North, "north"),
+    (Direction::East, "east"),
+    (Direction::South, "south"),
+    (Direction::West, "west"),
+];
+
+/// `MossyCarpetBlock.placeAt(level, pos, level.getRandom(), flags)`: the carpet with the sides its
+/// neighbours support, then a topper above it whose sides each survive a coin of the level's
+/// random, and the carpet again once the topper is there.
+fn mossy_carpet_place_at<W: FeatureWorld>(
+    world: &mut W,
+    pos: BlockPos,
+    flags: i32,
+) -> Result<(), ProviderError> {
+    // `level.getRandom()` is an argument: taken before anything is placed.
+    if !world.has_level_random() {
+        return Err(WorldError::Unsupported("level random").into());
+    }
+    let blocks = world.blocks();
+    let carpet = (blocks.block_by_name("minecraft:pale_moss_carpet"))
+        .ok_or(ProviderError::Invalid("no pale moss carpet"))?;
+    let simple = blocks.default_state(carpet);
+    let adjusted = carpet_updated_state(world, simple, pos, true)?;
+    world.set_block(pos, adjusted, flags)?;
+    let topper = carpet_topper(world, pos)?;
+    if !world.blocks().is_air(topper) {
+        world.set_block(pos.offset(0, 1, 0), topper, flags)?;
+        let bottom = carpet_updated_state(world, adjusted, pos, true)?;
+        world.set_block(pos, bottom, flags)?;
+    }
+    Ok(())
+}
+
+fn carpet_value<'w>(world: &'w impl PlacementWorld, state: BlockState, name: &str) -> &'w str {
+    world.blocks().value(state, name).unwrap_or("")
+}
+
+fn is_carpet(world: &impl PlacementWorld, state: BlockState) -> bool {
+    let blocks = world.blocks();
+    blocks.block_name(blocks.block(state)) == "minecraft:pale_moss_carpet"
+}
+
+/// `MossyCarpetBlock.getUpdatedState(state, level, pos, createSides)`.
+fn carpet_updated_state(
+    world: &impl PlacementWorld,
+    mut state: BlockState,
+    pos: BlockPos,
+    mut create_sides: bool,
+) -> Result<BlockState, ProviderError> {
+    let mut above: Option<BlockState> = None;
+    let mut below: Option<BlockState> = None;
+    let base = carpet_value(world, state, "base") == "true";
+    create_sides |= base;
+    for (direction, property) in CARPET_FACES {
+        // `canSupportAtFace`: never up; `MultifaceBlock.canAttachTo` the neighbour.
+        let neighbour = world.block_state(super::common::relative(pos, direction))?;
+        let supported = can_attach_to(world.state_data(), neighbour, direction)
+            .ok_or(ProviderError::Invalid("a dynamic shape"))?;
+        let mut side = if !supported {
+            "none"
+        } else if create_sides {
+            "low"
+        } else {
+            carpet_value(world, state, property)
+        };
+        if side == "low" {
+            let above_state = match above {
+                Some(s) => s,
+                None => *above.insert(world.block_state(pos.offset(0, 1, 0))?),
+            };
+            if is_carpet(world, above_state)
+                && carpet_value(world, above_state, property) != "none"
+                && carpet_value(world, above_state, "base") != "true"
+            {
+                side = "tall";
+            }
+            if !base {
+                let below_state = match below {
+                    Some(s) => s,
+                    None => *below.insert(world.block_state(pos.offset(0, -1, 0))?),
+                };
+                if is_carpet(world, below_state)
+                    && carpet_value(world, below_state, property) == "none"
+                {
+                    side = "none";
+                }
+            }
+        }
+        let side = side.to_owned();
+        state = (world.blocks().with_property(state, property, &side))
+            .ok_or(ProviderError::Invalid("a mossy carpet side"))?;
+    }
+    Ok(state)
+}
+
+/// `MossyCarpetBlock.createTopperWithSideChance(level, pos, random::nextBoolean)` with the level's
+/// random.
+fn carpet_topper<W: FeatureWorld>(
+    world: &mut W,
+    pos: BlockPos,
+) -> Result<BlockState, ProviderError> {
+    let above = pos.offset(0, 1, 0);
+    let previous = world.block_state(above)?;
+    let carpet_above = is_carpet(world, previous);
+    let air = {
+        let blocks = world.blocks();
+        let air = blocks
+            .block_by_name("minecraft:air")
+            .ok_or(ProviderError::Invalid("no air"))?;
+        blocks.default_state(air)
+    };
+    if (carpet_above && carpet_value(world, previous, "base") == "true")
+        || (!carpet_above && !world.state_data().is_replaceable(previous))
+    {
+        return Ok(air);
+    }
+    let blocks = world.blocks();
+    let carpet = (blocks.block_by_name("minecraft:pale_moss_carpet"))
+        .ok_or(ProviderError::Invalid("no pale moss carpet"))?;
+    let no_base = (blocks.with_property(blocks.default_state(carpet), "base", "false"))
+        .ok_or(ProviderError::Invalid("a mossy carpet base"))?;
+    let mut state = carpet_updated_state(world, no_base, above, true)?;
+    for (_, property) in CARPET_FACES {
+        if carpet_value(world, state, property) != "none" && !world.level_boolean()? {
+            state = (world.blocks().with_property(state, property, "none"))
+                .ok_or(ProviderError::Invalid("a mossy carpet side"))?;
+        }
+    }
+    let has_faces = carpet_value(world, state, "base") == "true"
+        || CARPET_FACES
+            .iter()
+            .any(|(_, p)| carpet_value(world, state, p) != "none");
+    Ok(if has_faces && state != previous {
+        state
+    } else {
+        air
+    })
 }
 
 /// `AbstractOreFeature.canPlaceOre` and the scattered placement.
